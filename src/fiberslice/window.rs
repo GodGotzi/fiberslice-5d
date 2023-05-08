@@ -3,6 +3,7 @@ use winit::event::WindowEvent;
 use winit::event_loop::ControlFlow;
 use winit::window::Window;
 
+#[allow(dead_code)]
 pub struct WindowEventObserver<'a> {
     window: &'a Window,
 }
@@ -44,6 +45,7 @@ impl <'a> WindowEventObserver<'a> {
     }
 }
 
+#[allow(dead_code)]
 impl <'a> FiberSliceWindow<'a> {
 
     pub fn new(window: &'a Window, device: &'a Device, surface: &'a Surface, surface_config: &'a mut SurfaceConfiguration) -> Self {

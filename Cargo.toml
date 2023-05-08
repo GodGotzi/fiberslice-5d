@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 [package]
 name = "fiberslice-5d"
 version = "0.1.0"
@@ -6,12 +7,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-egui_wgpu_backend = "0.19"
+egui_wgpu_backend = "0.23.0"
 chrono = "0.4"
-pollster = "0.2"
-egui = "0.19"
+pollster = "0.3.0"
+egui = "0.21.0"
 epi = "0.17"
-egui_winit_platform = "0.16"
-wgpu = "0.13"
-winit = { version="0.27.3", features = ["x11"]}
-egui_demo_lib = "0.19"
+egui_winit_platform = "0.18.0"
+wgpu = "0.16.0"
+winit = { version= "0.28.5", features = ["x11"]}
+egui_demo_lib = "0.21.0"

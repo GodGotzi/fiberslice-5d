@@ -7,8 +7,9 @@ use std::time::Instant;
 use egui::FontDefinitions;
 use egui_wgpu_backend::{RenderPass, ScreenDescriptor};
 use egui_winit_platform::{Platform, PlatformDescriptor};
+use wgpu::{InstanceDescriptor, TextureFormat};
 use winit::event::Event::*;
-use winit::event_loop::{ControlFlow, EventLoop};
+use winit::event_loop::{EventLoop};
 use winit::window::Window;
 
 use window_builder::{create_winit_window, Event};
@@ -22,21 +23,25 @@ fn main() {
     let event_loop = EventLoop::create();
     let window: Window = create_winit_window(&event_loop);
 
-    let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
-    let surface = unsafe { instance.create_surface(&window) };
+    let instance = wgpu::Instance::new(InstanceDescriptor::default());
+    let surface = unsafe { instance.create_surface(&window).unwrap() };
 
     let adapter = request_wgpu_adapter(&instance, &surface).unwrap();
 
     let (device, queue) = request_wgpu_device(&adapter).unwrap();
 
     let size = window.inner_size();
-    let surface_format = surface.get_supported_formats(&adapter)[0];
+
+
+    let texture_format = TextureFormat::Bgra8UnormSrgb;
     let mut surface_config = wgpu::SurfaceConfiguration {
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-        format: surface_format,
+        format: texture_format,
         width: size.width as u32,
         height: size.height as u32,
         present_mode: wgpu::PresentMode::Fifo,
+        alpha_mode: Default::default(),
+        view_formats: Default::default(),
     };
     surface.configure(&device, &surface_config);
 
@@ -48,7 +53,7 @@ fn main() {
         style: Default::default(),
     });
 
-    let mut egui_rpass = RenderPass::new(&device, surface_format, 1);
+    let mut egui_rpass = RenderPass::new(&device, texture_format, 1);
 
     let mut demo_app = egui_demo_lib::DemoWindows::default();
     let start_time = Instant::now();
