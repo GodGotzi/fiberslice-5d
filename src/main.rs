@@ -18,6 +18,7 @@ use fiberslice::utils::Creation;
 use fiberslice::wgpu::request_wgpu_device;
 use fiberslice::window::WindowEventObserver;
 use fiberslice::window::FiberSliceWindow;
+use fiberslice::screen::Screen;
 
 fn main() {
     let event_loop = EventLoop::create();
@@ -55,7 +56,7 @@ fn main() {
 
     let mut egui_rpass = RenderPass::new(&device, texture_format, 1);
 
-    let mut demo_app = egui_demo_lib::DemoWindows::default();
+    let mut screen = Screen::new();
     let start_time = Instant::now();
 
     event_loop.run(move |event, _, control_flow| {
@@ -84,7 +85,8 @@ fn main() {
 
                 platform.begin_frame();
 
-                demo_app.ui(&platform.context());
+
+                screen.ui(&platform.context());
 
                 let full_output = platform.end_frame(Some(&window));
                 let paint_jobs = platform.context().tessellate(full_output.shapes);

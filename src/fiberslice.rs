@@ -1,5 +1,6 @@
 pub mod utils;
 pub mod window;
+pub mod screen;
 
 pub mod wgpu {
     use wgpu::{Adapter, Device, Instance, Queue, RequestDeviceError, Surface};
