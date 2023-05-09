@@ -5,6 +5,7 @@ pub fn side_panel_ui(ctx: &Context) {
         .resizable(true)
         .default_width(150.0)
         .show(ctx, |ui| {
+            /*
             TabBar::new("Options").show(ui, |ui| {
                 // Add a tab page
                 TabPage::new("Slice Settings").show(ui, |ui| {
@@ -20,5 +21,6 @@ pub fn side_panel_ui(ctx: &Context) {
                     ui.label("This is the content of tab 2");
                 });
             });
+             */
         });
 }
