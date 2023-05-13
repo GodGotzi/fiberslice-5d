@@ -1,5 +1,6 @@
 mod window_builder;
 mod fiberslice;
+mod component;
 
 use std::iter;
 use std::time::Instant;
@@ -33,7 +34,6 @@ fn main() {
 
     let size = window.inner_size();
 
-
     let texture_format = TextureFormat::Bgra8UnormSrgb;
     let mut surface_config = wgpu::SurfaceConfiguration {
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -58,6 +58,8 @@ fn main() {
 
     let mut screen = Screen::new();
     let start_time = Instant::now();
+
+    let mut demo_app = egui_demo_lib::DemoWindows::default();
 
     event_loop.run(move |event, _, control_flow| {
         platform.handle_event(&event);
