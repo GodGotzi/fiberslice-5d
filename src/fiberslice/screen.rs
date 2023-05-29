@@ -1,17 +1,14 @@
 mod side;
-mod view;
 
-use std::sync::Arc;
-use eframe::CreationContext;
-use egui::{Context, Modifiers, Ui};
-use egui::WidgetType::Slider;
+use bevy_egui::EguiContexts;
 use crate::fiberslice::screen::menu::menubar_ui;
 
 mod menu {
-    use egui::{Context, Ui};
+    use bevy_egui::{egui, EguiContexts};
+    use egui::Ui;
 
-    pub fn menubar_ui(ctx: &Context, screen: &mut super::Screen) {
-        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+    pub fn menubar_ui(ctx: &egui::Context, screen: &mut super::Screen) {
+        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui: &mut Ui| {
             egui::menu::bar(ui, |ui| {
                 theme_button(ui, screen);
                 ui.separator();
@@ -88,24 +85,21 @@ mod menu {
 pub struct Screen {
     toggle_theme: bool,
     side_view_data: side::SideView,
-    view_data: view::View,
 }
 
 impl Screen {
-    pub fn new(cc: &CreationContext) -> Screen {
+    pub fn new() -> Screen {
 
         let screen = Screen {
             toggle_theme: true,
             side_view_data: side::SideView::init(),
-            view_data: view::View::init(cc),
         };
 
         screen
     }
 
-    pub(crate) fn ui(&mut self, ctx: &Context) {
+    pub(crate) fn ui(&mut self, ctx: &egui::Context) {
         menubar_ui(ctx, self);
         self.side_view_data.side_panel_ui(ctx);
-        self.view_data.view_panel_ui(ctx);
     }
 }

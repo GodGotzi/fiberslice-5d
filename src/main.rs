@@ -1,18 +1,21 @@
 mod fiberslice;
 mod component;
 
-use std::sync::Arc;
-use eframe::egui;
-use egui_glow::glow::Context;
 use fiberslice::screen::Screen;
 
+use bevy::prelude::*;
+use bevy_egui::{EguiContexts, EguiPlugin};
+
 fn main() {
-    let native_options = eframe::NativeOptions::default();
-    eframe::run_native("FiberSlice",
-                       native_options,
-                       Box::new(|cc|
-                           Box::new(FiberSlice::new(cc))))
-        .expect("Something went wrong while creating the frame");
+    let mut fiberslice = FiberSlice::new();
+
+    App::new()
+        .add_plugins(DefaultPlugins)
+        .add_plugin(EguiPlugin)
+        .add_system(move |contexts: EguiContexts| {
+            fiberslice.show_ui(contexts)
+        })
+        .run();
 }
 
 struct FiberSlice {
@@ -20,20 +23,17 @@ struct FiberSlice {
 }
 
 impl FiberSlice {
-    fn new(cc: &eframe::CreationContext) -> Self {
-        // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
-        // Restore app state using cc.storage (requires the "persistence" feature).
-        // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
-        // for e.g. egui::PaintCallback.
-
+    fn new() -> Self {
         Self {
-            screen: Screen::new(cc),
+            screen: Screen::new(),
         }
     }
 }
 
-impl eframe::App for FiberSlice {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+impl FiberSlice {
+    fn show_ui(&mut self, mut contexts: EguiContexts) {
+        let ctx = contexts.ctx_mut();
+
         self.screen.ui(ctx);
     }
 }
