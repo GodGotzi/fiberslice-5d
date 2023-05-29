@@ -2,9 +2,14 @@ mod fiberslice;
 
 use fiberslice::screen::Screen;
 
-use bevy::{prelude::*, window::PresentMode};
 use bevy_egui::{EguiContexts, EguiPlugin};
-use smooth_bevy_cameras::{LookTransformPlugin, controllers::orbit::{OrbitCameraPlugin, OrbitCameraBundle, OrbitCameraController}};
+use smooth_bevy_cameras::{
+    LookTransformPlugin, 
+    controllers::orbit::{OrbitCameraPlugin, OrbitCameraBundle, OrbitCameraController}
+};
+
+use bevy::{prelude::*, window};
+use bevy::window::{PresentMode, WindowResolution};
 
 fn main() {
     let mut fiberslice = FiberSlice::new();
@@ -13,7 +18,7 @@ fn main() {
     .add_plugins(DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
             title: "FiberSlice-3D/5D".into(),
-            resolution: (1200., 900.).into(),
+            resolution: WindowResolution::new(1200., 900.),
             present_mode: PresentMode::AutoVsync,
             // Tells wasm to resize the window according to the available canvas
             fit_canvas_to_parent: true,
@@ -27,6 +32,7 @@ fn main() {
         .add_plugin(LookTransformPlugin)
         .add_plugin(OrbitCameraPlugin::default())
         .add_startup_system(setup)
+        .add_startup_system(maximize_window)
         .add_system(move |contexts: EguiContexts| {
             fiberslice.show_ui(contexts)
         })
@@ -71,6 +77,15 @@ fn setup(
             Vec3::Y,
         ));
 }
+
+
+fn maximize_window(
+    // we have to use `NonSend` here
+    mut windows: Query<&mut Window>,
+) {
+    let mut window = windows.single_mut();
+    window.set_maximized(true);
+} 
 
 struct FiberSlice {
     screen: Screen,
