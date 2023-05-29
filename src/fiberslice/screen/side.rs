@@ -1,7 +1,7 @@
-use eframe::emath::Align;
-use egui::{Context, Direction, Margin, Ui};
-use egui_grid::GridBuilder;
+use bevy_egui::egui;
+use egui::{Context, Direction, Ui};
 use egui_extras::Size;
+use egui_grid::GridBuilder;
 
 #[derive(PartialEq)]
 pub enum OptionPanel {
@@ -24,15 +24,15 @@ impl TabbedView {
             let layout = egui::Layout {
                 main_dir: Direction::TopDown,
                 main_wrap: false,
-                main_align: Align::Center,
+                main_align: egui::Align::Center,
                 main_justify: false,
-                cross_align: Align::Center,
+                cross_align: egui::Align::Center,
                 cross_justify: true,
             };
 
             GridBuilder::new()
                 // Allocate a new row
-                .new_row_align(Size::initial(17.0), Align::Center)
+                .new_row_align(Size::initial(17.0), egui::Align::Center)
                 // Give this row a couple cells
                 .layout_standard(layout)
                 .clip(true)
@@ -41,7 +41,7 @@ impl TabbedView {
                 .cell(Size::remainder())
                 .cell(Size::initial(5.0))
                 .cell(Size::remainder())
-                .new_row_align(Size::initial(5.0), Align::Center)
+                .new_row_align(Size::initial(5.0), egui::Align::Center)
                 .cell(Size::remainder())
                 .cell(Size::remainder())
                 .cell(Size::remainder())

@@ -1,10 +1,10 @@
 mod side;
 
-use bevy_egui::EguiContexts;
+use bevy_egui::egui;
 use crate::fiberslice::screen::menu::menubar_ui;
 
 mod menu {
-    use bevy_egui::{egui, EguiContexts};
+    use bevy_egui::egui;
     use egui::Ui;
 
     pub fn menubar_ui(ctx: &egui::Context, screen: &mut super::Screen) {
@@ -21,35 +21,35 @@ mod menu {
         });
     }
 
-    fn file_button(ui: &mut Ui, screen: &mut super::Screen) {
+    fn file_button(ui: &mut Ui, _screen: &mut super::Screen) {
         ui.menu_button("File", |ui| {
             ui.set_min_width(220.0);
             ui.style_mut().wrap = Some(false);
         });
     }
 
-    fn edit_button(ui: &mut Ui, screen: &mut super::Screen) {
+    fn edit_button(ui: &mut Ui, _screen: &mut super::Screen) {
         ui.menu_button("Edit", |ui| {
             ui.set_min_width(220.0);
             ui.style_mut().wrap = Some(false);
         });
     }
 
-    fn view_button(ui: &mut Ui, screen: &mut super::Screen) {
+    fn view_button(ui: &mut Ui, _screen: &mut super::Screen) {
         ui.menu_button("View", |ui| {
             ui.set_min_width(220.0);
             ui.style_mut().wrap = Some(false);
         });
     }
 
-    fn settings_button(ui: &mut Ui, screen: &mut super::Screen) {
+    fn settings_button(ui: &mut Ui, _screen: &mut super::Screen) {
         ui.menu_button("Settings", |ui| {
             ui.set_min_width(220.0);
             ui.style_mut().wrap = Some(false);
         });
     }
 
-    fn help_button(ui: &mut Ui, screen: &mut super::Screen) {
+    fn help_button(ui: &mut Ui, _screen: &mut super::Screen) {
         ui.menu_button("Help", |ui| {
             ui.set_min_width(220.0);
             ui.style_mut().wrap = Some(false);
@@ -58,15 +58,11 @@ mod menu {
 
     fn theme_button(ui: &mut Ui, screen: &mut super::Screen) {
         let clicked = match screen.toggle_theme {
-            true => ui.button("💡").clicked().clone(),
-            false => ui.button("🌙").clicked().clone(),
+            true => ui.button("💡").clicked(),
+            false => ui.button("🌙").clicked(),
         };
 
-        if screen.toggle_theme {
-            handle_toggle_theme(ui,clicked, screen);
-        } else {
-            handle_toggle_theme(ui, clicked, screen);
-        }
+        handle_toggle_theme(ui, clicked, screen);
     }
 
     fn handle_toggle_theme(ui: &mut Ui, toggle: bool, screen: &mut super::Screen) {
@@ -89,13 +85,10 @@ pub struct Screen {
 
 impl Screen {
     pub fn new() -> Screen {
-
-        let screen = Screen {
+        Screen {
             toggle_theme: true,
             side_view_data: side::SideView::init(),
-        };
-
-        screen
+        }
     }
 
     pub(crate) fn ui(&mut self, ctx: &egui::Context) {

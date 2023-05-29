@@ -1,9 +1,10 @@
 
+use bevy_egui::egui;
 use egui::{CollapsingHeader, Context, Frame, Stroke, Ui};
 
 #[derive(PartialEq, Clone)]
 pub enum Face {
-    DEFAULT,
+    NORMAL,
     TOP,
     BOTTOM,
     RIGHT,
@@ -19,13 +20,13 @@ pub struct LeftOptionPane {
 impl Default for LeftOptionPane {
     fn default() -> Self {
         Self {
-            face: Some(Face::DEFAULT)
+            face: Some(Face::NORMAL)
         }
     }
 }
 
 impl LeftOptionPane {
-    pub fn ui(&mut self, ctx: &Context, ui: &mut Ui) {
+    pub fn ui(&mut self, _ctx: &Context, ui: &mut Ui) {
         Frame::popup(ui.style())
             .stroke(Stroke::NONE)
             .show(ui, |ui| {
