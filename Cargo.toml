@@ -7,12 +7,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+egui_grid = "0.1.0"
+eframe = "0.21.3"
 egui_wgpu_backend = "0.23.0"
-chrono = "0.4"
-pollster = "0.3.0"
+egui_extras = "0.21.0"
 egui = "0.21.0"
-epi = "0.17"
-egui_winit_platform = "0.18.0"
-wgpu = "0.16.0"
-winit = { version= "0.28.5", features = ["x11"]}
 egui_demo_lib = "0.21.0"
+egui_glow = "0.21.0"
+egui_web = "0.17.0"
