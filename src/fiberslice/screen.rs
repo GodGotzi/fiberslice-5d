@@ -1,10 +1,10 @@
 mod side;
 
-use bevy_egui::egui;
+use bevy_egui::egui::{self, LayerId, Id};
 use crate::fiberslice::screen::menu::menubar_ui;
 
 mod menu {
-    use bevy_egui::egui;
+    use bevy_egui::egui::{self, LayerId, Id};
     use egui::Ui;
 
     pub fn menubar_ui(ctx: &egui::Context, screen: &mut super::Screen) {

@@ -1,57 +1,22 @@
-use bevy::prelude::Vec3;
+use bevy::prelude::*;
 
 use smooth_bevy_cameras::{LookAngles, LookTransform, LookTransformBundle, Smoother};
 
 use bevy::{
-    app::prelude::*,
-    ecs::{bundle::Bundle, prelude::*},
+    ecs::bundle::Bundle,
     input::{
         mouse::{MouseMotion, MouseScrollUnit, MouseWheel},
-        prelude::*,
     },
-    math::prelude::*,
     time::Time,
     transform::components::Transform,
 };
 
-pub struct OrbitCamera {
-    orbit: Vec3,
-
-}
-
-impl Default for OrbitCamera {
-
-    fn default() -> Self {
-        Self {
-            orbit: Default::default()
-        }
-    }
-
-}
-
-impl OrbitCamera {
-
-
-    pub fn new(orbit: Vec3) -> Self {
-        Self {
-            orbit
-        }
-    }
-
-    pub fn move_orbit(&mut self, x: f32, y: f32, z:f32) {
-        self.orbit.x += x;
-        self.orbit.y += y;
-        self.orbit.z += z;
-    }
-
-}
-
 #[derive(Default)]
-pub struct OrbitCameraPlugin {
+pub struct CameraPlugin {
     pub override_input_system: bool,
 }
 
-impl OrbitCameraPlugin {
+impl CameraPlugin {
     pub fn new(override_input_system: bool) -> Self {
         Self {
             override_input_system,
@@ -59,12 +24,12 @@ impl OrbitCameraPlugin {
     }
 }
 
-impl Plugin for OrbitCameraPlugin {
+impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         let app = app
             .add_system(control_system)
-            .add_event::<ControlEvent>();
-
+            .add_event::<CameraControlEvent>();
+        
         if !self.override_input_system {
             app.add_system(default_input_map);
         }
@@ -72,15 +37,15 @@ impl Plugin for OrbitCameraPlugin {
 }
 
 #[derive(Bundle)]
-pub struct OrbitCameraBundle {
-    controller: OrbitCameraController,
+pub struct CameraBundle {
+    controller: CameraController,
     #[bundle]
     look_transform: LookTransformBundle,
     transform: Transform,
 }
 
-impl OrbitCameraBundle {
-    pub fn new(controller: OrbitCameraController, eye: Vec3, target: Vec3, up: Vec3) -> Self {
+impl CameraBundle {
+    pub fn new(controller: CameraController, eye: Vec3, target: Vec3, up: Vec3) -> Self {
         // Make sure the transform is consistent with the controller to start.
         let transform = Transform::from_translation(eye).looking_at(target, up);
 
@@ -98,7 +63,7 @@ impl OrbitCameraBundle {
 /// A 3rd person camera that orbits around the target.
 #[derive(Clone, Component, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct OrbitCameraController {
+pub struct CameraController {
     pub enabled: bool,
     pub mouse_rotate_sensitivity: Vec2,
     pub mouse_translate_sensitivity: Vec2,
@@ -107,32 +72,31 @@ pub struct OrbitCameraController {
     pub smoothing_weight: f32,
 }
 
-impl Default for OrbitCameraController {
+impl Default for CameraController {
     fn default() -> Self {
         Self {
             mouse_rotate_sensitivity: Vec2::splat(0.28),
-            mouse_translate_sensitivity: Vec2::splat(0.1),
+            mouse_translate_sensitivity: Vec2::splat(0.25),
             mouse_wheel_zoom_sensitivity: 0.2,
-            smoothing_weight: 0.8,
+            smoothing_weight: 0.4,
             enabled: true,
             pixels_per_line: 53.0,
         }
     }
 }
 
-pub enum ControlEvent {
+pub enum CameraControlEvent {
     Orbit(Vec2),
     TranslateTarget(Vec2),
     Zoom(f32),
 }
 
 pub fn default_input_map(
-    mut events: EventWriter<ControlEvent>,
+    mut events: EventWriter<CameraControlEvent>,
     mut mouse_wheel_reader: EventReader<MouseWheel>,
     mut mouse_motion_events: EventReader<MouseMotion>,
     mouse_buttons: Res<Input<MouseButton>>,
-    keyboard: Res<Input<KeyCode>>,
-    controllers: Query<&OrbitCameraController>,
+    controllers: Query<&CameraController>,
 ) {
     // Can only control one camera at a time.
     let controller = if let Some(controller) = controllers.iter().find(|c| c.enabled) {
@@ -140,7 +104,7 @@ pub fn default_input_map(
     } else {
         return;
     };
-    let OrbitCameraController {
+    let CameraController {
         mouse_rotate_sensitivity,
         mouse_translate_sensitivity,
         mouse_wheel_zoom_sensitivity,
@@ -154,11 +118,11 @@ pub fn default_input_map(
     }
 
     if mouse_buttons.pressed(MouseButton::Left) {
-        events.send(ControlEvent::Orbit(mouse_rotate_sensitivity * cursor_delta));
+        events.send(CameraControlEvent::Orbit(mouse_rotate_sensitivity * cursor_delta));
     }
 
-    if mouse_buttons.pressed(MouseButton::Right) {
-        events.send(ControlEvent::TranslateTarget(
+    if mouse_buttons.pressed(MouseButton::Middle) {
+        events.send(CameraControlEvent::TranslateTarget(
             mouse_translate_sensitivity * cursor_delta,
         ));
     }
@@ -172,13 +136,14 @@ pub fn default_input_map(
         };
         scalar *= 1.0 - scroll_amount * mouse_wheel_zoom_sensitivity;
     }
-    events.send(ControlEvent::Zoom(scalar));
+
+    events.send(CameraControlEvent::Zoom(scalar));
 }
 
 pub fn control_system(
     time: Res<Time>,
-    mut events: EventReader<ControlEvent>,
-    mut cameras: Query<(&OrbitCameraController, &mut LookTransform, &Transform)>,
+    mut events: EventReader<CameraControlEvent>,
+    mut cameras: Query<(&CameraController, &mut LookTransform, &Transform)>,
 ) {
     // Can only control one camera at a time.
     let (mut transform, scene_transform) =
@@ -194,16 +159,16 @@ pub fn control_system(
     let dt = time.delta_seconds();
     for event in events.iter() {
         match event {
-            ControlEvent::Orbit(delta) => {
+            CameraControlEvent::Orbit(delta) => {
                 look_angles.add_yaw(dt * -delta.x);
                 look_angles.add_pitch(dt * delta.y);
             }
-            ControlEvent::TranslateTarget(delta) => {
+            CameraControlEvent::TranslateTarget(delta) => {
                 let right_dir = scene_transform.rotation * -Vec3::X;
                 let up_dir = scene_transform.rotation * Vec3::Y;
                 transform.target += dt * delta.x * right_dir + dt * delta.y * up_dir;
             }
-            ControlEvent::Zoom(scalar) => {
+            CameraControlEvent::Zoom(scalar) => {
                 radius_scalar *= scalar;
             }
         }
