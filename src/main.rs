@@ -1,15 +1,14 @@
 mod fiberslice;
+mod view;
 
 use fiberslice::screen::Screen;
 
 use bevy_egui::{EguiContexts, EguiPlugin};
-use smooth_bevy_cameras::{
-    LookTransformPlugin, 
-    controllers::orbit::{OrbitCameraPlugin, OrbitCameraBundle, OrbitCameraController}
-};
+use smooth_bevy_cameras::LookTransformPlugin;
 
-use bevy::{prelude::*, window};
+use bevy::prelude::*;
 use bevy::window::{PresentMode, WindowResolution};
+use view::camera::*;
 
 fn main() {
     let mut fiberslice = FiberSlice::new();
@@ -44,6 +43,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+
     // plane
     commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Plane {
@@ -77,7 +77,6 @@ fn setup(
             Vec3::Y,
         ));
 }
-
 
 fn maximize_window(
     // we have to use `NonSend` here
