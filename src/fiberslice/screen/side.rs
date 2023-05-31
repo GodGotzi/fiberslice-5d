@@ -1,7 +1,10 @@
+use bevy::prelude::ResMut;
 use bevy_egui::egui;
 use egui::{Context, Direction, Ui};
 use egui_extras::Size;
 use egui_grid::GridBuilder;
+
+use crate::view::ViewInterface;
 
 #[derive(PartialEq)]
 pub enum OptionPanel {
@@ -19,7 +22,7 @@ impl TabbedView {
         }
     }
 
-    pub fn show(&mut self, ctx: &Context, ui: &mut Ui, side_view: &mut SideView) {
+    pub fn show(&mut self, ctx: &Context, ui: &mut Ui, side_view: &mut SideView, view_interface: &mut ResMut<ViewInterface>) {
         ui.horizontal(|ui| {
             let layout = egui::Layout {
                 main_dir: Direction::TopDown,
@@ -95,6 +98,11 @@ impl TabbedView {
         match side_view.open_panel {
             OptionPanel::SliceSettings => {
                 ui.label("a");
+
+                if ui.button("test").clicked() {
+                    view_interface.change_view_color(0.2, 0.3, 0.4);
+                }
+
             },
             OptionPanel::FilamentSettings => {
                 ui.label("b");
@@ -121,14 +129,14 @@ impl SideView {
         }
     }
 
-    pub fn side_panel_ui(&mut self, ctx: &Context) {
+    pub fn side_panel_ui(&mut self, ctx: &Context, view_interface: &mut ResMut<ViewInterface>) {
         let mut tabbed_view = TabbedView::init();
 
         egui::SidePanel::right("settings-panel")
             .resizable(true)
             .default_width(150.0)
             .show(ctx, |ui| {
-                tabbed_view.show(ctx, ui, self);
+                tabbed_view.show(ctx, ui, self, view_interface);
             });
     }
 }

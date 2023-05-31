@@ -2,49 +2,18 @@ mod fiberslice;
 mod view;
 mod component;
 
-use bevy::core_pipeline::clear_color::ClearColorConfig;
-use component::EguiData;
-use fiberslice::screen::Screen;
+use fiberslice::gui::*;
+use fiberslice::*;
 
 use bevy_egui::{EguiContexts, EguiPlugin};
-use image::flat::View;
 use smooth_bevy_cameras::LookTransformPlugin;
 
 use bevy::prelude::*;
-use bevy::window::{PresentMode, WindowResolution};
-use view::{camera::*, ViewInterface};
-
-/*
-fn check_cursor_on_egui_element(
-    mut egui_context: ResMut<EguiContext>,
-    windows: Res<Windows>,
-) {
-    if let Some(cursor_position) = egui_context.ctx().input().mouse().pos {
-        for (_, window) in windows.iter() {
-            let window_size = window.physical_size();
-            if cursor_position.x >= 0.0
-                && cursor_position.x <= window_size.width as f32
-                && cursor_position.y >= 0.0
-                && cursor_position.y <= window_size.height as f32
-            {
-                // Cursor is within the window boundaries, you can perform further checks on specific `egui` elements here
-                println!("Cursor is on an egui element!");
-            }
-        }
-    }
-}
-
- */
+use bevy::window::{PresentMode, WindowResolution, PrimaryWindow};
+use view::camera::CameraPlugin;
 
 fn main() {
-        
-    //let mut view_interface = ViewInterface::new(camera3d);
-
-    let mut fiberslice = FiberSlice::new();
-    let mut egui_data = EguiData::new();
-
-    App::new()
-    .add_plugins(DefaultPlugins.set(WindowPlugin {
+    let window_plugin = WindowPlugin {
         primary_window: Some(Window {
             title: "FiberSlice-3D/5D".into(),
             resolution: WindowResolution::new(1200., 900.),
@@ -56,22 +25,27 @@ fn main() {
             ..default()
         }),
         ..default()
-    }))
+    };
+
+    App::new()
+        .insert_resource(view::ViewInterface::new())
+        .insert_resource(GuiInterface::new())
+        .insert_resource(FiberSlice::new())
+        .add_plugins(DefaultPlugins.set(window_plugin))
         .add_plugin(EguiPlugin)
         .add_plugin(LookTransformPlugin)
         .add_plugin(CameraPlugin::default())
-        .add_startup_system(setup)
+        .add_startup_system(view::light_setup)
+        .add_startup_system(view::camera_setup)
+        .add_startup_system(component_setup)
         .add_startup_system(maximize_window)
-        .add_system(move |contexts: EguiContexts, windows: Query<&mut Window>| {
-            egui_data.check_touch(contexts, windows)
-        })
-        .add_system(move |contexts: EguiContexts| {
-            fiberslice.show_ui(contexts)
-        })
+        .add_system(view::view_frame)
+        .add_system(fiberslice::gui::check_touch)
+        .add_system(ui_frame)
         .run();
 }
 
-fn setup(
+fn component_setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -82,10 +56,7 @@ fn setup(
             size: 5.0,
             subdivisions: 4,
         })),
-        material: materials.add(Color::rgb(
-            rgb_to_one_zero(123.), 
-        rgb_to_one_zero(169.), 
-        rgb_to_one_zero(201.)).into()),
+        material: materials.add(Color::rgb(123./255., 169./255., 201./255.).into()),
         ..Default::default()
     });
 
@@ -97,48 +68,14 @@ fn setup(
         ..Default::default()
     });
 
-    // light
-    commands.spawn(PointLightBundle {
-        transform: Transform::from_xyz(4.0, 8.0, 4.0),
-        ..Default::default()
-    });
-
-    commands.spawn(Camera3dBundle::default())
-        .insert(CameraBundle::new(
-            CameraController::default(),
-            Vec3::new(-2.0, 5.0, 5.0),
-            Vec3::new(0., 0., 0.),
-            Vec3::Y,
-        ));
 }
 
-fn maximize_window(
-    // we have to use `NonSend` here
-    mut windows: Query<&mut Window>,
-) {
+fn maximize_window(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
     let mut window = windows.single_mut();
     window.set_maximized(true);
-} 
-
-fn rgb_to_one_zero(rgb: f32) -> f32 {
-    rgb/255.0
 }
 
-struct FiberSlice {
-    screen: Screen,
-}
-
-impl FiberSlice {
-    fn new(/*_view_interface: ViewInterface*/) -> Self {
-        Self {
-            screen: Screen::new(),
-        }
-    }
-}
-
-impl FiberSlice {
-    fn show_ui(&mut self, mut contexts: EguiContexts) {
-        let ctx = contexts.ctx_mut();
-        self.screen.ui(ctx);
-    }
+fn ui_frame(mut contexts: EguiContexts, mut fiberslice: ResMut<FiberSlice>, mut viewinterface: ResMut<view::ViewInterface>) {
+    let ctx = contexts.ctx_mut();
+    fiberslice.ui_frame(ctx, &mut viewinterface);
 }

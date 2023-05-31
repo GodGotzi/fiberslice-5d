@@ -1,7 +1,8 @@
 mod side;
 
+use bevy::prelude::ResMut;
 use bevy_egui::egui::{self, LayerId, Id};
-use crate::fiberslice::screen::menu::menubar_ui;
+use crate::{fiberslice::screen::menu::menubar_ui, view::ViewInterface};
 
 mod menu {
     use bevy_egui::egui::{self, LayerId, Id};
@@ -91,8 +92,8 @@ impl Screen {
         }
     }
 
-    pub(crate) fn ui(&mut self, ctx: &egui::Context) {
+    pub(crate) fn ui(&mut self, ctx: &egui::Context, view_interface: &mut ResMut<ViewInterface>) {
         menubar_ui(ctx, self);
-        self.side_view_data.side_panel_ui(ctx);
+        self.side_view_data.side_panel_ui(ctx, view_interface);
     }
 }
