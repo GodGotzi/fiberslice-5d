@@ -1,4 +1,5 @@
 use bevy::{prelude::*, core_pipeline::clear_color::ClearColorConfig, window::WindowResized, render::camera::Viewport};
+use bevy_atmosphere::{prelude::{AtmosphereCamera, AtmosphereModel, Nishita, Gradient}, settings::AtmosphereSettings};
 
 use crate::fiberslice::screen::GuiResizeEvent;
 
@@ -57,18 +58,16 @@ pub fn set_camera_viewport(
 
     let result_window = windows.get_single();
 
-    match result_window {
-        Ok(window) => {
-            for _resize_event in resize_events.iter() {
-                resize_viewport(window, &mut camera, &view_interface);
-            }
-        
-            for _resize_event in gui_resize_events.iter() {
-                resize_viewport(window, &mut camera, &view_interface);
-            }
-        },
-        Err(_) => {}
+    if let Ok(window) = result_window {
+        for _resize_event in resize_events.iter() {
+            resize_viewport(window, &mut camera, &view_interface);
+        }
+    
+        for _resize_event in gui_resize_events.iter() {
+            resize_viewport(window, &mut camera, &view_interface);
+        }
     }
+
 }
 
 fn resize_viewport(window: &Window, camera: &mut Query<&mut Camera, With<SingleCamera>>, view_interface: &ResMut<ViewInterface>) {
@@ -78,7 +77,7 @@ fn resize_viewport(window: &Window, camera: &mut Query<&mut Camera, With<SingleC
         return;
     }
 
-    let new_width = window.resolution.physical_width() - (view_interface.diff_width_side as f32 * 1.25) as u32;
+    let new_width = window.resolution.physical_width() as i32 - view_interface.diff_width_side as i32;
 
     if new_width < 1 {
         return;
@@ -87,26 +86,33 @@ fn resize_viewport(window: &Window, camera: &mut Query<&mut Camera, With<SingleC
     camera.viewport = Some(Viewport {
         physical_position: UVec2::new(0, 0),
         physical_size: UVec2::new(
-            new_width,
+            new_width as u32,
             window.resolution.physical_height(),
         ),
         ..default()
     });
 }
 
-pub fn light_setup(mut commands: Commands) {
-    commands.spawn(PointLightBundle {
-        transform: Transform::from_xyz(4.0, 8.0, 4.0),
-        ..Default::default()
-    });
-}
-
 pub fn camera_setup(mut commands: Commands) {
-    commands.spawn((Camera3dBundle::default(), SingleCamera::default()))
+    commands.spawn((Camera3dBundle {
+        projection: Projection::Perspective(PerspectiveProjection {
+            fov: std::f32::consts::PI / 4.0,
+            near: 0.1,
+            far: 100000.0,
+            aspect_ratio: 1.0,
+        }),
+        ..Default::default()
+    }, AtmosphereCamera::default(), SingleCamera::default()))
         .insert(camera::CameraBundle::new(
             camera::CameraController::default(),
             Vec3::new(5.0, 5.0, 5.0),
             Vec3::new(0., 0., 0.),
             Vec3::Y,
         ));
+    
+    commands.insert_resource(AtmosphereModel::new(Gradient {
+        ground: Color::rgb(0.188, 0.188, 0.188),
+        horizon: Color::rgb(0.4, 0.4, 0.4),
+        sky: Color::rgb(0.1294, 0.1294, 0.1294),
+    }));
 }

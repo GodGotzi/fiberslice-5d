@@ -390,6 +390,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_atmosphere"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2fbbda95075fdc65b986bcd8362975f55cdb9bdbdd228919f583e42acb314e03"
+dependencies = [
+ "bevy",
+ "bevy_atmosphere_macros",
+ "cfg-if",
+]
+
+[[package]]
+name = "bevy_atmosphere_macros"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a818843c095ec98badeb647c1d05bf6da3bb16b586d47157da038df9faa8785e"
+dependencies = [
+ "bevy_macro_utils",
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "bevy_audio"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -843,6 +867,18 @@ dependencies = [
  "fixedbitset",
  "guillotiere",
  "rectangle-pack",
+ "thiserror",
+]
+
+[[package]]
+name = "bevy_stl"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a8809f433593565165fd781267ae9b210cf29d73dfc1f6e3e4a2651b4d6cfa1"
+dependencies = [
+ "anyhow",
+ "bevy",
+ "stl_io",
  "thiserror",
 ]
 
@@ -1631,7 +1667,9 @@ name = "fiberslice-5d"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy_atmosphere",
  "bevy_egui",
+ "bevy_stl",
  "egui_extras",
  "egui_grid",
  "image",
@@ -1665,6 +1703,15 @@ checksum = "3b9429470923de8e8cbd4d2dc513535400b4b3fef0319fb5c4e1f520a7bef743"
 dependencies = [
  "crc32fast",
  "miniz_oxide 0.7.1",
+]
+
+[[package]]
+name = "float-cmp"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1267f4ac4f343772758f7b1bdcbe767c218bbab93bb432acbf5162bbf85a6c4"
+dependencies = [
+ "num-traits",
 ]
 
 [[package]]
@@ -3264,6 +3311,16 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
+name = "stl_io"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c68e41108b3ec269d885cc56af66cd15f1392f68d2ae461df86d7d3285f065d"
+dependencies = [
+ "byteorder",
+ "float-cmp",
+]
 
 [[package]]
 name = "str-buf"

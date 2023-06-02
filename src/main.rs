@@ -1,7 +1,9 @@
 mod fiberslice;
 mod view;
 mod component;
+mod window;
 
+use bevy_atmosphere::prelude::AtmospherePlugin;
 use component::print_bed::{PrintBed, PrintBedBundle};
 use fiberslice::gui::*;
 use fiberslice::*;
@@ -11,7 +13,7 @@ use fiberslice::screen::GuiResizeEvent;
 use smooth_bevy_cameras::LookTransformPlugin;
 
 use bevy::prelude::*;
-use bevy::window::{PresentMode, WindowResolution, PrimaryWindow};
+use bevy::window::{PresentMode, WindowResolution};
 use view::camera::CameraPlugin;
 use view::orbit::{PossibleOrbitTarget, Orbit};
 
@@ -39,10 +41,12 @@ fn main() {
         .add_plugin(EguiPlugin)
         .add_plugin(LookTransformPlugin)
         .add_plugin(CameraPlugin::default())
-        .add_startup_system(view::light_setup)
+        .add_plugin(AtmospherePlugin)
+        .add_plugin(bevy_stl::StlPlugin)
         .add_startup_system(view::camera_setup)
         .add_startup_system(component_setup)
-        .add_startup_system(maximize_window)
+        .add_startup_system(window::maximize_window)
+        .add_system(window::hotkeys_window)
         .add_system(view::view_frame)
         .add_system(view::set_camera_viewport)
         .add_system(fiberslice::gui::check_touch)
@@ -52,20 +56,17 @@ fn main() {
 
 fn component_setup(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>
 ) {
 
     commands.spawn(PrintBedBundle {
         bed: PrintBed,
         orbit_target: PossibleOrbitTarget::new(Orbit::PrintBed),
         material_mesh_bundle: MaterialMeshBundle {
-            mesh: meshes.add(Mesh::from(shape::Plane {
-                size: 5.0,
-                subdivisions: 4,
-            })),
+            mesh: asset_server.load("print_bed.stl"),
             material: materials.add(Color::rgb(123./255., 169./255., 201./255.).into()),
-            transform: Transform::from_xyz(0.0, 0.5, 0.0),
+            transform: Transform::from_xyz(0.0, 0.0, -10.0),
             ..Default::default()
         },
     });
@@ -85,9 +86,4 @@ fn component_setup(
     .insert(PossibleOrbitTarget::new(Orbit::PrintBed));
 */
 
-}
-
-fn maximize_window(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
-    let mut window = windows.single_mut();
-    window.set_maximized(true);
 }
