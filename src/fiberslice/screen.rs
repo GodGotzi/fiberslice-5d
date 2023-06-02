@@ -1,19 +1,40 @@
 mod side;
 
-use bevy::prelude::{ResMut, EventWriter};
-use bevy_egui::egui::{self, LayerId, Id};
+use bevy::prelude::{ResMut, EventWriter, Vec2};
+use bevy_egui::egui;
 use crate::{fiberslice::screen::menu::menubar_ui, view::ViewInterface};
+
+use super::gui::GuiInterface;
 
 pub enum GuiResizeEvent {
     Side(f32)
 }
 
+pub struct Boundary {
+    pub location: Vec2,
+    pub size: Vec2
+}
+
+impl Boundary {
+    pub fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
+        Self {
+            location: Vec2::new(x, y),
+            size: Vec2::new(width, height),
+        }
+    }
+}
+
 mod menu {
-    use bevy_egui::egui::{self, LayerId, Id};
+    use bevy::prelude::ResMut;
+    use bevy_egui::egui;
     use egui::Ui;
 
-    pub fn menubar_ui(ctx: &egui::Context, screen: &mut super::Screen) {
-        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui: &mut Ui| {
+    use crate::fiberslice::gui::GuiInterface;
+
+    use super::Boundary;
+
+    pub fn menubar_ui(ctx: &egui::Context, screen: &mut super::Screen, gui_interface: &mut ResMut<GuiInterface>) {
+        let response = egui::TopBottomPanel::top("menu_bar").show(ctx, |ui: &mut Ui| {
             egui::menu::bar(ui, |ui| {
                 theme_button(ui, screen);
                 ui.separator();
@@ -23,7 +44,13 @@ mod menu {
                 settings_button(ui, screen);
                 help_button(ui, screen);
             });
-        });
+        }).response;
+
+        let rect = response.rect;
+
+        gui_interface.menu_boundary = Some(
+            Boundary::new(rect.min.x, rect.min.y, rect.width(), rect.height())
+        );
     }
 
     fn file_button(ui: &mut Ui, _screen: &mut super::Screen) {
@@ -96,8 +123,13 @@ impl Screen {
         }
     }
 
-    pub(crate) fn ui(&mut self, ctx: &egui::Context, view_interface: &mut ResMut<ViewInterface>, events: &mut EventWriter<GuiResizeEvent>) {
-        menubar_ui(ctx, self);
-        self.side_view_data.side_panel_ui(ctx, view_interface, events);
+    pub(crate) fn ui(&mut self, 
+        ctx: &egui::Context, 
+        view_interface: &mut ResMut<ViewInterface>,
+        gui_interface: &mut ResMut<GuiInterface>,          
+        events_resize: &mut EventWriter<GuiResizeEvent>
+    ) {
+        menubar_ui(ctx, self, gui_interface);
+        self.side_view_data.side_panel_ui(ctx, view_interface, gui_interface, events_resize);
     }
 }

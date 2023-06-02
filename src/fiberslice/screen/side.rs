@@ -1,12 +1,12 @@
-use bevy::prelude::{ResMut, EventWriter};
+use bevy::prelude::{ResMut, EventWriter, Vec2};
 use bevy_egui::egui;
 use egui::{Context, Direction, Ui};
 use egui_extras::Size;
 use egui_grid::GridBuilder;
 
-use crate::view::ViewInterface;
+use crate::{view::ViewInterface, fiberslice::gui::GuiInterface};
 
-use super::GuiResizeEvent;
+use super::{GuiResizeEvent, Boundary};
 
 #[derive(PartialEq)]
 pub enum SettingsPanel {
@@ -15,8 +15,7 @@ pub enum SettingsPanel {
     Printer,
 }
 
-struct TabbedView {
-}
+struct TabbedView;
 
 impl TabbedView {
     pub fn init() -> Self {
@@ -53,7 +52,7 @@ impl TabbedView {
                 .show(ui, |mut grid| {
                     // Cells are represented as they were allocated
                     grid.cell(|ui| {
-                        ui.selectable_value(&mut side_view.open_panel, SettingsPanel::Slice, "Slice Settings");
+                        ui.selectable_value(&mut side_view.open_panel, SettingsPanel::Slice, "Slicer");
                     });
                     grid.cell(|ui| {
                         ui.horizontal(|ui| {
@@ -61,7 +60,7 @@ impl TabbedView {
                         });
                     });
                     grid.cell(|ui| {
-                        ui.selectable_value(&mut side_view.open_panel, SettingsPanel::Filament, "Filament Settings");
+                        ui.selectable_value(&mut side_view.open_panel, SettingsPanel::Filament, "Filament");
                     });
                     grid.cell(|ui| {
                         ui.horizontal(|ui| {
@@ -69,7 +68,7 @@ impl TabbedView {
                         });
                     });
                     grid.cell(|ui| {
-                        ui.selectable_value(&mut side_view.open_panel, SettingsPanel::Printer, "Printer Settings");
+                        ui.selectable_value(&mut side_view.open_panel, SettingsPanel::Printer, "Printer");
                     });
                     grid.cell(|ui| {
                         ui.vertical(|ui| {
@@ -128,16 +127,27 @@ impl SideView {
         }
     }
 
-    pub fn side_panel_ui(&mut self, ctx: &Context, view_interface: &mut ResMut<ViewInterface>, events: &mut EventWriter<GuiResizeEvent>) {
+    pub fn side_panel_ui(&mut self, 
+        ctx: &Context, 
+        view_interface: &mut ResMut<ViewInterface>, 
+        gui_interface: &mut ResMut<GuiInterface>,  
+        events_resize: &mut EventWriter<GuiResizeEvent>,
+    ) {
         let mut tabbed_view = TabbedView::init();
 
-        egui::SidePanel::right("settings-panel")
+        let response = egui::SidePanel::right("settings-panel")
             .resizable(true)
             .default_width(150.0)
             .show(ctx, |ui| {
-                events.send(GuiResizeEvent::Side(ui.available_width()));
+
+                events_resize.send(GuiResizeEvent::Side(ui.available_width()));
+
                 view_interface.diff_width_side = ui.available_width() as u32 + 1;
                 tabbed_view.show(ctx, ui, self, view_interface);
-            });
+            }).response;
+
+        let rect = response.rect;
+
+        gui_interface.side_boundary = Some(Boundary::new(rect.min.x, rect.min.y, rect.width(), rect.height()));
     }
 }

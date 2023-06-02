@@ -6,14 +6,14 @@ use component::print_bed::{PrintBed, PrintBedBundle};
 use fiberslice::gui::*;
 use fiberslice::*;
 
-use bevy_egui::{EguiContexts, EguiPlugin};
+use bevy_egui::EguiPlugin;
 use fiberslice::screen::GuiResizeEvent;
 use smooth_bevy_cameras::LookTransformPlugin;
 
 use bevy::prelude::*;
 use bevy::window::{PresentMode, WindowResolution, PrimaryWindow};
 use view::camera::CameraPlugin;
-use view::orbit::{PossibleOrbitTarget, Orbit, PossibleOrbitBundle};
+use view::orbit::{PossibleOrbitTarget, Orbit};
 
 fn main() {
     let window_plugin = WindowPlugin {
@@ -22,7 +22,7 @@ fn main() {
             resolution: WindowResolution::new(1200., 900.),
             present_mode: PresentMode::AutoVsync,
             // Tells wasm to resize the window according to the available canvas
-            fit_canvas_to_parent: true,
+            fit_canvas_to_parent: false,
             // Tells wasm not to override default event handling, like F5, Ctrl+R etc.
             prevent_default_event_handling: false,
             ..default()
@@ -46,7 +46,7 @@ fn main() {
         .add_system(view::view_frame)
         .add_system(view::set_camera_viewport)
         .add_system(fiberslice::gui::check_touch)
-        .add_system(ui_frame)
+        .add_system(fiberslice::gui::ui_frame)
         .run();
 }
 
@@ -90,9 +90,4 @@ fn component_setup(
 fn maximize_window(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
     let mut window = windows.single_mut();
     window.set_maximized(true);
-}
-
-fn ui_frame(mut contexts: EguiContexts, mut fiberslice: ResMut<FiberSlice>, mut viewinterface: ResMut<view::ViewInterface>, mut events: EventWriter<GuiResizeEvent>) {
-    let ctx = contexts.ctx_mut();
-    fiberslice.ui_frame(ctx, &mut viewinterface, &mut events);
 }

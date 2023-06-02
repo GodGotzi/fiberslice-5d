@@ -51,34 +51,47 @@ pub fn set_camera_viewport(
     mut camera: Query<&mut Camera, With<SingleCamera>>,
     view_interface: ResMut<ViewInterface>
 ) {
-    let window = windows.single();
-    // We need to dynamically resize the camera's viewports whenever the window size changes
-    // so then each camera always takes up half the screen.
-    // A resize_event is sent when the window is first created, allowing us to reuse this system for initial setup.
-    for _resize_event in resize_events.iter() {
-        let mut camera = camera.single_mut();
-        camera.viewport = Some(Viewport {
-            physical_position: UVec2::new(0, 0),
-            physical_size: UVec2::new(
-                window.resolution.physical_width() - view_interface.diff_width_side,
-                window.resolution.physical_height(),
-            ),
-            ..default()
-        });
+    if windows.is_empty() {
+        return;
     }
 
-    for _resize_event in gui_resize_events.iter() {
-        let mut camera = camera.single_mut();
-        camera.viewport = Some(Viewport {
-            physical_position: UVec2::new(0, 0),
-            physical_size: UVec2::new(
-                window.resolution.physical_width() - view_interface.diff_width_side,
-                window.resolution.physical_height(),
-            ),
-            ..default()
-        });
+    let result_window = windows.get_single();
+
+    match result_window {
+        Ok(window) => {
+            for _resize_event in resize_events.iter() {
+                resize_viewport(window, &mut camera, &view_interface);
+            }
+        
+            for _resize_event in gui_resize_events.iter() {
+                resize_viewport(window, &mut camera, &view_interface);
+            }
+        },
+        Err(_) => {}
     }
-    
+}
+
+fn resize_viewport(window: &Window, camera: &mut Query<&mut Camera, With<SingleCamera>>, view_interface: &ResMut<ViewInterface>) {
+    let mut camera = camera.single_mut();
+
+    if window.resolution.physical_width() == 0 || window.resolution.physical_height() == 0  {
+        return;
+    }
+
+    let new_width = window.resolution.physical_width() - (view_interface.diff_width_side as f32 * 1.25) as u32;
+
+    if new_width < 1 {
+        return;
+    }
+
+    camera.viewport = Some(Viewport {
+        physical_position: UVec2::new(0, 0),
+        physical_size: UVec2::new(
+            new_width,
+            window.resolution.physical_height(),
+        ),
+        ..default()
+    });
 }
 
 pub fn light_setup(mut commands: Commands) {

@@ -1,6 +1,12 @@
 {
   "version": "0.2.0",
-  "configurations": [
+  "configurations": [ 
+    {
+      "type": "lldb",
+      "request": "attach",
+      "name": "Rust Fiberslice Debug",
+      "program": "${workspaceFolder}/target/debug/fiberslice-5.exe"
+    },
     {
       "name": "C/C++ Runner: Debug Session",
       "type": "cppdbg",

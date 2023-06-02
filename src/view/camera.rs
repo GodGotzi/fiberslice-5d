@@ -51,7 +51,7 @@ pub struct CameraBundle {
 
 impl CameraBundle {
     pub fn new(controller: CameraController, eye: Vec3, target: Vec3, up: Vec3) -> Self {
-        // Make sure the transform is consistent with the controller to start.
+
         let transform = Transform::from_translation(eye).looking_at(target, up);
 
         Self {
@@ -65,7 +65,7 @@ impl CameraBundle {
     }
 }
 
-/// A 3rd person camera that orbits around the target.
+
 #[derive(Clone, Component, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct CameraController {
@@ -82,7 +82,7 @@ impl Default for CameraController {
         Self {
             mouse_rotate_sensitivity: Vec2::splat(0.28),
             mouse_translate_sensitivity: Vec2::splat(0.25),
-            mouse_wheel_zoom_sensitivity: 0.01,
+            mouse_wheel_zoom_sensitivity: 0.1,
             smoothing_weight: 0.4,
             enabled: true,
             pixels_per_line: 53.0,
@@ -104,11 +104,11 @@ pub fn default_input_map(
     controllers: Query<&CameraController>,
     gui_interface: ResMut<GuiInterface>,
 ) {
+
     if gui_interface.is_touch() {
         return;
     }
 
-    // Can only control one camera at a time.
     let controller = if let Some(controller) = controllers.iter().find(|c| c.enabled) {
         controller
     } else {
@@ -139,7 +139,7 @@ pub fn default_input_map(
 
     let mut scalar = 1.0;
     for event in mouse_wheel_reader.iter() {
-        // scale the event magnitude per pixel or per line
+
         let scroll_amount = match event.unit {
             MouseScrollUnit::Line => event.y,
             MouseScrollUnit::Pixel => event.y / pixels_per_line,
@@ -155,7 +155,7 @@ pub fn control_system(
     mut events: EventReader<CameraControlEvent>,
     mut cameras: Query<(&CameraController, &mut LookTransform, &Transform)>,
 ) {
-    // Can only control one camera at a time.
+
     let (mut transform, scene_transform) =
         if let Some((_, transform, scene_transform)) = cameras.iter_mut().find(|c| c.0.enabled) {
             (transform, scene_transform)

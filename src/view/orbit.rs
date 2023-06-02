@@ -15,26 +15,26 @@ pub struct PossibleOrbitBundle {
 
 #[derive(Component)]
 pub struct PossibleOrbitTarget {
-    enabled: bool,
+    _enabled: bool,
     pub orbit_type: Orbit,
 }
 
 impl PossibleOrbitTarget {
 
     pub fn new(orbit_type: Orbit) -> Self {
-        Self { enabled: orbit_type == Orbit::PrintBed, orbit_type }
+        Self { _enabled: orbit_type == Orbit::PrintBed, orbit_type }
     }
 
-    pub fn is_enabled(&self) -> bool {
-        self.enabled
+    pub fn _is_enabled(&self) -> bool {
+        self._enabled
     }
 
-    pub fn enable(&mut self) {
-        self.enabled = true;
+    pub fn _enable(&mut self) {
+        self._enabled = true;
     }
 
-    pub fn disable(&mut self) {
-        self.enabled = false;
+    pub fn _disable(&mut self) {
+        self._enabled = false;
     }
 
 }
