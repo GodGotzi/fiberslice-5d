@@ -46,9 +46,3 @@ impl LeftOptionPane {
         self.face = Some(face);
     }
 }
-
-/*
-struct RightOptionPane {
-
-}
- */

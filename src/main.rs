@@ -2,15 +2,18 @@ mod fiberslice;
 mod view;
 mod component;
 
+use component::print_bed::{PrintBed, PrintBedBundle};
 use fiberslice::gui::*;
 use fiberslice::*;
 
 use bevy_egui::{EguiContexts, EguiPlugin};
+use fiberslice::screen::GuiResizeEvent;
 use smooth_bevy_cameras::LookTransformPlugin;
 
 use bevy::prelude::*;
 use bevy::window::{PresentMode, WindowResolution, PrimaryWindow};
 use view::camera::CameraPlugin;
+use view::orbit::{PossibleOrbitTarget, Orbit, PossibleOrbitBundle};
 
 fn main() {
     let window_plugin = WindowPlugin {
@@ -28,6 +31,7 @@ fn main() {
     };
 
     App::new()
+        .add_event::<GuiResizeEvent>()
         .insert_resource(view::ViewInterface::new())
         .insert_resource(GuiInterface::new())
         .insert_resource(FiberSlice::new())
@@ -40,6 +44,7 @@ fn main() {
         .add_startup_system(component_setup)
         .add_startup_system(maximize_window)
         .add_system(view::view_frame)
+        .add_system(view::set_camera_viewport)
         .add_system(fiberslice::gui::check_touch)
         .add_system(ui_frame)
         .run();
@@ -50,6 +55,22 @@ fn component_setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+
+    commands.spawn(PrintBedBundle {
+        bed: PrintBed,
+        orbit_target: PossibleOrbitTarget::new(Orbit::PrintBed),
+        material_mesh_bundle: MaterialMeshBundle {
+            mesh: meshes.add(Mesh::from(shape::Plane {
+                size: 5.0,
+                subdivisions: 4,
+            })),
+            material: materials.add(Color::rgb(123./255., 169./255., 201./255.).into()),
+            transform: Transform::from_xyz(0.0, 0.5, 0.0),
+            ..Default::default()
+        },
+    });
+
+/*
     // plane
     commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Plane {
@@ -57,16 +78,12 @@ fn component_setup(
             subdivisions: 4,
         })),
         material: materials.add(Color::rgb(123./255., 169./255., 201./255.).into()),
-        ..Default::default()
-    });
-
-    // cube
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-        material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
         transform: Transform::from_xyz(0.0, 0.5, 0.0),
         ..Default::default()
-    });
+    })
+    .insert(PrintBed)
+    .insert(PossibleOrbitTarget::new(Orbit::PrintBed));
+*/
 
 }
 
@@ -75,7 +92,7 @@ fn maximize_window(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
     window.set_maximized(true);
 }
 
-fn ui_frame(mut contexts: EguiContexts, mut fiberslice: ResMut<FiberSlice>, mut viewinterface: ResMut<view::ViewInterface>) {
+fn ui_frame(mut contexts: EguiContexts, mut fiberslice: ResMut<FiberSlice>, mut viewinterface: ResMut<view::ViewInterface>, mut events: EventWriter<GuiResizeEvent>) {
     let ctx = contexts.ctx_mut();
-    fiberslice.ui_frame(ctx, &mut viewinterface);
+    fiberslice.ui_frame(ctx, &mut viewinterface, &mut events);
 }

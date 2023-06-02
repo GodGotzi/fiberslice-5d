@@ -1,8 +1,8 @@
-use bevy::prelude::{Resource, ResMut};
+use bevy::prelude::{Resource, ResMut, EventWriter};
 
-use crate::view::{ViewInterface, self};
+use crate::view::{ViewInterface};
 
-use self::screen::Screen;
+use self::screen::{Screen, GuiResizeEvent};
 
 pub mod utils;
 pub mod screen;
@@ -21,8 +21,8 @@ impl FiberSlice {
         }
     }
 
-    pub fn ui_frame(&mut self, ctx: &bevy_egui::egui::Context, view_interface: &mut ResMut<ViewInterface>) {
-        self.screen.ui(ctx, view_interface);
+    pub fn ui_frame(&mut self, ctx: &bevy_egui::egui::Context, view_interface: &mut ResMut<ViewInterface>, events: &mut EventWriter<GuiResizeEvent>) {
+        self.screen.ui(ctx, view_interface, events);
     }
 
 }
@@ -46,7 +46,7 @@ pub mod gui {
             }
         }
 
-        pub fn _is_touch(&self) -> bool {
+        pub fn is_touch(&self) -> bool {
             self.touch
         }
     }
@@ -57,15 +57,6 @@ pub mod gui {
     ) {
         let ctx = contexts.ctx_mut();
 
-        let pointer_pos = ctx.input(|i| i.pointer.interact_pos());
-        if let Some(pointer_pos) = pointer_pos {
-            if let Some(layer) = ctx.layer_id_at(pointer_pos) {
-                println!("{}", layer.order.short_debug_format());
-            } else {
-                gui_interface.touch = false;
-            }
-        } else {
-            gui_interface.touch = false;
-        }
+        gui_interface.touch = ctx.is_using_pointer();
     }
 }

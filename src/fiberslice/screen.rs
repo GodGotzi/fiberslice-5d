@@ -1,8 +1,12 @@
 mod side;
 
-use bevy::prelude::ResMut;
+use bevy::prelude::{ResMut, EventWriter};
 use bevy_egui::egui::{self, LayerId, Id};
 use crate::{fiberslice::screen::menu::menubar_ui, view::ViewInterface};
+
+pub enum GuiResizeEvent {
+    Side(f32)
+}
 
 mod menu {
     use bevy_egui::egui::{self, LayerId, Id};
@@ -92,8 +96,8 @@ impl Screen {
         }
     }
 
-    pub(crate) fn ui(&mut self, ctx: &egui::Context, view_interface: &mut ResMut<ViewInterface>) {
+    pub(crate) fn ui(&mut self, ctx: &egui::Context, view_interface: &mut ResMut<ViewInterface>, events: &mut EventWriter<GuiResizeEvent>) {
         menubar_ui(ctx, self);
-        self.side_view_data.side_panel_ui(ctx, view_interface);
+        self.side_view_data.side_panel_ui(ctx, view_interface, events);
     }
 }

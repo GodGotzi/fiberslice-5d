@@ -1,10 +1,12 @@
-use bevy::prelude::ResMut;
+use bevy::prelude::{ResMut, EventWriter};
 use bevy_egui::egui;
 use egui::{Context, Direction, Ui};
 use egui_extras::Size;
 use egui_grid::GridBuilder;
 
 use crate::view::ViewInterface;
+
+use super::GuiResizeEvent;
 
 #[derive(PartialEq)]
 pub enum SettingsPanel {
@@ -126,13 +128,15 @@ impl SideView {
         }
     }
 
-    pub fn side_panel_ui(&mut self, ctx: &Context, view_interface: &mut ResMut<ViewInterface>) {
+    pub fn side_panel_ui(&mut self, ctx: &Context, view_interface: &mut ResMut<ViewInterface>, events: &mut EventWriter<GuiResizeEvent>) {
         let mut tabbed_view = TabbedView::init();
 
         egui::SidePanel::right("settings-panel")
             .resizable(true)
             .default_width(150.0)
             .show(ctx, |ui| {
+                events.send(GuiResizeEvent::Side(ui.available_width()));
+                view_interface.diff_width_side = ui.available_width() as u32 + 1;
                 tabbed_view.show(ctx, ui, self, view_interface);
             });
     }

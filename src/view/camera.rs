@@ -11,6 +11,8 @@ use bevy::{
     transform::components::Transform,
 };
 
+use crate::fiberslice::gui::GuiInterface;
+
 #[derive(Default)]
 pub struct CameraPlugin {
     pub override_input_system: bool,
@@ -35,6 +37,9 @@ impl Plugin for CameraPlugin {
         }
     }
 }
+
+#[derive(Component, Default)]
+pub struct SingleCamera;
 
 #[derive(Bundle)]
 pub struct CameraBundle {
@@ -77,7 +82,7 @@ impl Default for CameraController {
         Self {
             mouse_rotate_sensitivity: Vec2::splat(0.28),
             mouse_translate_sensitivity: Vec2::splat(0.25),
-            mouse_wheel_zoom_sensitivity: 0.2,
+            mouse_wheel_zoom_sensitivity: 0.01,
             smoothing_weight: 0.4,
             enabled: true,
             pixels_per_line: 53.0,
@@ -97,7 +102,12 @@ pub fn default_input_map(
     mut mouse_motion_events: EventReader<MouseMotion>,
     mouse_buttons: Res<Input<MouseButton>>,
     controllers: Query<&CameraController>,
+    gui_interface: ResMut<GuiInterface>,
 ) {
+    if gui_interface.is_touch() {
+        return;
+    }
+
     // Can only control one camera at a time.
     let controller = if let Some(controller) = controllers.iter().find(|c| c.enabled) {
         controller
@@ -181,3 +191,6 @@ pub fn control_system(
         .max(0.001);
     transform.eye = transform.target + new_radius * look_angles.unit_vector();
 }
+
+
+
