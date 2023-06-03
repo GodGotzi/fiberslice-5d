@@ -1,4 +1,5 @@
 mod side;
+mod popups;
 
 use bevy::prelude::{ResMut, EventWriter, Vec2};
 use bevy_egui::egui;
@@ -112,14 +113,16 @@ mod menu {
 
 pub struct Screen {
     toggle_theme: bool,
-    side_view_data: side::SideView,
+    side_view: side::SideView,
+    popups_view: popups::PopupsView,
 }
 
 impl Screen {
     pub fn new() -> Screen {
         Screen {
             toggle_theme: true,
-            side_view_data: side::SideView::init(),
+            side_view: side::SideView::init(),
+            popups_view: popups::PopupsView::init(),
         }
     }
 
@@ -130,6 +133,8 @@ impl Screen {
         events_resize: &mut EventWriter<GuiResizeEvent>
     ) {
         menubar_ui(ctx, self, gui_interface);
-        self.side_view_data.side_panel_ui(ctx, view_interface, gui_interface, events_resize);
+        self.side_view.side_panel_ui(ctx, view_interface, gui_interface, events_resize);
+        self.popups_view.popups_ui(ctx);
+
     }
 }

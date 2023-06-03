@@ -116,7 +116,6 @@ pub mod gui {
         if let Some(boundary) = &gui_interface.menu_boundary {
             if check_boundary(boundary, 0., cursor_vec) {
                 gui_interface.touch = true;
-                return;
             } else {
                 gui_interface.touch = false;
             }
@@ -132,7 +131,7 @@ pub mod gui {
             return true;
         }
 
-        return false;
+        false
     }
 
 }
