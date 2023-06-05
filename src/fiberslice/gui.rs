@@ -6,7 +6,7 @@ use crate::view::ViewInterface;
 use super::FiberSlice;
 
 pub trait GuiComponent<T> {
-    fn show(self: &mut Self, ctx: &egui::Context, 
+    fn show(&mut self, ctx: &egui::Context, 
         view_interface: &mut ResMut<ViewInterface>,
         gui_interface: &mut ResMut<GuiInterface>,          
         events_resize: &mut EventWriter<GuiResizeEvent>
@@ -36,6 +36,7 @@ pub struct GuiInterface {
 
     touch: bool,
     pub toggle_theme: bool,
+    pub side_ratio: f32,
     pub side_boundary: Option<Boundary>,
     pub menubar_boundary: Option<Boundary>,   
     pub taskbar_boundary: Option<Boundary>,
@@ -48,6 +49,7 @@ impl GuiInterface {
         Self {
             touch: false,
             toggle_theme: true,
+            side_ratio: 2.0/5.0,
             side_boundary: None,
             menubar_boundary: None,
             taskbar_boundary: None,

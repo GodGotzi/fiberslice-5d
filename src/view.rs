@@ -18,14 +18,14 @@ pub mod orbit;
 #[derive(Resource)]
 pub struct ViewInterface {
     new_view_color: Option<Color>,
-    pub diff_width_side: u32,
+    pub diff_width_side: u32,   
 }
 
 impl ViewInterface {
     pub fn new() -> Self {
         Self {
             new_view_color: None,
-            diff_width_side: 150
+            diff_width_side: 150,
         }
     }
 

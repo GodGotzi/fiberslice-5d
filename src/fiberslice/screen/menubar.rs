@@ -16,7 +16,7 @@ impl Creation for Menubar {
 
 impl GuiComponent<Menubar> for Menubar {
 
-    fn show(self: &mut Self, ctx: &egui::Context, 
+    fn show(&mut self, ctx: &egui::Context, 
         _view_interface: &mut ResMut<crate::view::ViewInterface>,
         gui_interface: &mut ResMut<GuiInterface>,          
         _events_resize: &mut bevy::prelude::EventWriter<crate::fiberslice::gui::GuiResizeEvent>
@@ -25,6 +25,7 @@ impl GuiComponent<Menubar> for Menubar {
             egui::menu::bar(ui, |ui| {
                 theme_button(ui, gui_interface);
                 ui.separator();
+                
                 file_button(ui, gui_interface);
                 edit_button(ui, gui_interface);
                 view_button(ui, gui_interface);
@@ -39,7 +40,6 @@ impl GuiComponent<Menubar> for Menubar {
             Boundary::new(rect.min.x, rect.min.y, rect.width(), rect.height())
         );
     }
-
 
 }
 

@@ -7,49 +7,51 @@
 
 
 use bevy_egui::egui;
-use egui::{CollapsingHeader, Context, Frame, Stroke, Ui};
+
+use super::{gui::GuiComponent, utils::Creation};
 
 #[derive(PartialEq, Clone)]
 pub enum Face {
-    NORMAL,
-    TOP,
-    BOTTOM,
-    RIGHT,
-    LEFT,
-    FRONT,
-    BACK
+    Normal,
+    _Top,
+    _Bottom,
+    _Right,
+    _Left,
+    _Front,
+    _Back
 }
 
 pub struct LeftOptionPane {
-    face: Option<Face>
+    _face: Option<Face>
 }
 
-impl Default for LeftOptionPane {
-    fn default() -> Self {
+impl Creation for LeftOptionPane {
+
+    fn create() -> Self {
         Self {
-            face: Some(Face::NORMAL)
+            _face: Some(Face::Normal)
         }
+    }
+
+}
+
+impl GuiComponent<LeftOptionPane> for LeftOptionPane {
+    fn show(&mut self, _ctx: &egui::Context, 
+        _view_interface: &mut bevy::prelude::ResMut<crate::view::ViewInterface>,
+        _gui_interface: &mut bevy::prelude::ResMut<super::gui::GuiInterface>,          
+        _events_resize: &mut bevy::prelude::EventWriter<super::gui::GuiResizeEvent>
+    ) {
+        todo!()
     }
 }
 
 impl LeftOptionPane {
-    pub fn ui(&mut self, _ctx: &Context, ui: &mut Ui) {
-        Frame::popup(ui.style())
-            .stroke(Stroke::NONE)
-            .show(ui, |ui| {
-                ui.set_max_width(270.0);
-                CollapsingHeader::new("Settings")
-                    .show(ui, |ui| {
-                        ui.label("test");
-                    });
-            });
+
+    pub fn _get_face(&self) -> Option<Face> {
+        self._face.clone()
     }
 
-    pub fn get_face(&self) -> Option<Face> {
-        self.face.clone()
-    }
-
-    pub fn set_face(&mut self, face: Face) {
-        self.face = Some(face);
+    pub fn _set_face(&mut self, face: Face) {
+        self._face = Some(face);
     }
 }

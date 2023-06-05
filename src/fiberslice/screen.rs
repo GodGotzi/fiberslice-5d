@@ -11,7 +11,7 @@ mod taskbar;
 mod menubar;
 
 use bevy::prelude::{ResMut, EventWriter};
-use bevy_egui::egui;
+use bevy_egui::egui::{self, Color32};
 use crate::view::ViewInterface;
 
 use super::{gui::{GuiInterface, GuiResizeEvent, GuiComponent}, utils::Creation};
@@ -41,9 +41,20 @@ impl Screen {
     ) {
 
         self.side.show(ctx, view_interface, gui_interface, events_resize);
-        self.popups.show(ctx, view_interface, gui_interface, events_resize);
         self.menubar.show(ctx,  view_interface, gui_interface, events_resize);
         self.taskbar.show(ctx, view_interface, gui_interface, events_resize);
+
+        let frame = egui::containers::Frame {
+            fill: Color32::TRANSPARENT,
+            ..Default::default()
+        };
+
+        egui::CentralPanel::default().frame(frame)
+        .show(ctx, |_ui| {
+            self.popups.show(ctx, view_interface, gui_interface, events_resize);
+
+
+        });
 
     }
 }
