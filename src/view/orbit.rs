@@ -11,7 +11,7 @@ use bevy::transform::components::Transform;
 #[derive(PartialEq)]
 pub enum Orbit {
     PrintBed,
-    WorkPiece
+    _WorkPiece
 }
 
 #[derive(Bundle)]

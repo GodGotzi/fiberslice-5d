@@ -6,9 +6,9 @@
 */
 
 use bevy::{prelude::*, core_pipeline::clear_color::ClearColorConfig, window::WindowResized, render::camera::Viewport};
-use bevy_atmosphere::{prelude::{AtmosphereCamera, AtmosphereModel, Nishita, Gradient}, settings::AtmosphereSettings};
+use bevy_atmosphere::prelude::{AtmosphereCamera, AtmosphereModel, Gradient};
 
-use crate::fiberslice::screen::GuiResizeEvent;
+use crate::fiberslice::gui::GuiResizeEvent;
 
 use self::camera::SingleCamera;
 

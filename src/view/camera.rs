@@ -26,7 +26,7 @@ pub struct CameraPlugin {
 }
 
 impl CameraPlugin {
-    pub fn new(override_input_system: bool) -> Self {
+    pub fn _new(override_input_system: bool) -> Self {
         Self {
             override_input_system,
         }

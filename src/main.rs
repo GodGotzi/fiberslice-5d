@@ -16,7 +16,7 @@ use fiberslice::gui::*;
 use fiberslice::*;
 
 use bevy_egui::EguiPlugin;
-use fiberslice::screen::GuiResizeEvent;
+use fiberslice::gui::GuiResizeEvent;
 use smooth_bevy_cameras::LookTransformPlugin;
 
 use bevy::prelude::*;

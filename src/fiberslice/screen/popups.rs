@@ -6,27 +6,30 @@
 */
 
 use bevy_egui::egui;
-use egui::Context;
 
-pub(crate) struct PopupsView {
+use crate::fiberslice::{gui::GuiComponent, utils::Creation};
 
+pub struct PopupsView;
+
+impl Creation for PopupsView {
+    fn create() -> Self {
+        Self {}
+    }
 }
 
-impl PopupsView {
-    pub fn init() -> PopupsView {
-        PopupsView {
-        }
-    }
+impl GuiComponent<PopupsView> for PopupsView {
 
-    pub fn popups_ui(&mut self, 
-        ctx: &Context, 
+    fn show(&mut self, ctx: &egui::Context, 
+        _view_interface: &mut bevy::prelude::ResMut<crate::view::ViewInterface>,
+        _gui_interface: &mut bevy::prelude::ResMut<crate::fiberslice::gui::GuiInterface>,          
+        _events_resize: &mut bevy::prelude::EventWriter<crate::fiberslice::gui::GuiResizeEvent>
     ) {
-
         egui::Window::new("Test")
         .default_height(500.0)
         .show(ctx, |ui| {
             ui.label("Label test");
-            let button = ui.button("button test");
+            let _button = ui.button("button test");
         });
     }
+
 }
