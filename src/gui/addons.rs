@@ -11,16 +11,11 @@ use bevy_egui::egui::{self, Ui};
 
 use crate::{gui, utils::Creation, prelude::{AsyncPacket, Item, ItemType, AsyncWrapper}};
 
-pub struct Addons {
-    slider_layer_value: u32,
-    slider_time_value: f32 
-}
+pub struct Addons;
 
 impl Creation for Addons {
     fn create() -> Self {
         Self {
-            slider_layer_value: Default::default(),
-            slider_time_value: Default::default()
         }
     }
 }
@@ -28,11 +23,11 @@ impl Creation for Addons {
 impl gui::Component<Addons> for Addons {
 
     fn show(&mut self, _ctx: &egui::Context,
-        ui: Option<&mut Ui>,
+        ui_op: Option<&mut Ui>,
         _gui_interface: &mut bevy::prelude::ResMut<gui::Interface>,          
         gui_events: &mut HashMap<gui::ItemType, AsyncPacket<gui::Item>>
     ) {
-        let mut ui = ui.unwrap();
+        let mut ui = ui_op.unwrap();
 
         self.show_layer_slider(&mut ui, gui_events);
         self.show_time_slider(&mut ui, gui_events);
@@ -53,34 +48,37 @@ impl Addons {
 
     fn show_layer_slider(&mut self, 
         ui: &mut &mut Ui,
-        gui_events: &mut HashMap<gui::ItemType, AsyncPacket<gui::Item>>) {
+        gui_events: &mut HashMap<gui::ItemType, AsyncPacket<gui::Item>>
+    ) {
 
         ui.horizontal(|ui| {
-            let layer_slider = egui::Slider::new(&mut self.slider_layer_value , 
-                0..=100);
-
-            ui.add(layer_slider);
+            AsyncWrapper::<ItemType, Item>::register_with_ref(
+                Item::LayerValue(Default::default()), 
+                ItemType::LayerValue, |item, ui| {
+                    if let Item::LayerValue(width) = item {
+                        let layer_slider = egui::Slider::new(width , 0..=100);
+            
+                        ui.add(layer_slider);
+                    } 
+                }, ui, gui_events);
         });
 
-
-        AsyncWrapper::<ItemType, Item>::register(
-            ItemType::LayerValue, 
-            Item::LayerValue(self.slider_layer_value), 
-            gui_events);
     }
 
     fn show_time_slider(&mut self,  
         ui: &mut &mut Ui, 
-        gui_events: &mut HashMap<gui::ItemType, AsyncPacket<gui::Item>>) {
-        
+        gui_events: &mut HashMap<gui::ItemType, AsyncPacket<gui::Item>>
+    ) {
 
-        let time_slider = egui::Slider::new(&mut self.slider_time_value, 0.0..=1.0);
-    
-        ui.add(time_slider);
+        AsyncWrapper::<ItemType, Item>::register_with_ref(
+            Item::TimeValue(Default::default()), 
+            ItemType::TimeValue, |item, ui| {
+                if let Item::TimeValue(width) = item {
+                    let time_slider = egui::Slider::new(width, 0.0..=1.0);  
 
-        AsyncWrapper::<ItemType, Item>::register(
-            ItemType::TimeValue, 
-            Item::TimeValue(self.slider_time_value), 
-            gui_events);
+                    ui.add(time_slider); 
+                } 
+            }, ui, gui_events);
+
     }
 }

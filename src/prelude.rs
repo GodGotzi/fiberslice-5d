@@ -26,6 +26,10 @@ impl <E> AsyncPacket<E> {
         &self.sync_element
     }
 
+    pub fn get_sync_mut(&mut self) -> &mut Option<E> {
+        &mut self.sync_element
+    }
+
     pub fn _get_async(&self) -> &Option<E> {
         &self.async_element
     }
@@ -47,22 +51,14 @@ pub enum Item {
 
 #[derive(Resource)]
 pub struct AsyncWrapper<T, K> {
-    pub gui_events: HashMap<T, AsyncPacket<K>>
+    pub packet_map: HashMap<T, AsyncPacket<K>>
 }
 
 impl <T, K> AsyncWrapper<T, K> {
 
     pub fn new(map: HashMap<T, AsyncPacket<K>>) -> Self {
-        /*
-        let mut map = HashMap::new();
-        
-        for event_type in ItemType::iter() {
-            map.insert(event_type, AsyncPacket::new());
-        }
-        */
-
         Self {
-            gui_events: map
+            packet_map: map
         }
     }
 
@@ -73,6 +69,24 @@ impl <T, K> AsyncWrapper<T, K> {
     ) {
         let event_wrapper = gui_events.get_mut(&event_type).unwrap();
         event_wrapper.sync_element = Some(event);
+    }
+
+    pub fn register_with_ref<V>(
+        default: Item,
+        event_type: ItemType,
+        register_ref: fn(&mut Item, V),
+        ref_ctx: V,
+        gui_events: &mut HashMap<ItemType, AsyncPacket<Item>>
+    ) {
+        let packet = gui_events.get_mut(&event_type).unwrap();
+
+        if packet.get_sync().is_none() {
+            packet.sync_element = Some(default);
+        }
+
+        if let Some(item) = packet.get_sync_mut() {
+            register_ref(item, ref_ctx);
+        }   
     }
 
 }
@@ -98,13 +112,14 @@ impl FiberSlice {
         events: &mut EventWriter<Item>
     ) {
 
-        self.screen.show(ctx, None, gui_interface, &mut item_wrapper.gui_events);
+        self.screen.show(ctx, None, gui_interface, &mut item_wrapper.packet_map);
 
-        for entry in item_wrapper.gui_events.iter_mut() {
+        for entry in item_wrapper.packet_map.iter_mut() {
             let packet = entry.1;
 
             if packet.sync_element.is_some() {
                 let event = packet.sync_element.unwrap();
+
 
                 if packet.async_element.is_some() && packet.async_element.unwrap() != packet.sync_element.unwrap() {
                     println!("Item Event -> {:?}", event);

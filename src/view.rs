@@ -31,7 +31,7 @@ pub fn update_camera_viewport(
 
     if let Ok(window) = result_window {
         for _resize_event in resize_events.iter() {
-            let width_packet = item_wrapper.gui_events.get(&ItemType::SideWidth).unwrap();
+            let width_packet = item_wrapper.packet_map.get(&ItemType::SideWidth).unwrap();
 
             if width_packet.get_sync().is_some() {
                 if let Item::SideWidth(width) = width_packet.get_sync().unwrap() {
