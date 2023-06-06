@@ -7,7 +7,6 @@
 
 mod view;
 mod component;
-mod window;
 mod gui;
 mod utils;
 mod prelude;
@@ -62,8 +61,8 @@ fn main() {
         .add_plugin(bevy_stl::StlPlugin)
         .add_startup_system(view::camera_setup)
         .add_startup_system(component_setup)
-        .add_startup_system(window::maximize_window)
-        .add_system(window::hotkeys_window)
+        .add_startup_system(prelude::maximize_window)
+        .add_system(prelude::hotkeys_window)
         .add_system(view::update_camera_viewport)
         .add_system(gui::check_touch)
         .add_system(prelude::ui_frame)

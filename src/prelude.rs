@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 
+use bevy::window::{WindowMode, PrimaryWindow};
 use bevy_egui::EguiContexts;
 use bevy_egui::egui::Visuals;
 use strum_macros::EnumIter;
@@ -151,4 +152,23 @@ pub fn ui_frame(
     let ctx = contexts.ctx_mut();
 
     fiberslice.ui_frame(ctx, &mut gui_interface, &mut item_wrapper, &mut events_resize);
+}
+
+pub fn maximize_window(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
+    let mut window = windows.single_mut();
+    window.set_maximized(true);
+}
+
+pub fn hotkeys_window(mut windows: Query<&mut Window, With<PrimaryWindow>>, keyboard_input: Res<Input<KeyCode>>) {
+
+    let mut window = windows.single_mut();
+
+    if keyboard_input.pressed(KeyCode::F11) {
+        if window.mode == WindowMode::Fullscreen {
+            window.mode = WindowMode::Windowed;
+        } else {
+            window.mode = WindowMode::Fullscreen;
+        }
+    }
+
 }

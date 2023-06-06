@@ -198,6 +198,3 @@ pub fn control_system(
         .max(0.001);
     transform.eye = transform.target + new_radius * look_angles.unit_vector();
 }
-
-
-
