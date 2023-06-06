@@ -8,24 +8,27 @@
 use bevy::{prelude::*, core_pipeline::clear_color::ClearColorConfig, window::WindowResized, render::camera::Viewport};
 use bevy_atmosphere::prelude::{AtmosphereCamera, AtmosphereModel, Gradient};
 
-use crate::fiberslice::gui::GuiResizeEvent;
+use crate::fiberslice::gui;
 
-use self::camera::SingleCamera;
+use self::{camera::SingleCamera, preview::Preview};
 
 pub mod camera;
 pub mod orbit;
+pub mod preview;
 
 #[derive(Resource)]
 pub struct ViewInterface {
     new_view_color: Option<Color>,
-    pub diff_width_side: u32,   
+    side_width: f32,
+    pub preview: Preview
 }
 
 impl ViewInterface {
     pub fn new() -> Self {
         Self {
             new_view_color: None,
-            diff_width_side: 150,
+            side_width: 150.0,
+            preview: Preview::default()
         }
     }
 
@@ -55,9 +58,9 @@ pub fn view_frame(mut camera_query: Query<&mut Camera3d>, mut view_interface: Re
 pub fn set_camera_viewport(
     windows: Query<&Window>,
     mut resize_events: EventReader<WindowResized>,
-    mut gui_resize_events: EventReader<GuiResizeEvent>,
+    mut gui_resize_events: EventReader<gui::Event>,
     mut camera: Query<&mut Camera, With<SingleCamera>>,
-    view_interface: ResMut<ViewInterface>
+    mut view_interface: ResMut<ViewInterface>
 ) {
     if windows.is_empty() {
         return;
@@ -67,24 +70,28 @@ pub fn set_camera_viewport(
 
     if let Ok(window) = result_window {
         for _resize_event in resize_events.iter() {
-            resize_viewport(window, &mut camera, &view_interface);
+            resize_viewport(window, &mut camera, view_interface.side_width.clone());
         }
     
-        for _resize_event in gui_resize_events.iter() {
-            resize_viewport(window, &mut camera, &view_interface);
+        for resize_event in gui_resize_events.iter() {
+            if let gui::Event::ResizeSide(width) = resize_event {
+
+                view_interface.side_width = width.clone();
+                resize_viewport(window, &mut camera, width.clone());
+            }
         }
     }
 
 }
 
-fn resize_viewport(window: &Window, camera: &mut Query<&mut Camera, With<SingleCamera>>, view_interface: &ResMut<ViewInterface>) {
+fn resize_viewport(window: &Window, camera: &mut Query<&mut Camera, With<SingleCamera>>, width: f32) {
     let mut camera = camera.single_mut();
 
     if window.resolution.physical_width() == 0 || window.resolution.physical_height() == 0  {
         return;
     }
 
-    let new_width = window.resolution.physical_width() as i32 - view_interface.diff_width_side as i32;
+    let new_width = window.resolution.physical_width() as i32 - width as i32;
 
     if new_width < 1 {
         return;

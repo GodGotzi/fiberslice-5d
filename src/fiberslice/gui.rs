@@ -1,25 +1,42 @@
+use std::collections::HashMap;
+
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui::{Pos2, self}};
 
 use crate::view::ViewInterface;
+use crate::gui;
+use crate::gui::egui::Ui;
 
-use super::FiberSlice;
+use strum_macros::EnumIter;
+
+use super::{FiberSlice, EventWrapper};
 
 pub trait GuiComponent<T> {
-    fn show(&mut self, ctx: &egui::Context, 
+    fn show(&mut self, ctx: &egui::Context,
+        ui: Option<&mut Ui>,
         view_interface: &mut ResMut<ViewInterface>,
         gui_interface: &mut ResMut<GuiInterface>,          
-        events_resize: &mut EventWriter<GuiResizeEvent>
+        gui_events: &mut HashMap<EventType, EventWrapper<Event>>
     );
 }
 
-pub enum GuiResizeEvent {
-    Side(f32)
+#[derive(Hash, PartialEq, Eq, Debug, EnumIter)]
+pub enum EventType {
+    ResizeSide,
+    LayerSliderChanged,
+    TimeSliderChanged
+}
+
+#[derive(PartialEq, Clone, Copy)]
+pub enum Event {
+    ResizeSide(f32),
+    LayerSliderChanged(u32),
+    TimeSliderChanged(f32)
 }
 
 pub struct Boundary {
-    pub location: Vec2,
-    pub size: Vec2
+    location: Vec2,
+    size: Vec2
 }
 
 impl Boundary {
@@ -33,7 +50,6 @@ impl Boundary {
 
 #[derive(Resource)]
 pub struct GuiInterface {
-
     touch: bool,
     pub toggle_theme: bool,
     pub side_ratio: f32,
@@ -67,7 +83,7 @@ pub fn ui_frame(
     mut fiberslice: ResMut<FiberSlice>, 
     mut view_interface: ResMut<crate::view::ViewInterface>,
     mut gui_interface: ResMut<GuiInterface>,  
-    mut events_resize: EventWriter<GuiResizeEvent>
+    mut events_resize: EventWriter<gui::Event>
 ) {
     let ctx = contexts.ctx_mut();
     fiberslice.ui_frame(ctx, &mut view_interface, &mut gui_interface, &mut events_resize);
@@ -121,6 +137,7 @@ fn check_boundaries(cursor_pos: Pos2, gui_interface: &mut ResMut<GuiInterface>) 
             gui_interface.touch = false;
         }
     }
+
 }
 
 fn check_boundary(boundary: &Boundary, additional_broder: f32, cursor_vec: Vec2) -> bool {

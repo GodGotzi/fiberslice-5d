@@ -6,9 +6,12 @@
 */
 
 
-use bevy_egui::egui;
+use std::collections::HashMap;
 
-use super::{gui::GuiComponent, utils::Creation};
+use bevy_egui::egui::{self, Ui};
+
+use super::gui;
+use super::{gui::{GuiComponent}, utils::Creation, EventWrapper};
 
 #[derive(PartialEq, Clone)]
 pub enum Face {
@@ -36,12 +39,13 @@ impl Creation for LeftOptionPane {
 }
 
 impl GuiComponent<LeftOptionPane> for LeftOptionPane {
-    fn show(&mut self, _ctx: &egui::Context, 
+    fn show(&mut self, _ctx: &egui::Context,
+        _ui: Option<&mut Ui>,
         _view_interface: &mut bevy::prelude::ResMut<crate::view::ViewInterface>,
         _gui_interface: &mut bevy::prelude::ResMut<super::gui::GuiInterface>,          
-        _events_resize: &mut bevy::prelude::EventWriter<super::gui::GuiResizeEvent>
+        _gui_events: &mut HashMap<gui::EventType, EventWrapper<gui::Event>>
     ) {
-        todo!()
+        
     }
 }
 

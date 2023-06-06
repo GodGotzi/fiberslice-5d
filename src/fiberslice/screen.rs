@@ -6,43 +6,48 @@
 */
 
 mod side;
-mod popups;
+mod addons;
 mod taskbar;
 mod menubar;
 
-use bevy::prelude::{ResMut, EventWriter};
+use std::collections::HashMap;
+
+use bevy::prelude::ResMut;
 use bevy_egui::egui::{self, Color32};
 use crate::view::ViewInterface;
 
-use super::{gui::{GuiInterface, GuiResizeEvent, GuiComponent}, utils::Creation};
+use super::gui;
+use super::{gui::{GuiInterface, GuiComponent}, utils::Creation, EventWrapper};
 
 pub struct Screen {
     side: side::SideView,
-    popups: popups::PopupsView,
+    addons: addons::ViewAddons,
     menubar: menubar::Menubar,
     taskbar: taskbar::Taskbar,
 }
 
-impl Screen {
-    pub fn new() -> Screen {
+impl Creation for Screen {
+    fn create() -> Screen {
         Screen {
             side: side::SideView::create(),
-            popups: popups::PopupsView::create(),
+            addons: addons::ViewAddons::create(),
             menubar: menubar::Menubar::create(),
             taskbar: taskbar::Taskbar::create(),
         }
     }
+}
 
-    pub(crate) fn ui(&mut self, 
-        ctx: &egui::Context, 
+impl GuiComponent<Screen> for Screen {
+
+    fn show(&mut self, ctx: &egui::Context,
+        _ui: Option<&mut egui::Ui>,
         view_interface: &mut ResMut<ViewInterface>,
         gui_interface: &mut ResMut<GuiInterface>,          
-        events_resize: &mut EventWriter<GuiResizeEvent>
+        gui_events: &mut HashMap<gui::EventType, EventWrapper<gui::Event>>
     ) {
-
-        self.side.show(ctx, view_interface, gui_interface, events_resize);
-        self.menubar.show(ctx,  view_interface, gui_interface, events_resize);
-        self.taskbar.show(ctx, view_interface, gui_interface, events_resize);
+        self.side.show(ctx, None, view_interface, gui_interface, gui_events);
+        self.menubar.show(ctx, None,  view_interface, gui_interface, gui_events);
+        self.taskbar.show(ctx, None, view_interface, gui_interface, gui_events);
 
         let frame = egui::containers::Frame {
             fill: Color32::TRANSPARENT,
@@ -50,11 +55,9 @@ impl Screen {
         };
 
         egui::CentralPanel::default().frame(frame)
-        .show(ctx, |_ui| {
-            self.popups.show(ctx, view_interface, gui_interface, events_resize);
-
-
+        .show(ctx, |ui| {
+            self.addons.show(ctx, Some(ui), view_interface, gui_interface, gui_events);
         });
-
     }
+    
 }

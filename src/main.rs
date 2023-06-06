@@ -16,7 +16,6 @@ use fiberslice::gui::*;
 use fiberslice::*;
 
 use bevy_egui::EguiPlugin;
-use fiberslice::gui::GuiResizeEvent;
 use smooth_bevy_cameras::LookTransformPlugin;
 
 use bevy::prelude::*;
@@ -40,7 +39,7 @@ fn main() {
     };
 
     App::new()
-        .add_event::<GuiResizeEvent>()
+        .add_event::<gui::Event>()
         .insert_resource(view::ViewInterface::new())
         .insert_resource(GuiInterface::new())
         .insert_resource(FiberSlice::new())
@@ -71,7 +70,7 @@ fn component_setup(
         bed: PrintBed,
         orbit_target: PossibleOrbitTarget::new(Orbit::PrintBed),
         material_mesh_bundle: MaterialMeshBundle {
-            mesh: asset_server.load("print_bed.stl"),
+            mesh: asset_server.load("stifhalterung.stl"),
             material: materials.add(Color::rgb(123./255., 169./255., 201./255.).into()),
             transform: Transform::from_xyz(0.0, 0.0, -10.0),
             ..Default::default()

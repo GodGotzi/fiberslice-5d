@@ -1,8 +1,10 @@
+use std::collections::HashMap;
+
 use bevy::prelude::ResMut;
 use bevy_egui::egui;
 use egui::Ui;
 
-use crate::fiberslice::{gui::{GuiInterface, Boundary, GuiComponent}, utils::Creation};
+use crate::fiberslice::{gui::{GuiInterface, Boundary, GuiComponent, self}, utils::Creation, EventWrapper};
 
 pub struct Menubar;
 
@@ -16,10 +18,11 @@ impl Creation for Menubar {
 
 impl GuiComponent<Menubar> for Menubar {
 
-    fn show(&mut self, ctx: &egui::Context, 
+    fn show(&mut self, ctx: &egui::Context,
+        _ui: Option<&mut Ui>,
         _view_interface: &mut ResMut<crate::view::ViewInterface>,
         gui_interface: &mut ResMut<GuiInterface>,          
-        _events_resize: &mut bevy::prelude::EventWriter<crate::fiberslice::gui::GuiResizeEvent>
+        _gui_events: &mut HashMap<gui::EventType, EventWrapper<gui::Event>>
     ) {
         let response = egui::TopBottomPanel::top("menubar").show(ctx, |ui: &mut Ui| {
             egui::menu::bar(ui, |ui| {

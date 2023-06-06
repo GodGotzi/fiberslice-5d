@@ -5,15 +5,17 @@
 	Please refer to the terms and conditions stated therein.
 */
 
-use bevy::prelude::{ResMut, EventWriter};
+use std::collections::HashMap;
+
+use bevy::prelude::ResMut;
 use bevy_egui::egui;
 use egui::{Context, Direction, Ui};
 use egui_extras::Size;
 use egui_grid::GridBuilder;
 
-use crate::{view::ViewInterface, fiberslice::{gui::{GuiInterface, Boundary, GuiComponent}, utils::Creation}};
+use crate::fiberslice::gui::{self, GuiInterface, GuiComponent, Boundary};
+use crate::{view::ViewInterface, utils::Creation, EventWrapper};
 
-use super::GuiResizeEvent;
 
 #[derive(PartialEq)]
 pub enum SettingsPanel {
@@ -26,6 +28,7 @@ struct TabbedView;
 
 impl TabbedView {
     pub fn init() -> Self {
+
         Self {
         }
     }
@@ -137,20 +140,23 @@ impl Creation for SideView {
 impl GuiComponent<SideView> for SideView {
 
     fn show(&mut self, ctx: &egui::Context, 
+        _ui: Option<&mut Ui>,
         view_interface: &mut ResMut<ViewInterface>,
         gui_interface: &mut ResMut<GuiInterface>,          
-        events_resize: &mut EventWriter<GuiResizeEvent>
+        gui_events: &mut HashMap<gui::EventType, EventWrapper<gui::Event>>
     ) {
         let mut tabbed_view = TabbedView::init();
 
         let response = egui::SidePanel::right("settings-panel")
             .resizable(true)
-            .default_width(250.0)
+            .default_width(350.0)
             .show(ctx, |ui| {
-
-                events_resize.send(GuiResizeEvent::Side(ui.available_width()));
-
-                view_interface.diff_width_side = ui.available_width() as u32 + 1;
+                
+                EventWrapper::<gui::Event>::register(
+                    gui::EventType::ResizeSide, 
+                    gui::Event::ResizeSide(ui.available_width()), 
+                    gui_events);
+ 
                 tabbed_view.show(ctx, ui, self, view_interface);
             }).response;
 
