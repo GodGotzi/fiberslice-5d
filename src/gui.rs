@@ -38,10 +38,15 @@ impl Boundary {
     }
 }
 
+pub enum Theme {
+    Light,
+    Dark
+}
+
 #[derive(Resource)]
 pub struct Interface {
     touch: bool,
-    pub toggle_theme: bool,
+    theme: Theme,
     pub side_boundary: Option<Boundary>,
     pub menubar_boundary: Option<Boundary>,   
     pub taskbar_boundary: Option<Boundary>,
@@ -53,7 +58,7 @@ impl Interface {
     pub fn new() -> Self {
         Self {
             touch: false,
-            toggle_theme: true,
+            theme: Theme::Light,
             side_boundary: None,
             menubar_boundary: None,
             taskbar_boundary: None,
@@ -63,6 +68,17 @@ impl Interface {
 
     pub fn is_touch(&self) -> bool {
         self.touch
+    }
+
+    pub fn toggle_theme(&mut self) {
+        self.theme = match self.theme {
+            Theme::Light => Theme::Dark,
+            Theme::Dark => Theme::Light,
+        }
+    }
+
+    pub fn theme(&self) -> &Theme {
+        &self.theme
     }
 }
 

@@ -83,22 +83,12 @@ fn help_button(ui: &mut Ui, _gui_interface: &mut gui::Interface) {
 }
 
 fn theme_button(ui: &mut Ui, gui_interface: &mut gui::Interface) {
-    let clicked = match gui_interface.toggle_theme {
-        true => ui.button("💡").clicked(),
-        false => ui.button("🌙").clicked(),
+    let clicked = match gui_interface.theme() {
+        gui::Theme::Dark => ui.button("💡").clicked(),
+        gui::Theme::Light=> ui.button("🌙").clicked(),
     };
 
-    handle_toggle_theme(ui, clicked, gui_interface);
-}
-
-fn handle_toggle_theme(ui: &mut Ui, toggle: bool, gui_interface: &mut gui::Interface) {
-    if toggle {
-        gui_interface.toggle_theme = !gui_interface.toggle_theme;
-
-        if gui_interface.toggle_theme {
-            ui.ctx().set_visuals(egui::Visuals::dark());
-        } else {
-            ui.ctx().set_visuals(egui::Visuals::light());
-        }
+    if clicked {
+        gui_interface.toggle_theme();
     }
 }

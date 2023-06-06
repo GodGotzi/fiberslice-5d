@@ -10,7 +10,7 @@ use std::collections::HashMap;
 
 use bevy::prelude::ResMut;
 use bevy_egui::egui::{self, Color32};
-use crate::prelude::AsyncPacket;
+use crate::prelude::{AsyncPacket, ItemType, Item};
 
 use super::{gui, side, addons, menubar, taskbar};
 use crate::utils::Creation;
@@ -38,7 +38,7 @@ impl gui::Component<Screen> for Screen {
     fn show(&mut self, ctx: &egui::Context,
         _ui: Option<&mut egui::Ui>,
         gui_interface: &mut ResMut<gui::Interface>,          
-        gui_events: &mut HashMap<gui::ItemType, AsyncPacket<gui::Item>>
+        gui_events: &mut HashMap<ItemType, AsyncPacket<Item>>
     ) {
         self.side.show(ctx, None, gui_interface, gui_events);
         self.menubar.show(ctx, None, gui_interface, gui_events);

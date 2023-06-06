@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 
 use bevy_egui::EguiContexts;
+use bevy_egui::egui::Visuals;
 use strum_macros::EnumIter;
 
 use crate::gui::screen::Screen;
@@ -112,6 +113,11 @@ impl FiberSlice {
         events: &mut EventWriter<Item>
     ) {
 
+        match gui_interface.theme() {
+            gui::Theme::Light => ctx.set_visuals(Visuals::light()),
+            gui::Theme::Dark => ctx.set_visuals(Visuals::dark()),
+        };
+
         self.screen.show(ctx, None, gui_interface, &mut item_wrapper.packet_map);
 
         for entry in item_wrapper.packet_map.iter_mut() {
@@ -119,7 +125,6 @@ impl FiberSlice {
 
             if packet.sync_element.is_some() {
                 let event = packet.sync_element.unwrap();
-
 
                 if packet.async_element.is_some() && packet.async_element.unwrap() != packet.sync_element.unwrap() {
                     println!("Item Event -> {:?}", event);
@@ -142,6 +147,8 @@ pub fn ui_frame(
     mut item_wrapper: ResMut<AsyncWrapper<ItemType, Item>>,
     mut events_resize: EventWriter<Item>
 ) {
+
     let ctx = contexts.ctx_mut();
+
     fiberslice.ui_frame(ctx, &mut gui_interface, &mut item_wrapper, &mut events_resize);
 }
