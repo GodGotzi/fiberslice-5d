@@ -18,7 +18,7 @@ use bevy::{
     transform::components::Transform,
 };
 
-use crate::fiberslice::gui::GuiInterface;
+use crate::gui;
 
 #[derive(Default)]
 pub struct CameraPlugin {
@@ -109,7 +109,7 @@ pub fn default_input_map(
     mut mouse_motion_events: EventReader<MouseMotion>,
     mouse_buttons: Res<Input<MouseButton>>,
     controllers: Query<&CameraController>,
-    gui_interface: ResMut<GuiInterface>,
+    gui_interface: ResMut<gui::Interface>,
 ) {
 
     if gui_interface.is_touch() {

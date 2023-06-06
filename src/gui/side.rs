@@ -13,8 +13,9 @@ use egui::{Context, Direction, Ui};
 use egui_extras::Size;
 use egui_grid::GridBuilder;
 
-use crate::fiberslice::gui::{self, GuiInterface, GuiComponent, Boundary};
-use crate::{view::ViewInterface, utils::Creation, EventWrapper};
+
+
+use crate::{prelude::*, utils::Creation};
 
 
 #[derive(PartialEq)]
@@ -28,12 +29,11 @@ struct TabbedView;
 
 impl TabbedView {
     pub fn init() -> Self {
-
         Self {
         }
     }
 
-    pub fn show(&mut self, _ctx: &Context, ui: &mut Ui, side_view: &mut SideView, view_interface: &mut ResMut<ViewInterface>) {
+    pub fn show(&mut self, _ctx: &Context, ui: &mut Ui, side_view: &mut SideView) {
         ui.horizontal(|ui| {
             let layout = egui::Layout {
                 main_dir: Direction::TopDown,
@@ -109,11 +109,6 @@ impl TabbedView {
         match side_view.open_panel {
             SettingsPanel::Slice => {
                 ui.label("a");
-
-                if ui.button("test").clicked() {
-                    view_interface.change_view_color(0.2, 0.3, 0.4);
-                }
-
             },
             SettingsPanel::Filament => {
                 ui.label("b");
@@ -137,13 +132,12 @@ impl Creation for SideView {
     }
 }
 
-impl GuiComponent<SideView> for SideView {
+impl super::Component<SideView> for SideView {
 
     fn show(&mut self, ctx: &egui::Context, 
         _ui: Option<&mut Ui>,
-        view_interface: &mut ResMut<ViewInterface>,
-        gui_interface: &mut ResMut<GuiInterface>,          
-        gui_events: &mut HashMap<gui::EventType, EventWrapper<gui::Event>>
+        gui_interface: &mut ResMut<super::Interface>,          
+        gui_events: &mut HashMap<super::ItemType, AsyncPacket<super::Item>>
     ) {
         let mut tabbed_view = TabbedView::init();
 
@@ -152,16 +146,16 @@ impl GuiComponent<SideView> for SideView {
             .default_width(350.0)
             .show(ctx, |ui| {
                 
-                EventWrapper::<gui::Event>::register(
-                    gui::EventType::ResizeSide, 
-                    gui::Event::ResizeSide(ui.available_width()), 
+                AsyncWrapper::<ItemType, Item>::register(
+                    ItemType::SideWidth, 
+                    Item::SideWidth(ui.available_width()), 
                     gui_events);
  
-                tabbed_view.show(ctx, ui, self, view_interface);
+                tabbed_view.show(ctx, ui, self);
             }).response;
 
         let rect = response.rect;
 
-        gui_interface.side_boundary = Some(Boundary::new(rect.min.x, rect.min.y, rect.width(), rect.height()));
+        gui_interface.side_boundary = Some(super::Boundary::new(rect.min.x, rect.min.y, rect.width(), rect.height()));
     }
 }

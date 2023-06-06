@@ -5,25 +5,36 @@
 	Please refer to the terms and conditions stated therein.
 */
 
-mod fiberslice;
 mod view;
 mod component;
 mod window;
+mod gui;
+mod utils;
+mod prelude;
+
+use std::collections::HashMap;
 
 use bevy_atmosphere::prelude::AtmospherePlugin;
 use component::print_bed::{PrintBed, PrintBedBundle};
-use fiberslice::gui::*;
-use fiberslice::*;
 
 use bevy_egui::EguiPlugin;
+use prelude::{FiberSlice, Item, AsyncWrapper, ItemType, AsyncPacket};
 use smooth_bevy_cameras::LookTransformPlugin;
 
 use bevy::prelude::*;
 use bevy::window::{PresentMode, WindowResolution};
+
+use strum::IntoEnumIterator;
 use view::camera::CameraPlugin;
 use view::orbit::{PossibleOrbitTarget, Orbit};
 
 fn main() {
+    let mut map = HashMap::new();
+        
+    for event_type in ItemType::iter() {
+        map.insert(event_type, AsyncPacket::<Item>::new());
+    }
+
     let window_plugin = WindowPlugin {
         primary_window: Some(Window {
             title: "FiberSlice-3D/5D".into(),
@@ -39,9 +50,9 @@ fn main() {
     };
 
     App::new()
-        .add_event::<gui::Event>()
-        .insert_resource(view::ViewInterface::new())
-        .insert_resource(GuiInterface::new())
+        .add_event::<Item>()
+        .insert_resource(AsyncWrapper::new(map))
+        .insert_resource(gui::Interface::new())
         .insert_resource(FiberSlice::new())
         .add_plugins(DefaultPlugins.set(window_plugin))
         .add_plugin(EguiPlugin)
@@ -53,10 +64,9 @@ fn main() {
         .add_startup_system(component_setup)
         .add_startup_system(window::maximize_window)
         .add_system(window::hotkeys_window)
-        .add_system(view::view_frame)
-        .add_system(view::set_camera_viewport)
-        .add_system(fiberslice::gui::check_touch)
-        .add_system(fiberslice::gui::ui_frame)
+        .add_system(view::update_camera_viewport)
+        .add_system(gui::check_touch)
+        .add_system(prelude::ui_frame)
         .run();
 }
 
@@ -70,8 +80,10 @@ fn component_setup(
         bed: PrintBed,
         orbit_target: PossibleOrbitTarget::new(Orbit::PrintBed),
         material_mesh_bundle: MaterialMeshBundle {
-            mesh: asset_server.load("stifhalterung.stl"),
-            material: materials.add(Color::rgb(123./255., 169./255., 201./255.).into()),
+            mesh: asset_server.load("print_bed.stl"),
+            material: materials.add(
+                Color::rgb(123./255., 169./255., 201./255.).into()
+            ),
             transform: Transform::from_xyz(0.0, 0.0, -10.0),
             ..Default::default()
         },
@@ -91,5 +103,4 @@ fn component_setup(
     .insert(PrintBed)
     .insert(PossibleOrbitTarget::new(Orbit::PrintBed));
 */
-
 }

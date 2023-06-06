@@ -1,42 +1,32 @@
+mod addons;
+mod menubar;
+mod side;
+mod taskbar;
+pub mod screen;
+
+
+
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use bevy_egui::{EguiContexts, egui::{Pos2, self}};
+use bevy_egui::{EguiContexts, egui};
+use egui::{Pos2, Ui};
 
-use crate::view::ViewInterface;
+use crate::prelude::*;
+
 use crate::gui;
-use crate::gui::egui::Ui;
 
-use strum_macros::EnumIter;
-
-use super::{FiberSlice, EventWrapper};
-
-pub trait GuiComponent<T> {
+pub trait Component<T> {
     fn show(&mut self, ctx: &egui::Context,
         ui: Option<&mut Ui>,
-        view_interface: &mut ResMut<ViewInterface>,
-        gui_interface: &mut ResMut<GuiInterface>,          
-        gui_events: &mut HashMap<EventType, EventWrapper<Event>>
+        gui_interface: &mut ResMut<gui::Interface>,          
+        gui_events: &mut HashMap<ItemType, AsyncPacket<Item>>
     );
 }
 
-#[derive(Hash, PartialEq, Eq, Debug, EnumIter)]
-pub enum EventType {
-    ResizeSide,
-    LayerSliderChanged,
-    TimeSliderChanged
-}
-
-#[derive(PartialEq, Clone, Copy)]
-pub enum Event {
-    ResizeSide(f32),
-    LayerSliderChanged(u32),
-    TimeSliderChanged(f32)
-}
-
 pub struct Boundary {
-    location: Vec2,
-    size: Vec2
+    pub location: Vec2,
+    pub size: Vec2
 }
 
 impl Boundary {
@@ -49,23 +39,21 @@ impl Boundary {
 }
 
 #[derive(Resource)]
-pub struct GuiInterface {
+pub struct Interface {
     touch: bool,
     pub toggle_theme: bool,
-    pub side_ratio: f32,
     pub side_boundary: Option<Boundary>,
     pub menubar_boundary: Option<Boundary>,   
     pub taskbar_boundary: Option<Boundary>,
     pub popup_boundaries: Option<[Boundary; 10]>,
 }
 
-impl GuiInterface {
+impl Interface {
 
     pub fn new() -> Self {
         Self {
             touch: false,
             toggle_theme: true,
-            side_ratio: 2.0/5.0,
             side_boundary: None,
             menubar_boundary: None,
             taskbar_boundary: None,
@@ -78,19 +66,8 @@ impl GuiInterface {
     }
 }
 
-pub fn ui_frame(
-    mut contexts: EguiContexts, 
-    mut fiberslice: ResMut<FiberSlice>, 
-    mut view_interface: ResMut<crate::view::ViewInterface>,
-    mut gui_interface: ResMut<GuiInterface>,  
-    mut events_resize: EventWriter<gui::Event>
-) {
-    let ctx = contexts.ctx_mut();
-    fiberslice.ui_frame(ctx, &mut view_interface, &mut gui_interface, &mut events_resize);
-}
-
 pub fn check_touch(
-    mut gui_interface: ResMut<GuiInterface>,
+    mut gui_interface: ResMut<self::Interface>,
     mut contexts: EguiContexts,
     mouse_buttons: Res<Input<MouseButton>>,
 ) {
@@ -118,7 +95,7 @@ pub fn check_touch(
 
 }
 
-fn check_boundaries(cursor_pos: Pos2, gui_interface: &mut ResMut<GuiInterface>) {
+fn check_boundaries(cursor_pos: Pos2, gui_interface: &mut ResMut<Interface>) {
     let cursor_vec = Vec2::new(cursor_pos.x, cursor_pos.y);
     
     if let Some(boundary) = &gui_interface.side_boundary {
@@ -137,7 +114,6 @@ fn check_boundaries(cursor_pos: Pos2, gui_interface: &mut ResMut<GuiInterface>) 
             gui_interface.touch = false;
         }
     }
-
 }
 
 fn check_boundary(boundary: &Boundary, additional_broder: f32, cursor_vec: Vec2) -> bool {

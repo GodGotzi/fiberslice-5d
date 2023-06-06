@@ -9,14 +9,14 @@ use std::collections::HashMap;
 
 use bevy_egui::egui::{self, Ui};
 
-use crate::fiberslice::{gui::{GuiComponent, self}, utils::Creation, EventWrapper};
+use crate::{gui, utils::Creation, prelude::{AsyncPacket, Item, ItemType, AsyncWrapper}};
 
-pub struct ViewAddons {
+pub struct Addons {
     slider_layer_value: u32,
     slider_time_value: f32 
 }
 
-impl Creation for ViewAddons {
+impl Creation for Addons {
     fn create() -> Self {
         Self {
             slider_layer_value: Default::default(),
@@ -25,18 +25,17 @@ impl Creation for ViewAddons {
     }
 }
 
-impl GuiComponent<ViewAddons> for ViewAddons {
+impl gui::Component<Addons> for Addons {
 
     fn show(&mut self, _ctx: &egui::Context,
         ui: Option<&mut Ui>,
-        view_interface: &mut bevy::prelude::ResMut<crate::view::ViewInterface>,
-        _gui_interface: &mut bevy::prelude::ResMut<crate::fiberslice::gui::GuiInterface>,          
-        gui_events: &mut HashMap<gui::EventType, EventWrapper<gui::Event>>
+        _gui_interface: &mut bevy::prelude::ResMut<gui::Interface>,          
+        gui_events: &mut HashMap<gui::ItemType, AsyncPacket<gui::Item>>
     ) {
         let mut ui = ui.unwrap();
 
-        self.show_layer_slider(&mut ui, view_interface, gui_events);
-        self.show_time_slider(&mut ui, view_interface, gui_events);
+        self.show_layer_slider(&mut ui, gui_events);
+        self.show_time_slider(&mut ui, gui_events);
 
         /*
         egui::Window::new("Test")
@@ -50,39 +49,38 @@ impl GuiComponent<ViewAddons> for ViewAddons {
 
 }
 
-impl ViewAddons {
+impl Addons {
 
     fn show_layer_slider(&mut self, 
         ui: &mut &mut Ui,
-        view_interface: &mut bevy::prelude::ResMut<crate::view::ViewInterface>,
-        gui_events: &mut HashMap<gui::EventType, EventWrapper<gui::Event>>) {
+        gui_events: &mut HashMap<gui::ItemType, AsyncPacket<gui::Item>>) {
 
         ui.horizontal(|ui| {
             let layer_slider = egui::Slider::new(&mut self.slider_layer_value , 
-                0..=view_interface.preview.layer_amount.unwrap());
+                0..=100);
 
             ui.add(layer_slider);
         });
 
 
-        EventWrapper::<gui::Event>::register(
-            gui::EventType::LayerSliderChanged, 
-            gui::Event::LayerSliderChanged(self.slider_layer_value), 
+        AsyncWrapper::<ItemType, Item>::register(
+            ItemType::LayerValue, 
+            Item::LayerValue(self.slider_layer_value), 
             gui_events);
     }
 
     fn show_time_slider(&mut self,  
         ui: &mut &mut Ui, 
-        view_interface: &mut bevy::prelude::ResMut<crate::view::ViewInterface>,
-        gui_events: &mut HashMap<gui::EventType, EventWrapper<gui::Event>>) {
+        gui_events: &mut HashMap<gui::ItemType, AsyncPacket<gui::Item>>) {
         
+
         let time_slider = egui::Slider::new(&mut self.slider_time_value, 0.0..=1.0);
     
         ui.add(time_slider);
 
-        EventWrapper::<gui::Event>::register(
-            gui::EventType::TimeSliderChanged, 
-            gui::Event::TimeSliderChanged(self.slider_time_value), 
+        AsyncWrapper::<ItemType, Item>::register(
+            ItemType::TimeValue, 
+            Item::TimeValue(self.slider_time_value), 
             gui_events);
     }
 }
