@@ -10,25 +10,31 @@ use std::collections::HashMap;
 
 use bevy::prelude::ResMut;
 use bevy_egui::egui::{self, Color32};
-use crate::prelude::{AsyncPacket, ItemType, Item};
+use crate::{prelude::{AsyncPacket, ItemType, Item, Mode, AsyncWrapper}};
 
-use super::{gui, side, addons, menubar, taskbar};
+use super::{gui, settingsbar, addons, menubar, taskbar, modebar, toolbar};
 use crate::utils::Creation;
 
 pub struct Screen {
-    side: side::SideView,
+    mode: Mode,
+    settings: settingsbar::Settingsbar,
     addons: addons::Addons,
     menubar: menubar::Menubar,
     taskbar: taskbar::Taskbar,
+    modebar: modebar::Modebar,
+    toolbar: toolbar::Toolbar,
 }
 
 impl Creation for Screen {
     fn create() -> Screen {
         Screen {
-            side: side::SideView::create(),
+            mode: Mode::Prepare,
+            settings: settingsbar::Settingsbar::create(),
             addons: addons::Addons::create(),
             menubar: menubar::Menubar::create(),
             taskbar: taskbar::Taskbar::create(),
+            modebar: modebar::Modebar::create(),
+            toolbar: toolbar::Toolbar::create(),
         }
     }
 }
@@ -37,12 +43,12 @@ impl gui::Component<Screen> for Screen {
 
     fn show(&mut self, ctx: &egui::Context,
         _ui: Option<&mut egui::Ui>,
+        _mode_ctx: Option<&mut Mode>,
         gui_interface: &mut ResMut<gui::Interface>,          
         gui_events: &mut HashMap<ItemType, AsyncPacket<Item>>
     ) {
-        self.side.show(ctx, None, gui_interface, gui_events);
-        self.menubar.show(ctx, None, gui_interface, gui_events);
-        self.taskbar.show(ctx, None, gui_interface, gui_events);
+        self.menubar.show(ctx, None, Some(&mut self.mode), gui_interface, gui_events);
+        self.taskbar.show(ctx, None, Some(&mut self.mode), gui_interface, gui_events);
 
         let frame = egui::containers::Frame {
             fill: Color32::TRANSPARENT,
@@ -51,8 +57,14 @@ impl gui::Component<Screen> for Screen {
 
         egui::CentralPanel::default().frame(frame)
         .show(ctx, |ui| {
-            self.addons.show(ctx, Some(ui), gui_interface, gui_events);
+
+            self.addons.show(ctx, Some(ui), Some(&mut self.mode), gui_interface, gui_events);
+            self.settings.show(ctx, Some(ui), Some(&mut self.mode), gui_interface, gui_events);
+            self.toolbar.show(ctx, Some(ui), Some(&mut self.mode), gui_interface, gui_events);
+            self.modebar.show(ctx, Some(ui), Some(&mut self.mode), gui_interface, gui_events);
         });
+
+        AsyncWrapper::<ItemType, Item>::register(ItemType::ModeChanged, Item::ModeChanged(self.mode), gui_events);
     }
     
 }

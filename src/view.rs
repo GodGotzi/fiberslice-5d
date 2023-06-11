@@ -14,7 +14,7 @@ use self::camera::SingleCamera;
 
 pub mod camera;
 pub mod orbit;
-pub mod visualization;
+pub mod mode;
 
 pub fn update_camera_viewport(
     windows: Query<&Window>,
@@ -29,46 +29,77 @@ pub fn update_camera_viewport(
 
     let result_window = windows.get_single();
 
+    let settings_width_packet = item_wrapper.packet_map.get(&ItemType::SettingsWidth).unwrap();
+    let toolbar_width_packet = item_wrapper.packet_map.get(&ItemType::ToolbarWidth).unwrap();
+
     if let Ok(window) = result_window {
         for _resize_event in resize_events.iter() {
-            let width_packet = item_wrapper.packet_map.get(&ItemType::SideWidth).unwrap();
 
-            if width_packet.get_sync().is_some() {
-                if let Item::SideWidth(width) = width_packet.get_sync().unwrap() {
-                    resize_viewport(window, &mut camera, width);
+            if toolbar_width_packet.get_sync().is_some() {
+
+                if let Item::ToolbarWidth(toolbar_width) = toolbar_width_packet.get_sync().unwrap() {
+                    if settings_width_packet.get_sync().is_some() {
+                        if let Item::SettingsWidth(settings_width) = settings_width_packet.get_sync().unwrap() {
+                            resize_viewport(window, &mut camera, settings_width, toolbar_width);
+                        } else {
+                            panic!("ItemType isn't what I suspected to be!");
+                        }
+                    }
                 } else {
                     panic!("ItemType isn't what I suspected to be!");
                 }
+            
             }
+
         }
     
         for resize_event in gui_resize_events.iter() {
-            if let Item::SideWidth(width) = resize_event {
-                resize_viewport(window, &mut camera, *width);
+            if let Item::SettingsWidth(settings_width) = resize_event {
+
+                if toolbar_width_packet.get_sync().is_some() {
+                    if let Item::ToolbarWidth(toolbar_width) = toolbar_width_packet.get_sync().unwrap() {
+                        resize_viewport(window, &mut camera, *settings_width, toolbar_width);
+                    } else {
+                        panic!("ItemType isn't what I suspected to be!");
+                    }
+                }
+
+            }
+
+            if let Item::ToolbarWidth(toolbar_width) = resize_event {
+
+                if settings_width_packet.get_sync().is_some() {
+                    if let Item::SettingsWidth(settings_width) = settings_width_packet.get_sync().unwrap() {
+                        resize_viewport(window, &mut camera, settings_width, *toolbar_width);
+                    } else {
+                        panic!("ItemType isn't what I suspected to be!");
+                    }
+                }
+
             }
         }
     }
 
 }
 
-fn resize_viewport(window: &Window, camera: &mut Query<&mut Camera, With<SingleCamera>>, width: f32) {
+fn resize_viewport(window: &Window, camera: &mut Query<&mut Camera, With<SingleCamera>>, settings_width: f32, toolbar_width: f32) {
     let mut camera = camera.single_mut();
 
     if window.resolution.physical_width() == 0 || window.resolution.physical_height() == 0  {
         return;
     }
 
-    let new_width = window.resolution.physical_width() as i32 - width as i32;
+    let new_width = window.resolution.physical_width() as i32 - settings_width as i32 - toolbar_width as i32;
 
     if new_width < 1 {
         return;
     }
 
     camera.viewport = Some(Viewport {
-        physical_position: UVec2::new(0, 0),
+        physical_position: UVec2::new(toolbar_width as u32, 17),
         physical_size: UVec2::new(
             new_width as u32,
-            window.resolution.physical_height(),
+            window.resolution.physical_height() - 51,
         ),
         ..default()
     });

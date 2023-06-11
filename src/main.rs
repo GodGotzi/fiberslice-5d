@@ -79,7 +79,7 @@ fn component_setup(
         bed: PrintBed,
         orbit_target: PossibleOrbitTarget::new(Orbit::PrintBed),
         material_mesh_bundle: MaterialMeshBundle {
-            mesh: asset_server.load("print_bed.stl"),
+            mesh: asset_server.load("stifhalterung.stl"),
             material: materials.add(
                 Color::rgb(123./255., 169./255., 201./255.).into()
             ),

@@ -37,18 +37,30 @@ impl <E> AsyncPacket<E> {
     }
 }
 
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub enum Mode {
+    Preview,
+    Prepare,
+    ForceAnalytics,
+    Monitor
+}
+
 #[derive(Hash, PartialEq, Eq, Debug, EnumIter)]
 pub enum ItemType {
-    SideWidth,
+    ToolbarWidth,
+    SettingsWidth,
     LayerValue,
-    TimeValue
+    TimeValue,
+    ModeChanged
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum Item {
-    SideWidth(f32),
+    ToolbarWidth(f32),
+    SettingsWidth(f32),
     LayerValue(u32),
-    TimeValue(f32)
+    TimeValue(f32),
+    ModeChanged(Mode)
 }
 
 #[derive(Resource)]
@@ -73,7 +85,7 @@ impl <T, K> AsyncWrapper<T, K> {
         event_wrapper.sync_element = Some(event);
     }
 
-    pub fn register_with_ref<V>(
+    pub fn _register_with_ref<V>(
         default: Item,
         event_type: ItemType,
         register_ref: fn(&mut Item, V),
@@ -119,7 +131,7 @@ impl FiberSlice {
             gui::Theme::Dark => ctx.set_visuals(Visuals::dark()),
         };
 
-        self.screen.show(ctx, None, gui_interface, &mut item_wrapper.packet_map);
+        self.screen.show(ctx, None, None, gui_interface, &mut item_wrapper.packet_map);
 
         for entry in item_wrapper.packet_map.iter_mut() {
             let packet = entry.1;
@@ -150,7 +162,7 @@ pub fn ui_frame(
 ) {
 
     let ctx = contexts.ctx_mut();
-
+    
     fiberslice.ui_frame(ctx, &mut gui_interface, &mut item_wrapper, &mut events_resize);
 }
 

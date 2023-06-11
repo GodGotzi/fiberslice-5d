@@ -22,25 +22,25 @@ impl gui::Component<Menubar> for Menubar {
 
     fn show(&mut self, ctx: &egui::Context,
         _ui: Option<&mut Ui>,
+        _mode_ctx: Option<&mut Mode>,
         gui_interface: &mut ResMut<gui::Interface>,          
         _gui_events: &mut HashMap<gui::ItemType, AsyncPacket<gui::Item>>
     ) {
         let response = egui::TopBottomPanel::top("menubar").show(ctx, |ui: &mut Ui| {
             egui::menu::bar(ui, |ui| {
-                theme_button(ui, gui_interface);
-                ui.separator();
                 
                 file_button(ui, gui_interface);
                 edit_button(ui, gui_interface);
                 view_button(ui, gui_interface);
                 settings_button(ui, gui_interface);
                 help_button(ui, gui_interface);
+                
             });
         }).response;
 
         let rect = response.rect;
 
-        gui_interface.menubar_boundary = Some(
+        gui_interface.register_boundary(
             gui::Boundary::new(rect.min.x, rect.min.y, rect.width(), rect.height())
         );
     }
@@ -80,15 +80,4 @@ fn help_button(ui: &mut Ui, _gui_interface: &mut gui::Interface) {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
     });
-}
-
-fn theme_button(ui: &mut Ui, gui_interface: &mut gui::Interface) {
-    let clicked = match gui_interface.theme() {
-        gui::Theme::Dark => ui.button("💡").clicked(),
-        gui::Theme::Light=> ui.button("🌙").clicked(),
-    };
-
-    if clicked {
-        gui_interface.toggle_theme();
-    }
 }

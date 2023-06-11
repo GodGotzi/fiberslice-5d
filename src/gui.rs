@@ -1,16 +1,17 @@
 mod addons;
 mod menubar;
-mod side;
+mod settingsbar;
 mod taskbar;
+mod modebar;
+mod toolbar;
+
 pub mod screen;
-
-
 
 use std::collections::HashMap;
 
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
-use egui::{Pos2, Ui};
+use egui::Ui;
 
 use crate::prelude::*;
 
@@ -19,6 +20,7 @@ use crate::gui;
 pub trait Component<T> {
     fn show(&mut self, ctx: &egui::Context,
         ui: Option<&mut Ui>,
+        mode_ctx: Option<&mut Mode>,
         gui_interface: &mut ResMut<gui::Interface>,          
         gui_events: &mut HashMap<ItemType, AsyncPacket<Item>>
     );
@@ -47,10 +49,7 @@ pub enum Theme {
 pub struct Interface {
     touch: bool,
     theme: Theme,
-    pub side_boundary: Option<Boundary>,
-    pub menubar_boundary: Option<Boundary>,   
-    pub taskbar_boundary: Option<Boundary>,
-    pub popup_boundaries: Option<[Boundary; 10]>,
+    boundaries: Vec<Boundary>
 }
 
 impl Interface {
@@ -59,10 +58,7 @@ impl Interface {
         Self {
             touch: false,
             theme: Theme::Light,
-            side_boundary: None,
-            menubar_boundary: None,
-            taskbar_boundary: None,
-            popup_boundaries: None,
+            boundaries: Vec::new()
         }
     }
 
@@ -80,6 +76,40 @@ impl Interface {
     pub fn theme(&self) -> &Theme {
         &self.theme
     }
+
+    pub fn register_boundary(&mut self, boundary: Boundary) {
+        self.boundaries.push(boundary);
+    }
+
+    pub fn check_boundaries(&mut self, cursor_vec: Vec2) {
+
+        for boundary in self.boundaries.iter() {
+            if Self::check_boundary(boundary, 0., cursor_vec) {
+                self.touch = true;
+
+                self.boundaries.clear();
+                return;
+            } else {
+                self.touch = false;
+            }
+        }
+    
+        self.boundaries.clear();
+    
+    }
+
+    fn check_boundary(boundary: &Boundary, additional_broder: f32, cursor_vec: Vec2) -> bool {
+
+        if boundary.location.x - additional_broder <= cursor_vec.x && boundary.location.x + boundary.size.x + additional_broder >= cursor_vec.x 
+            && boundary.location.y - additional_broder <= cursor_vec.y && boundary.location.y + boundary.size.y + additional_broder >= cursor_vec.y
+            {
+            
+            return true;
+        }
+    
+        false
+    }
+
 }
 
 pub fn check_touch(
@@ -107,39 +137,6 @@ pub fn check_touch(
         return;
     }
 
-    check_boundaries(cursor_pos, &mut gui_interface);
+    gui_interface.check_boundaries(Vec2::new(cursor_pos.x, cursor_pos.y));
 
-}
-
-fn check_boundaries(cursor_pos: Pos2, gui_interface: &mut ResMut<Interface>) {
-    let cursor_vec = Vec2::new(cursor_pos.x, cursor_pos.y);
-    
-    if let Some(boundary) = &gui_interface.side_boundary {
-        if check_boundary(boundary, 0., cursor_vec) {
-            gui_interface.touch = true;
-            return;
-        } else {
-            gui_interface.touch = false;
-        }
-    }
-
-    if let Some(boundary) = &gui_interface.menubar_boundary {
-        if check_boundary(boundary, 0., cursor_vec) {
-            gui_interface.touch = true;
-        } else {
-            gui_interface.touch = false;
-        }
-    }
-}
-
-fn check_boundary(boundary: &Boundary, additional_broder: f32, cursor_vec: Vec2) -> bool {
-
-    if boundary.location.x - additional_broder <= cursor_vec.x && boundary.location.x + boundary.size.x + additional_broder >= cursor_vec.x 
-        && boundary.location.y - additional_broder <= cursor_vec.y && boundary.location.y + boundary.size.y + additional_broder >= cursor_vec.y
-        {
-        
-        return true;
-    }
-
-    false
 }

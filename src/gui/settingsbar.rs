@@ -13,8 +13,6 @@ use egui::{Context, Direction, Ui};
 use egui_extras::Size;
 use egui_grid::GridBuilder;
 
-
-
 use crate::{prelude::*, utils::Creation};
 
 
@@ -25,15 +23,15 @@ pub enum SettingsPanel {
     Printer,
 }
 
-struct TabbedView;
+struct TabbedSettings;
 
-impl TabbedView {
+impl TabbedSettings {
     pub fn init() -> Self {
         Self {
         }
     }
 
-    pub fn show(&mut self, _ctx: &Context, ui: &mut Ui, side_view: &mut SideView) {
+    pub fn show(&mut self, _ctx: &Context, ui: &mut Ui, side_view: &mut Settingsbar) {
         ui.horizontal(|ui| {
             let layout = egui::Layout {
                 main_dir: Direction::TopDown,
@@ -120,11 +118,11 @@ impl TabbedView {
     }
 }
 
-pub struct SideView {
+pub struct Settingsbar {
     open_panel: SettingsPanel,
 }
 
-impl Creation for SideView {
+impl Creation for Settingsbar {
     fn create() -> Self {
         Self {
             open_panel: SettingsPanel::Slice,
@@ -132,30 +130,34 @@ impl Creation for SideView {
     }
 }
 
-impl super::Component<SideView> for SideView {
+impl super::Component<Settingsbar> for Settingsbar {
 
     fn show(&mut self, ctx: &egui::Context, 
         _ui: Option<&mut Ui>,
+        _mode_ctx: Option<&mut Mode>,
         gui_interface: &mut ResMut<super::Interface>,          
         gui_events: &mut HashMap<super::ItemType, AsyncPacket<super::Item>>
     ) {
-        let mut tabbed_view = TabbedView::init();
+        let mut tabbed_view = TabbedSettings::init();
 
-        let response = egui::SidePanel::right("settings-panel")
+        let response = egui::SidePanel::right("settingsbar")
             .resizable(true)
             .default_width(350.0)
             .show(ctx, |ui| {
                 
                 AsyncWrapper::<ItemType, Item>::register(
-                    ItemType::SideWidth, 
-                    Item::SideWidth(ui.available_width()), 
+                    ItemType::SettingsWidth, 
+                    Item::SettingsWidth(ui.available_width()), 
                     gui_events);
  
                 tabbed_view.show(ctx, ui, self);
+                
             }).response;
 
         let rect = response.rect;
 
-        gui_interface.side_boundary = Some(super::Boundary::new(rect.min.x, rect.min.y, rect.width(), rect.height()));
+        gui_interface.register_boundary(
+            super::Boundary::new(rect.min.x, rect.min.y, rect.width(), rect.height())
+        );
     }
 }

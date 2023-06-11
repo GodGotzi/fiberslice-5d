@@ -9,9 +9,14 @@ use std::collections::HashMap;
 
 use bevy_egui::egui::{self, Ui};
 
-use crate::{gui, utils::Creation, prelude::{AsyncPacket, Item, ItemType, AsyncWrapper}};
+use crate::{gui, utils::Creation, prelude::{AsyncPacket, Item, ItemType, AsyncWrapper, Mode}};
 
-pub struct Addons;
+mod prepare;
+mod force_analytics;
+
+pub struct Addons {
+
+}
 
 impl Creation for Addons {
     fn create() -> Self {
@@ -22,37 +27,37 @@ impl Creation for Addons {
 
 impl gui::Component<Addons> for Addons {
 
-    fn show(&mut self, _ctx: &egui::Context,
-        ui_op: Option<&mut Ui>,
-        _gui_interface: &mut bevy::prelude::ResMut<gui::Interface>,          
+    fn show(&mut self, ctx: &egui::Context,
+        ui: Option<&mut Ui>,
+        mode_ctx: Option<&mut Mode>,
+        gui_interface: &mut bevy::prelude::ResMut<gui::Interface>,          
         gui_events: &mut HashMap<gui::ItemType, AsyncPacket<gui::Item>>
     ) {
-        let mut ui = ui_op.unwrap();
 
-        self.show_layer_slider(&mut ui, gui_events);
-        self.show_time_slider(&mut ui, gui_events);
-
-        /*
-        egui::Window::new("Test")
-        .default_height(500.0)
-        .show(ctx, |ui| {
-            ui.label("Label test");
-            let _button = ui.button("button test");
-        });
-        */
+        match mode_ctx.unwrap() {
+            Mode::Prepare => {
+                prepare::show(ctx, ui, gui_interface, gui_events);
+            },
+            Mode::Preview => {
+                //self.show_layer_slider(&mut ui, gui_events);
+                //self.show_time_slider(&mut ui, gui_events);
+            },
+            Mode::Monitor => {},
+            Mode::ForceAnalytics => force_analytics::show(ctx, ui, gui_interface, gui_events),
+        }
     }
 
 }
 
 impl Addons {
 
-    fn show_layer_slider(&mut self, 
+    fn _show_layer_slider(&mut self, 
         ui: &mut &mut Ui,
         gui_events: &mut HashMap<gui::ItemType, AsyncPacket<gui::Item>>
     ) {
 
         ui.horizontal(|ui| {
-            AsyncWrapper::<ItemType, Item>::register_with_ref(
+            AsyncWrapper::<ItemType, Item>::_register_with_ref(
                 Item::LayerValue(Default::default()), 
                 ItemType::LayerValue, |item, ui| {
                     if let Item::LayerValue(width) = item {
@@ -65,12 +70,12 @@ impl Addons {
 
     }
 
-    fn show_time_slider(&mut self,  
+    fn _show_time_slider(&mut self,  
         ui: &mut &mut Ui, 
         gui_events: &mut HashMap<gui::ItemType, AsyncPacket<gui::Item>>
     ) {
 
-        AsyncWrapper::<ItemType, Item>::register_with_ref(
+        AsyncWrapper::<ItemType, Item>::_register_with_ref(
             Item::TimeValue(Default::default()), 
             ItemType::TimeValue, |item, ui| {
                 if let Item::TimeValue(width) = item {
