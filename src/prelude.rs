@@ -1,15 +1,19 @@
+use bevy::a11y::accesskit::Orientation;
 use bevy::prelude::*;
 
 use bevy::window::{WindowMode, PrimaryWindow};
 use bevy_egui::EguiContexts;
 use bevy_egui::egui::Visuals;
 use strum_macros::{EnumIter};
+
 use type_eq::TypeEq;
 use type_eq_derive::TypeEq;
 
 use crate::gui::screen::Screen;
 use crate::gui::{self, Component};
 use crate::utils::Creation;
+
+
 
 pub struct AsyncPacket {
     sync_element: Option<Item>,
@@ -51,25 +55,8 @@ pub enum Item {
     SettingsWidth(Option<f32>),
     LayerValue(Option<u32>),
     TimeValue(Option<f32>),
-    Mode(Option<Mode>)
-}
-
-impl Item {
-
-    pub fn is_same(&self, item: Item) -> bool {
-
-        matches!(
-            (self, item),
-
-            (Item::ToolbarWidth(_), Item::ToolbarWidth(_)) | 
-            (Item::SettingsWidth(_), Item::SettingsWidth(_)) | 
-            (Item::LayerValue(_), Item::LayerValue(_)) | 
-            (Item::TimeValue(_), Item::TimeValue(_)) | 
-            (Item::Mode(_), Item::Mode(_))
-        )
-
-    }
-
+    Mode(Option<Mode>),
+    Orientation(Option<Orientation>)
 }
 
 #[derive(Resource)]
@@ -90,18 +77,18 @@ impl AsyncWrapper {
     }
 
     pub fn find_packet_mut(&mut self, item: Item) -> Option<&mut AsyncPacket> {
-        self.data.iter_mut().find(|packet| packet.get_sync().unwrap().is_same(item))
+        self.data.iter_mut().find(|packet| packet.get_sync().unwrap().type_eq(item))
     }
 
     pub fn find_packet(&self, item: Item) -> Option<&AsyncPacket> {
-        self.data.iter().find(|packet| packet.get_sync().unwrap().is_same(item))
+        self.data.iter().find(|packet| packet.get_sync().unwrap().type_eq(item))
     }
 
     pub fn register(
         &mut self,
         item: Item
     ) {
-        let packet = self.data.iter_mut().find(|packet| packet.get_sync().unwrap().is_same(item)).unwrap();
+        let packet = self.find_packet_mut(item).unwrap();
         packet.sync_element = Some(item);
     }
 
@@ -111,7 +98,7 @@ impl AsyncWrapper {
         register_ref: fn(&mut Item, V),
         ref_ctx: V
     ) {
-        let packet = self.data.iter_mut().find(|packet| packet.get_sync().unwrap().is_same(default)).unwrap();
+        let packet = self.find_packet_mut(default).unwrap();
 
         if packet.get_sync().is_none() {
             packet.sync_element = Some(default);

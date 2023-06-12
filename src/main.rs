@@ -80,7 +80,7 @@ fn component_setup(
         material_mesh_bundle: MaterialMeshBundle {
             mesh: asset_server.load("stifhalterung.stl"),
             material: materials.add(
-                Color::rgb(123./255., 169./255., 201./255.).into()
+                Color::rgb(188./255., 230./255., 124./255.).into()
             ),
             transform: Transform::from_xyz(0.0, 0.0, -10.0),
             ..Default::default()

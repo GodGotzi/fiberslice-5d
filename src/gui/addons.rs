@@ -18,23 +18,29 @@ mod force_analytics;
 mod preview;
 mod monitor;
 
-pub fn create_addon_strip_builder(boundary: Boundary, ui: &mut Ui, build: Box<dyn Fn(StripBuilder)>) -> Response {
+pub fn create_addon_strip_builder(
+    _ctx: &egui::Context,
+    ui: &mut Ui,
+    boundary: Boundary,
+    gui_interface: &mut ResMut<gui::Interface>,          
+    item_wrapper: &mut ResMut<AsyncWrapper>,
+    build: Box<dyn Fn(StripBuilder, &mut ResMut<gui::Interface>, &mut ResMut<AsyncWrapper>)>) -> Response {
 
     StripBuilder::new(ui)
-        .size(Size::exact(boundary.location.x + 5.0))
-        .size(Size::exact(boundary.size.x - 10.0))
+        .size(Size::exact(boundary.location.x))
+        .size(Size::exact(boundary.size.x))
         .size(Size::remainder())
         .horizontal(|mut strip| {
             strip.empty();
             strip.strip(|builder| {
                 builder
-                    .size(Size::exact(boundary.location.y + 5.0))
-                    .size(Size::exact(boundary.size.y - 10.0))
+                    .size(Size::exact(boundary.location.y))
+                    .size(Size::exact(boundary.size.y))
                     .size(Size::remainder())
                     .vertical(|mut strip| {
                         strip.empty();
                         strip.strip(|builder| {
-                            build(builder);
+                            build(builder, gui_interface, item_wrapper);
                         });
                         strip.empty();
                     });
@@ -44,7 +50,29 @@ pub fn create_addon_strip_builder(boundary: Boundary, ui: &mut Ui, build: Box<dy
 }
 
 
-pub struct OrientationAddon {
+pub mod orientation {
+    use bevy::prelude::ResMut;
+    use bevy_egui::egui::Ui;
+
+    use crate::prelude::AsyncWrapper;
+
+    pub fn show(ui: &mut Ui, item_wrapper: &Box<&mut ResMut<AsyncWrapper>>) {
+        
+
+
+
+
+        ui.button("Front");
+        ui.button("Top");
+        ui.button("Left");
+        ui.button("Right");
+        ui.button("Normal");
+
+
+
+
+    }
+
 
 }
 
@@ -75,7 +103,7 @@ impl gui::Component<Addons> for Addons {
             location: Vec2::new(config::gui::TOOLBAR_W + 8.0, -3.0),
             size: Vec2::new(
                 window_size.x - config::gui::TOOLBAR_W - 32.0 - settingsbar_width, 
-                window_size.y - config::gui::MODEBAR_H),
+                window_size.y - config::gui::MODEBAR_H - 5.0),
         };
 
         match mode_ctx.unwrap() {
