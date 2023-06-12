@@ -1,9 +1,8 @@
-use std::collections::HashMap;
 
 use bevy::prelude::ResMut;
 use bevy_egui::egui::{self, Ui};
 
-use crate::{utils::Creation, prelude::*};
+use crate::{utils::Creation, prelude::*, config};
 
 
 pub struct Toolbar;
@@ -20,18 +19,15 @@ impl super::Component<Toolbar> for Toolbar {
         _ui: Option<&mut Ui>,
         _mode_ctx: Option<&mut Mode>,
         gui_interface: &mut ResMut<super::Interface>,          
-        gui_events: &mut HashMap<super::ItemType, AsyncPacket<super::Item>>
+        item_wrapper: &mut ResMut<AsyncWrapper>, 
     ) {
 
         let response = egui::SidePanel::left("toolbar")
             .resizable(false)
-            .default_width(35.0)
+            .default_width(config::gui::TOOLBAR_W)
             .show(ctx, |ui| {
 
-                AsyncWrapper::<ItemType, Item>::register(
-                    ItemType::ToolbarWidth, 
-                    Item::ToolbarWidth(ui.available_width()), 
-                    gui_events);
+                item_wrapper.register(Item::ToolbarWidth(Some(ui.available_width())));
                 
             }).response;
 

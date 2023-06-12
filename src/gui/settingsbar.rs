@@ -5,15 +5,13 @@
 	Please refer to the terms and conditions stated therein.
 */
 
-use std::collections::HashMap;
-
 use bevy::prelude::ResMut;
 use bevy_egui::egui;
 use egui::{Context, Direction, Ui};
 use egui_extras::Size;
 use egui_grid::GridBuilder;
 
-use crate::{prelude::*, utils::Creation};
+use crate::{prelude::*, utils::Creation, config};
 
 
 #[derive(PartialEq)]
@@ -136,19 +134,16 @@ impl super::Component<Settingsbar> for Settingsbar {
         _ui: Option<&mut Ui>,
         _mode_ctx: Option<&mut Mode>,
         gui_interface: &mut ResMut<super::Interface>,          
-        gui_events: &mut HashMap<super::ItemType, AsyncPacket<super::Item>>
+        item_wrapper: &mut ResMut<AsyncWrapper>, 
     ) {
         let mut tabbed_view = TabbedSettings::init();
 
         let response = egui::SidePanel::right("settingsbar")
             .resizable(true)
-            .default_width(350.0)
+            .default_width(config::gui::default::SETTINGSBAR_W)
             .show(ctx, |ui| {
                 
-                AsyncWrapper::<ItemType, Item>::register(
-                    ItemType::SettingsWidth, 
-                    Item::SettingsWidth(ui.available_width()), 
-                    gui_events);
+                item_wrapper.register(Item::SettingsWidth(Some(ui.available_width())));
  
                 tabbed_view.show(ctx, ui, self);
                 

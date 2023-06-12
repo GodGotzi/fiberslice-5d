@@ -1,10 +1,8 @@
-use std::collections::HashMap;
-
 use bevy::prelude::*;
 use bevy_egui::egui::{self, Ui};
 use egui::Context;
 
-use crate::prelude::*;
+use crate::{prelude::*, config};
 use crate::{gui, utils::Creation};
 
 pub struct Taskbar {
@@ -24,17 +22,19 @@ impl gui::Component<Taskbar> for Taskbar {
         _ui: Option<&mut Ui>,
         _mode_ctx: Option<&mut Mode>,
         gui_interface: &mut ResMut<gui::Interface>,          
-        _gui_events: &mut HashMap<gui::ItemType, AsyncPacket<gui::Item>>
+        _item_wrapper: &mut ResMut<AsyncWrapper>, 
     ) {
-        let response = egui::TopBottomPanel::bottom("taskbar").show(ctx, |ui: &mut Ui| {
-            egui::menu::bar(ui, |ui| {
+        let response = egui::TopBottomPanel::bottom("taskbar")
+            .default_height(config::gui::TASKBAR_H)
+            .show(ctx, |ui: &mut Ui| {
+                egui::menu::bar(ui, |ui| {
 
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    theme_button(ui, gui_interface);
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        theme_button(ui, gui_interface);
+                    });
+
                 });
-
-            });
-        }).response;
+            }).response;
 
         let rect = response.rect;
 

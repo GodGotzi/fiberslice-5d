@@ -16,3 +16,5 @@ bevy_atmosphere = "0.6.0"
 bevy_stl = "0.8.0"
 strum = "0.24.1"
 strum_macros = "0.24.3"
+type_eq = { path = "type_eq" }
+type_eq_derive = { path = "type_eq/type_eq_derive" }

@@ -1,38 +1,38 @@
-use std::collections::HashMap;
-
 use bevy::prelude::*;
 
 use bevy::window::{WindowMode, PrimaryWindow};
 use bevy_egui::EguiContexts;
 use bevy_egui::egui::Visuals;
-use strum_macros::EnumIter;
+use strum_macros::{EnumIter};
+use type_eq::TypeEq;
+use type_eq_derive::TypeEq;
 
 use crate::gui::screen::Screen;
 use crate::gui::{self, Component};
 use crate::utils::Creation;
 
-pub struct AsyncPacket<E> {
-    sync_element: Option<E>,
-    async_element: Option<E>
+pub struct AsyncPacket {
+    sync_element: Option<Item>,
+    async_element: Option<Item>
 }
 
-impl <E> AsyncPacket<E> {
-    pub fn new() -> Self {
+impl AsyncPacket {
+    pub fn new(sync_element: Item) -> Self {
         Self {
-            sync_element: None,
+            sync_element: Some(sync_element),
             async_element: None
         }
     }
 
-    pub fn get_sync(&self) -> &Option<E> {
+    pub fn get_sync(&self) -> &Option<Item> {
         &self.sync_element
     }
 
-    pub fn get_sync_mut(&mut self) -> &mut Option<E> {
+    pub fn _get_sync_mut(&mut self) -> &mut Option<Item> {
         &mut self.sync_element
     }
 
-    pub fn _get_async(&self) -> &Option<E> {
+    pub fn _get_async(&self) -> &Option<Item> {
         &self.async_element
     }
 }
@@ -45,60 +45,79 @@ pub enum Mode {
     Monitor
 }
 
-#[derive(Hash, PartialEq, Eq, Debug, EnumIter)]
-pub enum ItemType {
-    ToolbarWidth,
-    SettingsWidth,
-    LayerValue,
-    TimeValue,
-    ModeChanged
+#[derive(PartialEq, Clone, Copy, Debug, EnumIter, TypeEq)]
+pub enum Item {
+    ToolbarWidth(Option<f32>),
+    SettingsWidth(Option<f32>),
+    LayerValue(Option<u32>),
+    TimeValue(Option<f32>),
+    Mode(Option<Mode>)
 }
 
-#[derive(PartialEq, Clone, Copy, Debug)]
-pub enum Item {
-    ToolbarWidth(f32),
-    SettingsWidth(f32),
-    LayerValue(u32),
-    TimeValue(f32),
-    ModeChanged(Mode)
+impl Item {
+
+    pub fn is_same(&self, item: Item) -> bool {
+
+        matches!(
+            (self, item),
+
+            (Item::ToolbarWidth(_), Item::ToolbarWidth(_)) | 
+            (Item::SettingsWidth(_), Item::SettingsWidth(_)) | 
+            (Item::LayerValue(_), Item::LayerValue(_)) | 
+            (Item::TimeValue(_), Item::TimeValue(_)) | 
+            (Item::Mode(_), Item::Mode(_))
+        )
+
+    }
+
 }
 
 #[derive(Resource)]
-pub struct AsyncWrapper<T, K> {
-    pub packet_map: HashMap<T, AsyncPacket<K>>
+pub struct AsyncWrapper {
+    data: Vec<AsyncPacket>
 }
 
-impl <T, K> AsyncWrapper<T, K> {
+impl AsyncWrapper {
 
-    pub fn new(map: HashMap<T, AsyncPacket<K>>) -> Self {
+    pub fn new(map: Vec<AsyncPacket>) -> Self {
         Self {
-            packet_map: map
+            data: map
         }
     }
 
+    pub fn get_data(&mut self) -> &mut Vec<AsyncPacket> {
+        &mut self.data
+    }
+
+    pub fn find_packet_mut(&mut self, item: Item) -> Option<&mut AsyncPacket> {
+        self.data.iter_mut().find(|packet| packet.get_sync().unwrap().is_same(item))
+    }
+
+    pub fn find_packet(&self, item: Item) -> Option<&AsyncPacket> {
+        self.data.iter().find(|packet| packet.get_sync().unwrap().is_same(item))
+    }
+
     pub fn register(
-        event_type: ItemType, 
-        event: Item, 
-        gui_events: &mut HashMap<ItemType, AsyncPacket<Item>>
+        &mut self,
+        item: Item
     ) {
-        let event_wrapper = gui_events.get_mut(&event_type).unwrap();
-        event_wrapper.sync_element = Some(event);
+        let packet = self.data.iter_mut().find(|packet| packet.get_sync().unwrap().is_same(item)).unwrap();
+        packet.sync_element = Some(item);
     }
 
     pub fn _register_with_ref<V>(
+        &mut self,
         default: Item,
-        event_type: ItemType,
         register_ref: fn(&mut Item, V),
-        ref_ctx: V,
-        gui_events: &mut HashMap<ItemType, AsyncPacket<Item>>
+        ref_ctx: V
     ) {
-        let packet = gui_events.get_mut(&event_type).unwrap();
+        let packet = self.data.iter_mut().find(|packet| packet.get_sync().unwrap().is_same(default)).unwrap();
 
         if packet.get_sync().is_none() {
             packet.sync_element = Some(default);
         }
 
-        if let Some(item) = packet.get_sync_mut() {
+        if let Some(item) = packet._get_sync_mut() {
             register_ref(item, ref_ctx);
         }   
     }
@@ -122,7 +141,7 @@ impl FiberSlice {
     pub fn ui_frame(&mut self, 
         ctx: &bevy_egui::egui::Context, 
         gui_interface: &mut ResMut<gui::Interface>,
-        item_wrapper: &mut ResMut<AsyncWrapper<ItemType, Item>>,    
+        item_wrapper: &mut ResMut<AsyncWrapper>,    
         events: &mut EventWriter<Item>
     ) {
 
@@ -131,10 +150,9 @@ impl FiberSlice {
             gui::Theme::Dark => ctx.set_visuals(Visuals::dark()),
         };
 
-        self.screen.show(ctx, None, None, gui_interface, &mut item_wrapper.packet_map);
+        self.screen.show(ctx, None, None, gui_interface, item_wrapper);
 
-        for entry in item_wrapper.packet_map.iter_mut() {
-            let packet = entry.1;
+        for packet in item_wrapper.get_data().iter_mut() {
 
             if packet.sync_element.is_some() {
                 let event = packet.sync_element.unwrap();
@@ -157,7 +175,7 @@ pub fn ui_frame(
     mut contexts: EguiContexts, 
     mut fiberslice: ResMut<FiberSlice>, 
     mut gui_interface: ResMut<gui::Interface>,
-    mut item_wrapper: ResMut<AsyncWrapper<ItemType, Item>>,
+    mut item_wrapper: ResMut<AsyncWrapper>,
     mut events_resize: EventWriter<Item>
 ) {
 

@@ -10,14 +10,13 @@ mod component;
 mod gui;
 mod utils;
 mod prelude;
-
-use std::collections::HashMap;
+mod config;
 
 use bevy_atmosphere::prelude::AtmospherePlugin;
 use component::print_bed::{PrintBed, PrintBedBundle};
 
 use bevy_egui::EguiPlugin;
-use prelude::{FiberSlice, Item, AsyncWrapper, ItemType, AsyncPacket};
+use prelude::{FiberSlice, Item, AsyncWrapper, AsyncPacket};
 use smooth_bevy_cameras::LookTransformPlugin;
 
 use bevy::prelude::*;
@@ -28,16 +27,16 @@ use view::camera::CameraPlugin;
 use view::orbit::{PossibleOrbitTarget, Orbit};
 
 fn main() {
-    let mut map = HashMap::new();
+    let mut list: Vec<AsyncPacket> = Vec::new();
         
-    for event_type in ItemType::iter() {
-        map.insert(event_type, AsyncPacket::<Item>::new());
+    for item in Item::iter() {
+        list.push(AsyncPacket::new(item));
     }
 
     let window_plugin = WindowPlugin {
         primary_window: Some(Window {
             title: "FiberSlice-3D/5D".into(),
-            resolution: WindowResolution::new(1200., 900.),
+            resolution: WindowResolution::new(config::default::WINDOW_S.x, config::default::WINDOW_S.y),
             present_mode: PresentMode::AutoVsync,
             // Tells wasm to resize the window according to the available canvas
             fit_canvas_to_parent: false,
@@ -50,7 +49,7 @@ fn main() {
 
     App::new()
         .add_event::<Item>()
-        .insert_resource(AsyncWrapper::new(map))
+        .insert_resource(AsyncWrapper::new(list))
         .insert_resource(gui::Interface::new())
         .insert_resource(FiberSlice::new())
         .add_plugins(DefaultPlugins.set(window_plugin))

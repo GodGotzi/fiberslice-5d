@@ -1,10 +1,8 @@
-use std::collections::HashMap;
-
 use bevy::prelude::ResMut;
 use bevy_egui::egui;
 use egui::Ui;
 
-use crate::prelude::*;
+use crate::{prelude::*, config};
 use crate::utils::Creation;
 use crate::gui;
 
@@ -24,17 +22,17 @@ impl gui::Component<Menubar> for Menubar {
         _ui: Option<&mut Ui>,
         _mode_ctx: Option<&mut Mode>,
         gui_interface: &mut ResMut<gui::Interface>,          
-        _gui_events: &mut HashMap<gui::ItemType, AsyncPacket<gui::Item>>
+        _item_wrapper: &mut ResMut<AsyncWrapper>,
     ) {
-        let response = egui::TopBottomPanel::top("menubar").show(ctx, |ui: &mut Ui| {
-            egui::menu::bar(ui, |ui| {
-                
-                file_button(ui, gui_interface);
-                edit_button(ui, gui_interface);
-                view_button(ui, gui_interface);
-                settings_button(ui, gui_interface);
-                help_button(ui, gui_interface);
-                
+        let response = egui::TopBottomPanel::top("menubar")
+            .default_height(config::gui::MENUBAR_H)
+            .show(ctx, |ui: &mut Ui| {
+                egui::menu::bar(ui, |ui| {
+                    file_button(ui, gui_interface);
+                    edit_button(ui, gui_interface);
+                    view_button(ui, gui_interface);
+                    settings_button(ui, gui_interface);
+                    help_button(ui, gui_interface);
             });
         }).response;
 

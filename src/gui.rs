@@ -7,8 +7,6 @@ mod toolbar;
 
 pub mod screen;
 
-use std::collections::HashMap;
-
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
 use egui::Ui;
@@ -22,7 +20,7 @@ pub trait Component<T> {
         ui: Option<&mut Ui>,
         mode_ctx: Option<&mut Mode>,
         gui_interface: &mut ResMut<gui::Interface>,          
-        gui_events: &mut HashMap<ItemType, AsyncPacket<Item>>
+        item_wrapper: &mut ResMut<AsyncWrapper>,
     );
 }
 
