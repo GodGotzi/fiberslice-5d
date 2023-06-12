@@ -4,18 +4,18 @@ use egui_extras::Size;
 
 use crate::{prelude::*, gui::{self, Boundary}, config::gui::shaded_color};
 
-pub fn show<'a, 'b>(
-    ctx: &egui::Context,
-    ui: &'a mut Ui,
+pub fn show(
+    _ctx: &egui::Context,
+    ui: &mut Ui,
     boundary: Boundary,
     gui_interface: &mut bevy::prelude::ResMut<gui::Interface>,          
-    item_wrapper: &'b mut ResMut<AsyncWrapper>,
+    item_wrapper: &mut ResMut<AsyncWrapper>,
 ) {
 
     let shaded_color = shaded_color(ui.visuals().dark_mode);
 
-    let _response = super::create_addon_strip_builder(ctx, ui, boundary, gui_interface, item_wrapper, 
-            Box::new(|builder, gui_interface, item_wrapper| {
+    let _response = super::create_addon_strip_builder(ui, boundary, gui_interface, item_wrapper, shaded_color,
+            Box::new(|builder, _gui_interface, item_wrapper, shaded_color| {
 
         builder
             .size(Size::remainder())
@@ -42,7 +42,7 @@ pub fn show<'a, 'b>(
                                             shaded_color,
                                         );
 
-                                        super::orientation::show(ui, &item_wrapper);
+                                        super::orientation::show(ui, item_wrapper);
                                     });
                                 });
                             });

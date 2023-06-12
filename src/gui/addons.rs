@@ -6,7 +6,7 @@
 */
 
 use bevy::prelude::{Vec2, ResMut};
-use bevy_egui::egui::{self, Ui, Response};
+use bevy_egui::egui::{self, Ui, Response, Color32};
 use egui_extras::{StripBuilder, Size};
 
 use crate::{gui, utils::Creation, prelude::{AsyncWrapper, Mode}, config};
@@ -18,13 +18,15 @@ mod force_analytics;
 mod preview;
 mod monitor;
 
+type AddonStripBuilderClosure = dyn Fn(StripBuilder, &mut ResMut<gui::Interface>, &mut ResMut<AsyncWrapper>, Color32);
+
 pub fn create_addon_strip_builder(
-    _ctx: &egui::Context,
     ui: &mut Ui,
     boundary: Boundary,
     gui_interface: &mut ResMut<gui::Interface>,          
     item_wrapper: &mut ResMut<AsyncWrapper>,
-    build: Box<dyn Fn(StripBuilder, &mut ResMut<gui::Interface>, &mut ResMut<AsyncWrapper>)>) -> Response {
+    shaded_color: Color32,
+    build: Box<AddonStripBuilderClosure>) -> Response {
 
     StripBuilder::new(ui)
         .size(Size::exact(boundary.location.x))
@@ -40,7 +42,7 @@ pub fn create_addon_strip_builder(
                     .vertical(|mut strip| {
                         strip.empty();
                         strip.strip(|builder| {
-                            build(builder, gui_interface, item_wrapper);
+                            build(builder, gui_interface, item_wrapper, shaded_color);
                         });
                         strip.empty();
                     });
@@ -56,20 +58,17 @@ pub mod orientation {
 
     use crate::prelude::AsyncWrapper;
 
-    pub fn show(ui: &mut Ui, item_wrapper: &Box<&mut ResMut<AsyncWrapper>>) {
+    pub fn show(ui: &mut Ui, _item_wrapper: &mut ResMut<AsyncWrapper>) {
         
 
 
-
-
-        ui.button("Front");
-        ui.button("Top");
-        ui.button("Left");
-        ui.button("Right");
-        ui.button("Normal");
-
-
-
+        ui.horizontal(|ui| {
+            ui.button("Front");
+            ui.button("Top");
+            ui.button("Left");
+            ui.button("Right");
+            ui.button("Normal");
+        });
 
     }
 

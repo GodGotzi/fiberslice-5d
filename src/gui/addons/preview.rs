@@ -9,13 +9,15 @@ pub fn show(
     _ctx: &egui::Context,
     ui: &mut Ui,
     boundary: Boundary,
-    _gui_interface: &mut bevy::prelude::ResMut<gui::Interface>,          
-    _item_wrapper: &mut ResMut<AsyncWrapper>,
+    gui_interface: &mut bevy::prelude::ResMut<gui::Interface>,          
+    item_wrapper: &mut ResMut<AsyncWrapper>,
 ) {
 
     let shaded_color = shaded_color(ui.visuals().dark_mode);
 
-    let _response = super::create_addon_strip_builder(boundary, ui, Box::new(move |builder| {
+    let _response = super::create_addon_strip_builder( ui, boundary, gui_interface, item_wrapper, shaded_color,
+        Box::new(|builder, _gui_interface, item_wrapper, shaded_color| {
+
         builder
             .size(Size::remainder())
             .size(Size::relative(0.6))
@@ -39,6 +41,8 @@ pub fn show(
                                             5.0,
                                             shaded_color,
                                         );
+
+                                        super::orientation::show(ui, item_wrapper);
                                     });
                                 });
                             });
