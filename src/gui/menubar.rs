@@ -15,7 +15,6 @@ impl Creation for Menubar {
     }
 }
 
-
 impl gui::Component<Menubar> for Menubar {
 
     fn show(&mut self, ctx: &egui::Context,
