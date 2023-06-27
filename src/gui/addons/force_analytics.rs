@@ -1,5 +1,5 @@
 use bevy::prelude::ResMut;
-use bevy_egui::egui::{self, Ui};
+use bevy_egui::egui::{self, Ui, Color32};
 use egui_extras::Size;
 
 use crate::{prelude::*, gui::{self, Boundary}, config::gui::shaded_color};
@@ -39,7 +39,7 @@ pub fn show(
                                         ui.painter().rect_filled(
                                             ui.available_rect_before_wrap(),
                                             2.0,
-                                            shaded_color,
+                                            Color32::TRANSPARENT,
                                         );
 
                                         super::orientation::show(ui, item_wrapper);

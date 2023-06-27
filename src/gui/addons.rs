@@ -29,15 +29,15 @@ pub fn create_addon_strip_builder(
     build: Box<AddonStripBuilderClosure>) -> Response {
 
     StripBuilder::new(ui)
-        .size(Size::exact(boundary.location.x))
-        .size(Size::exact(boundary.size.x))
+        .size(Size::exact(boundary.location.x + 5.0))
+        .size(Size::exact(boundary.size.x - 10.0))
         .size(Size::remainder())
         .horizontal(|mut strip| {
             strip.empty();
             strip.strip(|builder| {
                 builder
-                    .size(Size::exact(boundary.location.y))
-                    .size(Size::exact(boundary.size.y))
+                    .size(Size::exact(boundary.location.y + 5.0))
+                    .size(Size::exact(boundary.size.y - 10.0))
                     .size(Size::remainder())
                     .vertical(|mut strip| {
                         strip.empty();
@@ -53,22 +53,57 @@ pub fn create_addon_strip_builder(
 
 
 pub mod orientation {
-    use bevy::prelude::ResMut;
-    use bevy_egui::egui::Ui;
+    use bevy::{prelude::ResMut, ui::widget};
+    use bevy_egui::egui::{Ui, self, Direction, Layout};
+    use egui_extras::Size;
+    use egui_grid::GridBuilder;
 
     use crate::prelude::AsyncWrapper;
 
     pub fn show(ui: &mut Ui, _item_wrapper: &mut ResMut<AsyncWrapper>) {
         
+        let layout = egui::Layout {
+            main_dir: Direction::TopDown,
+            main_wrap: false,
+            main_align: egui::Align::Center,
+            main_justify: false,
+            cross_align: egui::Align::Center,
+            cross_justify: false,
+        };
 
+        GridBuilder::new()
+            // Allocate a new row
+            .new_row_align(Size::remainder(), egui::Align::Center)
+            // Give this row a couple cells
+            .layout_standard(layout)
+            .clip(true)
+            .cell(Size::remainder())
+            .cell(Size::remainder())
+            .cell(Size::remainder())
+            .cell(Size::remainder())
+            .cell(Size::remainder())
+            .show(ui, |mut grid| {
+                grid.cell(|ui| {
+                    ui.button("Front");
+                });
 
-        ui.horizontal(|ui| {
-            ui.button("Front");
-            ui.button("Top");
-            ui.button("Left");
-            ui.button("Right");
-            ui.button("Normal");
-        });
+                grid.cell(|ui| {
+                    ui.button("Top");
+                });
+
+                grid.cell(|ui| {
+                    ui.button("Left");
+                });
+
+                grid.cell(|ui| {
+                    ui.button("Right");
+                });
+
+                grid.cell(|ui| {
+                    ui.button("Normal");
+                });
+            });
+        
 
     }
 

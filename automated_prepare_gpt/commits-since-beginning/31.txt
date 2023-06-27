@@ -1,0 +1,183 @@
+commit 848777955f3cb0c465063f88f5f481913bb1568b
+Author: GodGotzi <eli.gottsbacher@gmail.com>
+Date:   Tue May 9 23:23:30 2023 +0200
+
+    menubar, sidepanel, mainview
+
+diff --git a/src/fiberslice.rs b/src/fiberslice.rs
+index 6fbba60..d6b1037 100644
+--- a/src/fiberslice.rs
++++ b/src/fiberslice.rs
+@@ -1,5 +1,6 @@
+ pub mod utils;
+ pub mod window;
++pub mod screen;
+ 
+ pub mod wgpu {
+     use wgpu::{Adapter, Device, Instance, Queue, RequestDeviceError, Surface};
+diff --git a/src/fiberslice/screen.rs b/src/fiberslice/screen.rs
+new file mode 100644
+index 0000000..1f9b46a
+--- /dev/null
++++ b/src/fiberslice/screen.rs
+@@ -0,0 +1,81 @@
++mod side;
++mod view;
++
++use egui::{Context, Modifiers, Ui};
++use egui::WidgetType::Slider;
++use crate::fiberslice::screen::menu::menubar_ui;
++
++mod menu {
++    use egui::{Context, Ui};
++
++    pub fn menubar_ui(ctx: &Context) {
++        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
++            egui::menu::bar(ui, |ui| {
++                file_button(ui);
++                edit_button(ui);
++                window_button(ui);
++                view_button(ui);
++                settings_button(ui);
++                help_button(ui);
++            });
++        });
++    }
++
++    fn file_button(ui: &mut Ui) {
++        ui.menu_button("File", |ui| {
++            ui.set_min_width(220.0);
++            ui.style_mut().wrap = Some(false);
++        });
++    }
++
++    fn edit_button(ui: &mut Ui) {
++        ui.menu_button("Edit", |ui| {
++            ui.set_min_width(220.0);
++            ui.style_mut().wrap = Some(false);
++        });
++    }
++
++    fn window_button(ui: &mut Ui) {
++        ui.menu_button("Window", |ui| {
++            ui.set_min_width(220.0);
++            ui.style_mut().wrap = Some(false);
++        });
++    }
++
++    fn view_button(ui: &mut Ui) {
++        ui.menu_button("View", |ui| {
++            ui.set_min_width(220.0);
++            ui.style_mut().wrap = Some(false);
++        });
++    }
++
++    fn settings_button(ui: &mut Ui) {
++        ui.menu_button("Settings", |ui| {
++            ui.set_min_width(220.0);
++            ui.style_mut().wrap = Some(false);
++        });
++    }
++
++    fn help_button(ui: &mut Ui) {
++        ui.menu_button("Help", |ui| {
++            ui.set_min_width(220.0);
++            ui.style_mut().wrap = Some(false);
++        });
++    }
++}
++
++pub struct Screen {
++}
++
++impl Screen {
++    pub fn new() -> Screen {
++        Screen {
++        }
++    }
++
++    pub(crate) fn ui(&mut self, ctx: &Context) {
++        menubar_ui(ctx);
++        side::side_panel_ui(ctx);
++        view::view_panel_ui(ctx);
++    }
++}
+\ No newline at end of file
+diff --git a/src/fiberslice/screen/side.rs b/src/fiberslice/screen/side.rs
+new file mode 100644
+index 0000000..2cb0799
+--- /dev/null
++++ b/src/fiberslice/screen/side.rs
+@@ -0,0 +1,24 @@
++use egui::Context;
++
++pub fn side_panel_ui(ctx: &Context) {
++    egui::SidePanel::right("egui_demo_panel")
++        .resizable(true)
++        .default_width(150.0)
++        .show(ctx, |ui| {
++            TabBar::new("Options").show(ui, |ui| {
++                // Add a tab page
++                TabPage::new("Slice Settings").show(ui, |ui| {
++                    ui.label("This is the content of tab 1");
++                });
++
++                TabPage::new("Filament Settings").show(ui, |ui| {
++                    ui.label("This is the content of tab 2");
++                });
++
++                // Add another tab page
++                TabPage::new("Printer Settings").show(ui, |ui| {
++                    ui.label("This is the content of tab 2");
++                });
++            });
++        });
++}
+\ No newline at end of file
+diff --git a/src/fiberslice/screen/view.rs b/src/fiberslice/screen/view.rs
+new file mode 100644
+index 0000000..49797e0
+--- /dev/null
++++ b/src/fiberslice/screen/view.rs
+@@ -0,0 +1,8 @@
++use egui::Context;
++
++pub fn view_panel_ui(ctx: &Context) {
++    egui::CentralPanel::default()
++        .show(ctx, |ui| {
++
++        });
++}
+\ No newline at end of file
+diff --git a/src/main.rs b/src/main.rs
+index 6a1c4b5..dbb2d6b 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -18,6 +18,7 @@ use fiberslice::utils::Creation;
+ use fiberslice::wgpu::request_wgpu_device;
+ use fiberslice::window::WindowEventObserver;
+ use fiberslice::window::FiberSliceWindow;
++use fiberslice::screen::Screen;
+ 
+ fn main() {
+     let event_loop = EventLoop::create();
+@@ -55,7 +56,7 @@ fn main() {
+ 
+     let mut egui_rpass = RenderPass::new(&device, texture_format, 1);
+ 
+-    let mut demo_app = egui_demo_lib::DemoWindows::default();
++    let mut screen = Screen::new();
+     let start_time = Instant::now();
+ 
+     event_loop.run(move |event, _, control_flow| {
+@@ -84,7 +85,8 @@ fn main() {
+ 
+                 platform.begin_frame();
+ 
+-                demo_app.ui(&platform.context());
++
++                screen.ui(&platform.context());
+ 
+                 let full_output = platform.end_frame(Some(&window));
+                 let paint_jobs = platform.context().tessellate(full_output.shapes);
+

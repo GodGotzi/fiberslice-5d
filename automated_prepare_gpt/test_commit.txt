@@ -1,0 +1,24 @@
+Commit Protocol
+
+Commit SHA: 39a3abd37708500e3a780a725453fb2164e44bf7
+Author: Elias Gottsbacher <eli.gottsbacher@gmail.com>
+Date: Mon Jun 12 22:31:08 2023 +0200
+
+Description:
+The commit introduced updates to the two modules “addons.rs” and “force_analytics.rs” as well as the main file “main.rs” and the prelude file “prelude.rs”. The primary goal of the commit is to complete the “item_wrapper macro typeeq finished” and fix the problem with the “stripbuilder”.
+
+Changes Made:
+• In the “addons.rs” module, the method create_addon_strip_builder() was modified to include a new argument “ctx” and support for a new function “orientation::show()”. The modifications allow for the creation of an OrientationAddon alongside ForceAnalyticsAddont that shows the orientation of a design. The method also now accepts two new mutable references; gui_interface and item_wrapper, which are used to pass data to the “orientation::show()” function.
+• In both the “addons.rs” and “force_analytics.rs” modules, the builder methods were modified to use new macros from the “item_wrapper” module.
+• In the main file “main.rs”, the color used for the material was changed.
+• In the prelude file “prelude.rs”, the “TypeEq” trait was modified to accept the type “T”.
+
+Commit Protocol:
+1. The purpose of the commit is clearly stated. It is mentioned that the modifications were made to “addons.rs”, “force_analytics.rs”, “main.rs” and “prelude.rs”.
+2. The changes made in the commit are mentioned in detail. It is mentioned that modifications were made to the “create_addon_strip_builder()” method, the builder methods and the “TypeEq” trait.
+3. The changes made to the “create_addon_strip_builder()” method are explained in detail. It is mentioned that a new argument “ctx” was added and a new function “orientation::show()” was introduced. It is also mentioned that the method now accepts two new mutable references “gui_interface” and “item_wrapper”.
+4. The modifications made to the “item_wrapper” module are mentioned in detail.
+5. The changes made in the “force_analytics.rs” module are explained in detail. It is mentioned that the builder methods were modified to use the new macros from the “item_wrapper” module.
+6. The changes made in the main file “main.rs” are described. It is mentioned that the color used for the material was changed.
+7. The modifications made in the “prelude.rs” module are described in detail. It is mentioned that the “TypeEq” trait was modified to accept the type “T”.
+8. The commit message is well-formatted and follows best practices for commit messages.

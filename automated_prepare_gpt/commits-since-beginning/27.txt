@@ -1,0 +1,370 @@
+commit 2c8faa4165acc0a8d86dca6bcb371b04d6404926
+Author: Elias Gottsbacher <eli.gottsbacher@gmail.com>
+Date:   Mon May 29 17:16:50 2023 +0200
+
+    bevy implementation
+
+diff --git a/src/fiberslice.rs b/src/fiberslice.rs
+index af009c4..5281b98 100644
+--- a/src/fiberslice.rs
++++ b/src/fiberslice.rs
+@@ -1,2 +1,3 @@
+ pub mod utils;
+-pub mod screen;
+\ No newline at end of file
++pub mod screen;
++mod options;
+\ No newline at end of file
+diff --git a/src/fiberslice/screen/view/options.rs b/src/fiberslice/options.rs
+similarity index 100%
+rename from src/fiberslice/screen/view/options.rs
+rename to src/fiberslice/options.rs
+diff --git a/src/fiberslice/screen.rs b/src/fiberslice/screen.rs
+index 7c5cb20..63d3389 100644
+--- a/src/fiberslice/screen.rs
++++ b/src/fiberslice/screen.rs
+@@ -1,17 +1,14 @@
+ mod side;
+-mod view;
+ 
+-use std::sync::Arc;
+-use eframe::CreationContext;
+-use egui::{Context, Modifiers, Ui};
+-use egui::WidgetType::Slider;
++use bevy_egui::EguiContexts;
+ use crate::fiberslice::screen::menu::menubar_ui;
+ 
+ mod menu {
+-    use egui::{Context, Ui};
++    use bevy_egui::{egui, EguiContexts};
++    use egui::Ui;
+ 
+-    pub fn menubar_ui(ctx: &Context, screen: &mut super::Screen) {
+-        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
++    pub fn menubar_ui(ctx: &egui::Context, screen: &mut super::Screen) {
++        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui: &mut Ui| {
+             egui::menu::bar(ui, |ui| {
+                 theme_button(ui, screen);
+                 ui.separator();
+@@ -88,24 +85,21 @@ mod menu {
+ pub struct Screen {
+     toggle_theme: bool,
+     side_view_data: side::SideView,
+-    view_data: view::View,
+ }
+ 
+ impl Screen {
+-    pub fn new(cc: &CreationContext) -> Screen {
++    pub fn new() -> Screen {
+ 
+         let screen = Screen {
+             toggle_theme: true,
+             side_view_data: side::SideView::init(),
+-            view_data: view::View::init(cc),
+         };
+ 
+         screen
+     }
+ 
+-    pub(crate) fn ui(&mut self, ctx: &Context) {
++    pub(crate) fn ui(&mut self, ctx: &egui::Context) {
+         menubar_ui(ctx, self);
+         self.side_view_data.side_panel_ui(ctx);
+-        self.view_data.view_panel_ui(ctx);
+     }
+ }
+\ No newline at end of file
+diff --git a/src/fiberslice/screen/view.rs b/src/fiberslice/screen/view.rs
+deleted file mode 100644
+index 243b745..0000000
+--- a/src/fiberslice/screen/view.rs
++++ /dev/null
+@@ -1,224 +0,0 @@
+-mod options;
+-
+-use egui::{CollapsingHeader, Context, Margin, Ui};
+-use std::sync::Arc;
+-
+-use eframe::{egui_glow, Frame};
+-use eframe::epaint::Stroke;
+-use egui::mutex::Mutex;
+-use egui_glow::glow;
+-use crate::fiberslice::screen::view::options::LeftOptionPane;
+-
+-
+-pub(crate) struct View {
+-    object_view: ObjectView,
+-    left_option_pane: LeftOptionPane,
+-}
+-
+-impl View {
+-    pub fn init(cc: &eframe::CreationContext) -> Self {
+-
+-        let mut object_view = ObjectView::new();
+-        object_view.init_gl(cc.gl.as_ref().unwrap());
+-
+-        let option_pane = LeftOptionPane::default();
+-
+-        Self {
+-            object_view,
+-            left_option_pane: option_pane
+-        }
+-    }
+-
+-    pub fn view_panel_ui(&mut self, ctx: &Context) {
+-        egui::CentralPanel::default()
+-            .frame(egui::Frame::dark_canvas(&ctx.style()))
+-            .show(ctx, |ui| {
+-                self.left_option_pane.ui(ctx, ui);
+-                self.object_view.ui(ctx, ui);
+-            });
+-    }
+-
+-    pub fn get_left_option_pane(&mut self) -> &mut LeftOptionPane {
+-        &mut self.left_option_pane
+-    }
+-}
+-
+-pub struct ObjectView {
+-    /// Behind an `Arc<Mutex<…>>` so we can pass it to [`egui::PaintCallback`] and paint later.
+-    rotating_triangle: Option<Arc<Mutex<RotatingTriangle>>>,
+-    angle: f32,
+-}
+-
+-impl ObjectView {
+-    pub fn new() -> Self {
+-        Self {
+-            rotating_triangle: None,
+-            angle: 0.0,
+-        }
+-    }
+-
+-    pub fn init_gl(&mut self, gl: &glow::Context) {
+-        self.rotating_triangle = Some(Arc::new(Mutex::new(RotatingTriangle::new(gl))));
+-    }
+-
+-    fn ui(&mut self, ctx: &Context, ui: &mut egui::Ui) {
+-        egui::CentralPanel::default()
+-            .show(ctx, |ui| {
+-                self.paint(ui);
+-            });
+-    }
+-
+-    fn paint(&mut self, ui: &mut Ui) {
+-        let (rect, response) =
+-            ui.allocate_exact_size(egui::Vec2::splat(300.0), egui::Sense::drag());
+-
+-        self.angle += response.drag_delta().x * 0.01;
+-
+-        // Clone locals so we can move them into the paint callback:
+-        let angle = self.angle;
+-        let rotating_triangle = self.rotating_triangle.clone().unwrap();
+-
+-        let cb = egui_glow::CallbackFn::new(move |_info, painter| {
+-            rotating_triangle.lock().paint(painter.gl(), angle);
+-        });
+-
+-        let callback = egui::PaintCallback {
+-            rect,
+-            callback: Arc::new(cb),
+-        };
+-        ui.painter().add(callback);
+-    }
+-
+-    fn on_exit(&mut self, gl: Option<&glow::Context>) {
+-        if let Some(gl) = gl {
+-            self.rotating_triangle.as_ref().unwrap().lock().destroy(gl);
+-        }
+-    }
+-}
+-
+-struct RotatingTriangle {
+-    program: glow::Program,
+-    vertex_array: glow::VertexArray,
+-}
+-
+-#[allow(unsafe_code)] // we need unsafe code to use glow
+-impl RotatingTriangle {
+-    fn new(gl: &glow::Context) -> Self {
+-        use glow::HasContext as _;
+-
+-        let shader_version = egui_glow::ShaderVersion::get(gl);
+-
+-        unsafe {
+-            let program = gl.create_program().expect("Cannot create program");
+-
+-            /*
+-            if !shader_version.is_new_shader_interface() {
+-
+-            }
+-             */
+-
+-            let (vertex_shader_source, fragment_shader_source) = (
+-                r#"
+-                    const vec2 verts[3] = vec2[3](
+-                        vec2(0.0, 1.0),
+-                        vec2(-1.0, -1.0),
+-                        vec2(1.0, -1.0)
+-                    );
+-                    const vec4 colors[3] = vec4[3](
+-                        vec4(1.0, 0.0, 0.0, 1.0),
+-                        vec4(0.0, 1.0, 0.0, 1.0),
+-                        vec4(0.0, 0.0, 1.0, 1.0)
+-                    );
+-                    out vec4 v_color;
+-                    uniform float u_angle;
+-                    void main() {
+-                        v_color = colors[gl_VertexID];
+-                        gl_Position = vec4(verts[gl_VertexID], 0.0, 1.0);
+-                        gl_Position.x *= cos(u_angle);
+-                    }
+-                "#,
+-                r#"
+-                    precision mediump float;
+-                    in vec4 v_color;
+-                    out vec4 out_color;
+-                    void main() {
+-                        out_color = v_color;
+-                    }
+-                "#,
+-            );
+-
+-            let shader_sources = [
+-                (glow::VERTEX_SHADER, vertex_shader_source),
+-                (glow::FRAGMENT_SHADER, fragment_shader_source),
+-            ];
+-
+-            let shaders: Vec<_> = shader_sources
+-                .iter()
+-                .map(|(shader_type, shader_source)| {
+-                    let shader = gl
+-                        .create_shader(*shader_type)
+-                        .expect("Cannot create shader");
+-                    gl.shader_source(
+-                        shader,
+-                        &format!(
+-                            "{}\n{}",
+-                            shader_version.version_declaration(),
+-                            shader_source
+-                        ),
+-                    );
+-                    gl.compile_shader(shader);
+-                    assert!(
+-                        gl.get_shader_compile_status(shader),
+-                        "Failed to compile custom_3d_glow {shader_type}: {}",
+-                        gl.get_shader_info_log(shader)
+-                    );
+-
+-                    gl.attach_shader(program, shader);
+-                    shader
+-                })
+-                .collect();
+-
+-            gl.link_program(program);
+-            assert!(
+-                gl.get_program_link_status(program),
+-                "{}",
+-                gl.get_program_info_log(program)
+-            );
+-
+-            for shader in shaders {
+-                gl.detach_shader(program, shader);
+-                gl.delete_shader(shader);
+-            }
+-
+-            let vertex_array = gl
+-                .create_vertex_array()
+-                .expect("Cannot create vertex array");
+-
+-            Self {
+-                program,
+-                vertex_array,
+-            }
+-        }
+-    }
+-
+-    fn destroy(&self, gl: &glow::Context) {
+-        use glow::HasContext as _;
+-        unsafe {
+-            gl.delete_program(self.program);
+-            gl.delete_vertex_array(self.vertex_array);
+-        }
+-    }
+-
+-    fn paint(&self, gl: &glow::Context, angle: f32) {
+-        use glow::HasContext as _;
+-        unsafe {
+-            gl.use_program(Some(self.program));
+-            gl.uniform_1_f32(
+-                gl.get_uniform_location(self.program, "u_angle").as_ref(),
+-                angle,
+-            );
+-            gl.bind_vertex_array(Some(self.vertex_array));
+-            gl.draw_arrays(glow::TRIANGLES, 0, 3);
+-        }
+-    }
+-}
+diff --git a/src/main.rs b/src/main.rs
+index 07dbdd4..850a811 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -1,18 +1,21 @@
+ mod fiberslice;
+ mod component;
+ 
+-use std::sync::Arc;
+-use eframe::egui;
+-use egui_glow::glow::Context;
+ use fiberslice::screen::Screen;
+ 
++use bevy::prelude::*;
++use bevy_egui::{EguiContexts, EguiPlugin};
++
+ fn main() {
+-    let native_options = eframe::NativeOptions::default();
+-    eframe::run_native("FiberSlice",
+-                       native_options,
+-                       Box::new(|cc|
+-                           Box::new(FiberSlice::new(cc))))
+-        .expect("Something went wrong while creating the frame");
++    let mut fiberslice = FiberSlice::new();
++
++    App::new()
++        .add_plugins(DefaultPlugins)
++        .add_plugin(EguiPlugin)
++        .add_system(move |contexts: EguiContexts| {
++            fiberslice.show_ui(contexts)
++        })
++        .run();
+ }
+ 
+ struct FiberSlice {
+@@ -20,20 +23,17 @@ struct FiberSlice {
+ }
+ 
+ impl FiberSlice {
+-    fn new(cc: &eframe::CreationContext) -> Self {
+-        // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
+-        // Restore app state using cc.storage (requires the "persistence" feature).
+-        // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
+-        // for e.g. egui::PaintCallback.
+-
++    fn new() -> Self {
+         Self {
+-            screen: Screen::new(cc),
++            screen: Screen::new(),
+         }
+     }
+ }
+ 
+-impl eframe::App for FiberSlice {
+-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
++impl FiberSlice {
++    fn show_ui(&mut self, mut contexts: EguiContexts) {
++        let ctx = contexts.ctx_mut();
++
+         self.screen.ui(ctx);
+     }
+ }
+\ No newline at end of file
+

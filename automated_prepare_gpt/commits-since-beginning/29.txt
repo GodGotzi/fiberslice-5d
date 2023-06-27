@@ -1,0 +1,127 @@
+commit 57bb5bd01334c8460cf06b759ff696a124b5dba8
+Author: Elias Gottsbacher <eli.gottsbacher@gmail.com>
+Date:   Sat May 13 21:37:23 2023 +0200
+
+    tabbed view
+
+diff --git a/src/component.rs b/src/component.rs
+new file mode 100644
+index 0000000..2cf47c7
+--- /dev/null
++++ b/src/component.rs
+@@ -0,0 +1 @@
++pub(crate) mod tabbed_view;
+\ No newline at end of file
+diff --git a/src/component/tabbed_view.rs b/src/component/tabbed_view.rs
+new file mode 100644
+index 0000000..eaefd49
+--- /dev/null
++++ b/src/component/tabbed_view.rs
+@@ -0,0 +1,45 @@
++use egui::epaint::ahash::HashMap;
++use egui::Ui;
++
++#[derive(Clone, Copy, PartialEq)]
++pub struct Tab<'a> {
++    title: &'a str,
++    show: fn(&'a mut Ui),
++}
++
++impl <'a> Tab<'a> {
++    pub fn new(title: &'a str, show: fn(&'a mut Ui)) -> Self {
++        Self {
++            title,
++            show,
++        }
++    }
++}
++
++pub struct TabbedView<'a> {
++    tabs: &'a mut Vec<Tab<'a>>,
++    open_tab_index: &'a mut usize,
++}
++
++impl <'a> TabbedView<'a> {
++    pub fn new(tabs: &'a mut Vec<Tab<'a>>, start_index: &'a mut usize) -> Self {
++
++        Self {
++            tabs,
++            open_tab_index: start_index,
++        }
++    }
++
++    pub fn show(&'a mut self, ui: &'a mut Ui) {
++        ui.separator();
++        ui.horizontal(|ui| {
++            for i in 0..self.tabs.len() {
++                let tab = &mut self.tabs[i];
++                ui.selectable_value(self.open_tab_index, i, tab.title);
++            }
++        });
++
++        ui.separator();
++        (self.tabs[*self.open_tab_index].show)(ui);
++    }
++}
+\ No newline at end of file
+diff --git a/src/fiberslice/screen/side.rs b/src/fiberslice/screen/side.rs
+index 5330648..9511fff 100644
+--- a/src/fiberslice/screen/side.rs
++++ b/src/fiberslice/screen/side.rs
+@@ -1,10 +1,27 @@
+ use egui::Context;
++use crate::component::tabbed_view::*;
+ 
+ pub fn side_panel_ui(ctx: &Context) {
+     egui::SidePanel::right("egui_demo_panel")
+         .resizable(true)
+         .default_width(150.0)
+         .show(ctx, |ui| {
++            let mut tabs = vec![
++                Tab::new("Slice Settings", |ui| {
++                    ui.label("This is the content of tab 1");
++                }),
++                Tab::new("Filament Settings", |ui| {
++                    ui.label("This is the content of tab 2");
++                }),
++                Tab::new("Printer Settings", |ui| {
++                    ui.label("This is the content of tab 3");
++                }),
++            ];
++
++            let mut start_index = 0;
++            let mut tabview = TabbedView::new(&mut tabs, &mut start_index);
++
++            tabview.show(ui);
+             /*
+             TabBar::new("Options").show(ui, |ui| {
+                 // Add a tab page
+diff --git a/src/main.rs b/src/main.rs
+index dbb2d6b..fdd1dc3 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -1,5 +1,6 @@
+ mod window_builder;
+ mod fiberslice;
++mod component;
+ 
+ use std::iter;
+ use std::time::Instant;
+@@ -33,7 +34,6 @@ fn main() {
+ 
+     let size = window.inner_size();
+ 
+-
+     let texture_format = TextureFormat::Bgra8UnormSrgb;
+     let mut surface_config = wgpu::SurfaceConfiguration {
+         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+@@ -59,6 +59,8 @@ fn main() {
+     let mut screen = Screen::new();
+     let start_time = Instant::now();
+ 
++    let mut demo_app = egui_demo_lib::DemoWindows::default();
++
+     event_loop.run(move |event, _, control_flow| {
+         platform.handle_event(&event);
+ 
+

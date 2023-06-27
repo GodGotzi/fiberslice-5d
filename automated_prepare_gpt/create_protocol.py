@@ -2,8 +2,20 @@ import sys
 import os
 from enum import Enum
 from git import Repo
+import openai
+
+if len(sys.argv) < 3:
+   print("Usage: python create_protocol.py [filename] [api_key] [since?optional]")
+   exit()
+
+openai.api_key = sys.argv[2]
 
 DEBUG = False
+
+def split(list_a, chunk_size):
+
+  for i in range(0, len(list_a), chunk_size):
+    yield list_a[i:i + chunk_size]
 
 def debug_print(str):
    if DEBUG:
@@ -23,6 +35,10 @@ class Token:
 class TokenArmy:
    def __init__(self, tokens: list):
       self.tokens = tokens
+
+class Commit:
+   def __init__(self, commit: list[str]):
+      self.commits: list[list[str]] = list(split(commit, 900))
 
 def check_token(line, token: Token):
    if token.position == TokenPosition.STARTS:
@@ -56,15 +72,15 @@ def check_reset(line: list, tokens: list):
 def check_hit(line: list, token_filters: list):
    return contains_anything(line, token_filters)
 
-def record_new_lines(lines, token_filters, reset_token):
-   commits = [[]]
-   commit_index = 0
+def record_new_lines(lines: list[str], token_filters, reset_token):
+   commits: list[Commit] = []
+   commit_index = -1
    record = True
 
    for line in lines:
       if check_token(line, Token('commit ', position=TokenPosition.STARTS)):
+         commits.append(Commit([]))
          commit_index += 1
-         commits.append([])
          debug_print("New commit: " + str(commit_index))
 
       if check_reset(line, reset_token.tokens):
@@ -73,9 +89,9 @@ def record_new_lines(lines, token_filters, reset_token):
       if check_hit(line, token_filters):
          record = False
       
-      if record:
-         commits[commit_index].append(line)
-         commits[commit_index].append('\n')
+      if record and commit_index >= 0:
+         commits[commit_index].commits.append(line)
+         commits[commit_index].commits.append('\n')
 
    return commits
 
@@ -84,14 +100,10 @@ token_filters = [
    TokenArmy([Token('diff ', position=TokenPosition.STARTS), Token('.rs', flag=False)]),
 ]
 
-if len(sys.argv) < 2:
-   print("Usage: python create_protocol.py [filename] [since?optional]")
-   exit()
-
 repo: Repo = Repo("../")
 
-if len(sys.argv) > 2:
-   since = '--since=' + sys.argv[2]
+if len(sys.argv) > 3:
+   since = '--since=' + sys.argv[3]
 else:
    since = '--since=2022-01-01'
 
@@ -99,16 +111,53 @@ print("Since: " + since)
 # Retrieve the git log
 lines = repo.git.log("-p", since).splitlines()
 
-commits = record_new_lines(
+commits: Commit = record_new_lines(
    lines, 
    token_filters, 
    TokenArmy([Token('diff ', position=TokenPosition.STARTS)])
 )
 
+commits.pop(0)
+commits.pop(0)
+commits.pop(0)
+commits.pop()
+commits.pop()
+commits.reverse()
+
+def describe_commit(commits: list[Commit]):
+
+   desc_results = []
+   messages = []
+   for commit in commits:
+      result = ''
+
+      for child_commit in commit.commits:
+         messages.append({"role": "user", "content": "Please create a Commit Protocol for the following commit. \n\n" + (''.join(child_commit)) + "\n\n"})
+
+         response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=messages
+         )
+
+         for choice in response.choices:
+            result += choice.message.content
+      
+      desc_results.append(result)
+   # creating a list to store all the outputs
+
+   return desc_results
+
+
+#results = describe_commit(commits)
+
+results = []
+
+print(results)
+
 if not os.path.exists(sys.argv[1]):
    os.makedirs(sys.argv[1])
 
-for i in range(len(commits)):
-   file = open(sys.argv[1] + '/' + str(i) + '.txt', "w", encoding='utf-16-le')
-   file.writelines(commits[i])
+for i in range(len(results)):
+   file = open(sys.argv[1] + '/' + str(i) + '.txt', "w", encoding='utf-8')
+   file.write(results[i])
    file.close()
