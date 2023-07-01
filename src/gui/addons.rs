@@ -53,8 +53,8 @@ pub fn create_addon_strip_builder(
 
 
 pub mod orientation {
-    use bevy::{prelude::ResMut, ui::widget};
-    use bevy_egui::egui::{Ui, self, Direction, Layout};
+    use bevy::{prelude::ResMut};
+    use bevy_egui::egui::{Ui, self, Direction};
     use egui_extras::Size;
     use egui_grid::GridBuilder;
 

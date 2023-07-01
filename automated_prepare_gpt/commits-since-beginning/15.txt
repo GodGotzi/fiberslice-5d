@@ -1,6 +1,0 @@
-commit 6a6644d248c617e212d0a6a24abc16c40e5a4f2b
-Author: GodGotzi <eli.gottsbacher@gmail.com>
-Date:   Sun Jun 4 19:38:36 2023 +0200
-
-    copyright update
-
