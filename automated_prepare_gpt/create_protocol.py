@@ -8,6 +8,9 @@ if len(sys.argv) < 3:
    print("Usage: python create_protocol.py [filename] [api_key] [since?optional]")
    exit()
 
+if not os.path.exists(sys.argv[1]):
+   os.makedirs(sys.argv[1])
+
 openai.api_key = sys.argv[2]
 
 DEBUG = False
@@ -95,37 +98,7 @@ def record_new_lines(lines: list[str], token_filters, reset_token):
 
    return commits
 
-token_filters = [
-   TokenArmy([Token('[package]')]), 
-   TokenArmy([Token('diff ', position=TokenPosition.STARTS), Token('.rs', flag=False)]),
-]
-
-repo: Repo = Repo("../")
-
-if len(sys.argv) > 3:
-   since = '--since=' + sys.argv[3]
-else:
-   since = '--since=2022-01-01'
-
-print("Since: " + since)
-# Retrieve the git log
-lines = repo.git.log("-p", since).splitlines()
-
-commits: Commit = record_new_lines(
-   lines, 
-   token_filters, 
-   TokenArmy([Token('diff ', position=TokenPosition.STARTS)])
-)
-
-commits.pop(0)
-commits.pop(0)
-commits.pop(0)
-commits.pop()
-commits.pop()
-commits.reverse()
-
 def describe_commit(commits: list[Commit]):
-
    desc_results = []
    messages = []
    for commit in commits:
@@ -143,21 +116,46 @@ def describe_commit(commits: list[Commit]):
             result += choice.message.content
       
       desc_results.append(result)
-   # creating a list to store all the outputs
 
    return desc_results
 
+def write_commit_files(commits: list[list[str]], child_folder: str):
+   if not os.path.exists(sys.argv[1] + '/'+ child_folder):
+      os.makedirs(sys.argv[1] + '/'+ child_folder)
 
-#results = describe_commit(commits)
+   for i in range(len(commits)):
+      file = open(sys.argv[1] + '/'+ child_folder + '/' + str(i) + '.txt', "w+", encoding='utf-8')
+      file.write(commits[i])
+      file.close()
+ 
+
+token_filters = [
+   TokenArmy([Token('[package]')]), 
+   TokenArmy([Token('diff ', position=TokenPosition.STARTS), Token('.rs', flag=False)]),
+]
+
+repo: Repo = Repo("../")
+
+if len(sys.argv) > 3:
+   since = '--since=' + sys.argv[3]
+else:
+   since = '--since=2022-01-01'
+
+print("Since: " + since)
+
+lines = repo.git.log("-p", since).splitlines()
+
+commits: Commit = record_new_lines(
+   lines, 
+   token_filters, 
+   TokenArmy([Token('diff ', position=TokenPosition.STARTS)])
+)
 
 results = []
 
+#results = describe_commit(commits)
+
 print(results)
 
-if not os.path.exists(sys.argv[1]):
-   os.makedirs(sys.argv[1])
-
-for i in range(len(results)):
-   file = open(sys.argv[1] + '/' + str(i) + '.txt', "w", encoding='utf-8')
-   file.write(results[i])
-   file.close()
+write_commit_files(commits, 'raw_commits')
+write_commit_files(results, 'protocols')
