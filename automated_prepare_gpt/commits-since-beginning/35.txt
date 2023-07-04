@@ -1,6 +1,0 @@
-commit cd62298f191afc36f29f9319b90d1a7651b6d7bd
-Author: Elias Gottsbacher <95647640+GodGotzi@users.noreply.github.com>
-Date:   Mon May 8 20:54:40 2023 +0200
-
-    Create README.md
-

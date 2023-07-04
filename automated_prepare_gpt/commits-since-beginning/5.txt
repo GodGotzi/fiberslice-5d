@@ -1,6 +1,0 @@
-commit dde81036400f157c9a91788f71cd14736260cded
-Author: Elias Gottsbacher <eli.gottsbacher@gmail.com>
-Date:   Mon Jun 12 08:38:17 2023 +0200
-
-    remove target folder in type_eq macro
-
