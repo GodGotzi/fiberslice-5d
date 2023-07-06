@@ -14,7 +14,6 @@ use crate::gui::{self, Component};
 use crate::utils::Creation;
 
 
-
 pub struct AsyncPacket {
     sync_element: Option<Item>,
     async_element: Option<Item>

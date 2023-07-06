@@ -39,7 +39,7 @@ pub fn show(
                                         ui.painter().rect_filled(
                                             ui.available_rect_before_wrap(),
                                             2.0,
-                                            Color32::TRANSPARENT,
+                                            shaded_color,
                                         );
 
                                         super::orientation::show(ui, item_wrapper);

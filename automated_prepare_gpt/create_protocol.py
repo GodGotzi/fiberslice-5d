@@ -76,13 +76,13 @@ def check_hit(line: list, token_filters: list):
    return contains_anything(line, token_filters)
 
 def record_new_lines(lines: list[str], token_filters, reset_token):
-   commits: list[Commit] = []
+   raw_commits: list[list[str]] = []
    commit_index = -1
    record = True
 
    for line in lines:
       if check_token(line, Token('commit ', position=TokenPosition.STARTS)):
-         commits.append(Commit([]))
+         raw_commits.append([])
          commit_index += 1
          debug_print("New commit: " + str(commit_index))
 
@@ -93,10 +93,10 @@ def record_new_lines(lines: list[str], token_filters, reset_token):
          record = False
       
       if record and commit_index >= 0:
-         commits[commit_index].commits.append(line)
-         commits[commit_index].commits.append('\n')
+         raw_commits[commit_index].append(line)
+         raw_commits[commit_index].append('\n')
 
-   return commits
+      return raw_commits
 
 def describe_commit(commits: list[Commit]):
    desc_results = []
@@ -125,7 +125,7 @@ def write_commit_files(commits: list[list[str]], child_folder: str):
 
    for i in range(len(commits)):
       file = open(sys.argv[1] + '/'+ child_folder + '/' + str(i) + '.txt', "w+", encoding='utf-8')
-      file.write(commits[i])
+      file.writelines(commits[i])
       file.close()
  
 
@@ -145,17 +145,20 @@ print("Since: " + since)
 
 lines = repo.git.log("-p", since).splitlines()
 
-commits: Commit = record_new_lines(
+raw_commits: list[list[str]] = record_new_lines(
    lines, 
    token_filters, 
    TokenArmy([Token('diff ', position=TokenPosition.STARTS)])
 )
 
-results = []
+commits: list[Commit] = []
 
+for raw_commit in raw_commits:
+   commits.append(Commit(raw_commit))
+
+write_commit_files(raw_commits, 'raw_commits')
+
+results = []
 #results = describe_commit(commits)
 
-print(results)
-
-write_commit_files(commits, 'raw_commits')
 write_commit_files(results, 'protocols')

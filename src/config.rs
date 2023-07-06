@@ -11,12 +11,12 @@ pub mod default {
 }
 
 pub mod gui {
-    use bevy_egui::egui;
+    use bevy_egui::egui::{self};
 
 
     pub const fn shaded_color(darkmode: bool) -> egui::Color32 {
         match darkmode {
-            true => egui::Color32::from_rgba_premultiplied(25, 25, 25, 100),
+            true =>  egui::Color32::from_rgba_premultiplied(25, 25, 25, 100),
             false => egui::Color32::from_rgba_premultiplied(145, 145, 145, 50),
         }
     }

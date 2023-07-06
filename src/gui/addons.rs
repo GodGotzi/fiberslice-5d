@@ -54,7 +54,7 @@ pub fn create_addon_strip_builder(
 
 pub mod orientation {
     use bevy::{prelude::ResMut};
-    use bevy_egui::egui::{Ui, self, Direction};
+    use bevy_egui::egui::{Ui, self, Direction, Button};
     use egui_extras::Size;
     use egui_grid::GridBuilder;
 
@@ -63,8 +63,8 @@ pub mod orientation {
     pub fn show(ui: &mut Ui, _item_wrapper: &mut ResMut<AsyncWrapper>) {
         
         let layout = egui::Layout {
-            main_dir: Direction::TopDown,
-            main_wrap: false,
+            main_dir: Direction::RightToLeft,
+            main_wrap: true,
             main_align: egui::Align::Center,
             main_justify: false,
             cross_align: egui::Align::Center,
@@ -78,30 +78,35 @@ pub mod orientation {
             .layout_standard(layout)
             .clip(true)
             .cell(Size::remainder())
-            .cell(Size::remainder())
-            .cell(Size::remainder())
-            .cell(Size::remainder())
+            .cell(Size::initial(30.0))
+            .cell(Size::initial(30.0))
+            .cell(Size::initial(30.0))
+            .cell(Size::initial(30.0))
+            .cell(Size::initial(30.0))
             .cell(Size::remainder())
             .show(ui, |mut grid| {
+                grid.empty();
                 grid.cell(|ui| {
-                    ui.button("Front");
+                    ui.add_sized([30., 30.], Button::new(""));
                 });
 
                 grid.cell(|ui| {
-                    ui.button("Top");
+                    
+                    ui.add_sized([30., 30.], Button::new(""));
                 });
 
                 grid.cell(|ui| {
-                    ui.button("Left");
+                    ui.add_sized([30., 30.], Button::new(""));
                 });
 
                 grid.cell(|ui| {
-                    ui.button("Right");
+                    ui.add_sized([30., 30.], Button::new(""));
                 });
 
                 grid.cell(|ui| {
-                    ui.button("Normal");
+                    ui.add_sized([30., 30.], Button::new(""));
                 });
+                grid.empty();
             });
         
 
