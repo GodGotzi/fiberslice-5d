@@ -8,13 +8,15 @@ edition = "2021"
 
 [dependencies]
 egui_grid = "0.1.0"
-egui_extras = "0.21.0"
+egui_extras = { version = "0.21.0", features = ["image"] }
 bevy = "0.10.1"
 bevy_egui = "0.20"
 smooth-bevy-cameras = "0.8.0"
 bevy_atmosphere = "0.6.0"
 bevy_stl = "0.8.0"
-strum = "0.24.1"
-strum_macros = "0.24.3"
+strum = "0.25.0"
+strum_macros = "0.25.0"
+image = { version = "0.24.6" }
+lazy_static = "1.4.0"
 type_eq = { path = "type_eq" }
 type_eq_derive = { path = "type_eq/type_eq_derive" }

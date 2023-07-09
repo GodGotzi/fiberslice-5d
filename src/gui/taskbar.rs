@@ -3,14 +3,14 @@ use bevy_egui::egui::{self, Ui};
 use egui::Context;
 
 use crate::{prelude::*, config};
-use crate::{gui, utils::Creation};
+use crate::gui;
 
 pub struct Taskbar {
 
 }
 
-impl Creation for Taskbar {
-    fn create() -> Self {
+impl Taskbar {
+    pub fn new() -> Self {
         Self {
         }
     }

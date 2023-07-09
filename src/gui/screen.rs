@@ -10,7 +10,6 @@ use bevy_egui::egui::{self, Color32};
 use crate::{prelude::{Item, Mode, AsyncWrapper}, config};
 
 use super::{gui, settingsbar, addons, menubar, taskbar, modebar, toolbar};
-use crate::utils::Creation;
 
 pub struct Screen {
     mode: Mode,
@@ -20,6 +19,7 @@ pub struct Screen {
     taskbar: taskbar::Taskbar,
     modebar: modebar::Modebar,
     toolbar: toolbar::Toolbar,
+    //icontable: icon::IconTable
 }
 
 impl Screen {
@@ -42,16 +42,17 @@ impl Screen {
 
 }
 
-impl Creation for Screen {
-    fn create() -> Screen {
-        Screen {
+impl Screen {
+    pub fn new() -> Self {
+
+        Self {
             mode: Mode::Prepare,
-            settings: settingsbar::Settingsbar::create(),
-            addons: addons::Addons::create(),
-            menubar: menubar::Menubar::create(),
-            taskbar: taskbar::Taskbar::create(),
-            modebar: modebar::Modebar::create(),
-            toolbar: toolbar::Toolbar::create(),
+            settings: settingsbar::Settingsbar::new(),
+            addons: addons::Addons::new(),
+            menubar: menubar::Menubar::new(),
+            taskbar: taskbar::Taskbar::new(),
+            modebar: modebar::Modebar::new(),
+            toolbar: toolbar::Toolbar::new()
         }
     }
 }
@@ -74,6 +75,8 @@ impl gui::Component<Screen> for Screen {
 
         egui::CentralPanel::default().frame(frame)
         .show(ctx, |ui| {
+
+            //self.icontable.get_orientation_icon(crate::view::Orientation::Default).show(ui);
 
             self.addons.show(ctx, Some(ui), Some(&mut self.mode), gui_interface, item_wrapper);
             self.settings.show(ctx, Some(ui), Some(&mut self.mode), gui_interface, item_wrapper);

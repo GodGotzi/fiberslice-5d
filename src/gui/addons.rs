@@ -9,7 +9,7 @@ use bevy::prelude::{Vec2, ResMut};
 use bevy_egui::egui::{self, Ui, Response, Color32};
 use egui_extras::{StripBuilder, Size};
 
-use crate::{gui, utils::Creation, prelude::{AsyncWrapper, Mode}, config};
+use crate::{gui, prelude::{AsyncWrapper, Mode}, config};
 
 use super::{Boundary, screen::Screen};
 
@@ -54,11 +54,11 @@ pub fn create_addon_strip_builder(
 
 pub mod orientation {
     use bevy::{prelude::ResMut};
-    use bevy_egui::egui::{Ui, self, Direction, Button};
+    use bevy_egui::egui::{Ui, self, Direction, Button, ImageButton};
     use egui_extras::Size;
     use egui_grid::GridBuilder;
 
-    use crate::prelude::AsyncWrapper;
+    use crate::{prelude::AsyncWrapper, gui::icon};
 
     pub fn show(ui: &mut Ui, _item_wrapper: &mut ResMut<AsyncWrapper>) {
         
@@ -87,7 +87,15 @@ pub mod orientation {
             .show(ui, |mut grid| {
                 grid.empty();
                 grid.cell(|ui| {
-                    ui.add_sized([30., 30.], Button::new(""));
+                    let icon = icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Default);
+
+                    let image_button = ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
+
+                    let response = ui.add_sized([30., 30.], image_button);
+
+                    if response.clicked() {
+                        println!("Clicked Normal");
+                    }
                 });
 
                 grid.cell(|ui| {
@@ -96,7 +104,15 @@ pub mod orientation {
                 });
 
                 grid.cell(|ui| {
-                    ui.add_sized([30., 30.], Button::new(""));
+                    let icon = icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Default);
+
+                    let image_button = ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
+
+                    let response = ui.add_sized([30., 30.], image_button);
+
+                    if response.clicked() {
+                        println!("Clicked Front");
+                    }
                 });
 
                 grid.cell(|ui| {
@@ -115,12 +131,13 @@ pub mod orientation {
 
 }
 
-pub struct Addons;
+pub struct Addons {
 
-impl Creation for Addons {
-    fn create() -> Self {
-        Self {
-        }
+}
+
+impl Addons {
+    pub fn new() -> Self {
+        Self {}
     }
 }
 
@@ -130,7 +147,7 @@ impl gui::Component<Addons> for Addons {
         ui_op: Option<&mut Ui>,
         mode_ctx: Option<&mut Mode>,
         gui_interface: &mut bevy::prelude::ResMut<gui::Interface>,          
-        item_wrapper: &mut ResMut<AsyncWrapper>,
+        item_wrapper: &mut ResMut<AsyncWrapper>
     ) {
         let ui = ui_op.unwrap();
 

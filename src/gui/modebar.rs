@@ -3,12 +3,12 @@ use bevy_egui::egui::{self, Direction, Ui};
 use egui_extras::Size;
 use egui_grid::GridBuilder;
 
-use crate::{utils::Creation, prelude::*, config};
+use crate::{prelude::*, config};
 
 pub struct Modebar;
 
-impl Creation for Modebar {
-    fn create() -> Self {
+impl Modebar {
+    pub fn new() -> Self {
         Self { }
     }
 }

@@ -4,6 +4,7 @@ mod settingsbar;
 mod taskbar;
 mod modebar;
 mod toolbar;
+pub mod icon;
 
 pub mod screen;
 

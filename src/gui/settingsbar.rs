@@ -11,7 +11,7 @@ use egui::{Context, Direction, Ui};
 use egui_extras::Size;
 use egui_grid::GridBuilder;
 
-use crate::{prelude::*, utils::Creation, config};
+use crate::{prelude::*, config};
 
 
 #[derive(PartialEq)]
@@ -117,13 +117,13 @@ impl TabbedSettings {
 }
 
 pub struct Settingsbar {
-    open_panel: SettingsPanel,
+    open_panel: SettingsPanel
 }
 
-impl Creation for Settingsbar {
-    fn create() -> Self {
+impl Settingsbar {
+    pub fn new() -> Self {
         Self {
-            open_panel: SettingsPanel::Slice,
+            open_panel: SettingsPanel::Slice
         }
     }
 }

@@ -2,13 +2,13 @@
 use bevy::prelude::ResMut;
 use bevy_egui::egui::{self, Ui};
 
-use crate::{utils::Creation, prelude::*, config};
+use crate::{prelude::*, config};
 
 
 pub struct Toolbar;
 
-impl Creation for Toolbar {
-    fn create() -> Self {
+impl Toolbar {
+    pub fn new() -> Self {
         Self { }
     }
 }

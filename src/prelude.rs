@@ -11,7 +11,6 @@ use type_eq_derive::TypeEq;
 
 use crate::gui::screen::Screen;
 use crate::gui::{self, Component};
-use crate::utils::Creation;
 
 
 pub struct AsyncPacket {
@@ -119,8 +118,9 @@ pub struct FiberSlice {
 impl FiberSlice {
 
     pub fn new() -> Self {
+        
         Self {
-            screen: Screen::create()
+            screen: gui::screen::Screen::new()
         }
     }
 

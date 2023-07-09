@@ -3,14 +3,13 @@ use bevy_egui::egui;
 use egui::Ui;
 
 use crate::{prelude::*, config};
-use crate::utils::Creation;
 use crate::gui;
 
 pub struct Menubar;
 
 
-impl Creation for Menubar {
-    fn create() -> Self {
+impl Menubar {
+    pub fn new() -> Self {
         Self {}
     }
 }
