@@ -20,13 +20,11 @@ use prelude::{FiberSlice, Item, AsyncWrapper, AsyncPacket};
 use smooth_bevy_cameras::LookTransformPlugin;
 
 use bevy::prelude::*;
-use bevy::window::{PresentMode, WindowResolution};
+use bevy::window::{PresentMode, WindowResolution, WindowMode};
 
 use strum::IntoEnumIterator;
 use view::camera::CameraPlugin;
 use view::orbit::{PossibleOrbitTarget, Orbit};
-
-
 
 fn main() {
     let mut list: Vec<AsyncPacket> = Vec::new();
@@ -37,11 +35,12 @@ fn main() {
 
     let window_plugin = WindowPlugin {
         primary_window: Some(Window {
+            transparent: true,
             title: "FiberSlice-3D/5D".into(),
             resolution: WindowResolution::new(config::default::WINDOW_S.x, config::default::WINDOW_S.y),
             present_mode: PresentMode::AutoVsync,
             // Tells wasm to resize the window according to the available canvas
-            fit_canvas_to_parent: false,
+            fit_canvas_to_parent: true,
             // Tells wasm not to override default event handling, like F5, Ctrl+R etc.
             prevent_default_event_handling: false,
             ..default()

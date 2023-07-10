@@ -5,7 +5,7 @@
 	Please refer to the terms and conditions stated therein.
 */
 
-use bevy::{prelude::*, window::WindowResized, render::camera::Viewport};
+use bevy::{prelude::*, window::{WindowResized, WindowMode, WindowLevel}, render::camera::Viewport};
 use bevy_atmosphere::prelude::{AtmosphereCamera, AtmosphereModel, Gradient};
 
 use crate::prelude::{Item, AsyncWrapper};
