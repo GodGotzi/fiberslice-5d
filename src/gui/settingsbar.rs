@@ -6,7 +6,6 @@
 */
 
 use bevy::prelude::ResMut;
-use bevy_egui::egui;
 use egui::{Context, Direction, Ui};
 use egui_extras::Size;
 use egui_grid::GridBuilder;
@@ -31,6 +30,7 @@ impl TabbedSettings {
 
     pub fn show(&mut self, _ctx: &Context, ui: &mut Ui, side_view: &mut Settingsbar) {
         ui.horizontal(|ui| {
+
             let layout = egui::Layout {
                 main_dir: Direction::TopDown,
                 main_wrap: false,

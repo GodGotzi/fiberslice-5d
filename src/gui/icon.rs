@@ -1,6 +1,4 @@
 
-use std::{fs::File, io::Read};
-
 use egui_extras::RetainedImage;
 
 use crate::view::Orientation;
@@ -33,22 +31,26 @@ impl IconTable {
     }
 
     fn load_icon(path: &str) -> Option<RetainedImage> {
-        let mut buffer = vec![];
         let whole_path = Self::format_icon_path(path);
-        
-        let result = File::open(&whole_path).unwrap().read_to_end(&mut buffer); 
 
-        if let Err(error) = result {
-            panic!("Error while opening icon: {}, Error: {}", &whole_path, error);
-        } 
-
-        match RetainedImage::from_image_bytes (&whole_path, &buffer[..]) {
-            Ok(img) => Some(img),
+        let image = match image::io::Reader::open(&whole_path) {
+            Ok(img) => match img.decode() {
+                Ok(img) => img,
+                Err(error) => {
+                    panic!("Error while opening icon: {}, Error: {}", &whole_path, error);
+                }
+            },
             Err(error) => {
-                println!("Error while opening icon: {}, Error: {}", &whole_path, error);
-                None
+                panic!("Error while opening icon: {}, Error: {}", &whole_path, error);
             }
-        }
+        };
+
+        let size = [image.width() as _, image.height() as _];
+        let image_buffer = image.to_rgba8();
+        let pixels = image_buffer.as_flat_samples();
+        let color_image = egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice());
+
+        Some(RetainedImage::from_color_image (&whole_path, color_image))
     }
 
     fn format_icon_path(icon_path: &str) -> String {

@@ -11,9 +11,7 @@ use smooth_bevy_cameras::{LookAngles, LookTransform, LookTransformBundle, Smooth
 
 use bevy::{
     ecs::bundle::Bundle,
-    input::{
-        mouse::{MouseMotion, MouseScrollUnit, MouseWheel},
-    },
+    input::mouse::{MouseMotion, MouseScrollUnit, MouseWheel},
     time::Time,
     transform::components::Transform,
 };
@@ -36,11 +34,11 @@ impl CameraPlugin {
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         let app = app
-            .add_system(control_system)
+            .add_systems(Update, control_system)
             .add_event::<CameraControlEvent>();
         
         if !self.override_input_system {
-            app.add_system(default_input_map);
+            app.add_systems(Update, default_input_map);
         }
     }
 }
@@ -51,7 +49,6 @@ pub struct SingleCamera;
 #[derive(Bundle)]
 pub struct CameraBundle {
     controller: CameraController,
-    #[bundle]
     look_transform: LookTransformBundle,
     transform: Transform,
 }
@@ -97,6 +94,7 @@ impl Default for CameraController {
     }
 }
 
+#[derive(Event)]
 pub enum CameraControlEvent {
     Orbit(Vec2),
     TranslateTarget(Vec2),

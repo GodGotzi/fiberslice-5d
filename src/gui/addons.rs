@@ -6,7 +6,7 @@
 */
 
 use bevy::prelude::{Vec2, ResMut};
-use bevy_egui::egui::{self, Ui, Response, Color32};
+use egui::{Ui, Response, Color32};
 use egui_extras::{StripBuilder, Size};
 
 use crate::{gui, prelude::{AsyncWrapper, Mode}, config};
@@ -53,7 +53,7 @@ pub fn create_addon_strip_builder(
 
 
 pub mod orientation {
-    use bevy::{prelude::ResMut};
+    use bevy::prelude::ResMut;
     use bevy_egui::egui::{Ui, self, Direction, Button, ImageButton};
     use egui_extras::Size;
     use egui_grid::GridBuilder;

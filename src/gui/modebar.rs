@@ -1,5 +1,5 @@
 use bevy::prelude::ResMut;
-use bevy_egui::egui::{self, Direction, Ui};
+use egui::{self, Direction, Ui};
 use egui_extras::Size;
 use egui_grid::GridBuilder;
 

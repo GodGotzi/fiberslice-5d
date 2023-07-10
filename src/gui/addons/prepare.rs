@@ -1,6 +1,6 @@
 use bevy::prelude::ResMut;
-use bevy_egui::egui::{self, Ui};
-use egui_extras::{Size};
+use egui::Ui;
+use egui_extras::Size;
 
 use crate::{prelude::*, gui::{self, Boundary}, config::gui::shaded_color};
 

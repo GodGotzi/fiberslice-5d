@@ -9,7 +9,7 @@ pub mod icon;
 pub mod screen;
 
 use bevy::prelude::*;
-use bevy_egui::{EguiContexts, egui};
+use bevy_egui::EguiContexts;
 use egui::Ui;
 
 use crate::prelude::*;

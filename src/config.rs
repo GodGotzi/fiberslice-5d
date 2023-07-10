@@ -6,6 +6,7 @@
 pub mod default {
     use bevy::prelude::Vec2;
 
+    //pub const WINDOW_S: Vec2 = Vec2::new(0., 0.);
     pub const WINDOW_S: Vec2 = Vec2::new(1200., 900.);
 
 }

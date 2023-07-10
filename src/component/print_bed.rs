@@ -17,6 +17,5 @@ pub struct PrintBed;
 pub struct PrintBedBundle {
     pub bed: PrintBed,
     pub orbit_target: PossibleOrbitTarget,
-    #[bundle]
     pub material_mesh_bundle: MaterialMeshBundle<StandardMaterial>,
 }

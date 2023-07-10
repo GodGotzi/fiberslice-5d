@@ -3,8 +3,8 @@ use bevy::prelude::*;
 
 use bevy::window::{WindowMode, PrimaryWindow};
 use bevy_egui::EguiContexts;
-use bevy_egui::egui::Visuals;
-use strum_macros::{EnumIter};
+use egui::Visuals;
+use strum_macros::EnumIter;
 
 use type_eq::TypeEq;
 use type_eq_derive::TypeEq;
@@ -47,7 +47,7 @@ pub enum Mode {
     Monitor
 }
 
-#[derive(PartialEq, Clone, Copy, Debug, EnumIter, TypeEq)]
+#[derive(PartialEq, Clone, Copy, Debug, EnumIter, TypeEq, Event)]
 pub enum Item {
     ToolbarWidth(Option<f32>),
     SettingsWidth(Option<f32>),
@@ -125,7 +125,7 @@ impl FiberSlice {
     }
 
     pub fn ui_frame(&mut self, 
-        ctx: &bevy_egui::egui::Context, 
+        ctx: &egui::Context, 
         gui_interface: &mut ResMut<gui::Interface>,
         item_wrapper: &mut ResMut<AsyncWrapper>,    
         events: &mut EventWriter<Item>

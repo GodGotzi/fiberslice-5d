@@ -20,7 +20,7 @@ use prelude::{FiberSlice, Item, AsyncWrapper, AsyncPacket};
 use smooth_bevy_cameras::LookTransformPlugin;
 
 use bevy::prelude::*;
-use bevy::window::{PresentMode, WindowResolution, WindowMode};
+use bevy::window::{PresentMode, WindowResolution};
 
 use strum::IntoEnumIterator;
 use view::camera::CameraPlugin;
@@ -35,12 +35,11 @@ fn main() {
 
     let window_plugin = WindowPlugin {
         primary_window: Some(Window {
-            transparent: true,
             title: "FiberSlice-3D/5D".into(),
             resolution: WindowResolution::new(config::default::WINDOW_S.x, config::default::WINDOW_S.y),
             present_mode: PresentMode::AutoVsync,
             // Tells wasm to resize the window according to the available canvas
-            fit_canvas_to_parent: true,
+            fit_canvas_to_parent: false,
             // Tells wasm not to override default event handling, like F5, Ctrl+R etc.
             prevent_default_event_handling: false,
             ..default()
@@ -54,18 +53,18 @@ fn main() {
         .insert_resource(gui::Interface::new())
         .insert_resource(FiberSlice::new())
         .add_plugins(DefaultPlugins.set(window_plugin))
-        .add_plugin(EguiPlugin)
-        .add_plugin(LookTransformPlugin)
-        .add_plugin(CameraPlugin::default())
-        .add_plugin(AtmospherePlugin)
-        .add_plugin(bevy_stl::StlPlugin)
-        .add_startup_system(view::camera_setup)
-        .add_startup_system(component_setup)
-        .add_startup_system(prelude::maximize_window)
-        .add_system(prelude::hotkeys_window)
-        .add_system(view::update_camera_viewport)
-        .add_system(gui::check_touch)
-        .add_system(prelude::ui_frame)
+        .add_plugins(EguiPlugin)
+        .add_plugins(LookTransformPlugin)
+        .add_plugins(CameraPlugin::default())
+        .add_plugins(AtmospherePlugin)
+        .add_plugins(bevy_stl::StlPlugin)
+        .add_systems(Startup, view::camera_setup)
+        .add_systems(Startup, component_setup)
+        .add_systems(Startup, prelude::maximize_window)
+        .add_systems(Update, prelude::hotkeys_window)
+        .add_systems(Update, view::update_camera_viewport)
+        .add_systems(Update, gui::check_touch)
+        .add_systems(Update, prelude::ui_frame)
         .run();
 }
 
