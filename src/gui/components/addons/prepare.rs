@@ -1,29 +1,17 @@
-use egui::Ui;
 use egui_extras::Size;
 use three_d::egui;
 
-use crate::{
-    config::gui::shaded_color,
-    gui::{self, Boundary},
-    prelude::*,
-};
+use crate::{application::Application, config::gui::shaded_color, gui::Boundary, prelude::*};
 
-pub fn show(
-    _ctx: &egui::Context,
-    ui: &mut Ui,
-    boundary: Boundary,
-    gui_interface: &mut gui::Interface,
-    item_wrapper: &mut AsyncWrapper,
-) {
+pub fn show(_ctx: &egui::Context, ui: &mut egui::Ui, app: &mut Application, boundary: Boundary) {
     let shaded_color = shaded_color(ui.visuals().dark_mode);
 
     let _response = super::create_addon_strip_builder(
         ui,
+        app,
         boundary,
-        gui_interface,
-        item_wrapper,
         shaded_color,
-        Box::new(|builder, _gui_interface, item_wrapper, shaded_color| {
+        Box::new(|builder, app, shaded_color| {
             builder
                 .size(Size::remainder())
                 .size(Size::relative(0.6))
@@ -47,14 +35,29 @@ pub fn show(
                                                     shaded_color,
                                                 );
 
-                                                super::orientation::show(ui, item_wrapper);
+                                                super::orientation::show(ui, app);
                                             });
                                         });
                                 });
                                 strip.empty();
                             });
                     });
-                    strip.empty();
+                    strip.strip(|builder| {
+                        builder
+                            .size(Size::exact(80.0))
+                            .size(Size::remainder())
+                            .horizontal(|mut strip| {
+                                strip.cell(|ui| {
+                                    ui.painter().rect_filled(
+                                        ui.available_rect_before_wrap(),
+                                        5.0,
+                                        shaded_color,
+                                    );
+                                });
+
+                                strip.empty();
+                            });
+                    });
                     strip.empty();
                 });
         }),

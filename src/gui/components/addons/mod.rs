@@ -9,25 +9,22 @@ use egui_extras::{Size, StripBuilder};
 use three_d::egui::{self, *};
 
 use crate::{
-    config, gui,
-    prelude::{AsyncWrapper, Mode},
+    config,
+    gui::{self, Boundary},
+    prelude::{Application, Mode},
 };
-
-use super::{screen::Screen, Boundary};
 
 mod force_analytics;
 mod monitor;
 mod prepare;
 mod preview;
 
-type AddonStripBuilderClosure =
-    dyn Fn(StripBuilder, &mut gui::Interface, &mut AsyncWrapper, Color32);
+type AddonStripBuilderClosure = dyn Fn(StripBuilder, &mut Application, Color32);
 
 pub fn create_addon_strip_builder(
     ui: &mut Ui,
+    app: &mut Application,
     boundary: Boundary,
-    gui_interface: &mut gui::Interface,
-    item_wrapper: &mut AsyncWrapper,
     shaded_color: Color32,
     build: Box<AddonStripBuilderClosure>,
 ) -> Response {
@@ -45,7 +42,7 @@ pub fn create_addon_strip_builder(
                     .vertical(|mut strip| {
                         strip.empty();
                         strip.strip(|builder| {
-                            build(builder, gui_interface, item_wrapper, shaded_color);
+                            build(builder, app, shaded_color);
                         });
                         strip.empty();
                     });
@@ -60,9 +57,9 @@ pub mod orientation {
     use three_d::egui;
     use three_d::egui::*;
 
-    use crate::{gui::icon, prelude::AsyncWrapper};
+    use crate::{gui::icon, prelude::Application};
 
-    pub fn show(ui: &mut Ui, _item_wrapper: &mut AsyncWrapper) {
+    pub fn show(ui: &mut Ui, _app: &mut Application) {
         let layout = egui::Layout {
             main_dir: Direction::RightToLeft,
             main_wrap: true,
@@ -139,20 +136,11 @@ impl Addons {
     }
 }
 
-impl gui::Component<Addons> for Addons {
-    fn show(
-        &mut self,
-        ctx: &egui::Context,
-        ui_op: Option<&mut Ui>,
-        mode_ctx: Option<&mut Mode>,
-        gui_interface: &mut gui::Interface,
-        item_wrapper: &mut AsyncWrapper,
-    ) {
-        let ui = ui_op.unwrap();
-
+impl gui::InnerComponent<Addons> for Addons {
+    fn show(&mut self, ctx: &egui::Context, ui: &mut Ui, app: &mut Application) {
         let window_size = ui.available_size();
 
-        let settingsbar_width = Screen::get_settingsbar_width(item_wrapper);
+        let settingsbar_width = Screen::get_settingsbar_width(app.event_wrapping());
 
         let boundary = Boundary {
             location: Vec2::new(config::gui::TOOLBAR_W + 8.0, -3.0),
@@ -162,13 +150,11 @@ impl gui::Component<Addons> for Addons {
             ),
         };
 
-        match mode_ctx.unwrap() {
-            Mode::Prepare => prepare::show(ctx, ui, boundary, gui_interface, item_wrapper),
-            Mode::Preview => preview::show(ctx, ui, boundary, gui_interface, item_wrapper),
-            Mode::Monitor => monitor::show(ctx, ui, boundary, gui_interface, item_wrapper),
-            Mode::ForceAnalytics => {
-                force_analytics::show(ctx, ui, boundary, gui_interface, item_wrapper)
-            }
+        match app.mode() {
+            Mode::Prepare => prepare::show(ctx, ui, app, boundary),
+            Mode::Preview => preview::show(ctx, ui, app, boundary),
+            Mode::Monitor => monitor::show(ctx, ui, app, boundary),
+            Mode::ForceAnalytics => force_analytics::show(ctx, ui, app, boundary),
         }
     }
 }

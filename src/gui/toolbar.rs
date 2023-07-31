@@ -1,6 +1,10 @@
-use three_d::egui::{Context, SidePanel, Ui};
+use three_d::egui::{Context, SidePanel};
 
-use crate::{config, prelude::*};
+use crate::application::Application;
+use crate::config;
+use crate::prelude::*;
+
+use super::Component;
 
 pub struct Toolbar;
 
@@ -10,30 +14,14 @@ impl Toolbar {
     }
 }
 
-impl super::Component<Toolbar> for Toolbar {
-    fn show(
-        &mut self,
-        ctx: &Context,
-        _ui: Option<&mut Ui>,
-        _mode_ctx: Option<&mut Mode>,
-        gui_interface: &mut super::Interface,
-        item_wrapper: &mut AsyncWrapper,
-    ) {
-        let response = SidePanel::left("toolbar")
+impl Component<Toolbar> for Toolbar {
+    fn show(&mut self, ctx: &Context, app: &mut Application) {
+        SidePanel::left("toolbar")
             .resizable(false)
             .default_width(config::gui::TOOLBAR_W)
             .show(ctx, |ui| {
-                item_wrapper.register(Item::ToolbarWidth(Some(ui.available_width())));
-            })
-            .response;
-
-        let rect = response.rect;
-
-        gui_interface.register_boundary(super::Boundary::new(
-            rect.min.x,
-            rect.min.y,
-            rect.width(),
-            rect.height(),
-        ));
+                app.event_wrapping()
+                    .register(Item::ToolbarWidth(Some(ui.available_width())));
+            });
     }
 }

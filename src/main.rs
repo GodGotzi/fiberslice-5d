@@ -5,27 +5,19 @@
     Please refer to the terms and conditions stated therein.
 */
 
+mod application;
 mod config;
+mod error;
 mod gui;
 mod prelude;
 mod utils;
 mod view;
 
-use prelude::{AsyncPacket, Item};
-
-use strum::IntoEnumIterator;
+use application::Application;
 use three_d::*;
 
 fn main() {
-    let mut list: Vec<AsyncPacket> = Vec::new();
-
-    for item in Item::iter() {
-        list.push(AsyncPacket::new(item));
-    }
-
-    let mut wrapper = prelude::AsyncWrapper::new(list);
-    let mut fiberslice = prelude::FiberSlice::new();
-    let mut gui_interface = gui::Interface::new();
+    let mut application = Application::new();
 
     let event_loop = winit::event_loop::EventLoop::new();
 
@@ -57,16 +49,17 @@ fn main() {
     let window = window_builder.build(&event_loop).unwrap();
     let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
 
-    // Create camera
-    let mut camera = Camera::new_perspective(
-        Viewport::new_at_origo(1, 1),
-        vec3(60.00, 50.0, 60.0), // camera position
-        vec3(0.0, 0.0, 0.0),     // camera target
-        vec3(0.0, 1.0, 0.0),     // camera up
-        degrees(45.0),
-        0.1,
-        1000.0,
-    );
+    let mut camera = crate::view::camera::CameraBuilder::new()
+        .viewport(Viewport::new_at_origo(1, 1))
+        .position(vec3(60.00, 50.0, 60.0))
+        .target(vec3(0.0, 0.0, 0.0))
+        .up(vec3(0.0, 1.0, 0.0))
+        .fov(degrees(45.0))
+        .near(0.1)
+        .far(1000.0)
+        .build()
+        .expect("Failed to create camera");
+
     let mut control = OrbitControl::new(vec3(0.0, 0.0, 0.0), 1.0, 1000.0);
 
     let light0 = DirectionalLight::new(&context, 1.0, Color::WHITE, &vec3(0.0, -0.5, -0.5));
@@ -107,13 +100,8 @@ fn main() {
                 frame_input.accumulated_time,
                 frame_input.viewport,
                 frame_input.device_pixel_ratio,
-                |gui_context| {
-                    prelude::ui_frame(
-                        gui_context,
-                        &mut fiberslice,
-                        &mut gui_interface,
-                        &mut wrapper,
-                    );
+                |ctx| {
+                    application.ui_frame(ctx);
                 },
             );
 
@@ -124,6 +112,7 @@ fn main() {
                 //- (panel_width * frame_input.device_pixel_ratio) as u32,
                 height: frame_input.viewport.height,
             };
+
             camera.set_viewport(viewport);
 
             // Camera control must be after the gui update.

@@ -9,7 +9,11 @@ use egui_extras::Size;
 use egui_grid::GridBuilder;
 use three_d::egui;
 
-use crate::{config, prelude::*};
+use crate::application::Application;
+use crate::config;
+use crate::prelude::*;
+
+use super::Component;
 
 #[derive(PartialEq)]
 pub enum SettingsPanel {
@@ -136,34 +140,18 @@ impl Settingsbar {
     }
 }
 
-impl super::Component<Settingsbar> for Settingsbar {
-    fn show(
-        &mut self,
-        ctx: &egui::Context,
-        _ui: Option<&mut egui::Ui>,
-        _mode_ctx: Option<&mut Mode>,
-        gui_interface: &mut super::Interface,
-        item_wrapper: &mut AsyncWrapper,
-    ) {
+impl Component<Settingsbar> for Settingsbar {
+    fn show(&mut self, ctx: &egui::Context, app: &mut Application) {
         let mut tabbed_view = TabbedSettings::init();
 
-        let response = egui::SidePanel::right("settingsbar")
+        egui::SidePanel::right("settingsbar")
             .resizable(true)
             .default_width(config::gui::default::SETTINGSBAR_W)
             .show(ctx, |ui| {
-                item_wrapper.register(Item::SettingsWidth(Some(ui.available_width())));
+                app.event_wrapping()
+                    .register(Item::SettingsWidth(Some(ui.available_width())));
 
                 tabbed_view.show(ctx, ui, self);
-            })
-            .response;
-
-        let rect = response.rect;
-
-        gui_interface.register_boundary(super::Boundary::new(
-            rect.min.x,
-            rect.min.y,
-            rect.width(),
-            rect.height(),
-        ));
+            });
     }
 }

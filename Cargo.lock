@@ -461,6 +461,7 @@ dependencies = [
  "lazy_static",
  "strum",
  "strum_macros",
+ "thiserror",
  "three-d",
  "type_eq",
  "type_eq_derive",

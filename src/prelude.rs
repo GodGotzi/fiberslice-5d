@@ -1,11 +1,17 @@
+use std::sync::{Arc, Mutex};
+
+use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use three_d::egui::Visuals;
+use three_d::egui::{self, Visuals};
 use type_eq::TypeEq;
 use type_eq_derive::TypeEq;
 
-use crate::gui::screen::Screen;
-use crate::gui::{self, Component};
+use crate::gui::{self, Component, Screen, Theme};
+
+pub use crate::error::Error;
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 pub struct AsyncPacket {
     sync_element: Option<Item>,
@@ -96,34 +102,9 @@ impl AsyncWrapper {
             register_ref(item, ref_ctx);
         }
     }
-}
 
-pub struct FiberSlice {
-    screen: Screen,
-}
-
-impl FiberSlice {
-    pub fn new() -> Self {
-        Self {
-            screen: gui::screen::Screen::new(),
-        }
-    }
-
-    pub fn ui_frame(
-        &mut self,
-        ctx: &three_d::egui::Context,
-        gui_interface: &mut gui::Interface,
-        item_wrapper: &mut AsyncWrapper,
-    ) {
-        match gui_interface.theme() {
-            gui::Theme::Light => ctx.set_visuals(Visuals::light()),
-            gui::Theme::Dark => ctx.set_visuals(Visuals::dark()),
-        };
-
-        self.screen
-            .show(ctx, None, None, gui_interface, item_wrapper);
-
-        for packet in item_wrapper.get_data().iter_mut() {
+    pub fn next_frame(&mut self) {
+        for packet in self.get_data().iter_mut() {
             if packet.sync_element.is_some() {
                 let event = packet.sync_element.unwrap();
 
@@ -131,21 +112,10 @@ impl FiberSlice {
                     && packet.async_element.unwrap() != packet.sync_element.unwrap()
                 {
                     println!("Item Event -> {:?}", event);
-
-                    //events.send(event);
                 }
             }
 
             packet.async_element = packet.sync_element;
         }
     }
-}
-
-pub fn ui_frame(
-    ctx: &three_d::egui::Context,
-    fiberslice: &mut FiberSlice,
-    gui_interface: &mut gui::Interface,
-    item_wrapper: &mut AsyncWrapper,
-) {
-    fiberslice.ui_frame(ctx, gui_interface, item_wrapper);
 }

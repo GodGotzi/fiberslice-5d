@@ -1,28 +1,30 @@
-mod addons;
-pub mod icon;
-mod menubar;
-mod modebar;
-mod settingsbar;
-mod taskbar;
-mod toolbar;
+/*
+    Copyright (c) 2023 Elias Gottsbacher, Jan Traussnigg, Nico Huetter (HTBLA Kaindorf)
+    All rights reserved.
+    Note: The complete copyright description for this software thesis can be found at the beginning of each file.
+    Please refer to the terms and conditions stated therein.
+*/
 
-pub mod screen;
+mod components;
+mod icon;
+pub mod menubar;
+pub mod modebar;
+pub mod settingsbar;
+pub mod taskbar;
+pub mod toolbar;
 
 use three_d::egui;
 
-use crate::prelude::*;
+use crate::{application::Application, prelude::*};
 
-use crate::gui;
+use self::components::addons;
 
 pub trait Component<T> {
-    fn show(
-        &mut self,
-        ctx: &egui::Context,
-        ui: Option<&mut egui::Ui>,
-        mode_ctx: Option<&mut Mode>,
-        gui_interface: &mut gui::Interface,
-        item_wrapper: &mut AsyncWrapper,
-    );
+    fn show(&mut self, ctx: &egui::Context, app: &mut Application);
+}
+
+pub trait InnerComponent<T> {
+    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, app: &mut Application);
 }
 
 pub struct Boundary {
@@ -30,45 +32,60 @@ pub struct Boundary {
     pub size: egui::Vec2,
 }
 
-impl Boundary {
-    pub fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
-        Self {
-            location: egui::Vec2::new(x, y),
-            size: egui::Vec2::new(width, height),
-        }
-    }
-}
-
 pub enum Theme {
     Light,
     Dark,
 }
 
-pub struct Interface {
-    theme: Theme,
-    boundaries: Vec<Boundary>,
+pub struct Screen {
+    settings: settingsbar::Settingsbar,
+    addons: addons::Addons,
+    menubar: menubar::Menubar,
+    taskbar: taskbar::Taskbar,
+    modebar: modebar::Modebar,
+    toolbar: toolbar::Toolbar,
+    icontable: icon::IconTable,
 }
 
-impl Interface {
+impl Screen {
     pub fn new() -> Self {
         Self {
-            theme: Theme::Light,
-            boundaries: Vec::new(),
+            settings: settingsbar::Settingsbar::new(),
+            addons: addons::Addons::new(),
+            menubar: menubar::Menubar::new(),
+            taskbar: taskbar::Taskbar::new(),
+            modebar: modebar::Modebar::new(),
+            toolbar: toolbar::Toolbar::new(),
+            icontable: icon::IconTable::new(),
         }
     }
+}
 
-    pub fn toggle_theme(&mut self) {
-        self.theme = match self.theme {
-            Theme::Light => Theme::Dark,
-            Theme::Dark => Theme::Light,
-        }
-    }
+impl Component<Screen> for Screen {
+    fn show(&mut self, ctx: &egui::Context, app: &mut Application) {
+        self.menubar.show(ctx, app);
+        self.taskbar.show(ctx, app);
 
-    pub fn theme(&self) -> &Theme {
-        &self.theme
-    }
+        //self.addons.show(ctx, None, app);
 
-    pub fn register_boundary(&mut self, boundary: Boundary) {
-        self.boundaries.push(boundary);
+        self.settings.show(ctx, app);
+        self.toolbar.show(ctx, app);
+        self.modebar.show(ctx, app);
+
+        let frame = egui::containers::Frame {
+            fill: egui::Color32::TRANSPARENT,
+            ..Default::default()
+        };
+
+        egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
+            self.icontable
+                .get_orientation_icon(crate::view::Orientation::Default)
+                .show(ui);
+
+            self.addons.show(ctx, ui, app);
+        });
+
+        app.event_wrapping()
+            .register(Item::Mode(Some(app.mode().clone())));
     }
 }
