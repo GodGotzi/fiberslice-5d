@@ -12,41 +12,17 @@ mod gui;
 mod prelude;
 mod utils;
 mod view;
+mod window;
 
 use application::Application;
 use three_d::*;
+use window::build_window;
 
 fn main() {
     let mut application = Application::new();
 
     let event_loop = winit::event_loop::EventLoop::new();
-
-    #[cfg(not(target_arch = "wasm32"))]
-    let window_builder = winit::window::WindowBuilder::new()
-        .with_title("winit window")
-        .with_min_inner_size(config::default::WINDOW_S)
-        .with_maximized(true);
-    #[cfg(target_arch = "wasm32")]
-    let window_builder = {
-        use wasm_bindgen::JsCast;
-        use winit::platform::web::WindowBuilderExtWebSys;
-        winit::window::WindowBuilder::new()
-            .with_canvas(Some(
-                web_sys::window()
-                    .unwrap()
-                    .document()
-                    .unwrap()
-                    .get_elements_by_tag_name("canvas")
-                    .item(0)
-                    .unwrap()
-                    .dyn_into::<web_sys::HtmlCanvasElement>()
-                    .unwrap(),
-            ))
-            .with_inner_size(config::default::WINDOW_S)
-            .with_prevent_default(true)
-    };
-
-    let window = window_builder.build(&event_loop).unwrap();
+    let window = build_window(&event_loop).expect("Failed to build window");
     let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
 
     let mut camera = crate::view::camera::CameraBuilder::new()
@@ -95,6 +71,8 @@ fn main() {
         winit::event::Event::RedrawRequested(_) => {
             let mut frame_input = frame_input_generator.generate(&context);
 
+            control.handle_events(&mut camera, &mut frame_input.events);
+
             gui.update(
                 &mut frame_input.events,
                 frame_input.accumulated_time,
@@ -106,17 +84,25 @@ fn main() {
             );
 
             let viewport = Viewport {
-                x: 0, //(panel_width * frame_input.device_pixel_ratio) as i32,
-                y: 0,
-                width: frame_input.viewport.width,
-                //- (panel_width * frame_input.device_pixel_ratio) as u32,
-                height: frame_input.viewport.height,
+                x: (application.boundaries().toolbar.width() * frame_input.device_pixel_ratio)
+                    as i32,
+                y: ((application.boundaries().taskbar.height()
+                    + application.boundaries().modebar.height())
+                    * frame_input.device_pixel_ratio) as i32,
+                width: frame_input.viewport.width
+                    - ((application.boundaries().toolbar.width()
+                        + application.boundaries().settingsbar.width())
+                        * frame_input.device_pixel_ratio) as u32,
+                height: frame_input.viewport.height
+                    - ((application.boundaries().taskbar.height()
+                        + application.boundaries().modebar.height()
+                        + application.boundaries().menubar.height())
+                        * frame_input.device_pixel_ratio) as u32,
             };
 
             camera.set_viewport(viewport);
 
             // Camera control must be after the gui update.
-            control.handle_events(&mut camera, &mut frame_input.events);
 
             let count = side_count * side_count * side_count;
             if instanced_mesh.instance_count() != count as u32 {

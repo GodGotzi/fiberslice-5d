@@ -1,16 +1,12 @@
-use std::sync::{Arc, Mutex};
-
-use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use three_d::egui::{self, Visuals};
 use type_eq::TypeEq;
 use type_eq_derive::TypeEq;
 
-use crate::gui::{self, Component, Screen, Theme};
-
 pub use crate::error::Error;
+use crate::view::Mode;
 
+#[allow(dead_code)]
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub struct AsyncPacket {
@@ -37,14 +33,6 @@ impl AsyncPacket {
     pub fn _get_async(&self) -> &Option<Item> {
         &self.async_element
     }
-}
-
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub enum Mode {
-    Preview,
-    Prepare,
-    ForceAnalytics,
-    Monitor,
 }
 
 #[derive(PartialEq, Clone, Copy, Debug, EnumIter, TypeEq)]
@@ -75,6 +63,7 @@ impl AsyncWrapper {
             .find(|packet| packet.get_sync().unwrap().type_eq(item))
     }
 
+    #[allow(dead_code)]
     pub fn find_packet(&self, item: Item) -> Option<&AsyncPacket> {
         self.data
             .iter()

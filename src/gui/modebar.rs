@@ -2,9 +2,9 @@ use egui_extras::Size;
 use egui_grid::GridBuilder;
 use three_d::egui;
 
-use crate::application::Application;
+use crate::application::ApplicationContext;
 use crate::config;
-use crate::prelude::*;
+use crate::view::Mode;
 
 use super::Component;
 
@@ -17,8 +17,8 @@ impl Modebar {
 }
 
 impl Component<Modebar> for Modebar {
-    fn show(&mut self, ctx: &egui::Context, app: &mut Application) {
-        egui::TopBottomPanel::bottom("modebar")
+    fn show(&mut self, ctx: &egui::Context, app: &mut ApplicationContext) {
+        let boundary = egui::TopBottomPanel::bottom("modebar")
             .default_height(config::gui::MODEBAR_H)
             .show(ctx, |ui: &mut egui::Ui| {
                 egui::menu::bar(ui, |ui| {
@@ -80,6 +80,10 @@ impl Component<Modebar> for Modebar {
                             });
                         });
                 });
-            });
+            })
+            .response
+            .into();
+
+        app.boundaries_mut().modebar = boundary;
     }
 }

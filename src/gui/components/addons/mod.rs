@@ -9,9 +9,10 @@ use egui_extras::{Size, StripBuilder};
 use three_d::egui::{self, *};
 
 use crate::{
+    application::ApplicationContext,
     config,
     gui::{self, Boundary},
-    prelude::{Application, Mode},
+    view::Mode,
 };
 
 mod force_analytics;
@@ -19,11 +20,11 @@ mod monitor;
 mod prepare;
 mod preview;
 
-type AddonStripBuilderClosure = dyn Fn(StripBuilder, &mut Application, Color32);
+type AddonStripBuilderClosure = dyn Fn(StripBuilder, &mut ApplicationContext, Color32);
 
 pub fn create_addon_strip_builder(
     ui: &mut Ui,
-    app: &mut Application,
+    app: &mut ApplicationContext,
     boundary: Boundary,
     shaded_color: Color32,
     build: Box<AddonStripBuilderClosure>,
@@ -57,9 +58,9 @@ pub mod orientation {
     use three_d::egui;
     use three_d::egui::*;
 
-    use crate::{gui::icon, prelude::Application};
+    use crate::{application::ApplicationContext, gui::icon};
 
-    pub fn show(ui: &mut Ui, _app: &mut Application) {
+    pub fn show(ui: &mut Ui, _app: &mut ApplicationContext) {
         let layout = egui::Layout {
             main_dir: Direction::RightToLeft,
             main_wrap: true,
@@ -137,13 +138,13 @@ impl Addons {
 }
 
 impl gui::InnerComponent<Addons> for Addons {
-    fn show(&mut self, ctx: &egui::Context, ui: &mut Ui, app: &mut Application) {
+    fn show(&mut self, ctx: &egui::Context, ui: &mut Ui, app: &mut ApplicationContext) {
         let window_size = ui.available_size();
 
-        let settingsbar_width = Screen::get_settingsbar_width(app.event_wrapping());
+        let settingsbar_width = app.boundaries().settingsbar.width();
 
         let boundary = Boundary {
-            location: Vec2::new(config::gui::TOOLBAR_W + 8.0, -3.0),
+            location: Pos2::new(config::gui::TOOLBAR_W + 8.0, -3.0),
             size: Vec2::new(
                 window_size.x - config::gui::TOOLBAR_W - 32.0 - settingsbar_width,
                 window_size.y - config::gui::MODEBAR_H - 5.0,

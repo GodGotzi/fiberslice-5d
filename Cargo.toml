@@ -20,3 +20,4 @@ type_eq = { path = "type_eq" }
 type_eq_derive = { path = "type_eq/type_eq_derive" }
 three-d = { git = "https://github.com/asny/three-d.git", features = ["egui-gui"] }
 thiserror = "1.0.30"
+getset = "0.1.2"

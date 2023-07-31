@@ -9,10 +9,11 @@ use egui_extras::Size;
 use egui_grid::GridBuilder;
 use three_d::egui;
 
-use crate::application::Application;
+use crate::application::ApplicationContext;
 use crate::config;
 use crate::prelude::*;
 
+use super::Boundary;
 use super::Component;
 
 #[derive(PartialEq)]
@@ -141,17 +142,22 @@ impl Settingsbar {
 }
 
 impl Component<Settingsbar> for Settingsbar {
-    fn show(&mut self, ctx: &egui::Context, app: &mut Application) {
+    fn show(&mut self, ctx: &egui::Context, app: &mut ApplicationContext) {
         let mut tabbed_view = TabbedSettings::init();
 
-        egui::SidePanel::right("settingsbar")
-            .resizable(true)
-            .default_width(config::gui::default::SETTINGSBAR_W)
-            .show(ctx, |ui| {
-                app.event_wrapping()
-                    .register(Item::SettingsWidth(Some(ui.available_width())));
+        let boundary = Boundary::from(
+            egui::SidePanel::right("settingsbar")
+                .resizable(true)
+                .default_width(config::gui::default::SETTINGSBAR_W)
+                .show(ctx, |ui| {
+                    app.event_wrapping()
+                        .register(Item::SettingsWidth(Some(ui.available_width())));
 
-                tabbed_view.show(ctx, ui, self);
-            });
+                    tabbed_view.show(ctx, ui, self);
+                })
+                .response,
+        );
+
+        app.boundaries_mut().settingsbar = boundary;
     }
 }

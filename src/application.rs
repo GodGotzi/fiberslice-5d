@@ -1,21 +1,48 @@
-use std::sync::{Arc, Mutex};
-
 use strum::IntoEnumIterator;
 use three_d::egui::{self, Visuals};
 
 use crate::{
     gui::*,
-    prelude::{AsyncPacket, AsyncWrapper, Item, Mode},
+    prelude::{AsyncPacket, AsyncWrapper, Item},
+    view::Mode,
 };
 
 pub struct Application {
-    screen: Arc<Mutex<Screen>>,
-    theme: Theme,
-    mode: Mode,
-    wrapper: AsyncWrapper,
+    screen: Screen,
+    context: ApplicationContext,
 }
 
 impl Application {
+    pub fn new() -> Self {
+        Self {
+            screen: Screen::new(),
+            context: ApplicationContext::new(),
+        }
+    }
+
+    pub fn ui_frame(&mut self, ctx: &egui::Context) {
+        match self.context.theme() {
+            Theme::Light => ctx.set_visuals(Visuals::light()),
+            Theme::Dark => ctx.set_visuals(Visuals::dark()),
+        };
+
+        self.screen.show(ctx, &mut self.context);
+        self.context.event_wrapping().next_frame();
+    }
+
+    pub fn boundaries(&self) -> &BoundaryHolder {
+        self.context.boundaries()
+    }
+}
+
+pub struct ApplicationContext {
+    theme: Theme,
+    mode: Mode,
+    wrapper: AsyncWrapper,
+    boundaries: BoundaryHolder,
+}
+
+impl ApplicationContext {
     pub fn new() -> Self {
         let mut list: Vec<AsyncPacket> = Vec::new();
 
@@ -24,10 +51,10 @@ impl Application {
         }
 
         Self {
-            screen: Arc::new(Mutex::new(Screen::new())),
             theme: Theme::Light,
             mode: Mode::Preview,
             wrapper: AsyncWrapper::new(list),
+            boundaries: BoundaryHolder::default(),
         }
     }
 
@@ -36,6 +63,14 @@ impl Application {
             Theme::Light => Theme::Dark,
             Theme::Dark => Theme::Light,
         }
+    }
+
+    pub fn boundaries(&self) -> &BoundaryHolder {
+        &self.boundaries
+    }
+
+    pub fn boundaries_mut(&mut self) -> &mut BoundaryHolder {
+        &mut self.boundaries
     }
 
     pub fn theme(&self) -> &Theme {
@@ -48,15 +83,5 @@ impl Application {
 
     pub fn mode(&mut self) -> &mut Mode {
         &mut self.mode
-    }
-
-    pub fn ui_frame(&mut self, ctx: &egui::Context) {
-        match self.theme {
-            Theme::Light => ctx.set_visuals(Visuals::light()),
-            Theme::Dark => ctx.set_visuals(Visuals::dark()),
-        };
-
-        self.screen.clone().lock().unwrap().show(ctx, self);
-        self.wrapper.next_frame();
     }
 }

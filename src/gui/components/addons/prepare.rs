@@ -1,9 +1,14 @@
 use egui_extras::Size;
 use three_d::egui;
 
-use crate::{application::Application, config::gui::shaded_color, gui::Boundary, prelude::*};
+use crate::{application::ApplicationContext, config::gui::shaded_color, gui::Boundary};
 
-pub fn show(_ctx: &egui::Context, ui: &mut egui::Ui, app: &mut Application, boundary: Boundary) {
+pub fn show(
+    _ctx: &egui::Context,
+    ui: &mut egui::Ui,
+    app: &mut ApplicationContext,
+    boundary: Boundary,
+) {
     let shaded_color = shaded_color(ui.visuals().dark_mode);
 
     let _response = super::create_addon_strip_builder(

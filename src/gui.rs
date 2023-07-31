@@ -13,23 +13,62 @@ pub mod settingsbar;
 pub mod taskbar;
 pub mod toolbar;
 
-use three_d::egui;
+use three_d::egui::{self, Response};
 
-use crate::{application::Application, prelude::*};
+use crate::{application::ApplicationContext, prelude::*};
 
 use self::components::addons;
 
 pub trait Component<T> {
-    fn show(&mut self, ctx: &egui::Context, app: &mut Application);
+    fn show(&mut self, ctx: &egui::Context, app: &mut ApplicationContext);
 }
 
 pub trait InnerComponent<T> {
-    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, app: &mut Application);
+    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, app: &mut ApplicationContext);
 }
 
+#[derive(Default)]
 pub struct Boundary {
-    pub location: egui::Vec2,
-    pub size: egui::Vec2,
+    location: egui::Pos2,
+    size: egui::Vec2,
+}
+
+impl Boundary {
+    #[allow(dead_code)]
+    pub fn offset_x(&self) -> f32 {
+        self.location.x
+    }
+
+    #[allow(dead_code)]
+    pub fn offset_y(&self) -> f32 {
+        self.location.y
+    }
+
+    pub fn width(&self) -> f32 {
+        self.size.x
+    }
+
+    pub fn height(&self) -> f32 {
+        self.size.y
+    }
+}
+
+impl From<Response> for Boundary {
+    fn from(response: Response) -> Self {
+        Self {
+            location: response.rect.min,
+            size: response.rect.size(),
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct BoundaryHolder {
+    pub menubar: Boundary,
+    pub taskbar: Boundary,
+    pub modebar: Boundary,
+    pub toolbar: Boundary,
+    pub settingsbar: Boundary,
 }
 
 pub enum Theme {
@@ -62,7 +101,7 @@ impl Screen {
 }
 
 impl Component<Screen> for Screen {
-    fn show(&mut self, ctx: &egui::Context, app: &mut Application) {
+    fn show(&mut self, ctx: &egui::Context, app: &mut ApplicationContext) {
         self.menubar.show(ctx, app);
         self.taskbar.show(ctx, app);
 
@@ -85,7 +124,8 @@ impl Component<Screen> for Screen {
             self.addons.show(ctx, ui, app);
         });
 
-        app.event_wrapping()
-            .register(Item::Mode(Some(app.mode().clone())));
+        let mode = *app.mode();
+
+        app.event_wrapping().register(Item::Mode(Some(mode)));
     }
 }
