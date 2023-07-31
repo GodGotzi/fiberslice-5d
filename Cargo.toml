@@ -7,17 +7,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-egui_grid = { git = "https://github.com/mythitorium/egui-grid" }
-egui_extras = "0.22.0"
-egui = "0.22.0"
-bevy = "0.11.0"
-bevy_egui = { git = "https://github.com/mvlabat/bevy_egui" }
-smooth-bevy-cameras = { git = "https://github.com/bonsairobo/smooth-bevy-cameras" }
-bevy_atmosphere = { git = "https://github.com/GodGotzi/bevy_atmosphere" }
-bevy_stl = "0.11.0"
+egui_grid = "0.1.0"
+egui_extras = "0.21.0"
 strum = "0.25.0"
 strum_macros = "0.25.0"
 image = { version = "0.24.6" }
 lazy_static = "1.4.0"
 type_eq = { path = "type_eq" }
 type_eq_derive = { path = "type_eq/type_eq_derive" }
+three-d = { version = "0.15.0", features = ["egui-gui"] }

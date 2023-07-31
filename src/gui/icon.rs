@@ -1,22 +1,22 @@
-
 use egui_extras::RetainedImage;
+use three_d::egui;
+
+use lazy_static::lazy_static;
 
 use crate::view::Orientation;
-use lazy_static::lazy_static;
 
 lazy_static! {
     pub static ref ICONTABLE: IconTable = IconTable::new();
 }
 
 pub struct IconTable {
-    orientation_default: RetainedImage
+    orientation_default: RetainedImage,
 }
 
 impl IconTable {
-
     pub fn new() -> Self {
-        Self { 
-            orientation_default: Self::load_icon("cube_ico.png").unwrap()
+        Self {
+            orientation_default: Self::load_icon("cube_ico.png").unwrap(),
         }
     }
 
@@ -37,11 +37,17 @@ impl IconTable {
             Ok(img) => match img.decode() {
                 Ok(img) => img,
                 Err(error) => {
-                    panic!("Error while opening icon: {}, Error: {}", &whole_path, error);
+                    panic!(
+                        "Error while opening icon: {}, Error: {}",
+                        &whole_path, error
+                    );
                 }
             },
             Err(error) => {
-                panic!("Error while opening icon: {}, Error: {}", &whole_path, error);
+                panic!(
+                    "Error while opening icon: {}, Error: {}",
+                    &whole_path, error
+                );
             }
         };
 
@@ -50,11 +56,10 @@ impl IconTable {
         let pixels = image_buffer.as_flat_samples();
         let color_image = egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice());
 
-        Some(RetainedImage::from_color_image (&whole_path, color_image))
+        Some(RetainedImage::from_color_image(&whole_path, color_image))
     }
 
     fn format_icon_path(icon_path: &str) -> String {
         format!("assets\\icons\\{}", icon_path)
     }
-
 }

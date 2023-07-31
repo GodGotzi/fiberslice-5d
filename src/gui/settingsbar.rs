@@ -1,17 +1,15 @@
 /*
-	Copyright (c) 2023 Elias Gottsbacher, Jan Traussnigg, Nico Huetter (HTBLA Kaindorf)
-	All rights reserved.
-	Note: The complete copyright description for this software thesis can be found at the beginning of each file.
-	Please refer to the terms and conditions stated therein.
+    Copyright (c) 2023 Elias Gottsbacher, Jan Traussnigg, Nico Huetter (HTBLA Kaindorf)
+    All rights reserved.
+    Note: The complete copyright description for this software thesis can be found at the beginning of each file.
+    Please refer to the terms and conditions stated therein.
 */
 
-use bevy::prelude::ResMut;
-use egui::{Context, Direction, Ui};
 use egui_extras::Size;
 use egui_grid::GridBuilder;
+use three_d::egui;
 
-use crate::{prelude::*, config};
-
+use crate::{config, prelude::*};
 
 #[derive(PartialEq)]
 pub enum SettingsPanel {
@@ -24,15 +22,13 @@ struct TabbedSettings;
 
 impl TabbedSettings {
     pub fn init() -> Self {
-        Self {
-        }
+        Self {}
     }
 
-    pub fn show(&mut self, _ctx: &Context, ui: &mut Ui, side_view: &mut Settingsbar) {
+    pub fn show(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui, side_view: &mut Settingsbar) {
         ui.horizontal(|ui| {
-
             let layout = egui::Layout {
-                main_dir: Direction::TopDown,
+                main_dir: egui::Direction::TopDown,
                 main_wrap: false,
                 main_align: egui::Align::Center,
                 main_justify: false,
@@ -58,7 +54,11 @@ impl TabbedSettings {
                 .show(ui, |mut grid| {
                     // Cells are represented as they were allocated
                     grid.cell(|ui| {
-                        ui.selectable_value(&mut side_view.open_panel, SettingsPanel::Slice, "Slicer");
+                        ui.selectable_value(
+                            &mut side_view.open_panel,
+                            SettingsPanel::Slice,
+                            "Slicer",
+                        );
                     });
                     grid.cell(|ui| {
                         ui.horizontal(|ui| {
@@ -66,7 +66,11 @@ impl TabbedSettings {
                         });
                     });
                     grid.cell(|ui| {
-                        ui.selectable_value(&mut side_view.open_panel, SettingsPanel::Filament, "Filament");
+                        ui.selectable_value(
+                            &mut side_view.open_panel,
+                            SettingsPanel::Filament,
+                            "Filament",
+                        );
                     });
                     grid.cell(|ui| {
                         ui.horizontal(|ui| {
@@ -74,7 +78,11 @@ impl TabbedSettings {
                         });
                     });
                     grid.cell(|ui| {
-                        ui.selectable_value(&mut side_view.open_panel, SettingsPanel::Printer, "Printer");
+                        ui.selectable_value(
+                            &mut side_view.open_panel,
+                            SettingsPanel::Printer,
+                            "Printer",
+                        );
                     });
                     grid.cell(|ui| {
                         ui.vertical(|ui| {
@@ -100,41 +108,42 @@ impl TabbedSettings {
                 });
         });
 
-        ui.add_space(20.0 );
+        ui.add_space(20.0);
 
         match side_view.open_panel {
             SettingsPanel::Slice => {
                 ui.label("a");
-            },
+            }
             SettingsPanel::Filament => {
                 ui.label("b");
-            },
+            }
             SettingsPanel::Printer => {
                 ui.label("c");
-            },
+            }
         }
     }
 }
 
 pub struct Settingsbar {
-    open_panel: SettingsPanel
+    open_panel: SettingsPanel,
 }
 
 impl Settingsbar {
     pub fn new() -> Self {
         Self {
-            open_panel: SettingsPanel::Slice
+            open_panel: SettingsPanel::Slice,
         }
     }
 }
 
 impl super::Component<Settingsbar> for Settingsbar {
-
-    fn show(&mut self, ctx: &egui::Context, 
-        _ui: Option<&mut Ui>,
+    fn show(
+        &mut self,
+        ctx: &egui::Context,
+        _ui: Option<&mut egui::Ui>,
         _mode_ctx: Option<&mut Mode>,
-        gui_interface: &mut ResMut<super::Interface>,          
-        item_wrapper: &mut ResMut<AsyncWrapper>, 
+        gui_interface: &mut super::Interface,
+        item_wrapper: &mut AsyncWrapper,
     ) {
         let mut tabbed_view = TabbedSettings::init();
 
@@ -142,17 +151,19 @@ impl super::Component<Settingsbar> for Settingsbar {
             .resizable(true)
             .default_width(config::gui::default::SETTINGSBAR_W)
             .show(ctx, |ui| {
-                
                 item_wrapper.register(Item::SettingsWidth(Some(ui.available_width())));
- 
+
                 tabbed_view.show(ctx, ui, self);
-                
-            }).response;
+            })
+            .response;
 
         let rect = response.rect;
 
-        gui_interface.register_boundary(
-            super::Boundary::new(rect.min.x, rect.min.y, rect.width(), rect.height())
-        );
+        gui_interface.register_boundary(super::Boundary::new(
+            rect.min.x,
+            rect.min.y,
+            rect.width(),
+            rect.height(),
+        ));
     }
 }

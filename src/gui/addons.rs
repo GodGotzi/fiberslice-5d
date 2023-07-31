@@ -1,33 +1,36 @@
 /*
-	Copyright (c) 2023 Elias Gottsbacher, Jan Traussnigg, Nico Huetter (HTBLA Kaindorf)
-	All rights reserved.
-	Note: The complete copyright description for this software thesis can be found at the beginning of each file.
-	Please refer to the terms and conditions stated therein.
+    Copyright (c) 2023 Elias Gottsbacher, Jan Traussnigg, Nico Huetter (HTBLA Kaindorf)
+    All rights reserved.
+    Note: The complete copyright description for this software thesis can be found at the beginning of each file.
+    Please refer to the terms and conditions stated therein.
 */
 
-use bevy::prelude::{Vec2, ResMut};
-use egui::{Ui, Response, Color32};
-use egui_extras::{StripBuilder, Size};
+use egui_extras::{Size, StripBuilder};
+use three_d::egui::{self, *};
 
-use crate::{gui, prelude::{AsyncWrapper, Mode}, config};
+use crate::{
+    config, gui,
+    prelude::{AsyncWrapper, Mode},
+};
 
-use super::{Boundary, screen::Screen};
+use super::{screen::Screen, Boundary};
 
-mod prepare;
 mod force_analytics;
-mod preview;
 mod monitor;
+mod prepare;
+mod preview;
 
-type AddonStripBuilderClosure = dyn Fn(StripBuilder, &mut ResMut<gui::Interface>, &mut ResMut<AsyncWrapper>, Color32);
+type AddonStripBuilderClosure =
+    dyn Fn(StripBuilder, &mut gui::Interface, &mut AsyncWrapper, Color32);
 
 pub fn create_addon_strip_builder(
     ui: &mut Ui,
     boundary: Boundary,
-    gui_interface: &mut ResMut<gui::Interface>,          
-    item_wrapper: &mut ResMut<AsyncWrapper>,
+    gui_interface: &mut gui::Interface,
+    item_wrapper: &mut AsyncWrapper,
     shaded_color: Color32,
-    build: Box<AddonStripBuilderClosure>) -> Response {
-
+    build: Box<AddonStripBuilderClosure>,
+) -> Response {
     StripBuilder::new(ui)
         .size(Size::exact(boundary.location.x + 5.0))
         .size(Size::exact(boundary.size.x - 10.0))
@@ -51,17 +54,15 @@ pub fn create_addon_strip_builder(
         })
 }
 
-
 pub mod orientation {
-    use bevy::prelude::ResMut;
-    use bevy_egui::egui::{Ui, self, Direction, Button, ImageButton};
     use egui_extras::Size;
     use egui_grid::GridBuilder;
+    use three_d::egui;
+    use three_d::egui::*;
 
-    use crate::{prelude::AsyncWrapper, gui::icon};
+    use crate::{gui::icon, prelude::AsyncWrapper};
 
-    pub fn show(ui: &mut Ui, _item_wrapper: &mut ResMut<AsyncWrapper>) {
-        
+    pub fn show(ui: &mut Ui, _item_wrapper: &mut AsyncWrapper) {
         let layout = egui::Layout {
             main_dir: Direction::RightToLeft,
             main_wrap: true,
@@ -87,9 +88,11 @@ pub mod orientation {
             .show(ui, |mut grid| {
                 grid.empty();
                 grid.cell(|ui| {
-                    let icon = icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Default);
+                    let icon =
+                        icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Default);
 
-                    let image_button = ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
+                    let image_button =
+                        ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
 
                     let response = ui.add_sized([30., 30.], image_button);
 
@@ -99,14 +102,15 @@ pub mod orientation {
                 });
 
                 grid.cell(|ui| {
-                    
                     ui.add_sized([30., 30.], Button::new(""));
                 });
 
                 grid.cell(|ui| {
-                    let icon = icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Default);
+                    let icon =
+                        icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Default);
 
-                    let image_button = ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
+                    let image_button =
+                        ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
 
                     let response = ui.add_sized([30., 30.], image_button);
 
@@ -124,16 +128,10 @@ pub mod orientation {
                 });
                 grid.empty();
             });
-        
-
     }
-
-
 }
 
-pub struct Addons {
-
-}
+pub struct Addons {}
 
 impl Addons {
     pub fn new() -> Self {
@@ -142,12 +140,13 @@ impl Addons {
 }
 
 impl gui::Component<Addons> for Addons {
-
-    fn show(&mut self, ctx: &egui::Context,
+    fn show(
+        &mut self,
+        ctx: &egui::Context,
         ui_op: Option<&mut Ui>,
         mode_ctx: Option<&mut Mode>,
-        gui_interface: &mut bevy::prelude::ResMut<gui::Interface>,          
-        item_wrapper: &mut ResMut<AsyncWrapper>
+        gui_interface: &mut gui::Interface,
+        item_wrapper: &mut AsyncWrapper,
     ) {
         let ui = ui_op.unwrap();
 
@@ -158,16 +157,18 @@ impl gui::Component<Addons> for Addons {
         let boundary = Boundary {
             location: Vec2::new(config::gui::TOOLBAR_W + 8.0, -3.0),
             size: Vec2::new(
-                window_size.x - config::gui::TOOLBAR_W - 32.0 - settingsbar_width, 
-                window_size.y - config::gui::MODEBAR_H - 5.0),
+                window_size.x - config::gui::TOOLBAR_W - 32.0 - settingsbar_width,
+                window_size.y - config::gui::MODEBAR_H - 5.0,
+            ),
         };
 
         match mode_ctx.unwrap() {
             Mode::Prepare => prepare::show(ctx, ui, boundary, gui_interface, item_wrapper),
             Mode::Preview => preview::show(ctx, ui, boundary, gui_interface, item_wrapper),
             Mode::Monitor => monitor::show(ctx, ui, boundary, gui_interface, item_wrapper),
-            Mode::ForceAnalytics => force_analytics::show(ctx, ui, boundary, gui_interface, item_wrapper),
+            Mode::ForceAnalytics => {
+                force_analytics::show(ctx, ui, boundary, gui_interface, item_wrapper)
+            }
         }
     }
-
 }

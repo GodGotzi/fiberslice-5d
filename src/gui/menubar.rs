@@ -1,12 +1,9 @@
-use bevy::prelude::ResMut;
-use bevy_egui::egui;
-use egui::Ui;
+use three_d::egui::{self, Ui};
 
-use crate::{prelude::*, config};
 use crate::gui;
+use crate::{config, prelude::*};
 
 pub struct Menubar;
-
 
 impl Menubar {
     pub fn new() -> Self {
@@ -15,12 +12,13 @@ impl Menubar {
 }
 
 impl gui::Component<Menubar> for Menubar {
-
-    fn show(&mut self, ctx: &egui::Context,
+    fn show(
+        &mut self,
+        ctx: &egui::Context,
         _ui: Option<&mut Ui>,
         _mode_ctx: Option<&mut Mode>,
-        gui_interface: &mut ResMut<gui::Interface>,          
-        _item_wrapper: &mut ResMut<AsyncWrapper>,
+        gui_interface: &mut gui::Interface,
+        _item_wrapper: &mut AsyncWrapper,
     ) {
         let response = egui::TopBottomPanel::top("menubar")
             .default_height(config::gui::MENUBAR_H)
@@ -31,16 +29,19 @@ impl gui::Component<Menubar> for Menubar {
                     view_button(ui, gui_interface);
                     settings_button(ui, gui_interface);
                     help_button(ui, gui_interface);
-            });
-        }).response;
+                });
+            })
+            .response;
 
         let rect = response.rect;
 
-        gui_interface.register_boundary(
-            gui::Boundary::new(rect.min.x, rect.min.y, rect.width(), rect.height())
-        );
+        gui_interface.register_boundary(gui::Boundary::new(
+            rect.min.x,
+            rect.min.y,
+            rect.width(),
+            rect.height(),
+        ));
     }
-
 }
 
 fn file_button(ui: &mut Ui, _gui_interface: &mut gui::Interface) {
