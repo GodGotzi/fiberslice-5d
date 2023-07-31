@@ -464,6 +464,9 @@ dependencies = [
  "three-d",
  "type_eq",
  "type_eq_derive",
+ "wasm-bindgen",
+ "web-sys",
+ "winit",
 ]
 
 [[package]]
@@ -1384,9 +1387,8 @@ dependencies = [
 
 [[package]]
 name = "three-d"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37c44a2d417a283d95821e72965b7752f8edc1d48b9233258e3ff18f166d4190"
+version = "0.16.0"
+source = "git+https://github.com/asny/three-d.git#fc9341c480be7a64a05c77f16995bf99a42935e0"
 dependencies = [
  "cgmath",
  "egui",
@@ -1407,9 +1409,8 @@ dependencies = [
 
 [[package]]
 name = "three-d-asset"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "956087dd69f4260271faf7c002f5bd1832bef7faddce95408f1da9714ae1d970"
+version = "0.6.0"
+source = "git+https://github.com/asny/three-d-asset#698a53bfaa1c05baaaca7d8e3597beac846c06d8"
 dependencies = [
  "cgmath",
  "half",

@@ -9,10 +9,13 @@ edition = "2021"
 [dependencies]
 egui_grid = "0.1.0"
 egui_extras = "0.21.0"
+winit = "0.28"
+web-sys = "0.3"
+wasm-bindgen = "0.2"
 strum = "0.25.0"
 strum_macros = "0.25.0"
 image = { version = "0.24.6" }
 lazy_static = "1.4.0"
 type_eq = { path = "type_eq" }
 type_eq_derive = { path = "type_eq/type_eq_derive" }
-three-d = { version = "0.15.0", features = ["egui-gui"] }
+three-d = { git = "https://github.com/asny/three-d.git", features = ["egui-gui"] }

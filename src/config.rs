@@ -3,9 +3,10 @@
 //W = width
 
 pub mod default {
+    use winit::dpi::LogicalSize;
 
     //pub const WINDOW_S: Vec2 = Vec2::new(0., 0.);
-    pub const WINDOW_S: (u32, u32) = (1200, 900);
+    pub const WINDOW_S: LogicalSize<i32> = LogicalSize::new(1200, 900);
 }
 
 pub mod gui {

@@ -76,8 +76,8 @@ impl gui::Component<Screen> for Screen {
             ..Default::default()
         };
 
-        self.addons
-            .show(ctx, None, Some(&mut self.mode), gui_interface, item_wrapper);
+        //self.addons
+        //    .show(ctx, None, Some(&mut self.mode), gui_interface, item_wrapper);
 
         self.settings
             .show(ctx, None, Some(&mut self.mode), gui_interface, item_wrapper);
