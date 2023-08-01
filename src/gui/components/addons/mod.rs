@@ -10,7 +10,6 @@ use three_d::egui::{self, *};
 
 use crate::{
     application::ApplicationContext,
-    config,
     gui::{self, Boundary},
     view::Mode,
 };
@@ -141,14 +140,9 @@ impl gui::InnerComponent<Addons> for Addons {
     fn show(&mut self, ctx: &egui::Context, ui: &mut Ui, app: &mut ApplicationContext) {
         let window_size = ui.available_size();
 
-        let settingsbar_width = app.boundaries().settingsbar.width();
-
         let boundary = Boundary {
-            location: Pos2::new(config::gui::TOOLBAR_W + 8.0, -3.0),
-            size: Vec2::new(
-                window_size.x - config::gui::TOOLBAR_W - 32.0 - settingsbar_width,
-                window_size.y - config::gui::MODEBAR_H - 5.0,
-            ),
+            location: Pos2::new(0.0, 0.0),
+            size: Vec2::new(window_size.x, window_size.y),
         };
 
         match app.mode() {

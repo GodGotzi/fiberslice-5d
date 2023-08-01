@@ -83,7 +83,6 @@ pub struct Screen {
     taskbar: taskbar::Taskbar,
     modebar: modebar::Modebar,
     toolbar: toolbar::Toolbar,
-    icontable: icon::IconTable,
 }
 
 impl Screen {
@@ -95,7 +94,6 @@ impl Screen {
             taskbar: taskbar::Taskbar::new(),
             modebar: modebar::Modebar::new(),
             toolbar: toolbar::Toolbar::new(),
-            icontable: icon::IconTable::new(),
         }
     }
 }
@@ -117,9 +115,11 @@ impl Component<Screen> for Screen {
         };
 
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
+            /*
             self.icontable
                 .get_orientation_icon(crate::view::Orientation::Default)
                 .show(ui);
+            */
 
             self.addons.show(ctx, ui, app);
         });

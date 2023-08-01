@@ -14,6 +14,8 @@ mod utils;
 mod view;
 mod window;
 
+use std::time::Instant;
+
 use application::Application;
 use three_d::*;
 use window::build_window;
@@ -26,13 +28,16 @@ fn main() {
     let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
 
     let mut camera = crate::view::camera::CameraBuilder::new()
-        .viewport(Viewport::new_at_origo(1, 1))
+        .viewport(Viewport::new_at_origo(
+            config::default::WINDOW_S.width as u32,
+            config::default::WINDOW_S.height as u32,
+        ))
         .position(vec3(60.00, 50.0, 60.0))
         .target(vec3(0.0, 0.0, 0.0))
         .up(vec3(0.0, 1.0, 0.0))
         .fov(degrees(45.0))
         .near(0.1)
-        .far(1000.0)
+        .far(10000.0)
         .build()
         .expect("Failed to create camera");
 
@@ -62,16 +67,19 @@ fn main() {
     // Event loop
     let mut frame_input_generator = FrameInputGenerator::from_winit_window(&window);
     let mut gui = three_d::GUI::new(&context);
-    let side_count = 25;
+    let side_count = 100;
 
     event_loop.run(move |event, _, control_flow| match event {
         winit::event::Event::MainEventsCleared => {
             window.request_redraw();
         }
         winit::event::Event::RedrawRequested(_) => {
+            let now = Instant::now();
             let mut frame_input = frame_input_generator.generate(&context);
 
-            control.handle_events(&mut camera, &mut frame_input.events);
+            let cloned_events = &mut frame_input.events.clone();
+
+            let mut ui_use = None;
 
             gui.update(
                 &mut frame_input.events,
@@ -79,9 +87,14 @@ fn main() {
                 frame_input.viewport,
                 frame_input.device_pixel_ratio,
                 |ctx| {
+                    ui_use = Some(ctx.is_using_pointer());
                     application.ui_frame(ctx);
                 },
             );
+
+            if !ui_use.unwrap() {
+                control.handle_events(&mut camera, cloned_events);
+            }
 
             let viewport = Viewport {
                 x: (application.boundaries().toolbar.width() * frame_input.device_pixel_ratio)
@@ -137,6 +150,7 @@ fn main() {
             context.swap_buffers().unwrap();
             control_flow.set_poll();
 
+            println!("FPS: {}", 1.0 / now.elapsed().as_secs_f64());
             window.request_redraw();
         }
         winit::event::Event::WindowEvent { ref event, .. } => {
