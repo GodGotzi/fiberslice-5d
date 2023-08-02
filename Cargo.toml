@@ -18,6 +18,8 @@ image = { version = "0.24.6" }
 lazy_static = "1.4.0"
 type_eq = { path = "type_eq" }
 type_eq_derive = { path = "type_eq/type_eq_derive" }
-three-d = { git = "https://github.com/asny/three-d.git", features = ["egui-gui"] }
+three-d = { git = "https://github.com/asny/three-d.git", features = ["egui-gui", "serde"] }
 thiserror = "1.0.30"
-getset = "0.1.2"
+three-d-asset = { git = "https://github.com/asny/three-d-asset", features = ["gltf", "obj", "hdr", "jpeg", "http"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+serde = "1.0.177"

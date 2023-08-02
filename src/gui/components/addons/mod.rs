@@ -29,15 +29,15 @@ pub fn create_addon_strip_builder(
     build: Box<AddonStripBuilderClosure>,
 ) -> Response {
     StripBuilder::new(ui)
-        .size(Size::exact(boundary.location.x + 5.0))
-        .size(Size::exact(boundary.size.x - 10.0))
+        .size(Size::exact(boundary.location.x))
+        .size(Size::exact(boundary.size.x))
         .size(Size::remainder())
         .horizontal(|mut strip| {
             strip.empty();
             strip.strip(|builder| {
                 builder
-                    .size(Size::exact(boundary.location.y + 5.0))
-                    .size(Size::exact(boundary.size.y - 10.0))
+                    .size(Size::exact(boundary.location.y))
+                    .size(Size::exact(boundary.size.y))
                     .size(Size::remainder())
                     .vertical(|mut strip| {
                         strip.empty();
@@ -141,8 +141,8 @@ impl gui::InnerComponent<Addons> for Addons {
         let window_size = ui.available_size();
 
         let boundary = Boundary {
-            location: Pos2::new(0.0, 0.0),
-            size: Vec2::new(window_size.x, window_size.y),
+            location: Pos2::new(0.0, 4.0),
+            size: Vec2::new(window_size.x - 15.0, window_size.y - 15.0),
         };
 
         match app.mode() {
