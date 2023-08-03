@@ -41,17 +41,18 @@ async fn main() {
         .build()
         .expect("Failed to create camera");
 
-    let mut control = OrbitControl::new(vec3(0.0, 0.0, 0.0), 1.0, 1000.0);
-    camera.zoom_towards(&vec3(0.0, 0.0, 0.0), -400.0, 1.0, 1000.0);
+    let mut control = OrbitControl::new(vec3(0.0, 0.0, 0.0), 0.00001, 1000.0);
+    camera.zoom_towards(&vec3(0.0, 0.0, 0.0), -400.0, 0.00001, 1000.0);
 
     let light0 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
     let light1 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
 
-    let mut assets = three_d_asset::io::load(&["assets/bed.glb"]).unwrap();
+    let mut assets = three_d_asset::io::load(&["assets/simple_bed.obj"]).unwrap();
 
-    let cpu_model: CpuModel = assets.deserialize("bed.glb").unwrap();
+    let model: three_d_asset::Model = assets.deserialize("simple_bed.obj").unwrap();
+    //model.materials.iter_mut().for_each(|m| m.albedo = Srgba::BLUE);
 
-    let mut model = Model::<PhysicalMaterial>::new(&context, &cpu_model)
+    let mut model = Model::<PhysicalMaterial>::new(&context, &model)
         .unwrap()
         .remove(0);
 
