@@ -9,7 +9,9 @@ mod application;
 mod config;
 mod error;
 mod gui;
+mod model;
 mod prelude;
+mod slicer;
 mod utils;
 mod view;
 mod window;
@@ -24,7 +26,7 @@ async fn main() {
 
     let event_loop = winit::event_loop::EventLoop::new();
     let window = build_window(&event_loop).expect("Failed to build window");
-    
+
     let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
 
     let mut camera = crate::view::camera::CameraBuilder::new()
@@ -50,7 +52,6 @@ async fn main() {
     let mut assets = three_d_asset::io::load(&["assets/without-textures.glb"]).unwrap();
 
     let model: three_d_asset::Model = assets.deserialize("without-textures.glb").unwrap();
-    //model.materials.iter_mut().for_each(|m| m.albedo = Srgba::BLUE);
 
     let mut model = Model::<PhysicalMaterial>::new(&context, &model)
         .unwrap()
@@ -91,8 +92,6 @@ async fn main() {
                 control.handle_events(&mut camera, &mut frame_input.events);
             }
 
-            println!("{}", frame_input.elapsed_time);
-
             if frame_input.viewport.height != 0 && frame_input.viewport.width != 0 {
                 let viewport = Viewport {
                     x: (application.boundaries().toolbar.width() * frame_input.device_pixel_ratio)
@@ -110,7 +109,7 @@ async fn main() {
                             + application.boundaries().menubar.height())
                             * frame_input.device_pixel_ratio) as u32,
                 };
-            
+
                 camera.set_viewport(viewport);
             }
 
@@ -145,6 +144,10 @@ async fn main() {
                 }
                 _ => (),
             }
+        }
+        winit::event::Event::LoopDestroyed => {
+            application.save();
+            application.kill()
         }
         _ => {}
     });

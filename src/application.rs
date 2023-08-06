@@ -4,11 +4,14 @@ use three_d::egui::{self, Visuals};
 use crate::{
     gui::*,
     prelude::{AsyncPacket, AsyncWrapper, Item},
-    view::Mode,
+    utils::task::VirtualTask,
+    view::{visualization::VisualizerContext, Mode},
 };
 
 pub struct Application {
     screen: Screen,
+    task_handler: TaskHandler,
+    visualizer: VisualizerContext,
     context: ApplicationContext,
 }
 
@@ -16,6 +19,8 @@ impl Application {
     pub fn new() -> Self {
         Self {
             screen: Screen::new(),
+            task_handler: TaskHandler::new(),
+            visualizer: VisualizerContext::new(),
             context: ApplicationContext::new(),
         }
     }
@@ -32,6 +37,34 @@ impl Application {
 
     pub fn boundaries(&self) -> &BoundaryHolder {
         self.context.boundaries()
+    }
+
+    pub fn visualizer(&mut self) -> &mut VisualizerContext {
+        &mut self.visualizer
+    }
+
+    pub fn save(&mut self) {}
+
+    pub fn kill(&mut self) {
+        for task in self.task_handler.tasks.iter_mut() {
+            task.kill();
+        }
+
+        self.task_handler.tasks.clear();
+    }
+}
+
+pub struct TaskHandler {
+    tasks: Vec<Box<dyn VirtualTask>>,
+}
+
+impl TaskHandler {
+    pub fn new() -> Self {
+        Self { tasks: Vec::new() }
+    }
+
+    pub fn add_task(&mut self, task: Box<dyn VirtualTask>) {
+        self.tasks.push(task);
     }
 }
 

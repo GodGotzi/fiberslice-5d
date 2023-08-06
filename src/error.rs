@@ -7,6 +7,10 @@ pub enum Error {
     FieldMissing(String),
     #[error("InitialBuild {0}")]
     InitialBuild(String),
+    #[error("GCode Parse Error {0}")]
+    GCodeParseError(String, usize),
+    #[error("Unknown Instruction Type {0}")]
+    UnknownInstructionType(String),
     #[error(transparent)]
     Io(#[from] std::io::Error),
 }

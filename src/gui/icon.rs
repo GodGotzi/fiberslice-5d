@@ -12,6 +12,7 @@ lazy_static! {
 pub struct IconTable {
     orientation_default: RetainedImage,
     orientation_top: RetainedImage,
+    orientation_left: RetainedImage,
     orientation_right: RetainedImage,
     orientation_front: RetainedImage,
 }
@@ -21,6 +22,7 @@ impl IconTable {
         Self {
             orientation_default: Self::load_icon("orientation_default.png").unwrap(),
             orientation_top: Self::load_icon("orientation_top.png").unwrap(),
+            orientation_left: Self::load_icon("orientation_left.png").unwrap(),
             orientation_right: Self::load_icon("orientation_right.png").unwrap(),
             orientation_front: Self::load_icon("orientation_front.png").unwrap(),
         }
@@ -30,6 +32,7 @@ impl IconTable {
         match orientation {
             Orientation::Default => &self.orientation_default,
             Orientation::Top => &self.orientation_top,
+            Orientation::Left => &self.orientation_left,
             Orientation::Right => &self.orientation_right,
             Orientation::Front => &self.orientation_front,
         }

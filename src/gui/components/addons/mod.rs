@@ -80,6 +80,7 @@ pub mod orientation {
             .cell(Size::initial(30.0))
             .cell(Size::initial(30.0))
             .cell(Size::initial(30.0))
+            .cell(Size::initial(30.0))
             .cell(Size::remainder())
             .show(ui, |mut grid| {
                 grid.empty();
@@ -93,34 +94,7 @@ pub mod orientation {
                     let response = ui.add_sized([30., 30.], image_button);
 
                     if response.clicked() {
-                        println!("Clicked Normal");
-                    }
-                });
-
-                grid.cell(|ui| {
-                    let icon = icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Top);
-
-                    let image_button =
-                        ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
-
-                    let response = ui.add_sized([30., 30.], image_button);
-
-                    if response.clicked() {
-                        println!("Clicked Front");
-                    }
-                });
-
-                grid.cell(|ui| {
-                    let icon =
-                        icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Right);
-
-                    let image_button =
-                        ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
-
-                    let response = ui.add_sized([30., 30.], image_button);
-
-                    if response.clicked() {
-                        println!("Clicked Front");
+                        println!("Clicked Default");
                     }
                 });
 
@@ -135,6 +109,46 @@ pub mod orientation {
 
                     if response.clicked() {
                         println!("Clicked Front");
+                    }
+                });
+
+                grid.cell(|ui| {
+                    let icon = icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Top);
+
+                    let image_button =
+                        ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
+
+                    let response = ui.add_sized([30., 30.], image_button);
+
+                    if response.clicked() {
+                        println!("Clicked Top");
+                    }
+                });
+
+                grid.cell(|ui| {
+                    let icon = icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Left);
+
+                    let image_button =
+                        ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
+
+                    let response = ui.add_sized([30., 30.], image_button);
+
+                    if response.clicked() {
+                        println!("Clicked Left");
+                    }
+                });
+
+                grid.cell(|ui| {
+                    let icon =
+                        icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Right);
+
+                    let image_button =
+                        ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
+
+                    let response = ui.add_sized([30., 30.], image_button);
+
+                    if response.clicked() {
+                        println!("Clicked Right");
                     }
                 });
 
