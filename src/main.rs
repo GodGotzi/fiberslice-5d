@@ -47,9 +47,9 @@ async fn main() {
     let light0 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
     let light1 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
 
-    let mut assets = three_d_asset::io::load(&["assets/simple_bed.obj"]).unwrap();
+    let mut assets = three_d_asset::io::load(&["assets/without-textures.glb"]).unwrap();
 
-    let model: three_d_asset::Model = assets.deserialize("simple_bed.obj").unwrap();
+    let model: three_d_asset::Model = assets.deserialize("without-textures.glb").unwrap();
     //model.materials.iter_mut().for_each(|m| m.albedo = Srgba::BLUE);
 
     let mut model = Model::<PhysicalMaterial>::new(&context, &model)
