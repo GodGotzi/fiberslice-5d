@@ -5,7 +5,7 @@ pub mod visualization;
 pub enum Orientation {
     Default,
     Top,
-    Left,
+    //Left,
     Right,
     Front,
 }

@@ -11,22 +11,27 @@ lazy_static! {
 
 pub struct IconTable {
     orientation_default: RetainedImage,
+    orientation_top: RetainedImage,
+    orientation_right: RetainedImage,
+    orientation_front: RetainedImage,
 }
 
 impl IconTable {
     pub fn new() -> Self {
         Self {
-            orientation_default: Self::load_icon("cube_ico.png").unwrap(),
+            orientation_default: Self::load_icon("orientation_default.png").unwrap(),
+            orientation_top: Self::load_icon("orientation_top.png").unwrap(),
+            orientation_right: Self::load_icon("orientation_right.png").unwrap(),
+            orientation_front: Self::load_icon("orientation_front.png").unwrap(),
         }
     }
 
     pub fn get_orientation_icon(&self, orientation: Orientation) -> &RetainedImage {
         match orientation {
             Orientation::Default => &self.orientation_default,
-            Orientation::Top => todo!(),
-            Orientation::Left => todo!(),
-            Orientation::Right => todo!(),
-            Orientation::Front => todo!(),
+            Orientation::Top => &self.orientation_top,
+            Orientation::Right => &self.orientation_right,
+            Orientation::Front => &self.orientation_front,
         }
     }
 

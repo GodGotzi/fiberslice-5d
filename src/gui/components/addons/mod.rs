@@ -80,7 +80,6 @@ pub mod orientation {
             .cell(Size::initial(30.0))
             .cell(Size::initial(30.0))
             .cell(Size::initial(30.0))
-            .cell(Size::initial(30.0))
             .cell(Size::remainder())
             .show(ui, |mut grid| {
                 grid.empty();
@@ -99,12 +98,7 @@ pub mod orientation {
                 });
 
                 grid.cell(|ui| {
-                    ui.add_sized([30., 30.], Button::new(""));
-                });
-
-                grid.cell(|ui| {
-                    let icon =
-                        icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Default);
+                    let icon = icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Top);
 
                     let image_button =
                         ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
@@ -117,12 +111,33 @@ pub mod orientation {
                 });
 
                 grid.cell(|ui| {
-                    ui.add_sized([30., 30.], Button::new(""));
+                    let icon =
+                        icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Right);
+
+                    let image_button =
+                        ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
+
+                    let response = ui.add_sized([30., 30.], image_button);
+
+                    if response.clicked() {
+                        println!("Clicked Front");
+                    }
                 });
 
                 grid.cell(|ui| {
-                    ui.add_sized([30., 30.], Button::new(""));
+                    let icon =
+                        icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Front);
+
+                    let image_button =
+                        ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
+
+                    let response = ui.add_sized([30., 30.], image_button);
+
+                    if response.clicked() {
+                        println!("Clicked Front");
+                    }
                 });
+
                 grid.empty();
             });
     }
