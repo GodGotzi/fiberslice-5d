@@ -51,8 +51,8 @@ impl ApplicationContext {
         }
 
         Self {
-            theme: Theme::Light,
-            mode: Mode::Preview,
+            theme: Theme::Dark,
+            mode: Mode::Prepare,
             wrapper: AsyncWrapper::new(list),
             boundaries: BoundaryHolder::default(),
         }
