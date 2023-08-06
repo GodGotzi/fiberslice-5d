@@ -147,7 +147,7 @@ async fn main() {
         }
         winit::event::Event::LoopDestroyed => {
             application.save();
-            application.kill()
+            application.kill();
         }
         _ => {}
     });
