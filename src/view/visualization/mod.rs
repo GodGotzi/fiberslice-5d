@@ -1,4 +1,8 @@
+use three_d::RenderTarget;
+
 use crate::application::Application;
+
+use super::environment;
 
 pub mod force;
 pub mod model;
@@ -9,7 +13,8 @@ pub trait Visualizer {
     fn render(
         &self,
         context: &three_d::WindowedContext,
-        application: &mut Application,
+        target: &RenderTarget<'_>,
+        environment: &environment::Environment,
     ) -> Result<(), crate::error::Error>;
 }
 

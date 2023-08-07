@@ -46,6 +46,10 @@ impl Application {
         &mut self.task_handler
     }
 
+    pub fn visualizer(&mut self) -> &mut VisualizerContext {
+        &mut self.visualizer
+    }
+
     pub fn save(&mut self) {}
 
     pub fn kill(&mut self) {

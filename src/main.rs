@@ -18,6 +18,7 @@ mod window;
 
 use application::Application;
 use three_d::*;
+use view::{environment, visualization::Visualizer};
 use window::build_window;
 
 #[tokio::main]
@@ -29,25 +30,9 @@ async fn main() {
 
     let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
 
-    let mut camera = crate::view::camera::CameraBuilder::new()
-        .viewport(Viewport::new_at_origo(
-            config::default::WINDOW_S.width as u32,
-            config::default::WINDOW_S.height as u32,
-        ))
-        .position(vec3(60.00, 50.0, 60.0))
-        .target(vec3(0.0, 0.0, 0.0))
-        .up(vec3(0.0, 1.0, 0.0))
-        .fov(degrees(45.0))
-        .near(0.001)
-        .far(10000.0)
-        .build()
-        .expect("Failed to create camera");
-
     let mut control = OrbitControl::new(vec3(0.0, 0.0, 0.0), 0.00001, 1000.0);
-    camera.zoom_towards(&vec3(0.0, 0.0, 0.0), -400.0, 0.00001, 1000.0);
 
-    let light0 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
-    let light1 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
+    let mut environment = environment::Environment::new(&context);
 
     let mut assets = three_d_asset::io::load(&["assets/without-textures.glb"]).unwrap();
 
@@ -89,7 +74,7 @@ async fn main() {
             );
 
             if !ui_use.unwrap() {
-                control.handle_events(&mut camera, &mut frame_input.events);
+                control.handle_events(environment.camera_mut(), &mut frame_input.events);
             }
 
             if frame_input.viewport.height != 0 && frame_input.viewport.width != 0 {
@@ -110,15 +95,22 @@ async fn main() {
                             * frame_input.device_pixel_ratio) as u32,
                 };
 
-                camera.set_viewport(viewport);
+                environment.camera_mut().set_viewport(viewport);
             }
 
             // Then, based on whether or not we render the instanced cubes, collect the renderable
             // objects.
-            let screen = frame_input.screen();
+            let screen: RenderTarget<'_> = frame_input.screen();
             screen.clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0));
+
+            application
+                .visualizer()
+                .gcode()
+                .render(&context, &screen, &environment)
+                .unwrap();
+
             screen.write(|| {
-                model.render(&camera, &[&light0, &light1]);
+                //model.render(environment.camera(), environment.lights().as_slice());
                 gui.render();
             });
 

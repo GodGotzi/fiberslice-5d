@@ -1,4 +1,5 @@
 pub mod camera;
+pub mod environment;
 pub mod visualization;
 
 #[allow(dead_code)]
