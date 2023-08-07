@@ -25,12 +25,20 @@ impl Environment {
 
         camera.zoom_towards(&vec3(0.0, 0.0, 0.0), -400.0, 0.00001, 1000.0);
 
-        let light0 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
-        let light1 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
+        //let light0 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
+        //let light1 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
+
+        let ambient = AmbientLight::new(context, 0.2, Srgba::WHITE);
+        let directional0 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, -1.0, 0.0));
+        let directional1 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, -1.0, 0.0));
 
         Self {
             camera,
-            owned_lights: vec![Box::new(light0), Box::new(light1)],
+            owned_lights: vec![
+                Box::new(ambient),
+                Box::new(directional0),
+                Box::new(directional1),
+            ],
         }
     }
 }

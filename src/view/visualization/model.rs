@@ -5,7 +5,7 @@ use three_d::*;
 use three_d_asset::TriMesh;
 
 use crate::application::Application;
-use crate::utils::task::VirtualResultTask;
+use crate::utils::task::TaskWithResult;
 use crate::view::environment;
 
 use super::Visualizer;
@@ -28,7 +28,7 @@ struct Layer {
 #[allow(dead_code)]
 pub struct GCodeVisualizer {
     gcode: Option<crate::model::gcode::GCode>,
-    result: Option<Arc<Mutex<VirtualResultTask<Vec<Layer>>>>>,
+    result: Option<Arc<Mutex<TaskWithResult<Vec<Layer>>>>>,
 }
 
 #[allow(dead_code)]
@@ -55,16 +55,14 @@ impl Visualizer for GCodeVisualizer {
             return Err(crate::error::Error::FieldMissing("gcode is missing".into()));
         }
 
-        let mut result = VirtualResultTask::<Vec<Layer>>::new();
+        let mut result = TaskWithResult::<Vec<Layer>>::new();
 
         let gcode = self.gcode.as_ref().unwrap().clone();
 
         result.run(Box::new(move || {
             let layers = Vec::new();
 
-            CpuMesh::cube();
-
-            for instruction in gcode.instructions().iter() {
+            for _instruction in gcode.instructions().iter() {
                 /*
 
                 TODO
@@ -73,8 +71,6 @@ impl Visualizer for GCodeVisualizer {
 
 
                 */
-
-                CpuMesh::cube();
 
                 //strokes.push(Stroke { mesh_wrap: MeshWrapper(Mesh::new(context, cpu_mesh)), color: () })
             }
@@ -99,21 +95,23 @@ impl Visualizer for GCodeVisualizer {
     ) -> Result<(), crate::error::Error> {
         let test_mesh = build_test_mesh();
 
-        let model = Gm::new(
-            InstancedMesh::new(context, &Instances::default(), &test_mesh),
+        let mut model = Gm::new(
+            Mesh::new(context, &test_mesh),
             PhysicalMaterial::new(
                 context,
                 &CpuMaterial {
                     albedo: Srgba {
-                        r: 128,
-                        g: 128,
-                        b: 128,
+                        r: 100,
+                        g: 100,
+                        b: 190,
                         a: 255,
                     },
                     ..Default::default()
                 },
             ),
         );
+
+        model.set_transformation(Mat4::from_translation(vec3(0.0, 40.0, 0.0)));
 
         target.render(
             environment.camera(),
@@ -127,19 +125,96 @@ impl Visualizer for GCodeVisualizer {
 
 pub fn build_test_mesh() -> CpuMesh {
     let positions = vec![
-        vec3(0.0, 0.0, 0.0),
-        vec3(0.0, 100.0, 0.0),
-        vec3(100.0, 100.0, 0.0),
+        // Up
+        Vec3::new(1.0, 1.0, -1.0),
+        Vec3::new(-1.0, 1.0, -1.0),
+        Vec3::new(1.0, 1.0, 1.0),
+        Vec3::new(-1.0, 1.0, 1.0),
+        Vec3::new(1.0, 1.0, 1.0),
+        Vec3::new(-1.0, 1.0, -1.0),
+        // Down
+        Vec3::new(-1.0, -1.0, -1.0),
+        Vec3::new(1.0, -1.0, -1.0),
+        Vec3::new(1.0, -1.0, 1.0),
+        Vec3::new(1.0, -1.0, 1.0),
+        Vec3::new(-1.0, -1.0, 1.0),
+        Vec3::new(-1.0, -1.0, -1.0),
+        // Back
+        Vec3::new(1.0, -1.0, -1.0),
+        Vec3::new(-1.0, -1.0, -1.0),
+        Vec3::new(1.0, 1.0, -1.0),
+        Vec3::new(-1.0, 1.0, -1.0),
+        Vec3::new(1.0, 1.0, -1.0),
+        Vec3::new(-1.0, -1.0, -1.0),
+        // Front
+        Vec3::new(-1.0, -1.0, 1.0),
+        Vec3::new(1.0, -1.0, 1.0),
+        Vec3::new(1.0, 1.0, 1.0),
+        Vec3::new(1.0, 1.0, 1.0),
+        Vec3::new(-1.0, 1.0, 1.0),
+        Vec3::new(-1.0, -1.0, 1.0),
+        // Right
+        Vec3::new(1.0, -1.0, -1.0),
+        Vec3::new(1.0, 1.0, -1.0),
+        Vec3::new(1.0, 1.0, 1.0),
+        Vec3::new(1.0, 1.0, 1.0),
+        Vec3::new(1.0, -1.0, 1.0),
+        Vec3::new(1.0, -1.0, -1.0),
+        // Left
+        Vec3::new(-1.0, 1.0, -1.0),
+        Vec3::new(-1.0, -1.0, -1.0),
+        Vec3::new(-1.0, 1.0, 1.0),
+        Vec3::new(-1.0, -1.0, 1.0),
+        Vec3::new(-1.0, 1.0, 1.0),
+        Vec3::new(-1.0, -1.0, -1.0),
     ];
-
-    let indices = vec![0, 1, 2];
-
-    //let uvs = vec![vec2(0, 0), vec2(0, 1), vec2(1, 1)];
-
+    let uvs = vec![
+        // Up
+        Vec2::new(0.25, 0.0),
+        Vec2::new(0.25, 1.0 / 3.0),
+        Vec2::new(0.5, 0.0),
+        Vec2::new(0.5, 1.0 / 3.0),
+        Vec2::new(0.5, 0.0),
+        Vec2::new(0.25, 1.0 / 3.0),
+        // Down
+        Vec2::new(0.25, 2.0 / 3.0),
+        Vec2::new(0.25, 1.0),
+        Vec2::new(0.5, 1.0),
+        Vec2::new(0.5, 1.0),
+        Vec2::new(0.5, 2.0 / 3.0),
+        Vec2::new(0.25, 2.0 / 3.0),
+        // Back
+        Vec2::new(0.0, 2.0 / 3.0),
+        Vec2::new(0.25, 2.0 / 3.0),
+        Vec2::new(0.0, 1.0 / 3.0),
+        Vec2::new(0.25, 1.0 / 3.0),
+        Vec2::new(0.0, 1.0 / 3.0),
+        Vec2::new(0.25, 2.0 / 3.0),
+        // Front
+        Vec2::new(0.5, 2.0 / 3.0),
+        Vec2::new(0.75, 2.0 / 3.0),
+        Vec2::new(0.75, 1.0 / 3.0),
+        Vec2::new(0.75, 1.0 / 3.0),
+        Vec2::new(0.5, 1.0 / 3.0),
+        Vec2::new(0.5, 2.0 / 3.0),
+        // Right
+        Vec2::new(1.0, 2.0 / 3.0),
+        Vec2::new(1.0, 1.0 / 3.0),
+        Vec2::new(0.75, 1.0 / 3.0),
+        Vec2::new(0.75, 1.0 / 3.0),
+        Vec2::new(0.75, 2.0 / 3.0),
+        Vec2::new(1.0, 2.0 / 3.0),
+        // Left
+        Vec2::new(0.25, 1.0 / 3.0),
+        Vec2::new(0.25, 2.0 / 3.0),
+        Vec2::new(0.5, 1.0 / 3.0),
+        Vec2::new(0.5, 2.0 / 3.0),
+        Vec2::new(0.5, 1.0 / 3.0),
+        Vec2::new(0.25, 2.0 / 3.0),
+    ];
     let mut mesh = TriMesh {
         positions: Positions::F32(positions),
-        //uvs: Some(uvs),
-        indices: Indices::U16(indices),
+        uvs: Some(uvs),
         ..Default::default()
     };
     mesh.compute_normals();

@@ -1,17 +1,17 @@
 use tokio::sync::oneshot::{channel, Receiver};
 use tokio::task::JoinHandle;
 
-pub trait VirtualTask {
+pub trait Task {
     fn kill(&mut self);
 }
 
-pub struct VirtualResultTask<T> {
+pub struct TaskWithResult<T> {
     handle: Option<JoinHandle<()>>,
     receiver: Option<Receiver<T>>,
 }
 
 #[allow(dead_code)]
-impl<T: Sync + Send + std::fmt::Debug + 'static> VirtualResultTask<T> {
+impl<T: Sync + Send + std::fmt::Debug + 'static> TaskWithResult<T> {
     pub fn new() -> Self {
         Self {
             handle: None,
@@ -40,7 +40,7 @@ impl<T: Sync + Send + std::fmt::Debug + 'static> VirtualResultTask<T> {
     }
 }
 
-impl<T> VirtualTask for VirtualResultTask<T> {
+impl<T> Task for TaskWithResult<T> {
     fn kill(&mut self) {
         if self.handle.is_some() {
             self.handle.take().unwrap().abort();

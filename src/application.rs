@@ -6,7 +6,7 @@ use three_d::egui::{self, Visuals};
 use crate::{
     gui::*,
     prelude::{AsyncPacket, AsyncWrapper, Item},
-    utils::task::VirtualTask,
+    utils::task::Task,
     view::{visualization::VisualizerContext, Mode},
 };
 
@@ -14,6 +14,7 @@ use crate::{
 pub struct Application {
     screen: Screen,
     task_handler: TaskHandler,
+
     visualizer: VisualizerContext,
     context: ApplicationContext,
 }
@@ -64,7 +65,7 @@ impl Application {
 }
 
 pub struct TaskHandler {
-    tasks: Vec<Arc<Mutex<dyn VirtualTask>>>,
+    tasks: Vec<Arc<Mutex<dyn Task>>>,
 }
 
 impl TaskHandler {
@@ -72,7 +73,7 @@ impl TaskHandler {
         Self { tasks: Vec::new() }
     }
 
-    pub fn add_task(&mut self, task: Arc<Mutex<dyn VirtualTask>>) {
+    pub fn add_task(&mut self, task: Arc<Mutex<dyn Task>>) {
         self.tasks.push(task);
     }
 }

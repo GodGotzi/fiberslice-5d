@@ -1,5 +1,4 @@
 use strum_macros::EnumIter;
-
 use type_eq::TypeEq;
 use type_eq_derive::TypeEq;
 

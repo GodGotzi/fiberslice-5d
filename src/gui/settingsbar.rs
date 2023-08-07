@@ -117,13 +117,16 @@ impl TabbedSettings {
 
         match side_view.open_panel {
             SettingsPanel::Slice => {
-                ui.label("a");
+                //ui.label("a");
+                //TODO
             }
             SettingsPanel::Filament => {
-                ui.label("b");
+                //ui.label("b");
+                //TODO
             }
             SettingsPanel::Printer => {
-                ui.label("c");
+                //ui.label("c");
+                //TODO
             }
         }
     }
