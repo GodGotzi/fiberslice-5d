@@ -31,7 +31,7 @@ async fn main() {
     let window = build_window(&event_loop).expect("Failed to build window");
 
     let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
-    let mut buffer = ObjectBuffer::new();
+    let mut buffer: ObjectBuffer<dyn Object> = ObjectBuffer::new();
 
     let mut control = OrbitControl::new(vec3(0.0, 0.0, 0.0), 0.00001, 1000.0);
 
@@ -53,7 +53,17 @@ async fn main() {
         let translation = Mat4::from_translation(vec3(0.0, 0.0, 0.0));
         model.set_transformation(translation * rotation * scale);
 
-        buffer.add_object("PRINT_BED", model);
+        buffer.add_object("PRINT_BED", Box::new(model));
+
+        let objects = application
+            .visualizer()
+            .gcode()
+            .try_collect_objects(&context)
+            .unwrap();
+
+        for object in objects {
+            buffer.add_layer(object);
+        }
     }
 
     // Event loop
@@ -108,12 +118,6 @@ async fn main() {
             // objects.
             let screen: RenderTarget<'_> = frame_input.screen();
             screen.clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0));
-
-            application
-                .visualizer()
-                .gcode()
-                .render(&context, &screen, &environment)
-                .unwrap();
 
             screen.write(|| {
                 buffer.render(&environment);

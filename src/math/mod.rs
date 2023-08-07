@@ -7,6 +7,7 @@ pub struct VirtualPlane {
     normal: Vector3<f32>,
 }
 
+#[allow(dead_code)]
 impl VirtualPlane {
     pub fn new(position: Vector3<f32>, normal: Vector3<f32>) -> Self {
         Self { position, normal }

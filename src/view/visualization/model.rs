@@ -6,7 +6,6 @@ use three_d_asset::TriMesh;
 
 use crate::application::Application;
 use crate::utils::task::TaskWithResult;
-use crate::view::environment;
 
 use super::Visualizer;
 
@@ -87,15 +86,13 @@ impl Visualizer for GCodeVisualizer {
         Ok(())
     }
 
-    fn render(
+    fn try_collect_objects(
         &self,
         context: &three_d::WindowedContext,
-        target: &RenderTarget<'_>,
-        environment: &environment::Environment,
-    ) -> Result<(), crate::error::Error> {
+    ) -> Result<Vec<Box<dyn Object>>, crate::error::Error> {
         let test_mesh = build_test_mesh();
 
-        let mut model = Gm::new(
+        let mut model: Gm<Mesh, PhysicalMaterial> = Gm::new(
             Mesh::new(context, &test_mesh),
             PhysicalMaterial::new(
                 context,
@@ -113,13 +110,7 @@ impl Visualizer for GCodeVisualizer {
 
         model.set_transformation(Mat4::from_translation(vec3(0.0, 40.0, 0.0)));
 
-        target.render(
-            environment.camera(),
-            vec![model],
-            environment.lights().as_slice(),
-        );
-
-        Ok(())
+        Ok(vec![Box::new(model)])
     }
 }
 

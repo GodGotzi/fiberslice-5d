@@ -4,14 +4,14 @@ use three_d::*;
 
 use super::environment;
 
-pub struct HideableObject<O: Object + 'static> {
-    inner: O,
+pub struct HideableObject<O: Object + ?Sized + 'static> {
+    inner: Box<O>,
     visible: bool,
 }
 
 #[allow(dead_code)]
-impl<O: Object + 'static> HideableObject<O> {
-    pub fn new(object: O) -> Self {
+impl<O: Object + ?Sized + 'static> HideableObject<O> {
+    pub fn new(object: Box<O>) -> Self {
         Self {
             inner: object,
             visible: true,
@@ -35,15 +35,15 @@ impl<O: Object + 'static> HideableObject<O> {
     }
 }
 
-pub struct ObjectBuffer<O: Object + 'static> {
-    layers: Vec<O>,
+pub struct ObjectBuffer<O: Object + ?Sized + 'static> {
+    layers: Vec<Box<O>>,
     models: HashMap<String, HideableObject<O>>,
     objects: HashMap<String, HideableObject<O>>,
     interactive_objects: HashMap<String, HideableObject<O>>,
 }
 
 #[allow(dead_code)]
-impl<'a, O: Object + 'static> ObjectBuffer<O> {
+impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<O> {
     pub fn new() -> Self {
         Self {
             layers: Vec::new(),
@@ -53,39 +53,39 @@ impl<'a, O: Object + 'static> ObjectBuffer<O> {
         }
     }
 
-    pub fn add_layer(&mut self, layer: O) {
+    pub fn add_layer(&mut self, layer: Box<O>) {
         self.layers.push(layer);
     }
 
-    pub fn add_model<S: Into<String>>(&mut self, name: S, model: O) {
+    pub fn add_model<S: Into<String>>(&mut self, name: S, model: Box<O>) {
         self.models.insert(name.into(), HideableObject::new(model));
     }
 
-    pub fn add_model_and_hide<S: Into<String>>(&mut self, name: S, model: O) {
+    pub fn add_model_and_hide<S: Into<String>>(&mut self, name: S, model: Box<O>) {
         let mut object = HideableObject::new(model);
         object.hide();
 
         self.models.insert(name.into(), object);
     }
 
-    pub fn add_object<S: Into<String>>(&mut self, name: S, object: O) {
+    pub fn add_object<S: Into<String>>(&mut self, name: S, object: Box<O>) {
         self.objects
             .insert(name.into(), HideableObject::new(object));
     }
 
-    pub fn add_object_and_hide<S: Into<String>>(&mut self, name: S, object: O) {
+    pub fn add_object_and_hide<S: Into<String>>(&mut self, name: S, object: Box<O>) {
         let mut object = HideableObject::new(object);
         object.hide();
 
         self.objects.insert(name.into(), object);
     }
 
-    pub fn add_interactive_object<S: Into<String>>(&mut self, name: S, object: O) {
+    pub fn add_interactive_object<S: Into<String>>(&mut self, name: S, object: Box<O>) {
         self.interactive_objects
             .insert(name.into(), HideableObject::new(object));
     }
 
-    pub fn add_interactive_object_and_hide<S: Into<String>>(&mut self, name: S, object: O) {
+    pub fn add_interactive_object_and_hide<S: Into<String>>(&mut self, name: S, object: Box<O>) {
         let mut object = HideableObject::new(object);
         object.hide();
 
@@ -93,7 +93,11 @@ impl<'a, O: Object + 'static> ObjectBuffer<O> {
     }
 
     pub fn get_layer(&self, index: usize) -> Option<&O> {
-        self.layers.get(index)
+        if let Some(layer) = self.layers.get(index) {
+            Some(layer.as_ref())
+        } else {
+            None
+        }
     }
 
     pub fn get_model<S: Into<&'a String>>(&self, name: S) -> Option<&O> {
@@ -120,19 +124,19 @@ impl<'a, O: Object + 'static> ObjectBuffer<O> {
         }
     }
 
-    pub fn remove_layer(&mut self, index: usize) -> O {
+    pub fn remove_layer(&mut self, index: usize) -> Box<O> {
         self.layers.remove(index)
     }
 
-    pub fn remove_model<S: Into<&'a String>>(&mut self, name: S) -> O {
+    pub fn remove_model<S: Into<&'a String>>(&mut self, name: S) -> Box<O> {
         self.models.remove(name.into()).unwrap().inner
     }
 
-    pub fn remove_object<S: Into<&'a String>>(&mut self, name: S) -> O {
+    pub fn remove_object<S: Into<&'a String>>(&mut self, name: S) -> Box<O> {
         self.objects.remove(name.into()).unwrap().inner
     }
 
-    pub fn remove_interactive_object<S: Into<&'a String>>(&mut self, name: S) -> O {
+    pub fn remove_interactive_object<S: Into<&'a String>>(&mut self, name: S) -> Box<O> {
         self.interactive_objects.remove(name.into()).unwrap().inner
     }
 

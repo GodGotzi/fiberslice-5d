@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{math::VirtualPlane, prelude::Error};
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, Display)]
 pub enum Setup {
     Anycubic,

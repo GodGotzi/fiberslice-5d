@@ -1,8 +1,6 @@
-use three_d::RenderTarget;
+use three_d::Object;
 
 use crate::application::Application;
-
-use super::environment;
 
 pub mod force;
 pub mod model;
@@ -10,12 +8,10 @@ pub mod model;
 pub trait Visualizer {
     fn visualize(&mut self, application: &mut Application) -> Result<(), crate::error::Error>;
 
-    fn render(
+    fn try_collect_objects(
         &self,
         context: &three_d::WindowedContext,
-        target: &RenderTarget<'_>,
-        environment: &environment::Environment,
-    ) -> Result<(), crate::error::Error>;
+    ) -> Result<Vec<Box<dyn Object>>, crate::error::Error>;
 }
 
 #[allow(dead_code)]
