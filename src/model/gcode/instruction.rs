@@ -1,5 +1,6 @@
 use super::movement::Movements;
 
+#[derive(Debug, Clone)]
 pub enum InstructionType {
     G1,
     G0,
@@ -44,12 +45,15 @@ impl TryFrom<&str> for InstructionType {
     }
 }
 
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
 pub struct Instruction {
     instruction_type: InstructionType,
     child_instructions: Vec<InstructionType>,
     movements: Movements,
 }
 
+#[allow(dead_code)]
 impl Instruction {
     pub fn new(
         instruction_type: InstructionType,

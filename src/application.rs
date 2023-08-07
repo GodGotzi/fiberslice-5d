@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use strum::IntoEnumIterator;
 use three_d::egui::{self, Visuals};
 
@@ -8,6 +10,7 @@ use crate::{
     view::{visualization::VisualizerContext, Mode},
 };
 
+#[allow(dead_code)]
 pub struct Application {
     screen: Screen,
     task_handler: TaskHandler,
@@ -39,15 +42,17 @@ impl Application {
         self.context.boundaries()
     }
 
-    pub fn visualizer(&mut self) -> &mut VisualizerContext {
-        &mut self.visualizer
+    pub fn task_handler(&mut self) -> &mut TaskHandler {
+        &mut self.task_handler
     }
 
     pub fn save(&mut self) {}
 
     pub fn kill(&mut self) {
         for task in self.task_handler.tasks.iter_mut() {
-            task.kill();
+            if let Ok(mut task) = task.lock() {
+                task.kill();
+            }
         }
 
         self.task_handler.tasks.clear();
@@ -55,7 +60,7 @@ impl Application {
 }
 
 pub struct TaskHandler {
-    tasks: Vec<Box<dyn VirtualTask>>,
+    tasks: Vec<Arc<Mutex<dyn VirtualTask>>>,
 }
 
 impl TaskHandler {
@@ -63,7 +68,7 @@ impl TaskHandler {
         Self { tasks: Vec::new() }
     }
 
-    pub fn add_task(&mut self, task: Box<dyn VirtualTask>) {
+    pub fn add_task(&mut self, task: Arc<Mutex<dyn VirtualTask>>) {
         self.tasks.push(task);
     }
 }

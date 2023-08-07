@@ -1,5 +1,5 @@
 #[allow(non_snake_case)]
-
+#[derive(Debug, Clone)]
 pub struct Movements {
     pub X: Option<f64>,
     pub Y: Option<f64>,

@@ -10,6 +10,7 @@ pub struct VirtualResultTask<T> {
     receiver: Option<Receiver<T>>,
 }
 
+#[allow(dead_code)]
 impl<T: Sync + Send + std::fmt::Debug + 'static> VirtualResultTask<T> {
     pub fn new() -> Self {
         Self {
@@ -18,7 +19,7 @@ impl<T: Sync + Send + std::fmt::Debug + 'static> VirtualResultTask<T> {
         }
     }
 
-    pub fn run(&mut self, runnable: fn() -> T) {
+    pub fn run(&mut self, runnable: Box<dyn Fn() -> T + Sync + Send>) {
         let (sender, receiver) = channel::<T>();
         let handle = tokio::spawn(async move {
             sender.send(runnable()).unwrap();
@@ -37,8 +38,10 @@ impl<T: Sync + Send + std::fmt::Debug + 'static> VirtualResultTask<T> {
 
         None
     }
+}
 
-    pub fn kill(&mut self) {
+impl<T> VirtualTask for VirtualResultTask<T> {
+    fn kill(&mut self) {
         if self.handle.is_some() {
             self.handle.take().unwrap().abort();
         }

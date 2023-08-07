@@ -2,6 +2,7 @@ pub mod instruction;
 pub mod movement;
 pub mod parser;
 
+#[derive(Debug, Clone)]
 pub struct GCode {
     instructions: Vec<instruction::Instruction>,
 }

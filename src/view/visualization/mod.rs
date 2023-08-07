@@ -1,17 +1,25 @@
+use crate::application::Application;
+
 pub mod force;
 pub mod model;
 
 pub trait Visualizer {
-    fn visualize(&mut self);
+    fn visualize(&mut self, application: &mut Application) -> Result<(), crate::error::Error>;
 
-    fn render(&self, context: &three_d::WindowedContext);
+    fn render(
+        &self,
+        context: &three_d::WindowedContext,
+        application: &mut Application,
+    ) -> Result<(), crate::error::Error>;
 }
 
+#[allow(dead_code)]
 pub struct VisualizerContext {
     gcode: model::GCodeVisualizer,
     force: force::ForceVisualizer,
 }
 
+#[allow(dead_code)]
 impl VisualizerContext {
     pub fn new() -> VisualizerContext {
         VisualizerContext {
