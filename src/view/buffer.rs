@@ -42,15 +42,21 @@ pub struct ObjectBuffer<O: Object + ?Sized + 'static> {
     interactive_objects: HashMap<String, HideableObject<O>>,
 }
 
-#[allow(dead_code)]
-impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<O> {
-    pub fn new() -> Self {
+impl<O: Object + ?Sized + 'static> Default for ObjectBuffer<O> {
+    fn default() -> Self {
         Self {
             layers: Vec::new(),
             models: HashMap::new(),
             objects: HashMap::new(),
             interactive_objects: HashMap::new(),
         }
+    }
+}
+
+#[allow(dead_code)]
+impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<O> {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn add_layer(&mut self, layer: Box<O>) {

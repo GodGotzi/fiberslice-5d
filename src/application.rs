@@ -19,14 +19,20 @@ pub struct Application {
     context: ApplicationContext,
 }
 
-impl Application {
-    pub fn new() -> Self {
+impl Default for Application {
+    fn default() -> Self {
         Self {
             screen: Screen::new(),
-            task_handler: TaskHandler::new(),
-            visualizer: VisualizerContext::new(),
+            task_handler: TaskHandler::default(),
+            visualizer: VisualizerContext::default(),
             context: ApplicationContext::new(),
         }
+    }
+}
+
+impl Application {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn ui_frame(&mut self, ctx: &egui::Context) {
@@ -64,13 +70,14 @@ impl Application {
     }
 }
 
+#[derive(Default)]
 pub struct TaskHandler {
     tasks: Vec<Arc<Mutex<dyn Task>>>,
 }
 
 impl TaskHandler {
     pub fn new() -> Self {
-        Self { tasks: Vec::new() }
+        Self::default()
     }
 
     pub fn add_task(&mut self, task: Arc<Mutex<dyn Task>>) {

@@ -114,18 +114,22 @@ async fn main() {
                 environment.camera_mut().set_viewport(viewport);
             }
 
-            // Then, based on whether or not we render the instanced cubes, collect the renderable
-            // objects.
-            let screen: RenderTarget<'_> = frame_input.screen();
-            screen.clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0));
+            //Render
 
-            screen.write(|| {
-                buffer.render(&environment);
-                gui.render();
-            });
+            {
+                let screen: RenderTarget<'_> = frame_input.screen();
+                screen.clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0));
 
-            context.swap_buffers().unwrap();
-            control_flow.set_poll();
+                screen.write(|| {
+                    buffer.render(&environment);
+                    gui.render();
+                });
+            }
+
+            {
+                context.swap_buffers().unwrap();
+                control_flow.set_poll();
+            }
 
             window.request_redraw();
         }
@@ -134,6 +138,7 @@ async fn main() {
         }
         winit::event::Event::WindowEvent { ref event, .. } => {
             frame_input_generator.handle_winit_window_event(event);
+
             match event {
                 winit::event::WindowEvent::Resized(physical_size) => {
                     context.resize(*physical_size);
@@ -153,4 +158,37 @@ async fn main() {
         }
         _ => {}
     });
+}
+
+pub fn test_buffer(
+    context: &WindowedContext,
+    application: &mut Application,
+    buffer: &mut ObjectBuffer<dyn Object>,
+) {
+    let model: three_d_asset::Model =
+        three_d_asset::io::load_and_deserialize("assets/without-textures.glb").unwrap();
+
+    let mut model = Model::<PhysicalMaterial>::new(context, &model)
+        .unwrap()
+        .remove(0);
+
+    let scale = Mat4::from_scale(1.0);
+    let rotation = Mat4::from_angle_y(degrees(90.0))
+        .concat(&Mat4::from_angle_x(degrees(90.0)))
+        .concat(&Mat4::from_angle_z(degrees(45.0)));
+
+    let translation = Mat4::from_translation(vec3(0.0, 0.0, 0.0));
+    model.set_transformation(translation * rotation * scale);
+
+    buffer.add_object("PRINT_BED", Box::new(model));
+
+    let objects = application
+        .visualizer()
+        .gcode()
+        .try_collect_objects(context)
+        .unwrap();
+
+    for object in objects {
+        buffer.add_layer(object);
+    }
 }

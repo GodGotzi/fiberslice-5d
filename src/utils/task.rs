@@ -5,6 +5,7 @@ pub trait Task {
     fn kill(&mut self);
 }
 
+#[derive(Debug)]
 pub struct TaskWithResult<T> {
     handle: Option<JoinHandle<()>>,
     receiver: Option<Receiver<T>>,

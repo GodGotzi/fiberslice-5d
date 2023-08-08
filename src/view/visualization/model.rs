@@ -25,6 +25,7 @@ struct Layer {
 }
 
 #[allow(dead_code)]
+#[derive(Debug, Default)]
 pub struct GCodeVisualizer {
     gcode: Option<crate::model::gcode::GCode>,
     result: Option<Arc<Mutex<TaskWithResult<Vec<Layer>>>>>,
@@ -32,11 +33,8 @@ pub struct GCodeVisualizer {
 
 #[allow(dead_code)]
 impl GCodeVisualizer {
-    pub fn new() -> GCodeVisualizer {
-        GCodeVisualizer {
-            gcode: None,
-            result: None,
-        }
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn set_gcode(&mut self, gcode: crate::model::gcode::GCode) {

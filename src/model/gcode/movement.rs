@@ -1,5 +1,5 @@
 #[allow(non_snake_case)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Movements {
     pub X: Option<f64>,
     pub Y: Option<f64>,
@@ -9,14 +9,8 @@ pub struct Movements {
 }
 
 impl Movements {
-    pub fn new() -> Movements {
-        Movements {
-            X: None,
-            Y: None,
-            Z: None,
-            E: None,
-            F: None,
-        }
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn is_movement(movement_str: &str) -> bool {

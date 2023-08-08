@@ -20,13 +20,19 @@ pub struct VisualizerContext {
     force: force::ForceVisualizer,
 }
 
-#[allow(dead_code)]
-impl VisualizerContext {
-    pub fn new() -> VisualizerContext {
-        VisualizerContext {
+impl Default for VisualizerContext {
+    fn default() -> Self {
+        Self {
             gcode: model::GCodeVisualizer::new(),
             force: force::ForceVisualizer::new(),
         }
+    }
+}
+
+#[allow(dead_code)]
+impl VisualizerContext {
+    pub fn new() -> VisualizerContext {
+        Self::default()
     }
 
     pub fn gcode(&mut self) -> &mut model::GCodeVisualizer {
