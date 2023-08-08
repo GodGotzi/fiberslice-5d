@@ -36,7 +36,8 @@ impl<O: Object + ?Sized + 'static> HideableObject<O> {
 }
 
 pub struct ObjectBuffer<O: Object + ?Sized + 'static> {
-    layers: Vec<Box<O>>,
+    skybox: Option<Skybox>,
+    layers: Vec<HideableObject<O>>,
     models: HashMap<String, HideableObject<O>>,
     objects: HashMap<String, HideableObject<O>>,
     interactive_objects: HashMap<String, HideableObject<O>>,
@@ -45,6 +46,7 @@ pub struct ObjectBuffer<O: Object + ?Sized + 'static> {
 impl<O: Object + ?Sized + 'static> Default for ObjectBuffer<O> {
     fn default() -> Self {
         Self {
+            skybox: None,
             layers: Vec::new(),
             models: HashMap::new(),
             objects: HashMap::new(),
@@ -59,8 +61,12 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<O> {
         Self::default()
     }
 
+    pub fn set_skybox(&mut self, skybox: Skybox) {
+        self.skybox = Some(skybox);
+    }
+
     pub fn add_layer(&mut self, layer: Box<O>) {
-        self.layers.push(layer);
+        self.layers.push(HideableObject::new(layer));
     }
 
     pub fn add_model<S: Into<String>>(&mut self, name: S, model: Box<O>) {
@@ -100,7 +106,7 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<O> {
 
     pub fn get_layer(&self, index: usize) -> Option<&O> {
         if let Some(layer) = self.layers.get(index) {
-            Some(layer.as_ref())
+            Some(&layer.inner)
         } else {
             None
         }
@@ -131,7 +137,7 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<O> {
     }
 
     pub fn remove_layer(&mut self, index: usize) -> Box<O> {
-        self.layers.remove(index)
+        self.layers.remove(index).inner
     }
 
     pub fn remove_model<S: Into<&'a String>>(&mut self, name: S) -> Box<O> {
@@ -188,8 +194,14 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<O> {
     }
 
     pub fn render(&self, environment: &environment::Environment) {
+        if let Some(ref skybox) = self.skybox {
+            skybox.render(environment.camera(), &[]);
+        }
+
         for layer in &self.layers {
-            layer.render(environment.camera(), environment.lights().as_slice());
+            layer
+                .inner
+                .render(environment.camera(), environment.lights().as_slice());
         }
 
         for model in self.models.values() {

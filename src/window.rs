@@ -6,6 +6,7 @@ pub fn build_window(event_loop: &EventLoop<()>) -> Result<Window, Error> {
     #[cfg(not(target_arch = "wasm32"))]
     let window_builder = winit::window::WindowBuilder::new()
         .with_title("FiberSlice-5D")
+        .with_visible(false)
         .with_min_inner_size(config::default::WINDOW_S);
 
     #[cfg(target_arch = "wasm32")]

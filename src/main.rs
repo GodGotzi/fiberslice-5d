@@ -28,6 +28,7 @@ use utils::frame::FrameHandle;
 fn main() {
     let event_loop = winit::event_loop::EventLoop::new();
     let window = build_window(&event_loop).expect("Failed to build window");
+
     let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
     let mut application = Application::new(&window);
 
@@ -38,6 +39,7 @@ fn main() {
     test_buffer(&context, &mut application, &mut buffer);
 
     let mut gui = three_d::GUI::new(&context);
+    window.set_visible(true);
 
     // Event loop
     event_loop.run(move |event, _, control_flow| match event {
@@ -68,7 +70,7 @@ fn main() {
             //Render
             {
                 let screen: RenderTarget<'_> = frame_input.screen();
-                screen.clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0));
+                screen.clear(ClearState::color_and_depth(1.0, 1.0, 1.0, 1.0, 1.0));
 
                 screen.write(|| {
                     buffer.render(&environment);
@@ -100,6 +102,12 @@ pub fn test_buffer(
     application: &mut Application,
     buffer: &mut ObjectBuffer<dyn Object>,
 ) {
+    let environment_map =
+        three_d_asset::io::load_and_deserialize("wallpapers/space2_wallpaper.hdr").unwrap();
+
+    let skybox = Skybox::new_from_equirectangular(context, &environment_map);
+    buffer.set_skybox(skybox);
+
     let model: three_d_asset::Model =
         three_d_asset::io::load_and_deserialize("assets/without-textures.glb").unwrap();
 
@@ -117,6 +125,7 @@ pub fn test_buffer(
 
     buffer.add_object("PRINT_BED", Box::new(model));
 
+    /*
     let objects = application
         .visualizer()
         .gcode()
@@ -126,4 +135,5 @@ pub fn test_buffer(
     for object in objects {
         buffer.add_layer(object);
     }
+    */
 }

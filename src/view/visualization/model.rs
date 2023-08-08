@@ -177,57 +177,21 @@ pub fn build_test_mesh() -> CpuMesh {
         Vec3::new(-1.0, 1.0, 1.0),
         Vec3::new(-1.0, -1.0, -1.0),
     ];
-    let uvs = vec![
-        // Up
-        Vec2::new(0.25, 0.0),
-        Vec2::new(0.25, 1.0 / 3.0),
-        Vec2::new(0.5, 0.0),
-        Vec2::new(0.5, 1.0 / 3.0),
-        Vec2::new(0.5, 0.0),
-        Vec2::new(0.25, 1.0 / 3.0),
-        // Down
-        Vec2::new(0.25, 2.0 / 3.0),
-        Vec2::new(0.25, 1.0),
-        Vec2::new(0.5, 1.0),
-        Vec2::new(0.5, 1.0),
-        Vec2::new(0.5, 2.0 / 3.0),
-        Vec2::new(0.25, 2.0 / 3.0),
-        // Back
-        Vec2::new(0.0, 2.0 / 3.0),
-        Vec2::new(0.25, 2.0 / 3.0),
-        Vec2::new(0.0, 1.0 / 3.0),
-        Vec2::new(0.25, 1.0 / 3.0),
-        Vec2::new(0.0, 1.0 / 3.0),
-        Vec2::new(0.25, 2.0 / 3.0),
-        // Front
-        Vec2::new(0.5, 2.0 / 3.0),
-        Vec2::new(0.75, 2.0 / 3.0),
-        Vec2::new(0.75, 1.0 / 3.0),
-        Vec2::new(0.75, 1.0 / 3.0),
-        Vec2::new(0.5, 1.0 / 3.0),
-        Vec2::new(0.5, 2.0 / 3.0),
-        // Right
-        Vec2::new(1.0, 2.0 / 3.0),
-        Vec2::new(1.0, 1.0 / 3.0),
-        Vec2::new(0.75, 1.0 / 3.0),
-        Vec2::new(0.75, 1.0 / 3.0),
-        Vec2::new(0.75, 2.0 / 3.0),
-        Vec2::new(1.0, 2.0 / 3.0),
-        // Left
-        Vec2::new(0.25, 1.0 / 3.0),
-        Vec2::new(0.25, 2.0 / 3.0),
-        Vec2::new(0.5, 1.0 / 3.0),
-        Vec2::new(0.5, 2.0 / 3.0),
-        Vec2::new(0.5, 1.0 / 3.0),
-        Vec2::new(0.25, 2.0 / 3.0),
+
+    let indices = vec![
+        0, 1, 2, 3, 4, 5, // Up
+        6, 7, 8, 9, 10, 11, // Down
+        12, 13, 14, 15, 16, 17, // Back
+        18, 19, 20, 21, 22, 23, // Front
+        24, 25, 26, 27, 28, 29, // Right
+        30, 31, 32, 33, 34, 35, // Left
     ];
 
     let mut mesh = TriMesh {
         positions: Positions::F32(positions),
-        uvs: Some(uvs),
+        indices: Indices::U32(indices),
         ..Default::default()
     };
     mesh.compute_normals();
-    mesh.compute_tangents();
     mesh
 }
