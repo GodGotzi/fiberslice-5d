@@ -4,6 +4,7 @@ use crate::{application::Application, config, utils::frame::FrameHandle};
 
 pub struct Environment {
     camera: Camera,
+    camera_control: OrbitControl,
     owned_lights: Vec<Box<dyn Light>>,
 }
 
@@ -34,6 +35,7 @@ impl Environment {
 
         Self {
             camera,
+            camera_control: OrbitControl::new(vec3(0.0, 0.0, 0.0), 0.00001, 1000.0),
             owned_lights: vec![
                 Box::new(ambient),
                 Box::new(directional0),
@@ -55,6 +57,10 @@ impl Environment {
 
     pub fn camera_mut(&mut self) -> &mut Camera {
         &mut self.camera
+    }
+
+    pub fn handle_camera_events(&mut self, events: &mut [Event]) -> bool {
+        self.camera_control.handle_events(&mut self.camera, events)
     }
 }
 

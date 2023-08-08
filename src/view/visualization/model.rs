@@ -33,14 +33,14 @@ impl std::fmt::Debug for MeshWrapper {
 #[allow(dead_code)]
 #[derive(Debug)]
 struct Layer {
-    mesh_wrap: MeshWrapper,
+    mesh: MeshWrapper,
     color: Srgba,
 }
 
 #[allow(dead_code)]
 impl Layer {
     fn triangle_mesh(&self) -> &TriMesh {
-        &self.mesh_wrap.0
+        &self.mesh.0
     }
 }
 

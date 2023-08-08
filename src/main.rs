@@ -35,38 +35,9 @@ async fn main() {
     let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
     let mut buffer: ObjectBuffer<dyn Object> = ObjectBuffer::new();
 
-    let mut control = OrbitControl::new(vec3(0.0, 0.0, 0.0), 0.00001, 1000.0);
-
     let mut environment = environment::Environment::new(&context);
 
-    {
-        let model: three_d_asset::Model =
-            three_d_asset::io::load_and_deserialize("assets/without-textures.glb").unwrap();
-
-        let mut model = Model::<PhysicalMaterial>::new(&context, &model)
-            .unwrap()
-            .remove(0);
-
-        let scale = Mat4::from_scale(1.0);
-        let rotation = Mat4::from_angle_y(degrees(90.0))
-            .concat(&Mat4::from_angle_x(degrees(90.0)))
-            .concat(&Mat4::from_angle_z(degrees(45.0)));
-
-        let translation = Mat4::from_translation(vec3(0.0, 0.0, 0.0));
-        model.set_transformation(translation * rotation * scale);
-
-        buffer.add_object("PRINT_BED", Box::new(model));
-
-        let objects = application
-            .visualizer()
-            .gcode()
-            .try_collect_objects(&context)
-            .unwrap();
-
-        for object in objects {
-            buffer.add_layer(object);
-        }
-    }
+    test_buffer(&context, &mut application, &mut buffer);
 
     // Event loop
     let mut frame_input_generator = FrameInputGenerator::from_winit_window(&window);
@@ -92,7 +63,7 @@ async fn main() {
             );
 
             if !ui_use.unwrap() {
-                control.handle_events(environment.camera_mut(), &mut frame_input.events);
+                environment.handle_camera_events(&mut frame_input.events);
             }
 
             environment.frame(&frame_input, &application);
