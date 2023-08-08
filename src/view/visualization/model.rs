@@ -37,6 +37,7 @@ struct Layer {
     color: Srgba,
 }
 
+#[allow(dead_code)]
 impl Layer {
     fn triangle_mesh(&self) -> &TriMesh {
         &self.mesh_wrap.0
