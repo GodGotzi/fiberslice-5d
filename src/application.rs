@@ -1,7 +1,11 @@
 use std::sync::{Arc, Mutex};
 
 use strum::IntoEnumIterator;
-use three_d::egui::{self, Visuals};
+use three_d::{
+    egui::{self, Visuals},
+    FrameInput, FrameInputGenerator, WindowedContext,
+};
+use winit::{event::WindowEvent, window::Window};
 
 use crate::{
     gui::*,
@@ -13,26 +17,47 @@ use crate::{
 #[allow(dead_code)]
 pub struct Application {
     screen: Screen,
+    pub frame_input_generator: FrameInputGenerator,
     task_handler: TaskHandler,
-
     visualizer: VisualizerContext,
     context: ApplicationContext,
 }
 
-impl Default for Application {
-    fn default() -> Self {
+impl Application {
+    pub fn new(window: &Window) -> Self {
         Self {
             screen: Screen::new(),
+            frame_input_generator: FrameInputGenerator::from_winit_window(window),
             task_handler: TaskHandler::default(),
             visualizer: VisualizerContext::default(),
             context: ApplicationContext::new(),
         }
     }
-}
 
-impl Application {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn next_frame_input(&mut self, context: &WindowedContext) -> FrameInput {
+        self.frame_input_generator.generate(context)
+    }
+
+    pub fn handle_window_event(
+        &mut self,
+        event: &WindowEvent<'_>,
+        context: &WindowedContext,
+        control_flow: &mut winit::event_loop::ControlFlow,
+    ) {
+        self.frame_input_generator.handle_winit_window_event(event);
+
+        match event {
+            winit::event::WindowEvent::Resized(physical_size) => {
+                context.resize(*physical_size);
+            }
+            winit::event::WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                context.resize(**new_inner_size);
+            }
+            winit::event::WindowEvent::CloseRequested => {
+                control_flow.set_exit();
+            }
+            _ => (),
+        }
     }
 
     pub fn ui_frame(&mut self, ctx: &egui::Context) {

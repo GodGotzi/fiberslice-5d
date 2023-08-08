@@ -25,27 +25,24 @@ use window::build_window;
 
 use utils::frame::FrameHandle;
 
-#[tokio::main]
-async fn main() {
-    let mut application = Application::new();
-
+fn main() {
     let event_loop = winit::event_loop::EventLoop::new();
     let window = build_window(&event_loop).expect("Failed to build window");
-
     let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
+    let mut application = Application::new(&window);
+
     let mut buffer: ObjectBuffer<dyn Object> = ObjectBuffer::new();
 
     let mut environment = environment::Environment::new(&context);
 
     test_buffer(&context, &mut application, &mut buffer);
 
-    // Event loop
-    let mut frame_input_generator = FrameInputGenerator::from_winit_window(&window);
     let mut gui = three_d::GUI::new(&context);
 
+    // Event loop
     event_loop.run(move |event, _, control_flow| match event {
         winit::event::Event::MainEventsCleared => {
-            let mut frame_input = frame_input_generator.generate(&context);
+            let mut frame_input = application.next_frame_input(&context);
 
             let mut ui_use = None;
 
@@ -88,20 +85,7 @@ async fn main() {
             window.request_redraw();
         }
         winit::event::Event::WindowEvent { ref event, .. } => {
-            frame_input_generator.handle_winit_window_event(event);
-
-            match event {
-                winit::event::WindowEvent::Resized(physical_size) => {
-                    context.resize(*physical_size);
-                }
-                winit::event::WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                    context.resize(**new_inner_size);
-                }
-                winit::event::WindowEvent::CloseRequested => {
-                    control_flow.set_exit();
-                }
-                _ => (),
-            }
+            application.handle_window_event(event, &context, control_flow);
         }
         winit::event::Event::LoopDestroyed => {
             application.save();
