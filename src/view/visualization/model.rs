@@ -5,15 +5,28 @@ use three_d::*;
 use three_d_asset::TriMesh;
 
 use crate::application::Application;
+use crate::utils::debug::DebugWrapper;
 use crate::utils::task::TaskWithResult;
 
 use super::Visualizer;
 
-struct MeshWrapper(Mesh);
+struct MeshWrapper(TriMesh);
 
 impl std::fmt::Debug for MeshWrapper {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Mesh").finish()
+        let mut debug_f = f.debug_struct("Mesh");
+
+        debug_f.field("positions", &DebugWrapper::from(self.0.positions.to_f64()));
+
+        if let Some(indices) = self.0.indices.to_u32() {
+            debug_f.field("indices", &DebugWrapper::from(indices));
+        }
+
+        if let Some(uvs) = &self.0.uvs {
+            debug_f.field("uvs", &DebugWrapper::from(uvs));
+        }
+
+        debug_f.finish()
     }
 }
 
@@ -22,6 +35,12 @@ impl std::fmt::Debug for MeshWrapper {
 struct Layer {
     mesh_wrap: MeshWrapper,
     color: Srgba,
+}
+
+impl Layer {
+    fn triangle_mesh(&self) -> &TriMesh {
+        &self.mesh_wrap.0
+    }
 }
 
 #[allow(dead_code)]
@@ -201,6 +220,7 @@ pub fn build_test_mesh() -> CpuMesh {
         Vec2::new(0.5, 1.0 / 3.0),
         Vec2::new(0.25, 2.0 / 3.0),
     ];
+
     let mut mesh = TriMesh {
         positions: Positions::F32(positions),
         uvs: Some(uvs),
