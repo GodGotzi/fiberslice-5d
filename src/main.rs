@@ -23,6 +23,8 @@ use three_d::*;
 use view::{buffer::ObjectBuffer, environment, visualization::Visualizer};
 use window::build_window;
 
+use utils::frame::FrameHandle;
+
 #[tokio::main]
 async fn main() {
     let mut application = Application::new();
@@ -93,29 +95,9 @@ async fn main() {
                 control.handle_events(environment.camera_mut(), &mut frame_input.events);
             }
 
-            if frame_input.viewport.height != 0 && frame_input.viewport.width != 0 {
-                let viewport = Viewport {
-                    x: (application.boundaries().toolbar.width() * frame_input.device_pixel_ratio)
-                        as i32,
-                    y: ((application.boundaries().taskbar.height()
-                        + application.boundaries().modebar.height())
-                        * frame_input.device_pixel_ratio) as i32,
-                    width: frame_input.viewport.width
-                        - ((application.boundaries().toolbar.width()
-                            + application.boundaries().settingsbar.width())
-                            * frame_input.device_pixel_ratio) as u32,
-                    height: frame_input.viewport.height
-                        - ((application.boundaries().taskbar.height()
-                            + application.boundaries().modebar.height()
-                            + application.boundaries().menubar.height())
-                            * frame_input.device_pixel_ratio) as u32,
-                };
-
-                environment.camera_mut().set_viewport(viewport);
-            }
+            environment.frame(&frame_input, &application);
 
             //Render
-
             {
                 let screen: RenderTarget<'_> = frame_input.screen();
                 screen.clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0));
@@ -126,10 +108,8 @@ async fn main() {
                 });
             }
 
-            {
-                context.swap_buffers().unwrap();
-                control_flow.set_poll();
-            }
+            context.swap_buffers().unwrap();
+            control_flow.set_poll();
 
             window.request_redraw();
         }

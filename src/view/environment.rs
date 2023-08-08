@@ -1,6 +1,6 @@
 use three_d::*;
 
-use crate::config;
+use crate::{application::Application, config, utils::frame::FrameHandle};
 
 pub struct Environment {
     camera: Camera,
@@ -55,5 +55,32 @@ impl Environment {
 
     pub fn camera_mut(&mut self) -> &mut Camera {
         &mut self.camera
+    }
+}
+
+impl FrameHandle for Environment {
+    fn frame(&mut self, input: &FrameInput, application: &Application) {
+        //update viewport
+        {
+            if input.viewport.height != 0 && input.viewport.width != 0 {
+                let viewport = Viewport {
+                    x: (application.boundaries().toolbar.width() * input.device_pixel_ratio) as i32,
+                    y: ((application.boundaries().taskbar.height()
+                        + application.boundaries().modebar.height())
+                        * input.device_pixel_ratio) as i32,
+                    width: input.viewport.width
+                        - ((application.boundaries().toolbar.width()
+                            + application.boundaries().settingsbar.width())
+                            * input.device_pixel_ratio) as u32,
+                    height: input.viewport.height
+                        - ((application.boundaries().taskbar.height()
+                            + application.boundaries().modebar.height()
+                            + application.boundaries().menubar.height())
+                            * input.device_pixel_ratio) as u32,
+                };
+
+                self.camera.set_viewport(viewport);
+            }
+        }
     }
 }
