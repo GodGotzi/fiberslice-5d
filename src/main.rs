@@ -20,7 +20,7 @@ mod window;
 
 use application::Application;
 use three_d::*;
-use view::{buffer::ObjectBuffer, environment, visualization::Visualizer};
+use view::{buffer::ObjectBuffer, environment};
 use window::build_window;
 
 use utils::frame::FrameHandle;
@@ -99,7 +99,7 @@ fn main() {
 
 pub fn test_buffer(
     context: &WindowedContext,
-    application: &mut Application,
+    _application: &mut Application,
     buffer: &mut ObjectBuffer<dyn Object>,
 ) {
     let environment_map =
