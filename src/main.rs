@@ -14,6 +14,7 @@ mod model;
 mod prelude;
 mod setup;
 mod slicer;
+mod tests;
 mod utils;
 mod view;
 mod window;
@@ -103,7 +104,7 @@ pub fn test_buffer(
     buffer: &mut ObjectBuffer<dyn Object>,
 ) {
     let environment_map =
-        three_d_asset::io::load_and_deserialize("wallpapers/space2_wallpaper.hdr").unwrap();
+        three_d_asset::io::load_and_deserialize("wallpapers/nebel2_wallpaper.hdr").unwrap();
 
     let skybox = Skybox::new_from_equirectangular(context, &environment_map);
     buffer.set_skybox(skybox);

@@ -1,6 +1,8 @@
-use super::movement::Movements;
+use strum_macros::Display;
 
-#[derive(Debug, Clone)]
+use super::{movement::Movements, GCodeSourceBuilder};
+
+#[derive(Debug, Clone, Display)]
 pub enum InstructionType {
     G1,
     G0,
@@ -77,5 +79,18 @@ impl Instruction {
 
     pub fn movements(&self) -> &Movements {
         &self.movements
+    }
+
+    pub fn to_gcode(&self) -> String {
+        let mut builder = GCodeSourceBuilder::new();
+
+        builder.push_instruction(self.instruction_type.clone());
+        builder.push_movements(&self.movements);
+
+        for instruction in self.child_instructions.iter() {
+            builder.push_instruction(instruction.clone())
+        }
+
+        builder.finish()
     }
 }

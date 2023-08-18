@@ -1,3 +1,5 @@
+use super::GCodeSourceBuilder;
+
 #[allow(non_snake_case)]
 #[derive(Debug, Clone, Default)]
 pub struct Movements {
@@ -26,5 +28,31 @@ impl Movements {
             "F" => self.F = Some(value),
             _ => (),
         }
+    }
+
+    pub fn to_gcode(&self) -> String {
+        let mut builder = GCodeSourceBuilder::new();
+
+        if let Some(x) = self.X.as_ref() {
+            builder.push_movement("X", *x);
+        }
+
+        if let Some(y) = self.Y.as_ref() {
+            builder.push_movement("Y", *y);
+        }
+
+        if let Some(z) = self.Z.as_ref() {
+            builder.push_movement("Z", *z);
+        }
+
+        if let Some(e) = self.E.as_ref() {
+            builder.push_movement("E", *e);
+        }
+
+        if let Some(f) = self.F.as_ref() {
+            builder.push_movement("F", *f);
+        }
+
+        builder.finish()
     }
 }
