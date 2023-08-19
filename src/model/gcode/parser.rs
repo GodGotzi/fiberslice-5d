@@ -1,17 +1,32 @@
 use std::str::SplitWhitespace;
 
-use super::{instruction::InstructionType, movement::Movements, GCode};
+use super::{
+    instruction::{InstructionModul, InstructionType},
+    movement::Movements,
+    GCode, GCodeState,
+};
 
 pub fn parse_content(content: &str) -> Result<GCode, crate::error::Error> {
-    let mut lines: Vec<&str> = content
-        .lines()
-        .filter(|line| !line.starts_with(';'))
-        .collect();
+    let mut lines: Vec<&str> = content.lines().collect();
 
-    let mut instructions: Vec<crate::model::gcode::instruction::Instruction> = Vec::new();
+    let mut moduls: Vec<InstructionModul> = Vec::new();
+
+    let mut modul: Option<InstructionModul> = Some(InstructionModul::empty());
 
     for (index, line) in lines.iter_mut().enumerate() {
         *line = line.trim();
+
+        if line.starts_with(';') {
+            if modul.as_ref().unwrap().is_empty() {
+                parse_comment_into_state(line, modul.as_mut().unwrap().gcode_state_mut());
+            } else if let Some(result) =
+                parse_comment_to_state(line, modul.as_ref().unwrap().gcode_state())
+            {
+                moduls.push(modul.take().unwrap());
+
+                modul = Some(InstructionModul::new(result));
+            }
+        }
 
         let mut parameters = line.split_whitespace();
 
@@ -29,13 +44,23 @@ pub fn parse_content(content: &str) -> Result<GCode, crate::error::Error> {
             movements,
         );
 
-        instructions.push(instruction);
+        modul.as_mut().unwrap().push(instruction);
     }
 
-    let code = GCode::new(instructions);
+    let code = GCode::new(moduls);
 
     Ok(code)
 }
+
+pub fn parse_comment_to_state(line: &str, last_state: &GCodeState) -> Option<GCodeState> {
+    let mut state = last_state.clone();
+
+    parse_comment_into_state(line, &mut state);
+
+    Some(state)
+}
+
+pub fn parse_comment_into_state(line: &str, last_state: &mut GCodeState) {}
 
 pub fn compute_parameters(
     parameters: SplitWhitespace<'_>,

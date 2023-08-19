@@ -100,7 +100,7 @@ fn main() {
 
 pub fn test_buffer(
     context: &WindowedContext,
-    _application: &mut Application,
+    application: &mut Application,
     buffer: &mut ObjectBuffer<dyn Object>,
 ) {
     let environment_map =
@@ -125,16 +125,4 @@ pub fn test_buffer(
     model.set_transformation(translation * rotation * scale);
 
     buffer.add_object("PRINT_BED", Box::new(model));
-
-    /*
-    let objects = application
-        .visualizer()
-        .gcode()
-        .try_collect_objects(context)
-        .unwrap();
-
-    for object in objects {
-        buffer.add_layer(object);
-    }
-    */
 }
