@@ -1,3 +1,5 @@
+use type_eq_derive::TypeHolder;
+
 use crate::slicer::print_type::PrintType;
 
 use self::{
@@ -54,6 +56,7 @@ G0 F3000 X75.197 Y111.259 Z0.3
 ;TYPE:SKIRT
 */
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct PermanentGCodeState {
     flavor: String,
@@ -79,11 +82,13 @@ impl GCodeState {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, TypeHolder)]
+#[allow(clippy::upper_case_acronyms)]
+#[allow(non_snake_case, dead_code)]
 pub enum GCodeStates {
-    Layer(usize),
-    Type(PrintType),
-    Mesh(String),
+    LAYER(usize),
+    TYPE(PrintType),
+    MESH(String),
 }
 
 pub struct GCodeSourceBuilder {

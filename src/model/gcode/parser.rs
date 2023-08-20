@@ -60,7 +60,17 @@ pub fn parse_comment_to_state(line: &str, last_state: &GCodeState) -> Option<GCo
     Some(state)
 }
 
-pub fn parse_comment_into_state(line: &str, last_state: &mut GCodeState) {}
+pub fn parse_comment_into_state(line: &str, last_state: &mut GCodeState) {
+    if line.starts_with(";LAYER:") {
+        if let Ok(layer_count) = line.split(':').nth(1).unwrap().parse::<usize>() {
+            last_state
+                .states
+                .push(crate::model::gcode::GCodeStates::LAYER(layer_count));
+        }
+    } else if line.starts_with(";TYPE:") {
+        last_state.layer_type = Some(line.split(':').nth(1).unwrap().to_string());
+    }
+}
 
 pub fn compute_parameters(
     parameters: SplitWhitespace<'_>,
