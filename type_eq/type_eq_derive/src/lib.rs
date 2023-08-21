@@ -1,9 +1,6 @@
 extern crate proc_macro;
 
-use quote::{
-    __private::{Span, TokenStream},
-    quote,
-};
+use quote::{__private::Span, quote};
 use syn::{parse, DeriveInput, Ident, Type, Variant};
 
 #[proc_macro_derive(TypeEq)]
@@ -50,9 +47,14 @@ pub fn type_holder_derive(input: proc_macro::TokenStream) -> proc_macro::TokenSt
         .iter()
         .map(|f| {
             let types: Vec<Type> = f.fields.iter().map(|field| field.ty.clone()).collect();
-            quote! { (#(#types),*) }
+
+            match types.len() {
+                0 => panic!("TypeHolder variants must have at least one field"),
+                1 => types[0].clone(),
+                _ => panic!("TypeHolder variants must have only one field"),
+            }
         })
-        .collect::<Vec<TokenStream>>();
+        .collect::<Vec<Type>>();
 
     let holder = Ident::new(
         format!("{}Holder", enum_name.to_string()).as_str(),
@@ -73,10 +75,34 @@ pub fn type_holder_derive(input: proc_macro::TokenStream) -> proc_macro::TokenSt
         })
         .collect();
 
+    let variant_idents: Vec<Ident> = variants
+        .iter()
+        .map(|variant| variant.ident.clone())
+        .collect();
+
     // Generate the implementation for `TypeEq` trait
     let stream = quote! {
         pub struct #holder {
             #(#variables: Option<#types>, )*
+        }
+
+        impl TryFrom<String> for #enum_name {
+            type Error = crate::error::Error;
+
+            fn try_from(s: String) -> Result<Self, Self::Error> {
+                let variant = s.split(":").nth(0)?;
+                let value = s.split(":").nth(1)?;
+
+
+                match variant {
+                    #(stringify!(#variant_idents) => {
+                        let value = value.parse::<#types>()?;
+
+                        Ok(#enum_name::#variant_idents(value))
+                    },)*
+                }
+
+            }
         }
 
         impl #holder {
@@ -87,7 +113,7 @@ pub fn type_holder_derive(input: proc_macro::TokenStream) -> proc_macro::TokenSt
                 }
             }
 
-            pub fn parse(&mut self, line &str) {
+            pub fn parse(&mut self, line: &str) {
 
 
 

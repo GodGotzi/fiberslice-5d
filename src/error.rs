@@ -13,6 +13,8 @@ pub enum Error {
     UnknownInstructionType(String),
     #[error("Setup Error {0}")]
     SetupError(String),
+    #[error("GCode State Parse Error {0}")]
+    GCodeStateParseError(String),
     #[error(transparent)]
     Io(#[from] std::io::Error),
 }

@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use type_eq_derive::TypeHolder;
 
 use crate::slicer::print_type::PrintType;
