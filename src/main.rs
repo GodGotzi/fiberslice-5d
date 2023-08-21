@@ -100,7 +100,7 @@ fn main() {
 
 pub fn test_buffer(
     context: &WindowedContext,
-    application: &mut Application,
+    _application: &mut Application,
     buffer: &mut ObjectBuffer<dyn Object>,
 ) {
     let environment_map =

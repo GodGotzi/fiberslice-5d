@@ -3,7 +3,7 @@ use std::str::SplitWhitespace;
 use super::{
     instruction::{InstructionModul, InstructionType},
     movement::Movements,
-    GCode, GCodeState,
+    GCode, GCodeStatesHolder,
 };
 
 pub fn parse_content(content: &str) -> Result<GCode, crate::error::Error> {
@@ -18,9 +18,9 @@ pub fn parse_content(content: &str) -> Result<GCode, crate::error::Error> {
 
         if line.starts_with(';') {
             if modul.as_ref().unwrap().is_empty() {
-                parse_comment_into_state(line, modul.as_mut().unwrap().gcode_state_mut());
-            } else if let Some(result) =
-                parse_comment_to_state(line, modul.as_ref().unwrap().gcode_state())
+                let _ = parse_comment_into_state(line, modul.as_mut().unwrap().gcode_state_mut());
+            } else if let Ok(result) =
+                parse_comment_to_state(line, modul.as_ref().unwrap().gcode_state().clone())
             {
                 moduls.push(modul.take().unwrap());
 
@@ -52,24 +52,20 @@ pub fn parse_content(content: &str) -> Result<GCode, crate::error::Error> {
     Ok(code)
 }
 
-pub fn parse_comment_to_state(line: &str, last_state: &GCodeState) -> Option<GCodeState> {
-    let mut state = last_state.clone();
+pub fn parse_comment_to_state(
+    line: &str,
+    mut last_state: GCodeStatesHolder,
+) -> Result<GCodeStatesHolder, crate::error::Error> {
+    parse_comment_into_state(line, &mut last_state)?;
 
-    parse_comment_into_state(line, &mut state);
-
-    Some(state)
+    Ok(last_state)
 }
 
-pub fn parse_comment_into_state(line: &str, last_state: &mut GCodeState) {
-    if line.starts_with(";LAYER:") {
-        if let Ok(layer_count) = line.split(':').nth(1).unwrap().parse::<usize>() {
-            last_state
-                .states
-                .push(crate::model::gcode::GCodeStates::LAYER(layer_count));
-        }
-    } else if line.starts_with(";TYPE:") {
-        last_state.layer_type = Some(line.split(':').nth(1).unwrap().to_string());
-    }
+pub fn parse_comment_into_state(
+    line: &str,
+    last_state: &mut GCodeStatesHolder,
+) -> Result<(), crate::error::Error> {
+    last_state.parse(line.to_string())
 }
 
 pub fn compute_parameters(

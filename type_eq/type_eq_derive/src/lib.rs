@@ -31,8 +31,8 @@ pub fn type_eq_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream
     proc_macro::TokenStream::from(expanded)
 }
 
-#[proc_macro_derive(TypeHolder)]
-pub fn type_holder_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+#[proc_macro_derive(GCodeStateHolder)]
+pub fn state_holder_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let derive_input: DeriveInput = parse(input).unwrap();
     // Get the name of the enum
     let enum_name = &derive_input.ident;
@@ -82,6 +82,7 @@ pub fn type_holder_derive(input: proc_macro::TokenStream) -> proc_macro::TokenSt
 
     // Generate the implementation for `TypeEq` trait
     let stream = quote! {
+        #[derive(Debug, Clone)]
         pub struct #holder {
             #(#variables: Option<#types>, )*
         }
@@ -90,16 +91,35 @@ pub fn type_holder_derive(input: proc_macro::TokenStream) -> proc_macro::TokenSt
             type Error = crate::error::Error;
 
             fn try_from(s: String) -> Result<Self, Self::Error> {
-                let variant = s.split(":").nth(0)?;
-                let value = s.split(":").nth(1)?;
+                let variant = match s.split(":").nth(0) {
+                    Some(variant) => variant,
+                    None => {
+                        return Err(crate::error::Error::GCodeStateParseError(
+                            "Invalid GCode".into(),
+                        ))
+                    }
+                };
 
+                let value = match s.split(":").nth(1) {
+                    Some(variant) => variant,
+                    None => {
+                        return Err(crate::error::Error::GCodeStateParseError(
+                            "Invalid State Change".into(),
+                        ))
+                    }
+                };
 
                 match variant {
                     #(stringify!(#variant_idents) => {
-                        let value = value.parse::<#types>()?;
+                        let value = value.parse::<#types>().map_err(|_| {
+                            crate::error::Error::GCodeStateParseError("Invalid Layer".into())
+                        })?;;
 
                         Ok(#enum_name::#variant_idents(value))
-                    },)*
+                    }, )*
+                    _ => Err(crate::error::Error::GCodeStateParseError(
+                        "Invalid GCodeState Type".into(),
+                    )),
                 }
 
             }
@@ -113,13 +133,16 @@ pub fn type_holder_derive(input: proc_macro::TokenStream) -> proc_macro::TokenSt
                 }
             }
 
-            pub fn parse(&mut self, line: &str) {
+            pub fn parse(&mut self, line: String) -> Result<(), crate::error::Error> {
+                let variant: #enum_name = line.try_into()?;
 
+                match variant {
+                    #( #enum_name::#variant_idents(value) => {
+                        self.#variables = Some(value);
+                    },)*
+                };
 
-
-
-
-
+                Ok(())
             }
 
         }

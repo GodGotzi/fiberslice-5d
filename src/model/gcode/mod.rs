@@ -1,6 +1,4 @@
-use std::error::Error;
-
-use type_eq_derive::TypeHolder;
+use type_eq_derive::GCodeStateHolder;
 
 use crate::slicer::print_type::PrintType;
 
@@ -73,18 +71,7 @@ pub struct PermanentGCodeState {
     max_z: f64,
 }
 
-#[derive(Debug, Clone)]
-pub struct GCodeState {
-    pub states: Vec<GCodeStates>,
-}
-
-impl GCodeState {
-    pub fn empty() -> Self {
-        Self { states: Vec::new() }
-    }
-}
-
-#[derive(Debug, Clone, TypeHolder)]
+#[derive(Debug, Clone, GCodeStateHolder)]
 #[allow(clippy::upper_case_acronyms)]
 #[allow(non_snake_case, dead_code)]
 pub enum GCodeStates {
