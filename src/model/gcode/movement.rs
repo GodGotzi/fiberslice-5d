@@ -1,4 +1,4 @@
-use super::GCodeSourceBuilder;
+use super::SourceBuilder;
 
 #[allow(non_snake_case)]
 #[derive(Debug, Clone, Default)]
@@ -31,7 +31,7 @@ impl Movements {
     }
 
     pub fn to_gcode(&self) -> String {
-        let mut builder = GCodeSourceBuilder::new();
+        let mut builder = SourceBuilder::new();
 
         if let Some(x) = self.X.as_ref() {
             builder.push_movement("X", *x);

@@ -1,6 +1,6 @@
 use strum_macros::Display;
 
-use super::{movement::Movements, GCodeSourceBuilder, GCodeStatesHolder};
+use super::{movement::Movements, SourceBuilder, StateFieldHolder};
 
 #[derive(Debug, Clone, Display)]
 pub enum InstructionType {
@@ -82,7 +82,7 @@ impl Instruction {
     }
 
     pub fn to_gcode(&self) -> String {
-        let mut builder = GCodeSourceBuilder::new();
+        let mut builder = SourceBuilder::new();
 
         builder.push_instruction(self.instruction_type.clone());
         builder.push_movements(&self.movements);
@@ -98,18 +98,18 @@ impl Instruction {
 #[derive(Debug, Clone)]
 pub struct InstructionModul {
     instructions: Vec<Instruction>,
-    gcode_state: GCodeStatesHolder,
+    gcode_state: StateFieldHolder,
 }
 
 impl InstructionModul {
     pub fn empty() -> Self {
         Self {
             instructions: Vec::new(),
-            gcode_state: GCodeStatesHolder::empty(),
+            gcode_state: StateFieldHolder::empty(),
         }
     }
 
-    pub fn new(gcode_state: GCodeStatesHolder) -> Self {
+    pub fn new(gcode_state: StateFieldHolder) -> Self {
         Self {
             instructions: Vec::new(),
             gcode_state,
@@ -120,11 +120,11 @@ impl InstructionModul {
         &self.instructions
     }
 
-    pub fn gcode_state(&self) -> &GCodeStatesHolder {
+    pub fn gcode_state(&self) -> &StateFieldHolder {
         &self.gcode_state
     }
 
-    pub fn gcode_state_mut(&mut self) -> &mut GCodeStatesHolder {
+    pub fn gcode_state_mut(&mut self) -> &mut StateFieldHolder {
         &mut self.gcode_state
     }
 

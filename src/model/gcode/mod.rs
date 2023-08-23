@@ -58,7 +58,7 @@ G0 F3000 X75.197 Y111.259 Z0.3
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
-pub struct PermanentGCodeState {
+pub struct PermanentState {
     flavor: String,
     time: usize,
     filament_used: f64,
@@ -74,18 +74,18 @@ pub struct PermanentGCodeState {
 #[derive(Debug, Clone, GCodeStateHolder)]
 #[allow(clippy::upper_case_acronyms)]
 #[allow(non_snake_case, dead_code)]
-pub enum GCodeStates {
+pub enum StateField {
     LAYER(usize),
     TYPE(PrintType),
     MESH(String),
 }
 
-pub struct GCodeSourceBuilder {
+pub struct SourceBuilder {
     first: bool,
     source: String,
 }
 
-impl GCodeSourceBuilder {
+impl SourceBuilder {
     pub fn new() -> Self {
         Self {
             first: true,

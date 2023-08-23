@@ -3,7 +3,7 @@ use std::str::SplitWhitespace;
 use super::{
     instruction::{InstructionModul, InstructionType},
     movement::Movements,
-    GCode, GCodeStatesHolder,
+    GCode, StateFieldHolder,
 };
 
 pub fn parse_content(content: &str) -> Result<GCode, crate::error::Error> {
@@ -54,8 +54,8 @@ pub fn parse_content(content: &str) -> Result<GCode, crate::error::Error> {
 
 pub fn parse_comment_to_state(
     line: &str,
-    mut last_state: GCodeStatesHolder,
-) -> Result<GCodeStatesHolder, crate::error::Error> {
+    mut last_state: StateFieldHolder,
+) -> Result<StateFieldHolder, crate::error::Error> {
     parse_comment_into_state(line, &mut last_state)?;
 
     Ok(last_state)
@@ -63,7 +63,7 @@ pub fn parse_comment_to_state(
 
 pub fn parse_comment_into_state(
     line: &str,
-    last_state: &mut GCodeStatesHolder,
+    last_state: &mut StateFieldHolder,
 ) -> Result<(), crate::error::Error> {
     last_state.parse(line.to_string())
 }
