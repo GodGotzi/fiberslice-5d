@@ -1,6 +1,6 @@
+use macros::TypeEq;
 use strum_macros::EnumIter;
-use type_eq::TypeEq;
-use type_eq_derive::TypeEq;
+use traits::TypeEq;
 
 pub use crate::error::Error;
 use crate::view::Mode;

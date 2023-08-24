@@ -16,11 +16,19 @@ strum = "0.25.0"
 strum_macros = "0.25.0"
 image = { version = "0.24.6" }
 lazy_static = "1.4.0"
-type_eq = { path = "type_eq" }
-type_eq_derive = { path = "type_eq/type_eq_derive" }
-three-d = { git = "https://github.com/asny/three-d.git", features = ["egui-gui", "serde"] }
+macros = { path = "macros" }
+traits = { path = "traits" }
+three-d = { git = "https://github.com/asny/three-d.git", features = [
+    "egui-gui",
+    "serde",
+] }
 thiserror = "1.0.30"
-three-d-asset = { git = "https://github.com/asny/three-d-asset", features = ["gltf", "serde", "image", "obj"] }
+three-d-asset = { git = "https://github.com/asny/three-d-asset", features = [
+    "gltf",
+    "serde",
+    "image",
+    "obj",
+] }
 tokio = { version = "1.29.1", features = ["macros", "full"] }
 serde = "1.0.177"
 serde_yaml = "0.9.25"

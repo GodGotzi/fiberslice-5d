@@ -1,7 +1,3 @@
-use type_eq_derive::GCodeStateHolder;
-
-use crate::slicer::print_type::PrintType;
-
 use self::{
     instruction::{InstructionModul, InstructionType},
     movement::Movements,
@@ -10,75 +6,8 @@ use self::{
 pub mod instruction;
 pub mod movement;
 pub mod parser;
+pub mod state;
 pub mod toolpath;
-
-/*
-;FLAVOR:Marlin
-;TIME:2588
-;Filament used: 1.50857m
-;Layer height: 0.16
-;MINX:73.343
-;MINY:110.741
-;MINZ:0.3
-;MAXX:176.658
-;MAXY:141.507
-;MAXZ:10.06
-;Generated with Cura_SteamEngine 5.2.1
-M140 S60
-M105
-M190 S60
-M104 S195
-M105
-M109 S195
-M82 ;absolute extrusion mode
-G21 ;metric values
-G90 ;absolute positioning
-M82 ;set extruder to absolute mode
-M107 ;start with the fan off
-G28 X0 Y0 ;move X/Y to min endstops
-M300 S1318 P266
-G28 Z0 ;move Z to min endstops
-G0 Z0.2
-G92 E0 ;zero the extruded length
-G1 X40 E25 F400 ; Extrude 25mm of filament in a 4cm line. Reduce speed (F) if you have a nozzle smaller than 0.4mm!
-G92 E0 ;zero the extruded length again
-G1 E-1 F500 ; Retract a little
-G1 X80 F4000 ; Quickly wipe away from the filament line
-M117 ; Printing…
-G5
-G92 E0
-G92 E0
-G1 F1500 E-6.5
-;LAYER_COUNT:62
-;LAYER:0
-M107
-G0 F3000 X75.197 Y111.259 Z0.3
-;TYPE:SKIRT
-*/
-
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct PermanentState {
-    flavor: String,
-    time: usize,
-    filament_used: f64,
-    layer_height: f64,
-    min_x: f64,
-    min_y: f64,
-    min_z: f64,
-    max_x: f64,
-    max_y: f64,
-    max_z: f64,
-}
-
-#[derive(Debug, Clone, GCodeStateHolder)]
-#[allow(clippy::upper_case_acronyms)]
-#[allow(non_snake_case, dead_code)]
-pub enum StateField {
-    LAYER(usize),
-    TYPE(PrintType),
-    MESH(String),
-}
 
 pub struct SourceBuilder {
     first: bool,
