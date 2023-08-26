@@ -86,10 +86,10 @@ impl From<&PathModul> for PathModulMesh {
 
         let mut positions = Vec::new();
 
-        for point in path_modul.points.iter().skip(1) {
-            let direction = point - last_point;
+        for point in path_modul.points.iter().enumerate() {
+            let direction = point.1 - last_point;
 
-            let cross = get_cross(direction, diameter);
+            let cross = get_cross(direction, diameter / 2.0);
         }
 
         let indices: Vec<u32> = (0..positions.len() as u32).collect();
