@@ -103,8 +103,7 @@ pub fn test_buffer(
     application: &mut Application,
     buffer: &mut ObjectBuffer<dyn Object>,
 ) {
-    let environment_map =
-        three_d_asset::io::load_and_deserialize("wallpapers/nebel2_wallpaper.hdr").unwrap();
+    let environment_map = three_d_asset::io::load_and_deserialize("wallpapers/bright.jpg").unwrap();
 
     let skybox = Skybox::new_from_equirectangular(context, &environment_map);
     buffer.set_skybox(skybox);
