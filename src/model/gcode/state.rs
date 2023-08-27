@@ -56,9 +56,9 @@ impl TryFrom<String> for StateField {
 
 #[derive(Debug, Clone)]
 pub struct State {
-    layer: Option<usize>,
-    print_type: Option<PrintType>,
-    mesh: Option<String>,
+    pub layer: Option<usize>,
+    pub print_type: Option<PrintType>,
+    pub mesh: Option<String>,
 }
 
 impl State {

@@ -2,7 +2,7 @@ use strum_macros::Display;
 
 use super::{movement::Movements, state::State, SourceBuilder};
 
-#[derive(Debug, Clone, Display)]
+#[derive(Debug, Clone, Display, PartialEq)]
 pub enum InstructionType {
     G1,
     G0,

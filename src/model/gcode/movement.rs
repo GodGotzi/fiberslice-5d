@@ -1,3 +1,5 @@
+use three_d_asset::Vector3;
+
 use super::SourceBuilder;
 
 #[allow(non_snake_case)]
@@ -28,6 +30,46 @@ impl Movements {
             "F" => self.F = Some(value),
             _ => (),
         }
+    }
+
+    pub fn add_movements(&mut self, movements: &Movements) {
+        if let Some(x) = movements.X.as_ref() {
+            self.X = Some(*x);
+        }
+
+        if let Some(y) = movements.Y.as_ref() {
+            self.Y = Some(*y);
+        }
+
+        if let Some(z) = movements.Z.as_ref() {
+            self.Z = Some(*z);
+        }
+
+        if let Some(e) = movements.E.as_ref() {
+            self.E = Some(*e);
+        }
+
+        if let Some(f) = movements.F.as_ref() {
+            self.F = Some(*f);
+        }
+    }
+
+    pub fn to_vec3(&self, zero: Vector3<f64>) -> Vector3<f64> {
+        let mut vec = zero;
+
+        if let Some(x) = self.X.as_ref() {
+            vec.x = *x;
+        }
+
+        if let Some(y) = self.Y.as_ref() {
+            vec.y = *y;
+        }
+
+        if let Some(z) = self.Z.as_ref() {
+            vec.z = *z;
+        }
+
+        vec
     }
 
     pub fn to_gcode(&self) -> String {

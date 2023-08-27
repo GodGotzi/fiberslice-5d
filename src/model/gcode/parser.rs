@@ -7,6 +7,16 @@ use super::{
     GCode,
 };
 
+impl TryFrom<String> for GCode {
+    type Error = crate::error::Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        let code = parse_content(value.as_str())?;
+
+        Ok(code)
+    }
+}
+
 pub fn parse_content(content: &str) -> Result<GCode, crate::error::Error> {
     let mut lines: Vec<&str> = content.lines().collect();
 
@@ -18,39 +28,71 @@ pub fn parse_content(content: &str) -> Result<GCode, crate::error::Error> {
         *line = line.trim();
 
         if line.starts_with(';') {
-            if modul.as_ref().unwrap().is_empty() {
-                let _ = parse_comment_into_state(line, modul.as_mut().unwrap().gcode_state_mut());
-            } else if let Ok(result) =
-                parse_comment_to_state(line, modul.as_ref().unwrap().gcode_state().clone())
-            {
-                moduls.push(modul.take().unwrap());
+            compute_comment_with_prefix(line, &mut modul, &mut moduls);
+        } else if let Some((instruction, comment)) = line.split_once(';') {
+            compute_instruction(instruction, index, &mut modul)?;
 
-                modul = Some(InstructionModul::new(result));
+            if !comment.is_empty() {
+                compute_comment(comment, &mut modul, &mut moduls);
             }
+        } else {
+            compute_instruction(line, index, &mut modul)?;
         }
-
-        let mut parameters = line.split_whitespace();
-
-        let main_instruction: InstructionType = parameters.next().unwrap().try_into()?;
-
-        let mut child_instructions: Vec<InstructionType> = Vec::new();
-
-        let mut movements = Movements::new();
-
-        compute_parameters(parameters, &mut child_instructions, &mut movements, index)?;
-
-        let instruction = crate::model::gcode::instruction::Instruction::new(
-            main_instruction,
-            child_instructions,
-            movements,
-        );
-
-        modul.as_mut().unwrap().push(instruction);
     }
 
     let code = GCode::new(moduls);
 
     Ok(code)
+}
+
+fn compute_comment_with_prefix(
+    line: &str,
+    modul: &mut Option<InstructionModul>,
+    moduls: &mut Vec<InstructionModul>,
+) {
+    compute_comment(line.strip_prefix(';').unwrap(), modul, moduls);
+}
+
+fn compute_comment(
+    line: &str,
+    modul: &mut Option<InstructionModul>,
+    moduls: &mut Vec<InstructionModul>,
+) {
+    if modul.as_ref().unwrap().is_empty() {
+        let _ = parse_comment_into_state(line, modul.as_mut().unwrap().gcode_state_mut());
+    } else if let Ok(result) =
+        parse_comment_to_state(line, modul.as_ref().unwrap().gcode_state().clone())
+    {
+        moduls.push(modul.take().unwrap());
+
+        *modul = Some(InstructionModul::new(result));
+    }
+}
+
+fn compute_instruction(
+    line: &str,
+    index: usize,
+    modul: &mut Option<InstructionModul>,
+) -> Result<(), crate::prelude::Error> {
+    let mut parameters = line.split_whitespace();
+    if let Some(next) = parameters.next() {
+        if let Ok(main_instruction) = next.try_into() {
+            let mut child_instructions: Vec<InstructionType> = Vec::new();
+
+            let mut movements = Movements::new();
+
+            compute_parameters(parameters, &mut child_instructions, &mut movements, index)?;
+
+            let instruction = crate::model::gcode::instruction::Instruction::new(
+                main_instruction,
+                child_instructions,
+                movements,
+            );
+
+            modul.as_mut().unwrap().push(instruction);
+        }
+    };
+    Ok(())
 }
 
 pub fn parse_comment_to_state(

@@ -1,3 +1,4 @@
+use std::fs;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -5,6 +6,9 @@ use three_d::*;
 use three_d_asset::TriMesh;
 
 use crate::application::Application;
+use crate::model::gcode::toolpath::PathModulMesh;
+use crate::model::gcode::toolpath::ToolPath;
+use crate::model::gcode::GCode;
 use crate::utils::debug::DebugWrapper;
 use crate::utils::task::TaskWithResult;
 
@@ -108,90 +112,43 @@ impl Visualizer for GCodeVisualizer {
         &self,
         context: &three_d::WindowedContext,
     ) -> Result<Vec<Box<dyn Object>>, crate::error::Error> {
-        let test_mesh = build_test_mesh();
+        let mut objects: Vec<Box<dyn Object>> = Vec::new();
 
-        let mut model: Gm<Mesh, PhysicalMaterial> = Gm::new(
-            Mesh::new(context, &test_mesh),
-            PhysicalMaterial::new(
-                context,
-                &CpuMaterial {
-                    albedo: Srgba {
-                        r: 100,
-                        g: 100,
-                        b: 190,
-                        a: 255,
+        let meshes = build_test_meshes();
+
+        for mesh in meshes {
+            let mut model: Gm<Mesh, PhysicalMaterial> = Gm::new(
+                Mesh::new(context, mesh.mesh()),
+                PhysicalMaterial::new(
+                    context,
+                    &CpuMaterial {
+                        albedo: *mesh.color(),
+                        ..Default::default()
                     },
-                    ..Default::default()
-                },
-            ),
-        );
+                ),
+            );
 
-        model.set_transformation(Mat4::from_translation(vec3(0.0, 40.0, 0.0)));
+            model.set_transformation(
+                Mat4::from_translation(vec3(-100.0, 5.0, 50.0))
+                    .concat(&Mat4::from_angle_y(degrees(45.0))),
+            );
 
-        Ok(vec![Box::new(model)])
+            objects.push(Box::new(model));
+        }
+
+        //model.set_transformation(Mat4::from_translation(vec3(0.0, 40.0, 0.0)));
+
+        Ok(objects)
     }
 }
 
-pub fn build_test_mesh() -> CpuMesh {
-    let positions = vec![
-        // Up
-        Vec3::new(1.0, 1.0, -1.0),
-        Vec3::new(-1.0, 1.0, -1.0),
-        Vec3::new(1.0, 1.0, 1.0),
-        Vec3::new(-1.0, 1.0, 1.0),
-        Vec3::new(1.0, 1.0, 1.0),
-        Vec3::new(-1.0, 1.0, -1.0),
-        // Down
-        Vec3::new(-1.0, -1.0, -1.0),
-        Vec3::new(1.0, -1.0, -1.0),
-        Vec3::new(1.0, -1.0, 1.0),
-        Vec3::new(1.0, -1.0, 1.0),
-        Vec3::new(-1.0, -1.0, 1.0),
-        Vec3::new(-1.0, -1.0, -1.0),
-        // Back
-        Vec3::new(1.0, -1.0, -1.0),
-        Vec3::new(-1.0, -1.0, -1.0),
-        Vec3::new(1.0, 1.0, -1.0),
-        Vec3::new(-1.0, 1.0, -1.0),
-        Vec3::new(1.0, 1.0, -1.0),
-        Vec3::new(-1.0, -1.0, -1.0),
-        // Front
-        Vec3::new(-1.0, -1.0, 1.0),
-        Vec3::new(1.0, -1.0, 1.0),
-        Vec3::new(1.0, 1.0, 1.0),
-        Vec3::new(1.0, 1.0, 1.0),
-        Vec3::new(-1.0, 1.0, 1.0),
-        Vec3::new(-1.0, -1.0, 1.0),
-        // Right
-        Vec3::new(1.0, -1.0, -1.0),
-        Vec3::new(1.0, 1.0, -1.0),
-        Vec3::new(1.0, 1.0, 1.0),
-        Vec3::new(1.0, 1.0, 1.0),
-        Vec3::new(1.0, -1.0, 1.0),
-        Vec3::new(1.0, -1.0, -1.0),
-        // Left
-        Vec3::new(-1.0, 1.0, -1.0),
-        Vec3::new(-1.0, -1.0, -1.0),
-        Vec3::new(-1.0, 1.0, 1.0),
-        Vec3::new(-1.0, -1.0, 1.0),
-        Vec3::new(-1.0, 1.0, 1.0),
-        Vec3::new(-1.0, -1.0, -1.0),
-    ];
+pub fn build_test_meshes() -> Vec<PathModulMesh> {
+    let content = fs::read_to_string("gcode/test.gcode").unwrap();
+    //println!("{}", content);
+    let gcode: GCode = content.try_into().unwrap();
 
-    let indices = vec![
-        0, 1, 2, 3, 4, 5, // Up
-        6, 7, 8, 9, 10, 11, // Down
-        12, 13, 14, 15, 16, 17, // Back
-        18, 19, 20, 21, 22, 23, // Front
-        24, 25, 26, 27, 28, 29, // Right
-        30, 31, 32, 33, 34, 35, // Left
-    ];
+    let toolpath = ToolPath::from(gcode);
 
-    let mut mesh = TriMesh {
-        positions: Positions::F32(positions),
-        indices: Indices::U32(indices),
-        ..Default::default()
-    };
-    mesh.compute_normals();
-    mesh
+    let meshes: Vec<PathModulMesh> = std::convert::Into::<Vec<PathModulMesh>>::into(toolpath);
+    meshes
 }

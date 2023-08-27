@@ -21,7 +21,7 @@ mod window;
 
 use application::Application;
 use three_d::*;
-use view::{buffer::ObjectBuffer, environment};
+use view::{buffer::ObjectBuffer, environment, visualization::Visualizer};
 use window::build_window;
 
 use utils::frame::FrameHandle;
@@ -100,14 +100,16 @@ fn main() {
 
 pub fn test_buffer(
     context: &WindowedContext,
-    _application: &mut Application,
+    application: &mut Application,
     buffer: &mut ObjectBuffer<dyn Object>,
 ) {
+    /*
     let environment_map =
         three_d_asset::io::load_and_deserialize("wallpapers/nebel2_wallpaper.hdr").unwrap();
 
     let skybox = Skybox::new_from_equirectangular(context, &environment_map);
     buffer.set_skybox(skybox);
+    */
 
     let model: three_d_asset::Model =
         three_d_asset::io::load_and_deserialize("assets/without-textures.glb").unwrap();
@@ -125,4 +127,15 @@ pub fn test_buffer(
     model.set_transformation(translation * rotation * scale);
 
     buffer.add_object("PRINT_BED", Box::new(model));
+
+    for object in application
+        .visualizer()
+        .gcode()
+        .try_collect_objects(context)
+        .unwrap()
+        .into_iter()
+        .enumerate()
+    {
+        buffer.add_object(format!("PathMesh ID: {}", object.0), object.1);
+    }
 }
