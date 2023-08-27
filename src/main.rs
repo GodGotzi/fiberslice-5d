@@ -74,7 +74,7 @@ fn main() {
                 screen.clear(ClearState::color_and_depth(1.0, 1.0, 1.0, 1.0, 1.0));
 
                 screen.write(|| {
-                    buffer.render(&environment);
+                    buffer.render(&environment, &application);
                     gui.render();
                 });
             }
@@ -103,13 +103,11 @@ pub fn test_buffer(
     application: &mut Application,
     buffer: &mut ObjectBuffer<dyn Object>,
 ) {
-    /*
     let environment_map =
         three_d_asset::io::load_and_deserialize("wallpapers/nebel2_wallpaper.hdr").unwrap();
 
     let skybox = Skybox::new_from_equirectangular(context, &environment_map);
     buffer.set_skybox(skybox);
-    */
 
     let model: three_d_asset::Model =
         three_d_asset::io::load_and_deserialize("assets/without-textures.glb").unwrap();
@@ -136,6 +134,6 @@ pub fn test_buffer(
         .into_iter()
         .enumerate()
     {
-        buffer.add_object(format!("PathMesh ID: {}", object.0), object.1);
+        buffer.add_layer(object.1);
     }
 }

@@ -140,7 +140,7 @@ impl FlipYZ for Vector3<f64> {
 #[allow(dead_code)]
 impl From<&PathModul> for PathModulMesh {
     fn from(path_modul: &PathModul) -> Self {
-        let diameter = 0.4;
+        let diameter = 0.6;
         let mut last_cross: Option<Cross> = None;
         let mut positions = Vec::new();
 
@@ -186,7 +186,12 @@ impl From<&PathModul> for PathModulMesh {
 
         Self {
             mesh,
-            color: Srgba::new(255, 0, 0, 255),
+            color: path_modul
+                .state
+                .print_type
+                .as_ref()
+                .unwrap_or(&crate::slicer::print_type::PrintType::Unknown)
+                .get_color(),
         }
     }
 }
@@ -194,33 +199,33 @@ impl From<&PathModul> for PathModulMesh {
 fn draw_path(path: &PathLine, positions: &mut Vec<Vector3<f64>>, cross: &Cross) {
     draw_rect(
         cross.up + path.start,
+        cross.right + path.start,
         cross.up + path.end,
         cross.right + path.end,
-        cross.right + path.start,
-        positions,
-    );
-
-    draw_rect(
-        cross.right + path.start,
-        cross.right + path.end,
-        cross.down + path.end,
-        cross.down + path.start,
         positions,
     );
 
     draw_rect(
         cross.down + path.start,
+        cross.right + path.start,
         cross.down + path.end,
-        cross.left + path.end,
-        cross.left + path.start,
+        cross.right + path.end,
         positions,
     );
 
     draw_rect(
+        cross.down + path.start,
         cross.left + path.start,
+        cross.down + path.end,
         cross.left + path.end,
-        cross.up + path.end,
+        positions,
+    );
+
+    draw_rect(
         cross.up + path.start,
+        cross.left + path.start,
+        cross.up + path.end,
+        cross.left + path.end,
         positions,
     );
 }
@@ -269,9 +274,9 @@ fn draw_rect(
 fn draw_rect_with_cross(center: &Vector3<f64>, cross: &Cross, positions: &mut Vec<Vector3<f64>>) {
     draw_rect(
         cross.up + center,
+        cross.left + center,
         cross.right + center,
         cross.down + center,
-        cross.left + center,
         positions,
     )
 }

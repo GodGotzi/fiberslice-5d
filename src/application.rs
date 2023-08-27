@@ -21,6 +21,7 @@ pub struct Application {
     task_handler: TaskHandler,
     visualizer: VisualizerContext,
     context: ApplicationContext,
+    frame: Option<FrameInput>,
 }
 
 impl Application {
@@ -31,11 +32,13 @@ impl Application {
             task_handler: TaskHandler::default(),
             visualizer: VisualizerContext::default(),
             context: ApplicationContext::new(),
+            frame: None,
         }
     }
 
     pub fn next_frame_input(&mut self, context: &WindowedContext) -> FrameInput {
-        self.frame_input_generator.generate(context)
+        self.context.frame = Some(self.frame_input_generator.generate(context));
+        self.context.frame.clone().unwrap()
     }
 
     pub fn handle_window_event(
@@ -82,6 +85,10 @@ impl Application {
         &mut self.visualizer
     }
 
+    pub fn context(&self) -> &ApplicationContext {
+        &self.context
+    }
+
     pub fn save(&mut self) {}
 
     pub fn kill(&mut self) {
@@ -115,10 +122,11 @@ pub struct ApplicationContext {
     mode: Mode,
     wrapper: AsyncWrapper,
     boundaries: BoundaryHolder,
+    frame: Option<FrameInput>,
 }
 
-impl ApplicationContext {
-    pub fn new() -> Self {
+impl Default for ApplicationContext {
+    fn default() -> Self {
         let mut list: Vec<AsyncPacket> = Vec::new();
 
         for item in Item::iter() {
@@ -130,7 +138,14 @@ impl ApplicationContext {
             mode: Mode::Prepare,
             wrapper: AsyncWrapper::new(list),
             boundaries: BoundaryHolder::default(),
+            frame: None,
         }
+    }
+}
+
+impl ApplicationContext {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn toggle_theme(&mut self) {
@@ -158,5 +173,15 @@ impl ApplicationContext {
 
     pub fn mode(&mut self) -> &mut Mode {
         &mut self.mode
+    }
+
+    pub fn is_mode(&self, mode: Mode) -> bool {
+        self.mode == mode
+    }
+
+    pub fn fps(&self) -> f64 {
+        let frame_input = self.frame.as_ref().unwrap();
+
+        1000.0 / frame_input.elapsed_time
     }
 }

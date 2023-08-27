@@ -40,6 +40,16 @@ impl TryFrom<String> for StateField {
                 Ok(StateField::LAYER(value))
             }
             "TYPE" => {
+                let mut value = value.trim().to_string();
+
+                while let Some(index) = value.find(' ') {
+                    if value.len() > index + 2 {
+                        value[index..index + 2].make_ascii_uppercase();
+                    }
+
+                    value.replace_range(index..index + 1, "");
+                }
+
                 let value = value.parse::<PrintType>().map_err(|_| {
                     crate::error::Error::GCodeStateParseError("Invalid Print Type".into())
                 })?;
@@ -72,6 +82,8 @@ impl State {
 
     pub fn parse(&mut self, line: String) -> Result<(), crate::error::Error> {
         let variant: StateField = line.try_into()?;
+
+        println!("State Change: {:?}", variant);
 
         match variant {
             StateField::LAYER(value) => {

@@ -2,7 +2,9 @@ use std::collections::HashMap;
 
 use three_d::*;
 
-use super::environment;
+use crate::application::Application;
+
+use super::{environment, Mode};
 
 pub struct HideableObject<O: Object + ?Sized + 'static> {
     inner: Box<O>,
@@ -193,15 +195,17 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<O> {
         self.clear_interactive_objects();
     }
 
-    pub fn render(&self, environment: &environment::Environment) {
+    pub fn render(&self, environment: &environment::Environment, application: &Application) {
         if let Some(ref skybox) = self.skybox {
             skybox.render(environment.camera(), &[]);
         }
 
-        for layer in &self.layers {
-            layer
-                .inner
-                .render(environment.camera(), environment.lights().as_slice());
+        if application.context().is_mode(Mode::Preview) {
+            for layer in &self.layers {
+                layer
+                    .inner
+                    .render(environment.camera(), environment.lights().as_slice());
+            }
         }
 
         for model in self.models.values() {
