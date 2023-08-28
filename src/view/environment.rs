@@ -29,17 +29,24 @@ impl Environment {
         //let light0 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
         //let light1 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
 
-        //let ambient = AmbientLight::new(context, 0.2, Srgba::WHITE);
-        let directional0 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, -1.0, 0.0));
-        let directional1 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, -1.0, 0.0));
+        let ambient = AmbientLight::new(context, 0.2, Srgba::WHITE);
+        let directional0 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(1.0, 1.0, 1.0));
+        let directional1 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, 1.0, 1.0));
+        let directional2 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, 1.0, 0.0));
+        let directional3 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(1.0, 1.0, 0.0));
+
+        let bottom = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, -1.0, 0.0));
 
         Self {
             camera,
             camera_control: OrbitControl::new(vec3(0.0, 0.0, 0.0), 0.00001, 1000.0),
             owned_lights: vec![
-                //Box::new(ambient),
+                Box::new(ambient),
                 Box::new(directional0),
                 Box::new(directional1),
+                Box::new(directional2),
+                Box::new(directional3),
+                Box::new(bottom),
             ],
         }
     }

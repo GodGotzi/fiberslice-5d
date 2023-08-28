@@ -18,18 +18,18 @@ pub enum PrintType {
 
 impl PrintType {
     pub fn get_color(&self) -> Srgba {
-        //set hard coded colors for now
+        //set hard coded colors for now unique to each print type
         match &self {
             Self::InternalInfill => Srgba::new(0, 0, 255, 255),
             Self::SolidInfill => Srgba::new(0, 255, 0, 255),
             Self::BridgeInfill => Srgba::new(255, 0, 0, 255),
-            Self::TopSolidInfill => Srgba::new(255, 255, 0, 255),
+            Self::TopSolidInfill => Srgba::new(130, 130, 0, 255),
             Self::Skirt => Srgba::new(255, 0, 255, 255),
             Self::Brim => Srgba::new(0, 255, 255, 255),
             Self::Support => Srgba::new(255, 255, 255, 255),
-            Self::Perimeter => Srgba::new(0, 0, 0, 255),
-            Self::ExternalPerimeter => Srgba::new(0, 0, 0, 255),
-            Self::OverhangPerimeter => Srgba::new(0, 0, 0, 255),
+            Self::Perimeter => Srgba::new(255, 0, 255, 255),
+            Self::ExternalPerimeter => Srgba::new(255, 255, 0, 255),
+            Self::OverhangPerimeter => Srgba::new(0, 255, 255, 255),
             Self::Unknown => Srgba::new(0, 0, 0, 255),
         }
     }

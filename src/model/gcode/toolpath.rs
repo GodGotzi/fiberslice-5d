@@ -140,7 +140,7 @@ impl FlipYZ for Vector3<f64> {
 #[allow(dead_code)]
 impl From<&PathModul> for PathModulMesh {
     fn from(path_modul: &PathModul) -> Self {
-        let diameter = 0.6;
+        let diameter = 0.45;
         let mut last_cross: Option<Cross> = None;
         let mut positions = Vec::new();
 

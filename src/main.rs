@@ -31,6 +31,7 @@ fn main() {
     let window = build_window(&event_loop).expect("Failed to build window");
 
     let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
+
     let mut application = Application::new(&window);
 
     let mut buffer: ObjectBuffer<dyn Object> = ObjectBuffer::new();
@@ -71,7 +72,13 @@ fn main() {
             //Render
             {
                 let screen: RenderTarget<'_> = frame_input.screen();
-                screen.clear(ClearState::color_and_depth(1.0, 1.0, 1.0, 1.0, 1.0));
+                screen.clear(ClearState::color_and_depth(
+                    119.0 / 255.0,
+                    119.0 / 255.0,
+                    119.0 / 255.0,
+                    1.0,
+                    1.0,
+                ));
 
                 screen.write(|| {
                     buffer.render(&environment, &application);
@@ -103,10 +110,13 @@ pub fn test_buffer(
     application: &mut Application,
     buffer: &mut ObjectBuffer<dyn Object>,
 ) {
-    let environment_map = three_d_asset::io::load_and_deserialize("wallpapers/bright.jpg").unwrap();
+    /*
+        let environment_map =
+        three_d_asset::io::load_and_deserialize("wallpapers/black_grey.jpg").unwrap();
 
     let skybox = Skybox::new_from_equirectangular(context, &environment_map);
     buffer.set_skybox(skybox);
+    */
 
     let model: three_d_asset::Model =
         three_d_asset::io::load_and_deserialize("assets/without-textures.glb").unwrap();
