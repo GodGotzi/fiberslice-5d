@@ -1,17 +1,15 @@
-use three_d::Object;
-
 use crate::application::Application;
 
 pub mod force;
 pub mod model;
 
-pub trait Visualizer {
+pub trait Visualizer<O: Sized + 'static> {
     fn visualize(&mut self, application: &mut Application) -> Result<(), crate::error::Error>;
 
     fn try_collect_objects(
         &self,
         context: &three_d::WindowedContext,
-    ) -> Result<Vec<Box<dyn Object>>, crate::error::Error>;
+    ) -> Result<Vec<O>, crate::error::Error>;
 }
 
 #[allow(dead_code)]

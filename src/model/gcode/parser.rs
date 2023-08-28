@@ -28,12 +28,12 @@ pub fn parse_content(content: &str) -> Result<GCode, crate::error::Error> {
         *line = line.trim();
 
         if line.starts_with(';') {
-            compute_comment_with_prefix(line, &mut modul, &mut moduls);
+            compute_comment_with_prefix(line, index, &mut modul, &mut moduls);
         } else if let Some((instruction, comment)) = line.split_once(';') {
             compute_instruction(instruction, index, &mut modul)?;
 
             if !comment.is_empty() {
-                compute_comment(comment, &mut modul, &mut moduls);
+                compute_comment(comment, index, &mut modul, &mut moduls);
             }
         } else {
             compute_instruction(line, index, &mut modul)?;
@@ -47,25 +47,29 @@ pub fn parse_content(content: &str) -> Result<GCode, crate::error::Error> {
 
 fn compute_comment_with_prefix(
     line: &str,
+    count: usize,
     modul: &mut Option<InstructionModul>,
     moduls: &mut Vec<InstructionModul>,
 ) {
-    compute_comment(line.strip_prefix(';').unwrap(), modul, moduls);
+    compute_comment(line.strip_prefix(';').unwrap(), count, modul, moduls);
 }
 
 fn compute_comment(
     line: &str,
+    count: usize,
     modul: &mut Option<InstructionModul>,
     moduls: &mut Vec<InstructionModul>,
 ) {
     if modul.as_ref().unwrap().is_empty() {
-        let _ = parse_comment_into_state(line, modul.as_mut().unwrap().gcode_state_mut());
-    } else if let Ok(result) =
-        parse_comment_to_state(line, modul.as_ref().unwrap().gcode_state().clone())
+        let _ = parse_comment_into_state(line, modul.as_mut().unwrap().state_mut());
+    } else if let Ok(result) = parse_comment_to_state(line, modul.as_ref().unwrap().state().clone())
     {
-        moduls.push(modul.take().unwrap());
+        let mut owned_modul = modul.take().unwrap();
+        owned_modul.finish(count - 1);
 
-        *modul = Some(InstructionModul::new(result));
+        moduls.push(owned_modul);
+
+        *modul = Some(InstructionModul::new(count, result));
     }
 }
 

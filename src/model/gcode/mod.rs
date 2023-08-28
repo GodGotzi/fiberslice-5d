@@ -73,7 +73,7 @@ impl SourceBuilder {
 
 #[derive(Debug, Clone)]
 pub struct GCode {
-    instruction_moduls: Vec<InstructionModul>,
+    pub instruction_moduls: Vec<InstructionModul>,
 }
 
 impl GCode {
@@ -81,9 +81,5 @@ impl GCode {
         Self {
             instruction_moduls: moduls,
         }
-    }
-
-    pub fn instructions(&self) -> &Vec<InstructionModul> {
-        &self.instruction_moduls
     }
 }

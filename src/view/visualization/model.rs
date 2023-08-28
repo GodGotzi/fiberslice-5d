@@ -6,9 +6,11 @@ use three_d::*;
 use three_d_asset::TriMesh;
 
 use crate::application::Application;
-use crate::model::gcode::toolpath::PathModulMesh;
 use crate::model::gcode::toolpath::ToolPath;
 use crate::model::gcode::GCode;
+use crate::model::mesh::LayerMesh;
+use crate::model::mesh::LayerModel;
+use crate::model::mesh::MeshGroup;
 use crate::utils::debug::DebugWrapper;
 use crate::utils::task::TaskWithResult;
 
@@ -70,7 +72,7 @@ impl GCodeVisualizer {
     }
 }
 
-impl Visualizer for GCodeVisualizer {
+impl Visualizer<LayerModel> for GCodeVisualizer {
     fn visualize(&mut self, application: &mut Application) -> Result<(), crate::error::Error> {
         if self.gcode.is_none() {
             return Err(crate::error::Error::FieldMissing("gcode is missing".into()));
@@ -83,7 +85,7 @@ impl Visualizer for GCodeVisualizer {
         result.run(Box::new(move || {
             let layers = Vec::new();
 
-            for _instruction in gcode.instructions().iter() {
+            for _instruction in gcode.instruction_moduls.iter() {
                 /*
 
                 TODO
@@ -111,29 +113,18 @@ impl Visualizer for GCodeVisualizer {
     fn try_collect_objects(
         &self,
         context: &three_d::WindowedContext,
-    ) -> Result<Vec<Box<dyn Object>>, crate::error::Error> {
-        let mut objects: Vec<Box<dyn Object>> = Vec::new();
+    ) -> Result<Vec<LayerModel>, crate::error::Error> {
+        let mut objects = Vec::new();
 
-        let meshes = build_test_meshes();
+        let meshes = build_test_meshes(context);
 
-        for mesh in meshes {
-            let mut model: Gm<Mesh, PhysicalMaterial> = Gm::new(
-                Mesh::new(context, mesh.mesh()),
-                PhysicalMaterial::new(
-                    context,
-                    &CpuMaterial {
-                        albedo: *mesh.color(),
-                        ..Default::default()
-                    },
-                ),
-            );
-
-            model.set_transformation(
+        for mut model in meshes {
+            model.model.set_transformation(
                 Mat4::from_translation(vec3(-100.0, 5.0, 50.0))
                     .concat(&Mat4::from_angle_y(degrees(45.0))),
             );
 
-            objects.push(Box::new(model));
+            objects.push(model);
         }
 
         //model.set_transformation(Mat4::from_translation(vec3(0.0, 40.0, 0.0)));
@@ -142,13 +133,15 @@ impl Visualizer for GCodeVisualizer {
     }
 }
 
-pub fn build_test_meshes() -> Vec<PathModulMesh> {
+pub fn build_test_meshes(context: &WindowedContext) -> Vec<LayerModel> {
     let content = fs::read_to_string("gcode/test.gcode").unwrap();
     //println!("{}", content);
     let gcode: GCode = content.try_into().unwrap();
 
     let toolpath = ToolPath::from(gcode);
 
-    let meshes: Vec<PathModulMesh> = std::convert::Into::<Vec<PathModulMesh>>::into(toolpath);
-    meshes
+    std::convert::Into::<Vec<LayerMesh>>::into(toolpath)
+        .into_iter()
+        .map(|mesh| mesh.into_model(context))
+        .collect()
 }

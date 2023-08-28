@@ -1,5 +1,9 @@
+use std::collections::HashMap;
+
 use three_d::Vector3;
-use three_d_asset::{vec3, Indices, InnerSpace, Positions, Srgba, TriMesh};
+use three_d_asset::{vec3, InnerSpace, Positions, Srgba, TriMesh};
+
+use crate::model::mesh::{LayerMesh, LayerPartMesh, MeshGroup, PartCoordinator};
 
 use super::{instruction::InstructionType, movement, state::State, GCode};
 
@@ -25,17 +29,26 @@ impl PathLine {
 }
 
 pub struct PathModul {
-    points: Vec<PathLine>,
+    paths: Vec<PathLine>,
+    line_range: (usize, usize),
     state: State,
 }
 
 impl PathModul {
-    pub fn new(points: Vec<PathLine>, state: super::state::State) -> Self {
-        Self { points, state }
+    pub fn new(
+        points: Vec<PathLine>,
+        line_range: (usize, usize),
+        state: super::state::State,
+    ) -> Self {
+        Self {
+            paths: points,
+            line_range,
+            state,
+        }
     }
 
     pub fn points(&self) -> &Vec<PathLine> {
-        &self.points
+        &self.paths
     }
 
     pub fn state(&self) -> &super::state::State {
@@ -53,12 +66,17 @@ impl ToolPath {
         Self { path: Vec::new() }
     }
 
-    pub fn add_line(&mut self, path_modul: PathModul) {
-        self.path.push(path_modul);
-    }
-
-    pub fn add_line_with_fields(&mut self, points: Vec<PathLine>, state: super::state::State) {
-        self.path.push(PathModul { points, state });
+    pub fn add_line(
+        &mut self,
+        points: Vec<PathLine>,
+        line_range: (usize, usize),
+        state: super::state::State,
+    ) {
+        self.path.push(PathModul {
+            paths: points,
+            line_range,
+            state,
+        });
     }
 
     pub fn path(&self) -> &Vec<PathModul> {
@@ -72,9 +90,9 @@ impl From<GCode> for ToolPath {
 
         let mut current_movements = movement::Movements::new();
 
-        for instruction_modul in value.instructions() {
+        for instruction_modul in value.instruction_moduls.iter() {
             let mut points = Vec::new();
-            let state = instruction_modul.gcode_state();
+            let state = instruction_modul.state();
 
             for instruction in instruction_modul.instructions() {
                 let movements = instruction.movements();
@@ -94,7 +112,7 @@ impl From<GCode> for ToolPath {
                 });
             }
 
-            tool_path.add_line(PathModul::new(points, state.clone()));
+            tool_path.add_line(points, instruction_modul.range(), state.clone());
         }
 
         tool_path
@@ -102,49 +120,25 @@ impl From<GCode> for ToolPath {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
-pub struct PathModulMesh {
-    mesh: TriMesh,
-    color: Srgba,
-}
-
-#[allow(dead_code)]
-impl PathModulMesh {
-    pub fn new(mesh: TriMesh, color: Srgba) -> Self {
-        Self { mesh, color }
-    }
-
-    pub fn set_color(&mut self, color: Srgba) {
-        self.color = color;
-    }
-
-    pub fn mesh(&self) -> &TriMesh {
-        &self.mesh
-    }
-
-    pub fn color(&self) -> &Srgba {
-        &self.color
-    }
-}
-
-trait FlipYZ {
-    fn flip_yz(&mut self);
-}
-
-impl FlipYZ for Vector3<f64> {
-    fn flip_yz(&mut self) {
-        std::mem::swap(&mut self.y, &mut self.z);
-    }
-}
-
-#[allow(dead_code)]
-impl From<&PathModul> for PathModulMesh {
-    fn from(path_modul: &PathModul) -> Self {
-        let diameter = 0.45;
+impl From<PathModul> for LayerPartMesh {
+    fn from(path_modul: PathModul) -> Self {
+        let diameter = 0.4;
         let mut last_cross: Option<Cross> = None;
-        let mut positions = Vec::new();
 
-        for element in path_modul.points.iter().enumerate() {
+        let color = path_modul
+            .state
+            .print_type
+            .as_ref()
+            .unwrap_or(&crate::slicer::print_type::PrintType::Unknown)
+            .get_color();
+
+        let mut positions = Vec::new();
+        let mut colors = Vec::new();
+
+        let mut coordinator = PartCoordinator::new();
+        let mut parts = Vec::new();
+
+        for element in path_modul.paths.iter().enumerate() {
             let path = element.1;
 
             if path.print {
@@ -152,57 +146,79 @@ impl From<&PathModul> for PathModulMesh {
                 let cross = get_cross(direction, diameter / 2.0);
 
                 if let Some(last) = last_cross.take() {
-                    draw_cross_connection(&path.start, &cross, &last, &mut positions);
+                    draw_cross_connection(&path.start, &cross, &last, &color, &mut coordinator);
                 } else {
-                    draw_rect_with_cross(&path.start, &cross, &mut positions);
+                    draw_rect_with_cross(&path.start, &cross, &color, &mut coordinator);
                 }
 
-                draw_path(path, &mut positions, &cross);
+                draw_path(path, &color, &mut coordinator, &cross);
                 last_cross = Some(cross);
             } else if let Some(last) = last_cross.take() {
-                draw_rect_with_cross(&path.start, &last, &mut positions);
+                end_part(
+                    path,
+                    &color,
+                    last,
+                    &mut coordinator,
+                    &mut positions,
+                    &mut colors,
+                    &mut parts,
+                );
             }
 
-            if element.0 == path_modul.points.len() - 1 {
+            if element.0 == path_modul.paths.len() - 1 {
                 if let Some(last) = last_cross.take() {
-                    draw_rect_with_cross(&path.end, &last, &mut positions);
+                    end_part(
+                        path,
+                        &color,
+                        last,
+                        &mut coordinator,
+                        &mut positions,
+                        &mut colors,
+                        &mut parts,
+                    );
                 }
             }
-        }
-
-        let indices: Vec<u32> = (0..positions.len() as u32).collect();
-
-        for position in positions.iter_mut() {
-            position.flip_yz();
         }
 
         let mut mesh = TriMesh {
             positions: Positions::F64(positions),
-            indices: Indices::U32(indices),
             ..Default::default()
         };
 
         mesh.compute_normals();
 
-        Self {
-            mesh,
-            color: path_modul
-                .state
-                .print_type
-                .as_ref()
-                .unwrap_or(&crate::slicer::print_type::PrintType::Unknown)
-                .get_color(),
-        }
+        Self::new(mesh, path_modul.state, path_modul.line_range, parts)
     }
 }
 
-fn draw_path(path: &PathLine, positions: &mut Vec<Vector3<f64>>, cross: &Cross) {
+fn end_part(
+    path: &PathLine,
+    color: &Srgba,
+    last: Cross,
+    coordinator: &mut PartCoordinator,
+    positions: &mut Vec<Vector3<f64>>,
+    colors: &mut Vec<Srgba>,
+    layer_parts: &mut Vec<TriMesh>,
+) {
+    draw_rect_with_cross(&path.start, &last, color, coordinator);
+
+    let next_mesh = coordinator.next_trimesh();
+
+    //end part
+    positions.extend(next_mesh.positions.to_f64().iter());
+    colors.extend(next_mesh.colors.as_ref().unwrap().iter());
+
+    layer_parts.push(next_mesh);
+}
+
+fn draw_path(path: &PathLine, color: &Srgba, coordinator: &mut PartCoordinator, cross: &Cross) {
     draw_rect(
         cross.up + path.start,
         cross.right + path.start,
         cross.up + path.end,
         cross.right + path.end,
-        positions,
+        color,
+        coordinator,
     );
 
     draw_rect(
@@ -210,7 +226,8 @@ fn draw_path(path: &PathLine, positions: &mut Vec<Vector3<f64>>, cross: &Cross) 
         cross.right + path.start,
         cross.down + path.end,
         cross.right + path.end,
-        positions,
+        color,
+        coordinator,
     );
 
     draw_rect(
@@ -218,7 +235,8 @@ fn draw_path(path: &PathLine, positions: &mut Vec<Vector3<f64>>, cross: &Cross) 
         cross.left + path.start,
         cross.down + path.end,
         cross.left + path.end,
-        positions,
+        color,
+        coordinator,
     );
 
     draw_rect(
@@ -226,7 +244,8 @@ fn draw_path(path: &PathLine, positions: &mut Vec<Vector3<f64>>, cross: &Cross) 
         cross.left + path.start,
         cross.up + path.end,
         cross.left + path.end,
-        positions,
+        color,
+        coordinator,
     );
 }
 
@@ -234,25 +253,34 @@ fn draw_cross_connection(
     center: &Vector3<f64>,
     start_cross: &Cross,
     end_cross: &Cross,
-    positions: &mut Vec<Vector3<f64>>,
+    color: &Srgba,
+    coordinator: &mut PartCoordinator,
 ) {
     //top
-    positions.push(end_cross.up + center);
-    positions.push(end_cross.right + center);
-    positions.push(start_cross.right + center);
+    coordinator.add_position(end_cross.up + center);
+    coordinator.add_position(end_cross.right + center);
+    coordinator.add_position(start_cross.right + center);
 
-    positions.push(end_cross.up + center);
-    positions.push(end_cross.left + center);
-    positions.push(start_cross.left + center);
+    coordinator.add_color(*color);
+
+    coordinator.add_position(end_cross.up + center);
+    coordinator.add_position(end_cross.left + center);
+    coordinator.add_position(start_cross.left + center);
+
+    coordinator.add_color(*color);
 
     //bottom
-    positions.push(end_cross.down + center);
-    positions.push(end_cross.right + center);
-    positions.push(start_cross.right + center);
+    coordinator.add_position(end_cross.down + center);
+    coordinator.add_position(end_cross.right + center);
+    coordinator.add_position(start_cross.right + center);
 
-    positions.push(end_cross.down + center);
-    positions.push(end_cross.left + center);
-    positions.push(start_cross.left + center);
+    coordinator.add_color(*color);
+
+    coordinator.add_position(end_cross.down + center);
+    coordinator.add_position(end_cross.left + center);
+    coordinator.add_position(start_cross.left + center);
+
+    coordinator.add_color(*color);
 }
 
 fn draw_rect(
@@ -260,24 +288,35 @@ fn draw_rect(
     point_left_1: Vector3<f64>,
     point_right_0: Vector3<f64>,
     point_right_1: Vector3<f64>,
-    positions: &mut Vec<Vector3<f64>>,
+    color: &Srgba,
+    coordinator: &mut PartCoordinator,
 ) {
-    positions.push(point_left_0);
-    positions.push(point_left_1);
-    positions.push(point_right_0);
+    coordinator.add_position(point_left_0);
+    coordinator.add_position(point_left_1);
+    coordinator.add_position(point_right_0);
 
-    positions.push(point_right_0);
-    positions.push(point_right_1);
-    positions.push(point_left_1);
+    coordinator.add_color(*color);
+
+    coordinator.add_position(point_right_0);
+    coordinator.add_position(point_right_1);
+    coordinator.add_position(point_left_1);
+
+    coordinator.add_color(*color);
 }
 
-fn draw_rect_with_cross(center: &Vector3<f64>, cross: &Cross, positions: &mut Vec<Vector3<f64>>) {
+fn draw_rect_with_cross(
+    center: &Vector3<f64>,
+    cross: &Cross,
+    color: &Srgba,
+    coordinator: &mut PartCoordinator,
+) {
     draw_rect(
         cross.up + center,
         cross.left + center,
         cross.right + center,
         cross.down + center,
-        positions,
+        color,
+        coordinator,
     )
 }
 
@@ -301,16 +340,32 @@ fn get_cross(direction: Vector3<f64>, radius: f64) -> Cross {
     }
 }
 
-impl From<ToolPath> for Vec<PathModulMesh> {
+impl From<ToolPath> for Vec<LayerMesh> {
     fn from(tool_path: ToolPath) -> Self {
-        let mut meshes = Vec::new();
+        let mut triangles = 0;
 
-        for path_modul in tool_path.path.iter() {
-            let mesh = PathModulMesh::from(path_modul);
+        let mut layers: HashMap<usize, Vec<LayerPartMesh>> = HashMap::new();
 
-            meshes.push(mesh);
+        for path_modul in tool_path.path.into_iter() {
+            let state = path_modul.state.clone();
+            let mesh = LayerPartMesh::from(path_modul);
+
+            if let Some(layer) = layers.get_mut(&state.layer.unwrap_or(0)) {
+                layer.push(mesh);
+            } else {
+                layers.insert(state.layer.unwrap_or(0), vec![mesh]);
+            }
         }
 
-        meshes
+        println!("Triangles: {}", triangles);
+
+        layers
+            .into_values()
+            .map(|v| {
+                let mesh: LayerMesh = v.into();
+                triangles += mesh.tri_count();
+                mesh
+            })
+            .collect()
     }
 }

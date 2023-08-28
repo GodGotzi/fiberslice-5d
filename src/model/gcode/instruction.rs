@@ -98,21 +98,27 @@ impl Instruction {
 #[derive(Debug, Clone)]
 pub struct InstructionModul {
     instructions: Vec<Instruction>,
-    gcode_state: State,
+    start: usize,
+    end: Option<usize>,
+    state: State,
 }
 
 impl InstructionModul {
     pub fn empty() -> Self {
         Self {
             instructions: Vec::new(),
-            gcode_state: State::empty(),
+            start: 0,
+            end: None,
+            state: State::empty(),
         }
     }
 
-    pub fn new(gcode_state: State) -> Self {
+    pub fn new(start: usize, state: State) -> Self {
         Self {
             instructions: Vec::new(),
-            gcode_state,
+            start,
+            end: None,
+            state,
         }
     }
 
@@ -120,12 +126,12 @@ impl InstructionModul {
         &self.instructions
     }
 
-    pub fn gcode_state(&self) -> &State {
-        &self.gcode_state
+    pub fn state(&self) -> &State {
+        &self.state
     }
 
-    pub fn gcode_state_mut(&mut self) -> &mut State {
-        &mut self.gcode_state
+    pub fn state_mut(&mut self) -> &mut State {
+        &mut self.state
     }
 
     pub fn is_empty(&self) -> bool {
@@ -134,5 +140,13 @@ impl InstructionModul {
 
     pub fn push(&mut self, instruction: Instruction) {
         self.instructions.push(instruction);
+    }
+
+    pub fn finish(&mut self, end: usize) {
+        self.end = Some(end);
+    }
+
+    pub fn range(&self) -> (usize, usize) {
+        (self.start, self.end.unwrap_or(self.start))
     }
 }

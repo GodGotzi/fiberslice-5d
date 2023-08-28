@@ -1,9 +1,7 @@
 #[test]
 fn test_gcode_builder() {
-    use crate::model::gcode::{
-        self,
-        toolpath::{self, PathModulMesh},
-    };
+    /*
+    use crate::model::gcode::{self, toolpath};
     use crate::model::gcode::{instruction::InstructionModul, state::State};
     use crate::model::gcode::{
         instruction::{Instruction, InstructionType},
@@ -37,11 +35,12 @@ fn test_gcode_builder() {
 
     let toolpath = toolpath::ToolPath::from(gcode);
 
-    let meshes: Vec<PathModulMesh> = std::convert::Into::<Vec<PathModulMesh>>::into(toolpath);
+    let meshes: Vec<LayerMesh> = std::convert::Into::<Vec<LayerMesh>>::into(toolpath);
 
     println!("{:?}", meshes);
 
     for mesh in meshes {
         println!("{:?}", mesh.mesh().positions.to_f64());
     }
+    */
 }

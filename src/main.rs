@@ -84,6 +84,8 @@ fn main() {
                     buffer.render(&environment, &application);
                     gui.render();
                 });
+
+                buffer.check_picks(&context, &frame_input, &environment);
             }
 
             context.swap_buffers().unwrap();

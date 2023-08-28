@@ -1,3 +1,5 @@
+use three_d_asset::Vector3;
+
 pub mod format;
 pub mod frame;
 pub mod task;
@@ -19,5 +21,18 @@ pub mod debug {
         fn from(t: T) -> Self {
             Self(t)
         }
+    }
+}
+
+pub trait FlipYZ {
+    fn flip_yz(self) -> Self;
+}
+
+impl FlipYZ for Vector3<f64> {
+    fn flip_yz(self) -> Self {
+        let mut s = self;
+
+        std::mem::swap(&mut s.y, &mut s.z);
+        self
     }
 }
