@@ -33,6 +33,6 @@ impl FlipYZ for Vector3<f64> {
         let mut s = self;
 
         std::mem::swap(&mut s.y, &mut s.z);
-        self
+        s
     }
 }

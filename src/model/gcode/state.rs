@@ -40,9 +40,18 @@ impl TryFrom<String> for StateField {
                 Ok(StateField::LAYER(value))
             }
             "TYPE" => {
-                let mut value = value.trim().to_string();
+                let mut value = value.trim().to_ascii_lowercase();
+                value[0..1].make_ascii_uppercase();
 
                 while let Some(index) = value.find(' ') {
+                    if value.len() > index + 2 {
+                        value[index..index + 2].make_ascii_uppercase();
+                    }
+
+                    value.replace_range(index..index + 1, "");
+                }
+
+                while let Some(index) = value.find('-') {
                     if value.len() > index + 2 {
                         value[index..index + 2].make_ascii_uppercase();
                     }

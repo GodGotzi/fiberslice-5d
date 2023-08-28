@@ -13,6 +13,8 @@ pub enum PrintType {
     Perimeter,
     ExternalPerimeter,
     OverhangPerimeter,
+    WallOuter,
+    WallInner,
     Unknown,
 }
 
@@ -28,6 +30,8 @@ impl PrintType {
             Self::Brim => Srgba::new(0, 255, 255, 255),
             Self::Support => Srgba::new(255, 255, 255, 255),
             Self::Perimeter => Srgba::new(255, 0, 255, 255),
+            Self::WallOuter => Srgba::new(255, 0, 0, 255),
+            Self::WallInner => Srgba::new(255, 0, 0, 255),
             Self::ExternalPerimeter => Srgba::new(255, 255, 0, 255),
             Self::OverhangPerimeter => Srgba::new(0, 255, 255, 255),
             Self::Unknown => Srgba::new(0, 0, 0, 255),

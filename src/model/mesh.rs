@@ -1,6 +1,8 @@
 use three_d::{Gm, Mesh, PhysicalMaterial, WindowedContext};
 use three_d_asset::{Positions, Srgba, TriMesh, Vector3};
 
+use crate::utils::FlipYZ;
+
 use super::gcode::state::State;
 
 pub struct PartCoordinator {
@@ -17,7 +19,7 @@ impl PartCoordinator {
     }
 
     pub fn add_position(&mut self, position: Vector3<f64>) {
-        self.positions.push(position);
+        self.positions.push(position.flip_yz());
     }
 
     #[allow(dead_code)]
@@ -127,8 +129,6 @@ impl MeshGroup<LayerModel> for LayerMesh {
             Mesh::new(context, &self.main),
             PhysicalMaterial {
                 name: "FilamentMat".into(),
-                metallic: 1.0,
-                roughness: 0.0,
                 ..Default::default()
             },
         );
@@ -201,8 +201,6 @@ impl LayerPartMesh {
             Mesh::new(context, &self.main),
             PhysicalMaterial {
                 name: "FilamentMat".into(),
-                metallic: 1.0,
-                roughness: 0.0,
                 ..Default::default()
             },
         );
