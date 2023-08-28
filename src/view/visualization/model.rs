@@ -134,7 +134,7 @@ impl Visualizer<LayerModel> for GCodeVisualizer {
 }
 
 pub fn build_test_meshes(context: &WindowedContext) -> Vec<LayerModel> {
-    let content = fs::read_to_string("gcode/test.gcode").unwrap();
+    let content = fs::read_to_string("gcode/test2.gcode").unwrap();
     //println!("{}", content);
     let gcode: GCode = content.try_into().unwrap();
 

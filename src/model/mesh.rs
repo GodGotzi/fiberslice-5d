@@ -1,8 +1,6 @@
 use three_d::{Gm, Mesh, PhysicalMaterial, WindowedContext};
 use three_d_asset::{Positions, Srgba, TriMesh, Vector3};
 
-use crate::utils::FlipYZ;
-
 use super::gcode::state::State;
 
 pub struct PartCoordinator {
@@ -19,10 +17,17 @@ impl PartCoordinator {
     }
 
     pub fn add_position(&mut self, position: Vector3<f64>) {
-        self.positions.push(position.flip_yz());
+        self.positions.push(position);
     }
 
+    #[allow(dead_code)]
     pub fn add_color(&mut self, color: Srgba) {
+        self.colors.push(color);
+    }
+
+    pub fn add_color_3_times(&mut self, color: Srgba) {
+        self.colors.push(color);
+        self.colors.push(color);
         self.colors.push(color);
     }
 
@@ -33,11 +38,14 @@ impl PartCoordinator {
         self.positions.clear();
         self.colors.clear();
 
-        TriMesh {
+        let mut mesh = TriMesh {
             positions,
             colors,
             ..Default::default()
-        }
+        };
+
+        mesh.compute_normals();
+        mesh
     }
 }
 
@@ -70,11 +78,13 @@ impl From<Vec<LayerPartMesh>> for LayerMesh {
             colors.extend(mesh.main.colors.as_ref().unwrap().iter());
         }
 
-        let mesh = TriMesh {
+        let mut mesh = TriMesh {
             positions: Positions::F64(positions),
             colors: Some(colors),
             ..Default::default()
         };
+
+        mesh.compute_normals();
 
         Self {
             main: mesh,
@@ -123,14 +133,22 @@ impl MeshGroup<LayerModel> for LayerMesh {
             },
         );
 
+        let mut min_line = usize::MAX;
+        let mut max_line = usize::MIN;
+
         let child_models = self
             .child_meshes
             .into_iter()
-            .map(|mesh| mesh.into_model(context))
+            .map(|mesh| {
+                min_line = std::cmp::min(min_line, mesh.line_range.0);
+                max_line = std::cmp::max(max_line, mesh.line_range.1);
+                mesh.into_model(context)
+            })
             .collect();
 
         LayerModel {
             model,
+            line_range: (0, 0),
             child_models,
         }
     }
@@ -142,12 +160,14 @@ impl MeshGroup<LayerModel> for LayerMesh {
 
 pub struct LayerModel {
     pub model: Gm<Mesh, PhysicalMaterial>,
+    pub line_range: (usize, usize),
     pub child_models: Vec<LayerPartModel>,
 }
 
 pub struct LayerPartModel {
     pub model: Gm<Mesh, PhysicalMaterial>,
     pub state: State,
+    pub line_range: (usize, usize),
     pub child_models: Vec<Mesh>,
 }
 
@@ -190,6 +210,7 @@ impl LayerPartMesh {
         LayerPartModel {
             model,
             state: self.state,
+            line_range: self.line_range,
             child_models: self
                 .child_meshes
                 .into_iter()

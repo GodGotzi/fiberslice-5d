@@ -242,6 +242,7 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<O> {
             {
                 if *button == MouseButton::Right {
                     for layer in self.layers.iter_mut() {
+                        println!("nice");
                         if let Some(_pick) = pick(
                             context,
                             environment.camera(),
@@ -249,7 +250,7 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<O> {
                             layer.model.geometry.into_iter(),
                         ) {
                             println!("pick");
-                            layer.model.material.albedo = Srgba::new(0, 0, 0, 255);
+                            println!("lines: {:?}", layer.line_range);
                         }
                     }
                 }

@@ -182,6 +182,7 @@ impl From<PathModul> for LayerPartMesh {
 
         let mut mesh = TriMesh {
             positions: Positions::F64(positions),
+            colors: Some(colors),
             ..Default::default()
         };
 
@@ -202,7 +203,10 @@ fn end_part(
 ) {
     draw_rect_with_cross(&path.start, &last, color, coordinator);
 
-    let next_mesh = coordinator.next_trimesh();
+    let mut next_mesh = coordinator.next_trimesh();
+    next_mesh.compute_normals();
+
+    println!("Triangles: {}", next_mesh.positions.len() / 3);
 
     //end part
     positions.extend(next_mesh.positions.to_f64().iter());
@@ -261,26 +265,26 @@ fn draw_cross_connection(
     coordinator.add_position(end_cross.right + center);
     coordinator.add_position(start_cross.right + center);
 
-    coordinator.add_color(*color);
+    coordinator.add_color_3_times(*color);
 
     coordinator.add_position(end_cross.up + center);
     coordinator.add_position(end_cross.left + center);
     coordinator.add_position(start_cross.left + center);
 
-    coordinator.add_color(*color);
+    coordinator.add_color_3_times(*color);
 
     //bottom
     coordinator.add_position(end_cross.down + center);
     coordinator.add_position(end_cross.right + center);
     coordinator.add_position(start_cross.right + center);
 
-    coordinator.add_color(*color);
+    coordinator.add_color_3_times(*color);
 
     coordinator.add_position(end_cross.down + center);
     coordinator.add_position(end_cross.left + center);
     coordinator.add_position(start_cross.left + center);
 
-    coordinator.add_color(*color);
+    coordinator.add_color_3_times(*color);
 }
 
 fn draw_rect(
@@ -295,13 +299,13 @@ fn draw_rect(
     coordinator.add_position(point_left_1);
     coordinator.add_position(point_right_0);
 
-    coordinator.add_color(*color);
+    coordinator.add_color_3_times(*color);
 
     coordinator.add_position(point_right_0);
     coordinator.add_position(point_right_1);
     coordinator.add_position(point_left_1);
 
-    coordinator.add_color(*color);
+    coordinator.add_color_3_times(*color);
 }
 
 fn draw_rect_with_cross(
