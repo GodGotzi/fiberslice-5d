@@ -78,21 +78,24 @@ impl FrameHandle for Environment {
         //update viewport
         {
             if input.viewport.height != 0 && input.viewport.width != 0 {
+                let height = input.viewport.height
+                    - ((application.boundaries().taskbar.height()
+                        + application.boundaries().modebar.height()
+                        + application.boundaries().menubar.height())
+                        * input.device_pixel_ratio) as u32;
+                let extra = (height as f32 * 0.3) as u32;
+
                 let viewport = Viewport {
                     x: (application.boundaries().toolbar.width() * input.device_pixel_ratio) as i32,
-                    y: ((application.boundaries().taskbar.height()
+                    y: (((application.boundaries().taskbar.height()
                         + application.boundaries().modebar.height())
-                        * input.device_pixel_ratio) as i32,
+                        * input.device_pixel_ratio) as i32)
+                        - extra as i32,
                     width: input.viewport.width
                         - ((application.boundaries().toolbar.width()
                             + application.boundaries().settingsbar.width())
                             * input.device_pixel_ratio) as u32,
-                    height: ((input.viewport.height
-                        - ((application.boundaries().taskbar.height()
-                            + application.boundaries().modebar.height()
-                            + application.boundaries().menubar.height())
-                            * input.device_pixel_ratio) as u32) as f32
-                        * 0.8) as u32,
+                    height: height + extra,
                 };
 
                 self.camera.set_viewport(viewport);
