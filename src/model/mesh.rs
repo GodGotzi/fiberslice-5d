@@ -1,5 +1,5 @@
-use three_d::{Gm, Mesh, PhysicalMaterial, WindowedContext};
-use three_d_asset::{Positions, Srgba, TriMesh, Vector3};
+use three_d::{Gm, Mesh, PhysicalMaterial, RenderStates, WindowedContext};
+use three_d_asset::{vec3, InnerSpace, LightingModel, Positions, Srgba, TriMesh, Vector3};
 
 use crate::utils::FlipYZ;
 
@@ -48,6 +48,160 @@ impl PartCoordinator {
 
         mesh.compute_normals();
         mesh
+    }
+}
+
+pub fn end_part(
+    path: (Vector3<f64>, Vector3<f64>),
+    color: &Srgba,
+    last: Cross,
+    coordinator: &mut PartCoordinator,
+    positions: &mut Vec<Vector3<f64>>,
+    colors: &mut Vec<Srgba>,
+    layer_parts: &mut Vec<TriMesh>,
+) {
+    draw_rect_with_cross(&path.0, &last, color, coordinator);
+
+    let next_mesh = coordinator.next_trimesh();
+
+    //end part
+    positions.extend(next_mesh.positions.to_f64().iter());
+    colors.extend(next_mesh.colors.as_ref().unwrap().iter());
+
+    layer_parts.push(next_mesh);
+}
+
+pub fn draw_path(
+    path: (Vector3<f64>, Vector3<f64>),
+    color: &Srgba,
+    coordinator: &mut PartCoordinator,
+    cross: &Cross,
+) {
+    draw_rect(
+        cross.up + path.0,
+        cross.right + path.0,
+        cross.up + path.1,
+        cross.right + path.1,
+        color,
+        coordinator,
+    );
+
+    draw_rect(
+        cross.down + path.0,
+        cross.right + path.0,
+        cross.down + path.1,
+        cross.right + path.1,
+        color,
+        coordinator,
+    );
+
+    draw_rect(
+        cross.down + path.0,
+        cross.left + path.0,
+        cross.down + path.1,
+        cross.left + path.1,
+        color,
+        coordinator,
+    );
+
+    draw_rect(
+        cross.up + path.0,
+        cross.left + path.0,
+        cross.up + path.1,
+        cross.left + path.1,
+        color,
+        coordinator,
+    );
+}
+
+pub fn draw_cross_connection(
+    center: &Vector3<f64>,
+    start_cross: &Cross,
+    end_cross: &Cross,
+    color: &Srgba,
+    coordinator: &mut PartCoordinator,
+) {
+    //top
+    coordinator.add_position(end_cross.up + center);
+    coordinator.add_position(end_cross.right + center);
+    coordinator.add_position(start_cross.right + center);
+
+    coordinator.add_color_3_times(*color);
+
+    coordinator.add_position(end_cross.up + center);
+    coordinator.add_position(end_cross.left + center);
+    coordinator.add_position(start_cross.left + center);
+
+    coordinator.add_color_3_times(*color);
+
+    //bottom
+    coordinator.add_position(end_cross.down + center);
+    coordinator.add_position(end_cross.right + center);
+    coordinator.add_position(start_cross.right + center);
+
+    coordinator.add_color_3_times(*color);
+
+    coordinator.add_position(end_cross.down + center);
+    coordinator.add_position(end_cross.left + center);
+    coordinator.add_position(start_cross.left + center);
+
+    coordinator.add_color_3_times(*color);
+}
+
+pub fn draw_rect(
+    point_left_0: Vector3<f64>,
+    point_left_1: Vector3<f64>,
+    point_right_0: Vector3<f64>,
+    point_right_1: Vector3<f64>,
+    color: &Srgba,
+    coordinator: &mut PartCoordinator,
+) {
+    coordinator.add_position(point_left_0);
+    coordinator.add_position(point_left_1);
+    coordinator.add_position(point_right_0);
+
+    coordinator.add_color_3_times(*color);
+
+    coordinator.add_position(point_right_0);
+    coordinator.add_position(point_right_1);
+    coordinator.add_position(point_left_1);
+
+    coordinator.add_color_3_times(*color);
+}
+
+pub fn draw_rect_with_cross(
+    center: &Vector3<f64>,
+    cross: &Cross,
+    color: &Srgba,
+    coordinator: &mut PartCoordinator,
+) {
+    draw_rect(
+        cross.up + center,
+        cross.left + center,
+        cross.right + center,
+        cross.down + center,
+        color,
+        coordinator,
+    )
+}
+
+#[derive(Debug)]
+pub struct Cross {
+    up: Vector3<f64>,
+    down: Vector3<f64>,
+    left: Vector3<f64>,
+    right: Vector3<f64>,
+}
+
+pub fn get_cross(direction: Vector3<f64>, radius: f64) -> Cross {
+    let horizontal = direction.cross(vec3(0.0, 0.0, direction.z + 1.0));
+    let vertical = direction.cross(vec3(direction.x + 1.0, direction.y + 1.0, 0.0));
+
+    Cross {
+        up: vertical.normalize() * radius,
+        down: vertical.normalize() * (-radius),
+        left: horizontal.normalize() * radius,
+        right: horizontal.normalize() * (-radius),
     }
 }
 
@@ -127,10 +281,7 @@ impl MeshGroup<LayerModel> for LayerMesh {
     fn into_model(self, context: &WindowedContext) -> LayerModel {
         let model = Gm::new(
             Mesh::new(context, &self.main),
-            PhysicalMaterial {
-                name: "FilamentMat".into(),
-                ..Default::default()
-            },
+            construct_filament_material(),
         );
 
         let mut min_line = usize::MAX;
@@ -155,6 +306,23 @@ impl MeshGroup<LayerModel> for LayerMesh {
 
     fn tri_count(&self) -> usize {
         self.main.positions.len() / 3
+    }
+}
+
+pub fn construct_filament_material() -> PhysicalMaterial {
+    PhysicalMaterial {
+        name: "default".to_string(),
+        metallic: 0.0,
+        roughness: 1.0,
+        metallic_roughness_texture: None,
+        normal_texture: None,
+        normal_scale: 1.0,
+        occlusion_texture: None,
+        occlusion_strength: 1.0,
+        render_states: RenderStates::default(),
+        is_transparent: true,
+        lighting_model: LightingModel::Phong,
+        ..Default::default()
     }
 }
 
@@ -199,10 +367,7 @@ impl LayerPartMesh {
     fn into_model(self, context: &WindowedContext) -> LayerPartModel {
         let model = Gm::new(
             Mesh::new(context, &self.main),
-            PhysicalMaterial {
-                name: "FilamentMat".into(),
-                ..Default::default()
-            },
+            construct_filament_material(),
         );
 
         LayerPartModel {

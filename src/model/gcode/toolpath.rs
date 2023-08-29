@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use three_d::Vector3;
-use three_d_asset::{vec3, InnerSpace, Positions, Srgba, TriMesh};
+use three_d_asset::{vec3, Positions, TriMesh};
 
-use crate::model::mesh::{LayerMesh, LayerPartMesh, MeshGroup, PartCoordinator};
+use crate::model::mesh::*;
 
 use super::{instruction::InstructionType, movement, state::State, GCode};
 
@@ -151,11 +151,11 @@ impl From<PathModul> for LayerPartMesh {
                     draw_rect_with_cross(&path.start, &cross, &color, &mut coordinator);
                 }
 
-                draw_path(path, &color, &mut coordinator, &cross);
+                draw_path((path.start, path.end), &color, &mut coordinator, &cross);
                 last_cross = Some(cross);
             } else if let Some(last) = last_cross.take() {
                 end_part(
-                    path,
+                    (path.start, path.end),
                     &color,
                     last,
                     &mut coordinator,
@@ -168,7 +168,7 @@ impl From<PathModul> for LayerPartMesh {
             if element.0 == path_modul.paths.len() - 1 {
                 if let Some(last) = last_cross.take() {
                     end_part(
-                        path,
+                        (path.start, path.end),
                         &color,
                         last,
                         &mut coordinator,
@@ -192,158 +192,6 @@ impl From<PathModul> for LayerPartMesh {
     }
 }
 
-fn end_part(
-    path: &PathLine,
-    color: &Srgba,
-    last: Cross,
-    coordinator: &mut PartCoordinator,
-    positions: &mut Vec<Vector3<f64>>,
-    colors: &mut Vec<Srgba>,
-    layer_parts: &mut Vec<TriMesh>,
-) {
-    draw_rect_with_cross(&path.start, &last, color, coordinator);
-
-    let mut next_mesh = coordinator.next_trimesh();
-    next_mesh.compute_normals();
-
-    println!("Triangles: {}", next_mesh.positions.len() / 3);
-
-    //end part
-    positions.extend(next_mesh.positions.to_f64().iter());
-    colors.extend(next_mesh.colors.as_ref().unwrap().iter());
-
-    layer_parts.push(next_mesh);
-}
-
-fn draw_path(path: &PathLine, color: &Srgba, coordinator: &mut PartCoordinator, cross: &Cross) {
-    draw_rect(
-        cross.up + path.start,
-        cross.right + path.start,
-        cross.up + path.end,
-        cross.right + path.end,
-        color,
-        coordinator,
-    );
-
-    draw_rect(
-        cross.down + path.start,
-        cross.right + path.start,
-        cross.down + path.end,
-        cross.right + path.end,
-        color,
-        coordinator,
-    );
-
-    draw_rect(
-        cross.down + path.start,
-        cross.left + path.start,
-        cross.down + path.end,
-        cross.left + path.end,
-        color,
-        coordinator,
-    );
-
-    draw_rect(
-        cross.up + path.start,
-        cross.left + path.start,
-        cross.up + path.end,
-        cross.left + path.end,
-        color,
-        coordinator,
-    );
-}
-
-fn draw_cross_connection(
-    center: &Vector3<f64>,
-    start_cross: &Cross,
-    end_cross: &Cross,
-    color: &Srgba,
-    coordinator: &mut PartCoordinator,
-) {
-    //top
-    coordinator.add_position(end_cross.up + center);
-    coordinator.add_position(end_cross.right + center);
-    coordinator.add_position(start_cross.right + center);
-
-    coordinator.add_color_3_times(*color);
-
-    coordinator.add_position(end_cross.up + center);
-    coordinator.add_position(end_cross.left + center);
-    coordinator.add_position(start_cross.left + center);
-
-    coordinator.add_color_3_times(*color);
-
-    //bottom
-    coordinator.add_position(end_cross.down + center);
-    coordinator.add_position(end_cross.right + center);
-    coordinator.add_position(start_cross.right + center);
-
-    coordinator.add_color_3_times(*color);
-
-    coordinator.add_position(end_cross.down + center);
-    coordinator.add_position(end_cross.left + center);
-    coordinator.add_position(start_cross.left + center);
-
-    coordinator.add_color_3_times(*color);
-}
-
-fn draw_rect(
-    point_left_0: Vector3<f64>,
-    point_left_1: Vector3<f64>,
-    point_right_0: Vector3<f64>,
-    point_right_1: Vector3<f64>,
-    color: &Srgba,
-    coordinator: &mut PartCoordinator,
-) {
-    coordinator.add_position(point_left_0);
-    coordinator.add_position(point_left_1);
-    coordinator.add_position(point_right_0);
-
-    coordinator.add_color_3_times(*color);
-
-    coordinator.add_position(point_right_0);
-    coordinator.add_position(point_right_1);
-    coordinator.add_position(point_left_1);
-
-    coordinator.add_color_3_times(*color);
-}
-
-fn draw_rect_with_cross(
-    center: &Vector3<f64>,
-    cross: &Cross,
-    color: &Srgba,
-    coordinator: &mut PartCoordinator,
-) {
-    draw_rect(
-        cross.up + center,
-        cross.left + center,
-        cross.right + center,
-        cross.down + center,
-        color,
-        coordinator,
-    )
-}
-
-#[derive(Debug)]
-struct Cross {
-    up: Vector3<f64>,
-    down: Vector3<f64>,
-    left: Vector3<f64>,
-    right: Vector3<f64>,
-}
-
-fn get_cross(direction: Vector3<f64>, radius: f64) -> Cross {
-    let horizontal = direction.cross(vec3(0.0, 0.0, direction.z + 1.0));
-    let vertical = direction.cross(vec3(direction.x + 1.0, direction.y + 1.0, 0.0));
-
-    Cross {
-        up: vertical.normalize() * radius,
-        down: vertical.normalize() * (-radius),
-        left: horizontal.normalize() * radius,
-        right: horizontal.normalize() * (-radius),
-    }
-}
-
 impl From<ToolPath> for Vec<LayerMesh> {
     fn from(tool_path: ToolPath) -> Self {
         let mut triangles = 0;
@@ -360,8 +208,6 @@ impl From<ToolPath> for Vec<LayerMesh> {
                 layers.insert(state.layer.unwrap_or(0), vec![mesh]);
             }
         }
-
-        println!("Triangles: {}", triangles);
 
         layers
             .into_values()

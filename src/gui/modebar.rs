@@ -2,11 +2,10 @@ use egui_extras::Size;
 use egui_grid::GridBuilder;
 use three_d::egui;
 
-use crate::application::ApplicationContext;
 use crate::config;
 use crate::view::Mode;
 
-use super::Component;
+use super::{Component, GuiContext};
 
 pub struct Modebar;
 
@@ -17,7 +16,7 @@ impl Modebar {
 }
 
 impl Component<Modebar> for Modebar {
-    fn show(&mut self, ctx: &egui::Context, app: &mut ApplicationContext) {
+    fn show(&mut self, ctx: &egui::Context, gui_context: &mut GuiContext) {
         let boundary = egui::TopBottomPanel::bottom("modebar")
             .default_height(config::gui::MODEBAR_H)
             .show(ctx, |ui: &mut egui::Ui| {
@@ -42,13 +41,14 @@ impl Component<Modebar> for Modebar {
                         .cell(Size::remainder())
                         .cell(Size::initial(5.0))
                         .cell(Size::remainder())
-                        .cell(Size::initial(5.0))
-                        .cell(Size::remainder())
-                        .cell(Size::initial(5.0))
                         .show(ui, |mut grid| {
                             // Cells are represented as they were allocated
                             grid.cell(|ui| {
-                                ui.selectable_value(app.mode(), Mode::Prepare, "Prepare");
+                                ui.selectable_value(
+                                    gui_context.application_ctx.mode(),
+                                    Mode::Prepare,
+                                    "Prepare",
+                                );
                             });
                             grid.cell(|ui| {
                                 ui.horizontal(|ui| {
@@ -57,7 +57,7 @@ impl Component<Modebar> for Modebar {
                             });
                             grid.cell(|ui| {
                                 ui.selectable_value(
-                                    app.mode(),
+                                    gui_context.application_ctx.mode(),
                                     Mode::ForceAnalytics,
                                     "Force - Analytics",
                                 );
@@ -68,15 +68,11 @@ impl Component<Modebar> for Modebar {
                                 });
                             });
                             grid.cell(|ui| {
-                                ui.selectable_value(app.mode(), Mode::Preview, "Preview");
-                            });
-                            grid.cell(|ui| {
-                                ui.horizontal(|ui| {
-                                    ui.separator();
-                                });
-                            });
-                            grid.cell(|ui| {
-                                ui.selectable_value(app.mode(), Mode::Monitor, "Monitor");
+                                ui.selectable_value(
+                                    gui_context.application_ctx.mode(),
+                                    Mode::Preview,
+                                    "Preview",
+                                );
                             });
                         });
                 });
@@ -84,6 +80,6 @@ impl Component<Modebar> for Modebar {
             .response
             .into();
 
-        app.boundaries_mut().modebar = boundary;
+        gui_context.application_ctx.boundaries_mut().modebar = boundary;
     }
 }

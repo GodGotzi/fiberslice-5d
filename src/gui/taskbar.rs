@@ -4,6 +4,8 @@ use crate::application::ApplicationContext;
 use crate::config;
 use crate::gui;
 
+use super::GuiContext;
+
 pub struct Taskbar {}
 
 impl Taskbar {
@@ -13,24 +15,24 @@ impl Taskbar {
 }
 
 impl gui::Component<Taskbar> for Taskbar {
-    fn show(&mut self, ctx: &egui::Context, app: &mut ApplicationContext) {
+    fn show(&mut self, ctx: &egui::Context, gui_context: &mut GuiContext) {
         let boundary = egui::TopBottomPanel::bottom("taskbar")
             .default_height(config::gui::TASKBAR_H)
             .show(ctx, |ui: &mut egui::Ui| {
                 egui::menu::bar(ui, |ui| {
                     ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
                         ui.add_space(10.0);
-                        ui.label(format!("{:.2} fps", app.fps()));
+                        ui.label(format!("{:.2} fps", gui_context.application_ctx.fps()));
                     });
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        theme_button(ui, app);
+                        theme_button(ui, gui_context.application_ctx);
                     });
                 });
             })
             .response
             .into();
 
-        app.boundaries_mut().taskbar = boundary;
+        gui_context.application_ctx.boundaries_mut().taskbar = boundary;
     }
 }
 

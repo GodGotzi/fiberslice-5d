@@ -92,7 +92,7 @@ impl State {
     pub fn parse(&mut self, line: String) -> Result<(), crate::error::Error> {
         let variant: StateField = line.try_into()?;
 
-        println!("State Change: {:?}", variant);
+        //println!("State Change: {:?}", variant);
 
         match variant {
             StateField::LAYER(value) => {

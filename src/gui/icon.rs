@@ -31,6 +31,7 @@ impl IconTable {
     pub fn get_orientation_icon(&self, orientation: Orientation) -> &RetainedImage {
         match orientation {
             Orientation::Default => &self.orientation_default,
+            Orientation::Diagonal => &self.orientation_default,
             Orientation::Top => &self.orientation_top,
             Orientation::Left => &self.orientation_left,
             Orientation::Right => &self.orientation_right,

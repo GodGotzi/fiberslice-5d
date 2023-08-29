@@ -2,17 +2,20 @@ use egui::Ui;
 use egui_extras::Size;
 use three_d::egui;
 
-use crate::{application::ApplicationContext, config::gui::shaded_color, gui::Boundary};
+use crate::{
+    config::gui::shaded_color,
+    gui::{Boundary, GuiContext},
+};
 
-pub fn show(_ctx: &egui::Context, ui: &mut Ui, app: &mut ApplicationContext, boundary: Boundary) {
+pub fn show(_ctx: &egui::Context, ui: &mut Ui, gui_context: &mut GuiContext, boundary: Boundary) {
     let shaded_color = shaded_color(ui.visuals().dark_mode);
 
     let _response = super::create_addon_strip_builder(
         ui,
-        app,
+        gui_context,
         boundary,
         shaded_color,
-        Box::new(|builder, app, shaded_color| {
+        Box::new(|builder, gui_context, shaded_color| {
             builder
                 .size(Size::remainder())
                 .size(Size::relative(0.6))
@@ -36,7 +39,7 @@ pub fn show(_ctx: &egui::Context, ui: &mut Ui, app: &mut ApplicationContext, bou
                                                     shaded_color,
                                                 );
 
-                                                super::orientation::show(ui, app);
+                                                super::orientation::show(ui, gui_context);
                                             });
                                         });
                                 });

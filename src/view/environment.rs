@@ -2,6 +2,8 @@ use three_d::*;
 
 use crate::{application::Application, config, utils::frame::FrameHandle};
 
+use super::camera::HandleOrientation;
+
 pub struct Environment {
     camera: Camera,
     camera_control: OrbitControl,
@@ -15,7 +17,7 @@ impl Environment {
                 config::default::WINDOW_S.width as u32,
                 config::default::WINDOW_S.height as u32,
             ))
-            .position(vec3(60.00, 50.0, 60.0))
+            .position(vec3(0.00, 0.0, 0.0))
             .target(vec3(0.0, 0.0, 0.0))
             .up(vec3(0.0, 1.0, 0.0))
             .fov(degrees(45.0))
@@ -24,7 +26,7 @@ impl Environment {
             .build()
             .expect("Failed to create camera");
 
-        camera.zoom_towards(&vec3(0.0, 0.0, 0.0), -400.0, 0.00001, 1000.0);
+        camera.handle_orientation(super::Orientation::Default);
 
         //let light0 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
         //let light1 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));

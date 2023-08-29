@@ -120,8 +120,8 @@ impl Visualizer<LayerModel> for GCodeVisualizer {
 
         for mut model in meshes {
             model.model.set_transformation(
-                Mat4::from_translation(vec3(-100.0, 5.0, 50.0))
-                    .concat(&Mat4::from_angle_y(degrees(45.0))),
+                Mat4::from_translation(vec3(0.0, 5.0, 0.0))
+                    .concat(&Mat4::from_angle_y(degrees(90.0))),
             );
 
             objects.push(model);

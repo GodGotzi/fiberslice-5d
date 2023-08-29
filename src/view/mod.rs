@@ -6,6 +6,7 @@ pub mod visualization;
 #[allow(dead_code)]
 pub enum Orientation {
     Default,
+    Diagonal,
     Top,
     Left,
     Right,
@@ -17,5 +18,4 @@ pub enum Mode {
     Preview,
     Prepare,
     ForceAnalytics,
-    Monitor,
 }

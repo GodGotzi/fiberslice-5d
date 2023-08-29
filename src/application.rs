@@ -16,18 +16,16 @@ use crate::{
 
 #[allow(dead_code)]
 pub struct Application {
-    screen: Screen,
     pub frame_input_generator: FrameInputGenerator,
     task_handler: TaskHandler,
     visualizer: VisualizerContext,
-    context: ApplicationContext,
+    pub(super) context: ApplicationContext,
     frame: Option<FrameInput>,
 }
 
 impl Application {
     pub fn new(window: &Window) -> Self {
         Self {
-            screen: Screen::new(),
             frame_input_generator: FrameInputGenerator::from_winit_window(window),
             task_handler: TaskHandler::default(),
             visualizer: VisualizerContext::default(),
@@ -63,16 +61,6 @@ impl Application {
         }
     }
 
-    pub fn ui_frame(&mut self, ctx: &egui::Context) {
-        match self.context.theme() {
-            Theme::Light => ctx.set_visuals(Visuals::light()),
-            Theme::Dark => ctx.set_visuals(Visuals::dark()),
-        };
-
-        self.screen.show(ctx, &mut self.context);
-        self.context.event_wrapping().next_frame();
-    }
-
     pub fn boundaries(&self) -> &BoundaryHolder {
         self.context.boundaries()
     }
@@ -89,6 +77,10 @@ impl Application {
         &self.context
     }
 
+    pub fn context_mut(&mut self) -> &mut ApplicationContext {
+        &mut self.context
+    }
+
     pub fn save(&mut self) {}
 
     pub fn kill(&mut self) {
@@ -100,6 +92,16 @@ impl Application {
 
         self.task_handler.tasks.clear();
     }
+}
+
+pub fn ui_frame(ctx: &egui::Context, screen: &mut Screen, mut gui_context: GuiContext) {
+    match gui_context.application_ctx.theme() {
+        Theme::Light => ctx.set_visuals(Visuals::light()),
+        Theme::Dark => ctx.set_visuals(Visuals::dark()),
+    };
+
+    screen.show(ctx, &mut gui_context);
+    gui_context.application_ctx.event_wrapping().next_frame();
 }
 
 #[derive(Default)]

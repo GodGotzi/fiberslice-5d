@@ -9,21 +9,19 @@ use egui_extras::{Size, StripBuilder};
 use three_d::egui::{self, *};
 
 use crate::{
-    application::ApplicationContext,
-    gui::{self, Boundary},
+    gui::{self, Boundary, GuiContext},
     view::Mode,
 };
 
 mod force_analytics;
-mod monitor;
 mod prepare;
 mod preview;
 
-type AddonStripBuilderClosure = dyn Fn(StripBuilder, &mut ApplicationContext, Color32);
+type AddonStripBuilderClosure = dyn Fn(StripBuilder, &mut GuiContext, Color32);
 
 pub fn create_addon_strip_builder(
     ui: &mut Ui,
-    app: &mut ApplicationContext,
+    gui_context: &mut GuiContext,
     boundary: Boundary,
     shaded_color: Color32,
     build: Box<AddonStripBuilderClosure>,
@@ -42,7 +40,7 @@ pub fn create_addon_strip_builder(
                     .vertical(|mut strip| {
                         strip.empty();
                         strip.strip(|builder| {
-                            build(builder, app, shaded_color);
+                            build(builder, gui_context, shaded_color);
                         });
                         strip.empty();
                     });
@@ -57,9 +55,12 @@ pub mod orientation {
     use three_d::egui;
     use three_d::egui::*;
 
-    use crate::{application::ApplicationContext, gui::icon};
+    use crate::{
+        gui::{icon, GuiContext},
+        view::camera::HandleOrientation,
+    };
 
-    pub fn show(ui: &mut Ui, _app: &mut ApplicationContext) {
+    pub fn show(ui: &mut Ui, gui_context: &mut GuiContext) {
         let layout = egui::Layout {
             main_dir: Direction::RightToLeft,
             main_wrap: true,
@@ -86,7 +87,7 @@ pub mod orientation {
                 grid.empty();
                 grid.cell(|ui| {
                     let icon =
-                        icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Default);
+                        icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Diagonal);
 
                     let image_button =
                         ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
@@ -94,7 +95,10 @@ pub mod orientation {
                     let response = ui.add_sized([30., 30.], image_button);
 
                     if response.clicked() {
-                        println!("Clicked Default");
+                        gui_context
+                            .environment
+                            .camera_mut()
+                            .handle_orientation(crate::view::Orientation::Diagonal);
                     }
                 });
 
@@ -108,7 +112,10 @@ pub mod orientation {
                     let response = ui.add_sized([30., 30.], image_button);
 
                     if response.clicked() {
-                        println!("Clicked Front");
+                        gui_context
+                            .environment
+                            .camera_mut()
+                            .handle_orientation(crate::view::Orientation::Front);
                     }
                 });
 
@@ -121,7 +128,10 @@ pub mod orientation {
                     let response = ui.add_sized([30., 30.], image_button);
 
                     if response.clicked() {
-                        println!("Clicked Top");
+                        gui_context
+                            .environment
+                            .camera_mut()
+                            .handle_orientation(crate::view::Orientation::Top);
                     }
                 });
 
@@ -134,7 +144,10 @@ pub mod orientation {
                     let response = ui.add_sized([30., 30.], image_button);
 
                     if response.clicked() {
-                        println!("Clicked Left");
+                        gui_context
+                            .environment
+                            .camera_mut()
+                            .handle_orientation(crate::view::Orientation::Left);
                     }
                 });
 
@@ -148,7 +161,10 @@ pub mod orientation {
                     let response = ui.add_sized([30., 30.], image_button);
 
                     if response.clicked() {
-                        println!("Clicked Right");
+                        gui_context
+                            .environment
+                            .camera_mut()
+                            .handle_orientation(crate::view::Orientation::Right);
                     }
                 });
 
@@ -166,7 +182,7 @@ impl Addons {
 }
 
 impl gui::InnerComponent<Addons> for Addons {
-    fn show(&mut self, ctx: &egui::Context, ui: &mut Ui, app: &mut ApplicationContext) {
+    fn show(&mut self, ctx: &egui::Context, ui: &mut Ui, gui_context: &mut GuiContext) {
         let window_size = ui.available_size();
 
         let boundary = Boundary {
@@ -174,11 +190,10 @@ impl gui::InnerComponent<Addons> for Addons {
             size: Vec2::new(window_size.x - 15.0, window_size.y - 15.0),
         };
 
-        match app.mode() {
-            Mode::Prepare => prepare::show(ctx, ui, app, boundary),
-            Mode::Preview => preview::show(ctx, ui, app, boundary),
-            Mode::Monitor => monitor::show(ctx, ui, app, boundary),
-            Mode::ForceAnalytics => force_analytics::show(ctx, ui, app, boundary),
+        match gui_context.application_ctx.mode() {
+            Mode::Prepare => prepare::show(ctx, ui, gui_context, boundary),
+            Mode::Preview => preview::show(ctx, ui, gui_context, boundary),
+            Mode::ForceAnalytics => force_analytics::show(ctx, ui, gui_context, boundary),
         }
     }
 }

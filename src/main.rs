@@ -19,24 +19,24 @@ mod utils;
 mod view;
 mod window;
 
-use application::Application;
+use application::{ui_frame, Application};
+use gui::{GuiContext, Screen};
 use three_d::*;
+use utils::frame::FrameHandle;
 use view::{buffer::ObjectBuffer, environment, visualization::Visualizer};
 use window::build_window;
-
-use utils::frame::FrameHandle;
 
 fn main() {
     let event_loop = winit::event_loop::EventLoop::new();
     let window = build_window(&event_loop).expect("Failed to build window");
 
     let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
+    let mut environment = environment::Environment::new(&context);
 
     let mut application = Application::new(&window);
+    let mut screen = Screen::new();
 
     let mut buffer: ObjectBuffer<dyn Object> = ObjectBuffer::new();
-
-    let mut environment = environment::Environment::new(&context);
 
     test_buffer(&context, &mut application, &mut buffer);
 
@@ -52,6 +52,11 @@ fn main() {
 
             let mut events = frame_input.events.clone();
 
+            let gui_context = GuiContext {
+                application_ctx: &mut application.context,
+                environment: &mut environment,
+            };
+
             gui.update(
                 &mut events,
                 frame_input.accumulated_time,
@@ -59,7 +64,7 @@ fn main() {
                 frame_input.device_pixel_ratio,
                 |ctx| {
                     ui_use = Some(ctx.is_using_pointer());
-                    application.ui_frame(ctx);
+                    ui_frame(ctx, &mut screen, gui_context);
                 },
             );
 
@@ -128,9 +133,7 @@ pub fn test_buffer(
         .remove(0);
 
     let scale = Mat4::from_scale(1.0);
-    let rotation = Mat4::from_angle_y(degrees(90.0))
-        .concat(&Mat4::from_angle_x(degrees(90.0)))
-        .concat(&Mat4::from_angle_z(degrees(45.0)));
+    let rotation = Mat4::from_angle_x(degrees(90.0));
 
     let translation = Mat4::from_translation(vec3(0.0, 0.0, 0.0));
     model.set_transformation(translation * rotation * scale);

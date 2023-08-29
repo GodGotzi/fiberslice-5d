@@ -1,4 +1,26 @@
 use three_d::{Camera, Deg, Vec3, Viewport};
+use three_d_asset::vec3;
+
+use super::Orientation;
+
+pub trait HandleOrientation {
+    fn handle_orientation(&mut self, orientation: Orientation);
+}
+
+impl HandleOrientation for Camera {
+    fn handle_orientation(&mut self, orientation: Orientation) {
+        let position = match orientation {
+            Orientation::Default => vec3(0.00, 250.0, 500.0),
+            Orientation::Diagonal => vec3(500.0, 500.0, 500.0),
+            Orientation::Top => vec3(0.0, 500.0, 0.1),
+            Orientation::Left => vec3(-500.0, 0.0, 0.0),
+            Orientation::Right => vec3(500.0, 0.0, 0.0),
+            Orientation::Front => vec3(0.0, 0.0, 500.0),
+        };
+
+        self.set_view(position, vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0))
+    }
+}
 
 pub struct CameraBuilder {
     viewport: Option<Viewport>,

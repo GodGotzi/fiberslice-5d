@@ -1,8 +1,9 @@
 use three_d::egui::{self, Ui};
 
-use crate::application::ApplicationContext;
 use crate::config;
 use crate::gui;
+
+use super::GuiContext;
 
 pub struct Menubar;
 
@@ -13,54 +14,54 @@ impl Menubar {
 }
 
 impl gui::Component<Menubar> for Menubar {
-    fn show(&mut self, ctx: &egui::Context, app: &mut ApplicationContext) {
+    fn show(&mut self, ctx: &egui::Context, gui_context: &mut GuiContext) {
         let boundary = egui::TopBottomPanel::top("menubar")
             .default_height(config::gui::MENUBAR_H)
             .show(ctx, |ui: &mut Ui| {
                 egui::menu::bar(ui, |ui| {
-                    file_button(ui, app);
-                    edit_button(ui, app);
-                    view_button(ui, app);
-                    settings_button(ui, app);
-                    help_button(ui, app);
+                    file_button(ui, gui_context);
+                    edit_button(ui, gui_context);
+                    view_button(ui, gui_context);
+                    settings_button(ui, gui_context);
+                    help_button(ui, gui_context);
                 });
             })
             .response
             .into();
 
-        app.boundaries_mut().menubar = boundary;
+        gui_context.application_ctx.boundaries_mut().menubar = boundary;
     }
 }
 
-fn file_button(ui: &mut Ui, _app: &mut ApplicationContext) {
+fn file_button(ui: &mut Ui, _gui_context: &mut GuiContext) {
     ui.menu_button("File", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
     });
 }
 
-fn edit_button(ui: &mut Ui, _app: &mut ApplicationContext) {
+fn edit_button(ui: &mut Ui, _gui_context: &mut GuiContext) {
     ui.menu_button("Edit", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
     });
 }
 
-fn view_button(ui: &mut Ui, _app: &mut ApplicationContext) {
+fn view_button(ui: &mut Ui, _gui_context: &mut GuiContext) {
     ui.menu_button("View", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
     });
 }
 
-fn settings_button(ui: &mut Ui, _app: &mut ApplicationContext) {
+fn settings_button(ui: &mut Ui, _gui_context: &mut GuiContext) {
     ui.menu_button("Settings", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
     });
 }
 
-fn help_button(ui: &mut Ui, _app: &mut ApplicationContext) {
+fn help_button(ui: &mut Ui, _gui_context: &mut GuiContext) {
     ui.menu_button("Help", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);

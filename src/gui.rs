@@ -15,16 +15,21 @@ pub mod toolbar;
 
 use three_d::egui::{self, Response};
 
-use crate::{application::ApplicationContext, prelude::*};
+use crate::{application::ApplicationContext, prelude::*, view::environment::Environment};
 
 use self::components::addons;
 
+pub struct GuiContext<'a> {
+    pub application_ctx: &'a mut ApplicationContext,
+    pub environment: &'a mut Environment,
+}
+
 pub trait Component<T> {
-    fn show(&mut self, ctx: &egui::Context, app: &mut ApplicationContext);
+    fn show(&mut self, ctx: &egui::Context, gui_context: &mut GuiContext);
 }
 
 pub trait InnerComponent<T> {
-    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, app: &mut ApplicationContext);
+    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, gui_context: &mut GuiContext);
 }
 
 #[derive(Default)]
@@ -99,15 +104,15 @@ impl Screen {
 }
 
 impl Component<Screen> for Screen {
-    fn show(&mut self, ctx: &egui::Context, app: &mut ApplicationContext) {
-        self.menubar.show(ctx, app);
-        self.taskbar.show(ctx, app);
+    fn show(&mut self, ctx: &egui::Context, gui_context: &mut GuiContext) {
+        self.menubar.show(ctx, gui_context);
+        self.taskbar.show(ctx, gui_context);
 
         //self.addons.show(ctx, None, app);
 
-        self.settings.show(ctx, app);
-        self.toolbar.show(ctx, app);
-        self.modebar.show(ctx, app);
+        self.settings.show(ctx, gui_context);
+        self.toolbar.show(ctx, gui_context);
+        self.modebar.show(ctx, gui_context);
 
         let frame = egui::containers::Frame {
             fill: egui::Color32::TRANSPARENT,
@@ -121,11 +126,14 @@ impl Component<Screen> for Screen {
                 .show(ui);
             */
 
-            self.addons.show(ctx, ui, app);
+            self.addons.show(ctx, ui, gui_context);
         });
 
-        let mode = *app.mode();
+        let mode = *gui_context.application_ctx.mode();
 
-        app.event_wrapping().register(Item::Mode(Some(mode)));
+        gui_context
+            .application_ctx
+            .event_wrapping()
+            .register(Item::Mode(Some(mode)));
     }
 }

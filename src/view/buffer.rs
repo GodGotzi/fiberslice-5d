@@ -241,8 +241,15 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<O> {
             } = event
             {
                 if *button == MouseButton::Right {
-                    for layer in self.layers.iter_mut().enumerate() {
-                        println!("Layer: {}", layer.0);
+                    for (layer_id, layer_model) in self.layers.iter_mut().enumerate() {
+                        if let Some(_pick) = pick(
+                            context,
+                            environment.camera(),
+                            position,
+                            &layer_model.model.geometry,
+                        ) {
+                            println!("Layer: {}", layer_id);
+                        }
                     }
                 }
             }
