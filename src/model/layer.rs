@@ -1,9 +1,8 @@
 use three_d::{Gm, Mesh, PhysicalMaterial, RenderStates, WindowedContext};
 use three_d_asset::{vec3, InnerSpace, LightingModel, Positions, Srgba, TriMesh, Vector3};
 
-use crate::utils::FlipYZ;
-
 use super::gcode::state::State;
+use crate::utils::FlipYZ;
 
 pub struct PartCoordinator {
     positions: Vec<Vector3<f64>>,
@@ -205,13 +204,6 @@ pub fn get_cross(direction: Vector3<f64>, radius: f64) -> Cross {
     }
 }
 
-pub trait MeshGroup<G> {
-    fn no_parent(mesh: TriMesh) -> Self;
-    fn parent(meshes: Vec<LayerPartMesh>) -> Self;
-    fn into_model(self, context: &WindowedContext) -> G;
-    fn tri_count(&self) -> usize;
-}
-
 #[derive(Debug)]
 pub struct LayerMesh {
     main: TriMesh,
@@ -249,36 +241,8 @@ impl From<Vec<LayerPartMesh>> for LayerMesh {
     }
 }
 
-impl MeshGroup<LayerModel> for LayerMesh {
-    fn no_parent(mesh: TriMesh) -> Self {
-        Self {
-            main: mesh,
-            child_meshes: Vec::new(),
-        }
-    }
-
-    fn parent(meshes: Vec<LayerPartMesh>) -> Self {
-        let mut positions = Vec::new();
-        let mut colors = Vec::new();
-
-        for mesh in meshes.iter() {
-            positions.extend(mesh.main.positions.to_f64().iter());
-            colors.extend(mesh.main.colors.as_ref().unwrap().iter());
-        }
-
-        let mesh = TriMesh {
-            positions: Positions::F64(positions),
-            colors: Some(colors),
-            ..Default::default()
-        };
-
-        Self {
-            main: mesh,
-            child_meshes: meshes,
-        }
-    }
-
-    fn into_model(self, context: &WindowedContext) -> LayerModel {
+impl LayerMesh {
+    pub fn into_model(self, context: &WindowedContext) -> LayerModel {
         let model = Gm::new(
             Mesh::new(context, &self.main),
             construct_filament_material(),
@@ -304,7 +268,7 @@ impl MeshGroup<LayerModel> for LayerMesh {
         }
     }
 
-    fn tri_count(&self) -> usize {
+    pub fn tri_count(&self) -> usize {
         self.main.positions.len() / 3
     }
 }
@@ -333,7 +297,7 @@ pub struct LayerModel {
 }
 
 pub struct LayerPartModel {
-    pub model: Gm<Mesh, PhysicalMaterial>,
+    pub geometry: Mesh,
     pub state: State,
     pub line_range: (usize, usize),
     pub child_models: Vec<Mesh>,
@@ -365,13 +329,10 @@ impl LayerPartMesh {
 
 impl LayerPartMesh {
     fn into_model(self, context: &WindowedContext) -> LayerPartModel {
-        let model = Gm::new(
-            Mesh::new(context, &self.main),
-            construct_filament_material(),
-        );
+        let mesh = Mesh::new(context, &self.main);
 
         LayerPartModel {
-            model,
+            geometry: mesh,
             state: self.state,
             line_range: self.line_range,
             child_models: self
@@ -380,5 +341,9 @@ impl LayerPartMesh {
                 .map(|mesh| Mesh::new(context, &mesh))
                 .collect(),
         }
+    }
+
+    pub fn tri_count(&self) -> usize {
+        self.main.positions.len() / 3
     }
 }

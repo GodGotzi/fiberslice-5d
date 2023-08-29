@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use three_d::*;
 
-use crate::{application::Application, model::mesh::LayerModel};
+use crate::{application::Application, model::layer::LayerModel};
 
 use super::{environment, Mode};
 

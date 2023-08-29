@@ -8,9 +8,8 @@ use three_d_asset::TriMesh;
 use crate::application::Application;
 use crate::model::gcode::toolpath::ToolPath;
 use crate::model::gcode::GCode;
-use crate::model::mesh::LayerMesh;
-use crate::model::mesh::LayerModel;
-use crate::model::mesh::MeshGroup;
+use crate::model::layer::LayerMesh;
+use crate::model::layer::LayerModel;
 use crate::utils::debug::DebugWrapper;
 use crate::utils::task::TaskWithResult;
 

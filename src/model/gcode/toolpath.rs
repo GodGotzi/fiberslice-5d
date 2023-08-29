@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use three_d::Vector3;
 use three_d_asset::{vec3, Positions, TriMesh};
 
-use crate::model::mesh::*;
+use crate::model::layer::*;
 
 use super::{instruction::InstructionType, movement, state::State, GCode};
 
