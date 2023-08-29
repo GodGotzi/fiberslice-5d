@@ -87,11 +87,12 @@ impl FrameHandle for Environment {
                         - ((application.boundaries().toolbar.width()
                             + application.boundaries().settingsbar.width())
                             * input.device_pixel_ratio) as u32,
-                    height: input.viewport.height
+                    height: ((input.viewport.height
                         - ((application.boundaries().taskbar.height()
                             + application.boundaries().modebar.height()
                             + application.boundaries().menubar.height())
-                            * input.device_pixel_ratio) as u32,
+                            * input.device_pixel_ratio) as u32) as f32
+                        * 0.8) as u32,
                 };
 
                 self.camera.set_viewport(viewport);

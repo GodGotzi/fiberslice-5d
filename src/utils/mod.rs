@@ -24,6 +24,10 @@ pub mod debug {
     }
 }
 
+pub trait Contains<P> {
+    fn contains(&self, point: &P) -> bool;
+}
+
 pub trait FlipYZ {
     fn flip_yz(self) -> Self;
 }

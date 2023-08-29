@@ -22,7 +22,7 @@ mod window;
 use application::{ui_frame, Application};
 use gui::{GuiContext, Screen};
 use three_d::*;
-use utils::frame::FrameHandle;
+use utils::{frame::FrameHandle, Contains};
 use view::{buffer::ObjectBuffer, environment, visualization::Visualizer};
 use window::build_window;
 
@@ -46,19 +46,19 @@ fn main() {
     // Event loop
     event_loop.run(move |event, _, control_flow| match event {
         winit::event::Event::MainEventsCleared => {
-            let mut frame_input = application.next_frame_input(&context);
+            let frame_input = application.next_frame_input(&context);
 
             let mut ui_use = None;
-
-            let mut events = frame_input.events.clone();
 
             let gui_context = GuiContext {
                 application_ctx: &mut application.context,
                 environment: &mut environment,
             };
 
+            let mut ui_events = frame_input.events.clone();
+
             gui.update(
-                &mut events,
+                &mut ui_events,
                 frame_input.accumulated_time,
                 frame_input.viewport,
                 frame_input.device_pixel_ratio,
@@ -69,7 +69,24 @@ fn main() {
             );
 
             if !ui_use.unwrap() {
-                environment.handle_camera_events(&mut frame_input.events);
+                let mut events = frame_input
+                    .events
+                    .clone()
+                    .into_iter()
+                    .filter(|event| {
+                        let position = match event {
+                            Event::MousePress { position, .. } => position,
+                            Event::MouseRelease { position, .. } => position,
+                            Event::MouseMotion { position, .. } => position,
+                            Event::MouseWheel { position, .. } => position,
+                            _ => return true,
+                        };
+
+                        environment.camera().viewport().contains(position)
+                    })
+                    .collect::<Vec<Event>>();
+
+                environment.handle_camera_events(&mut events);
             }
 
             environment.frame(&frame_input, &application);
