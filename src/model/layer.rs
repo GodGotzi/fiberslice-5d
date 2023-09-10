@@ -2,72 +2,82 @@ use three_d::{Gm, Mesh, PhysicalMaterial, RenderStates, WindowedContext};
 use three_d_asset::{vec3, InnerSpace, LightingModel, Positions, Srgba, TriMesh, Vector3};
 
 use super::gcode::state::State;
-use crate::utils::FlipYZ;
 
-pub struct PartCoordinator {
-    positions: Vec<Vector3<f64>>,
-    colors: Vec<Srgba>,
+pub struct PartCoordinator<'a> {
+    parts: &'a mut MeshElements,
+    offset_start: usize,
+    offset_end: usize,
+    offset_part_start: usize,
+    offset_part_end: usize,
 }
 
-impl PartCoordinator {
-    pub fn new() -> Self {
+impl<'a> PartCoordinator<'a> {
+    pub fn new(parts: &'a mut MeshElements) -> Self {
         Self {
-            positions: Vec::new(),
-            colors: Vec::new(),
+            parts,
+            offset_start: 0,
+            offset_end: 0,
+            offset_part_start: 0,
+            offset_part_end: 0,
         }
     }
 
-    pub fn add_position(&mut self, position: Vector3<f64>) {
-        self.positions.push(position.flip_yz());
+    pub fn add_triangle(
+        &mut self,
+        triangle: (Vector3<f64>, Vector3<f64>, Vector3<f64>),
+        color: Srgba,
+    ) {
+        self.parts.positions.push(triangle.0);
+        self.parts.positions.push(triangle.1);
+        self.parts.positions.push(triangle.2);
+
+        self.parts.colors.push(color);
+        self.parts.colors.push(color);
+        self.parts.colors.push(color);
+
+        let normal_f64 = (triangle.1 - triangle.0)
+            .cross(triangle.2 - triangle.0)
+            .normalize();
+
+        let normal = Vector3::new(
+            normal_f64.x as f32,
+            normal_f64.y as f32,
+            normal_f64.z as f32,
+        );
+
+        self.parts.normals.push(normal);
+        self.parts.normals.push(normal);
+        self.parts.normals.push(normal);
+
+        self.offset_end += 3;
+        self.offset_part_end += 3;
     }
 
-    #[allow(dead_code)]
-    pub fn add_color(&mut self, color: Srgba) {
-        self.colors.push(color);
+    pub fn next_part_meshref(&mut self) -> MeshRef<'_> {
+        let start = self.offset_part_start;
+        let end = self.offset_part_end;
+
+        self.offset_part_start = end;
+
+        MeshRef {
+            positions: &mut self.parts.positions[start..end],
+            colors: &mut self.parts.colors[start..end],
+            normals: &mut self.parts.normals[start..end],
+        }
     }
 
-    pub fn add_color_3_times(&mut self, color: Srgba) {
-        self.colors.push(color);
-        self.colors.push(color);
-        self.colors.push(color);
+    pub fn finish(&mut self) -> MeshRef<'_> {
+        let start = self.offset_start;
+        let end = self.offset_end;
+
+        self.offset_start = end;
+
+        MeshRef {
+            positions: &mut self.parts.positions[start..end],
+            colors: &mut self.parts.colors[start..end],
+            normals: &mut self.parts.normals[start..end],
+        }
     }
-
-    pub fn next_trimesh(&mut self) -> TriMesh {
-        let positions = Positions::F64(self.positions.clone());
-        let colors = Some(self.colors.clone());
-
-        self.positions.clear();
-        self.colors.clear();
-
-        let mut mesh = TriMesh {
-            positions,
-            colors,
-            ..Default::default()
-        };
-
-        mesh.compute_normals();
-        mesh
-    }
-}
-
-pub fn end_part(
-    path: (Vector3<f64>, Vector3<f64>),
-    color: &Srgba,
-    last: Cross,
-    coordinator: &mut PartCoordinator,
-    positions: &mut Vec<Vector3<f64>>,
-    colors: &mut Vec<Srgba>,
-    layer_parts: &mut Vec<TriMesh>,
-) {
-    draw_rect_with_cross(&path.0, &last, color, coordinator);
-
-    let next_mesh = coordinator.next_trimesh();
-
-    //end part
-    positions.extend(next_mesh.positions.to_f64().iter());
-    colors.extend(next_mesh.colors.as_ref().unwrap().iter());
-
-    layer_parts.push(next_mesh);
 }
 
 pub fn draw_path(
@@ -113,38 +123,48 @@ pub fn draw_path(
     );
 }
 
-pub fn draw_cross_connection(
+pub fn draw_cross_connection<'a>(
     center: &Vector3<f64>,
     start_cross: &Cross,
     end_cross: &Cross,
     color: &Srgba,
-    coordinator: &mut PartCoordinator,
+    coordinator: &'a mut PartCoordinator<'a>,
 ) {
-    //top
-    coordinator.add_position(end_cross.up + center);
-    coordinator.add_position(end_cross.right + center);
-    coordinator.add_position(start_cross.right + center);
+    coordinator.add_triangle(
+        (
+            end_cross.up + center,
+            end_cross.right + center,
+            start_cross.right + center,
+        ),
+        *color,
+    );
 
-    coordinator.add_color_3_times(*color);
+    coordinator.add_triangle(
+        (
+            end_cross.up + center,
+            end_cross.left + center,
+            start_cross.left + center,
+        ),
+        *color,
+    );
 
-    coordinator.add_position(end_cross.up + center);
-    coordinator.add_position(end_cross.left + center);
-    coordinator.add_position(start_cross.left + center);
+    coordinator.add_triangle(
+        (
+            end_cross.down + center,
+            end_cross.right + center,
+            start_cross.right + center,
+        ),
+        *color,
+    );
 
-    coordinator.add_color_3_times(*color);
-
-    //bottom
-    coordinator.add_position(end_cross.down + center);
-    coordinator.add_position(end_cross.right + center);
-    coordinator.add_position(start_cross.right + center);
-
-    coordinator.add_color_3_times(*color);
-
-    coordinator.add_position(end_cross.down + center);
-    coordinator.add_position(end_cross.left + center);
-    coordinator.add_position(start_cross.left + center);
-
-    coordinator.add_color_3_times(*color);
+    coordinator.add_triangle(
+        (
+            end_cross.down + center,
+            end_cross.left + center,
+            start_cross.left + center,
+        ),
+        *color,
+    );
 }
 
 pub fn draw_rect(
@@ -155,17 +175,9 @@ pub fn draw_rect(
     color: &Srgba,
     coordinator: &mut PartCoordinator,
 ) {
-    coordinator.add_position(point_left_0);
-    coordinator.add_position(point_left_1);
-    coordinator.add_position(point_right_0);
+    coordinator.add_triangle((point_left_0, point_left_1, point_right_0), *color);
 
-    coordinator.add_color_3_times(*color);
-
-    coordinator.add_position(point_right_0);
-    coordinator.add_position(point_right_1);
-    coordinator.add_position(point_left_1);
-
-    coordinator.add_color_3_times(*color);
+    coordinator.add_triangle((point_right_0, point_right_1, point_left_1), *color);
 }
 
 pub fn draw_rect_with_cross(
@@ -205,71 +217,62 @@ pub fn get_cross(direction: Vector3<f64>, radius: f64) -> Cross {
 }
 
 #[derive(Debug)]
-pub struct LayerMesh {
-    main: TriMesh,
-    child_meshes: Vec<LayerPartMesh>,
+pub struct LayerMesh<'a> {
+    pub trimesh: TriMesh,
+    child_meshes: Vec<LayerPart<'a>>,
 }
 
-impl LayerMesh {
-    pub fn new(main: TriMesh, child_meshes: Vec<LayerPartMesh>) -> Self {
-        Self { main, child_meshes }
-    }
-}
-
-impl From<Vec<LayerPartMesh>> for LayerMesh {
-    fn from(child_meshes: Vec<LayerPartMesh>) -> Self {
-        let mut positions = Vec::new();
-        let mut colors = Vec::new();
-
-        for mesh in child_meshes.iter() {
-            positions.extend(mesh.main.positions.to_f64().iter());
-            colors.extend(mesh.main.colors.as_ref().unwrap().iter());
-        }
-
-        let mut mesh = TriMesh {
-            positions: Positions::F64(positions),
-            colors: Some(colors),
-            ..Default::default()
-        };
-
-        mesh.compute_normals();
-
+impl<'a> LayerMesh<'a> {
+    pub fn new(main: TriMesh, child_meshes: Vec<LayerPart<'a>>) -> Self {
         Self {
-            main: mesh,
+            trimesh: main,
             child_meshes,
         }
     }
 }
 
-impl LayerMesh {
-    pub fn into_model(self, context: &WindowedContext) -> LayerModel {
+impl<'a> LayerMesh<'a> {
+    fn from_with_mesh_elements(mesh_elements: MeshElements, parts: Vec<LayerPart<'a>>) -> Self {
+        let mesh = TriMesh {
+            positions: Positions::F64(mesh_elements.positions.to_owned()),
+            colors: Some(mesh_elements.colors.to_owned()),
+            normals: Some(mesh_elements.normals.to_owned()),
+            ..Default::default()
+        };
+
+        Self {
+            trimesh: mesh,
+            child_meshes: parts,
+        }
+    }
+}
+
+impl<'a> LayerMesh<'a> {
+    pub fn into_model(self, context: &WindowedContext) -> LayerModel<'a> {
         let model = Gm::new(
-            Mesh::new(context, &self.main),
+            Mesh::new(context, &self.trimesh),
             construct_filament_material(),
         );
 
         let mut min_line = usize::MAX;
         let mut max_line = usize::MIN;
 
-        let child_models = self
-            .child_meshes
-            .into_iter()
-            .map(|mesh| {
-                min_line = std::cmp::min(min_line, mesh.line_range.0);
-                max_line = std::cmp::max(max_line, mesh.line_range.1);
-                mesh.into_model(context)
-            })
-            .collect();
+        for part in &self.child_meshes {
+            min_line = min_line.min(part.line_range.0);
+            max_line = max_line.max(part.line_range.1);
+        }
+
+        //let slice = &child_models[0..5];
 
         LayerModel {
             model,
             line_range: (0, 0),
-            child_models,
+            child_models: self.child_meshes,
         }
     }
 
     pub fn tri_count(&self) -> usize {
-        self.main.positions.len() / 3
+        self.trimesh.positions.len() / 3
     }
 }
 
@@ -290,33 +293,26 @@ pub fn construct_filament_material() -> PhysicalMaterial {
     }
 }
 
-pub struct LayerModel {
+pub struct LayerModel<'a> {
     pub model: Gm<Mesh, PhysicalMaterial>,
     pub line_range: (usize, usize),
-    pub child_models: Vec<LayerPartModel>,
-}
-
-pub struct LayerPartModel {
-    pub geometry: Mesh,
-    pub state: State,
-    pub line_range: (usize, usize),
-    pub child_models: Vec<Mesh>,
+    pub child_models: Vec<LayerPart<'a>>,
 }
 
 #[derive(Debug)]
-pub struct LayerPartMesh {
-    main: TriMesh,
+pub struct LayerPart<'a> {
+    main: MeshRef<'a>,
     state: State,
     line_range: (usize, usize),
-    child_meshes: Vec<TriMesh>,
+    child_meshes: Vec<MeshRef<'a>>,
 }
 
-impl LayerPartMesh {
+impl<'a> LayerPart<'a> {
     pub fn new(
-        main: TriMesh,
+        main: MeshRef<'a>,
         state: State,
         line_range: (usize, usize),
-        child_meshes: Vec<TriMesh>,
+        child_meshes: Vec<MeshRef<'a>>,
     ) -> Self {
         Self {
             main,
@@ -327,23 +323,25 @@ impl LayerPartMesh {
     }
 }
 
-impl LayerPartMesh {
-    fn into_model(self, context: &WindowedContext) -> LayerPartModel {
-        let mesh = Mesh::new(context, &self.main);
+pub struct MeshElements {
+    positions: Vec<Vector3<f64>>,
+    colors: Vec<Srgba>,
+    normals: Vec<Vector3<f32>>,
+}
 
-        LayerPartModel {
-            geometry: mesh,
-            state: self.state,
-            line_range: self.line_range,
-            child_models: self
-                .child_meshes
-                .into_iter()
-                .map(|mesh| Mesh::new(context, &mesh))
-                .collect(),
+impl MeshElements {
+    pub fn new() -> Self {
+        Self {
+            positions: Vec::new(),
+            colors: Vec::new(),
+            normals: Vec::new(),
         }
     }
+}
 
-    pub fn tri_count(&self) -> usize {
-        self.main.positions.len() / 3
-    }
+#[derive(Debug)]
+pub struct MeshRef<'a> {
+    positions: &'a [Vector3<f64>],
+    colors: &'a [Srgba],
+    normals: &'a [Vector3<f32>],
 }

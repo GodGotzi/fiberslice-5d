@@ -3,7 +3,7 @@ use crate::application::Application;
 pub mod force;
 pub mod model;
 
-pub trait Visualizer<O: Sized + 'static> {
+pub trait Visualizer<O> {
     fn visualize(&mut self, application: &mut Application) -> Result<(), crate::error::Error>;
 
     fn try_collect_objects(

@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use three_d::Vector3;
-use three_d_asset::{vec3, Positions, TriMesh};
+use three_d_asset::{vec3, Srgba};
 
 use crate::model::layer::*;
 
@@ -120,10 +120,14 @@ impl From<GCode> for ToolPath {
 }
 
 #[allow(dead_code)]
-impl From<PathModul> for LayerPartMesh {
-    fn from(path_modul: PathModul) -> Self {
+impl<'a> LayerPart<'a> {
+    fn from_with_coordinator(
+        path_modul: &PathModul,
+        coordinator: &'a mut PartCoordinator<'a>,
+    ) -> Self {
         let diameter = 0.4;
         let mut last_cross: Option<Cross> = None;
+        let mut parts = Vec::new();
 
         let color = path_modul
             .state
@@ -131,12 +135,6 @@ impl From<PathModul> for LayerPartMesh {
             .as_ref()
             .unwrap_or(&crate::slicer::print_type::PrintType::Unknown)
             .get_color();
-
-        let mut positions = Vec::new();
-        let mut colors = Vec::new();
-
-        let mut coordinator = PartCoordinator::new();
-        let mut parts = Vec::new();
 
         for element in path_modul.paths.iter().enumerate() {
             let path = element.1;
@@ -146,76 +144,68 @@ impl From<PathModul> for LayerPartMesh {
                 let cross = get_cross(direction, diameter / 2.0);
 
                 if let Some(last) = last_cross.take() {
-                    draw_cross_connection(&path.start, &cross, &last, &color, &mut coordinator);
+                    draw_cross_connection(&path.start, &cross, &last, &color, coordinator);
                 } else {
-                    draw_rect_with_cross(&path.start, &cross, &color, &mut coordinator);
+                    draw_rect_with_cross(&path.start, &cross, &color, coordinator);
                 }
 
-                draw_path((path.start, path.end), &color, &mut coordinator, &cross);
+                draw_path((path.start, path.end), &color, coordinator, &cross);
                 last_cross = Some(cross);
             } else if let Some(last) = last_cross.take() {
-                end_part(
-                    (path.start, path.end),
-                    &color,
-                    last,
-                    &mut coordinator,
-                    &mut positions,
-                    &mut colors,
-                    &mut parts,
-                );
+                let part = end_part((path.start, path.end), &color, last, coordinator);
+                parts.push(part);
             }
 
             if element.0 == path_modul.paths.len() - 1 {
                 if let Some(last) = last_cross.take() {
-                    end_part(
-                        (path.start, path.end),
-                        &color,
-                        last,
-                        &mut coordinator,
-                        &mut positions,
-                        &mut colors,
-                        &mut parts,
-                    );
+                    let part = end_part((path.start, path.end), &color, last, coordinator);
+                    parts.push(part);
                 }
             }
         }
 
-        let mut mesh = TriMesh {
-            positions: Positions::F64(positions),
-            colors: Some(colors),
-            ..Default::default()
-        };
-
-        mesh.compute_normals();
-
-        Self::new(mesh, path_modul.state, path_modul.line_range, parts)
+        let main = coordinator.finish();
+        Self::new(main, path_modul.state.clone(), path_modul.line_range, parts)
     }
 }
 
-impl From<ToolPath> for Vec<LayerMesh> {
-    fn from(tool_path: ToolPath) -> Self {
-        let mut triangles = 0;
+pub fn end_part<'a>(
+    path: (Vector3<f64>, Vector3<f64>),
+    color: &Srgba,
+    last: Cross,
+    coordinator: &'a mut PartCoordinator<'a>,
+) -> MeshRef<'a> {
+    draw_rect_with_cross(&path.1, &last, color, coordinator);
 
-        let mut layers: HashMap<usize, Vec<LayerPartMesh>> = HashMap::new();
+    coordinator.next_part_meshref()
+}
+
+impl<'a> From<ToolPath> for Vec<LayerMesh<'a>> {
+    fn from(tool_path: ToolPath) -> Self {
+        let mut layers: HashMap<usize, Vec<PathModul>> = HashMap::new();
 
         for path_modul in tool_path.path.into_iter() {
-            let state = path_modul.state.clone();
-            let mesh = LayerPartMesh::from(path_modul);
+            let layer = path_modul.state.layer.unwrap_or(0);
 
-            if let Some(layer) = layers.get_mut(&state.layer.unwrap_or(0)) {
-                layer.push(mesh);
+            if let Some(layer_moduls) = layers.get_mut(&layer) {
+                layer_moduls.push(path_modul);
             } else {
-                layers.insert(state.layer.unwrap_or(0), vec![mesh]);
+                layers.insert(layer, vec![path_modul]);
             }
         }
 
-        layers
-            .into_values()
-            .map(|v| {
-                let mesh: LayerMesh = v.into();
-                triangles += mesh.tri_count();
-                mesh
-            })
-            .collect()
+        //let mut layers: HashMap<usize, LayerMesh> = HashMap::new();
+        let mut layers_vector = Vec::new();
+
+        for layer_moduls in layers.values_mut() {
+            let mut mesh_elements = MeshElements::new();
+            let mut coordinator = PartCoordinator::new(&mut mesh_elements);
+
+            for modul in layer_moduls.iter() {
+                let mut part = LayerPart::from_with_coordinator(modul, &mut coordinator);
+            }
+        }
+
+        layers_vector
     }
 }

@@ -37,15 +37,15 @@ impl<O: Object + ?Sized + 'static> HideableObject<O> {
     }
 }
 
-pub struct ObjectBuffer<O: Object + ?Sized + 'static> {
+pub struct ObjectBuffer<'a, O: Object + ?Sized + 'static> {
     skybox: Option<Skybox>,
-    layers: Vec<LayerModel>,
+    layers: Vec<LayerModel<'a>>,
     models: HashMap<String, HideableObject<O>>,
     objects: HashMap<String, HideableObject<O>>,
     interactive_objects: HashMap<String, HideableObject<O>>,
 }
 
-impl<O: Object + ?Sized + 'static> Default for ObjectBuffer<O> {
+impl<O: Object + ?Sized + 'static> Default for ObjectBuffer<'_, O> {
     fn default() -> Self {
         Self {
             skybox: None,
@@ -58,7 +58,7 @@ impl<O: Object + ?Sized + 'static> Default for ObjectBuffer<O> {
 }
 
 #[allow(dead_code)]
-impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<O> {
+impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
     pub fn new() -> Self {
         Self::default()
     }
@@ -67,7 +67,7 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<O> {
         self.skybox = Some(skybox);
     }
 
-    pub fn add_layer(&mut self, layer: LayerModel) {
+    pub fn add_layer(&mut self, layer: LayerModel<'a>) {
         self.layers.push(layer);
     }
 

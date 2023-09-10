@@ -23,7 +23,7 @@ use application::{ui_frame, Application};
 use gui::{GuiContext, Screen};
 use three_d::*;
 use utils::{frame::FrameHandle, Contains};
-use view::{buffer::ObjectBuffer, environment, visualization::Visualizer};
+use view::{buffer::ObjectBuffer, environment};
 use window::build_window;
 
 fn main() {
@@ -37,14 +37,13 @@ fn main() {
     let mut screen = Screen::new();
 
     let mut buffer: ObjectBuffer<dyn Object> = ObjectBuffer::new();
-
     test_buffer(&context, &mut application, &mut buffer);
 
     let mut gui = three_d::GUI::new(&context);
     window.set_visible(true);
 
     // Event loop
-    event_loop.run(move |event, _, control_flow| match event {
+    event_loop.run(|event, _, control_flow| match event {
         winit::event::Event::MainEventsCleared => {
             let frame_input = application.next_frame_input(&context);
 
@@ -129,10 +128,10 @@ fn main() {
     });
 }
 
-pub fn test_buffer(
-    context: &WindowedContext,
-    application: &mut Application,
-    buffer: &mut ObjectBuffer<dyn Object>,
+pub fn test_buffer<'a: 'b, 'b>(
+    context: &'a WindowedContext,
+    application: &'a mut Application,
+    buffer: &'a mut ObjectBuffer<'b, dyn Object>,
 ) {
     /*
         let environment_map =

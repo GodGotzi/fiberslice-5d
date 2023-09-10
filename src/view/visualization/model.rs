@@ -13,8 +13,6 @@ use crate::model::layer::LayerModel;
 use crate::utils::debug::DebugWrapper;
 use crate::utils::task::TaskWithResult;
 
-use super::Visualizer;
-
 struct MeshWrapper(TriMesh);
 
 impl std::fmt::Debug for MeshWrapper {
@@ -71,7 +69,7 @@ impl GCodeVisualizer {
     }
 }
 
-impl Visualizer<LayerModel> for GCodeVisualizer {
+impl GCodeVisualizer {
     fn visualize(&mut self, application: &mut Application) -> Result<(), crate::error::Error> {
         if self.gcode.is_none() {
             return Err(crate::error::Error::FieldMissing("gcode is missing".into()));
@@ -109,10 +107,10 @@ impl Visualizer<LayerModel> for GCodeVisualizer {
         Ok(())
     }
 
-    fn try_collect_objects(
+    pub fn try_collect_objects<'a>(
         &self,
-        context: &three_d::WindowedContext,
-    ) -> Result<Vec<LayerModel>, crate::error::Error> {
+        context: &'a three_d::WindowedContext,
+    ) -> Result<Vec<LayerModel<'a>>, crate::error::Error> {
         let mut objects = Vec::new();
 
         let meshes = build_test_meshes(context);
@@ -132,14 +130,14 @@ impl Visualizer<LayerModel> for GCodeVisualizer {
     }
 }
 
-pub fn build_test_meshes(context: &WindowedContext) -> Vec<LayerModel> {
+pub fn build_test_meshes<'a>(context: &'a WindowedContext) -> Vec<LayerModel<'a>> {
     let content = fs::read_to_string("gcode/test2.gcode").unwrap();
     //println!("{}", content);
     let gcode: GCode = content.try_into().unwrap();
 
     let toolpath = ToolPath::from(gcode);
 
-    std::convert::Into::<Vec<LayerMesh>>::into(toolpath)
+    std::convert::Into::<Vec<LayerMesh<'a>>>::into(toolpath)
         .into_iter()
         .map(|mesh| mesh.into_model(context))
         .collect()
