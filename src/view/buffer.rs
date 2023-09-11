@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, cell::Ref};
 
 use three_d::*;
 
@@ -191,7 +191,7 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         self.clear_interactive_objects();
     }
 
-    pub fn render(&self, environment: &environment::Environment, application: &Application) {
+    pub fn render(&self, environment: &environment::Environment, application: Ref<'_, Application>) {
         if let Some(ref skybox) = self.skybox {
             skybox.render(environment.camera(), &[]);
         }

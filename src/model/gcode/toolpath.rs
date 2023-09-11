@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
 use three_d::Vector3;
 use three_d_asset::{vec3, Srgba};
