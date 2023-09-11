@@ -109,7 +109,7 @@ impl GCodeVisualizer {
 
     pub fn try_collect_objects<'a>(
         &self,
-        context: &'a three_d::WindowedContext,
+        context: Context,
     ) -> Result<Vec<LayerModel<'a>>, crate::error::Error> {
         let mut objects = Vec::new();
 
@@ -130,7 +130,7 @@ impl GCodeVisualizer {
     }
 }
 
-pub fn build_test_meshes<'a>(context: &'a WindowedContext) -> Vec<LayerModel<'a>> {
+pub fn build_test_meshes<'a>(context: Context) -> Vec<LayerModel<'a>> {
     let content = fs::read_to_string("gcode/test2.gcode").unwrap();
     //println!("{}", content);
     let gcode: GCode = content.try_into().unwrap();
@@ -139,6 +139,6 @@ pub fn build_test_meshes<'a>(context: &'a WindowedContext) -> Vec<LayerModel<'a>
 
     std::convert::Into::<Vec<LayerMesh<'a>>>::into(toolpath)
         .into_iter()
-        .map(|mesh| mesh.into_model(context))
+        .map(|mesh| mesh.into_model(context.clone()))
         .collect()
 }

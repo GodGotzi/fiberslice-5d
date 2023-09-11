@@ -1,3 +1,5 @@
+use std::cell::Ref;
+
 use three_d::*;
 
 use crate::{application::Application, config, utils::frame::FrameHandle};
@@ -74,7 +76,7 @@ impl Environment {
 }
 
 impl FrameHandle for Environment {
-    fn frame(&mut self, input: &FrameInput, application: &Application) {
+    fn frame(&mut self, input: &FrameInput, application: Ref<'_, Application>) {
         //update viewport
         {
             if input.viewport.height != 0 && input.viewport.width != 0 {

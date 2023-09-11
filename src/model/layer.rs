@@ -1,4 +1,4 @@
-use three_d::{Gm, Mesh, PhysicalMaterial, RenderStates, WindowedContext};
+use three_d::{Gm, Mesh, PhysicalMaterial, RenderStates, Context};
 use three_d_asset::{vec3, InnerSpace, LightingModel, Positions, Srgba, TriMesh, Vector3};
 
 use super::gcode::state::State;
@@ -248,9 +248,9 @@ impl<'a> LayerMesh<'a> {
 }
 
 impl<'a> LayerMesh<'a> {
-    pub fn into_model(self, context: &WindowedContext) -> LayerModel<'a> {
+    pub fn into_model(self, context: Context) -> LayerModel<'a> {
         let model = Gm::new(
-            Mesh::new(context, &self.trimesh),
+            Mesh::new(&context, &self.trimesh),
             construct_filament_material(),
         );
 
