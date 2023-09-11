@@ -1,4 +1,7 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::fs;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -6,10 +9,15 @@ use three_d::*;
 use three_d_asset::TriMesh;
 
 use crate::application::Application;
+use crate::model::gcode::toolpath::compute_layer_mesh_map;
+use crate::model::gcode::toolpath::compute_modul_with_coordinator;
+use crate::model::gcode::toolpath::PathModul;
 use crate::model::gcode::toolpath::ToolPath;
 use crate::model::gcode::GCode;
+use crate::model::layer::construct_filament_material;
 use crate::model::layer::LayerMesh;
 use crate::model::layer::LayerModel;
+use crate::model::layer::PartCoordinator;
 use crate::utils::debug::DebugWrapper;
 use crate::utils::task::TaskWithResult;
 
@@ -109,36 +117,64 @@ impl GCodeVisualizer {
 
     pub fn try_collect_objects<'a>(
         &self,
-        context: Context,
-    ) -> Result<Vec<LayerModel<'a>>, crate::error::Error> {
-        let mut objects = Vec::new();
+        context: &Context,
+    ) -> Result<HashMap<usize, RefCell<LayerModel<'a>>>, crate::error::Error> {
+        let mut meshes: HashMap<usize, RefCell<LayerModel<'a>>> = build_test_meshes();
 
-        let meshes = build_test_meshes(context);
+        for value in meshes.values() {
+            let trimesh = value.borrow().trimesh.clone();
 
-        for mut model in meshes {
-            model.model.set_transformation(
-                Mat4::from_translation(vec3(0.0, 5.0, 0.0))
-                    .concat(&Mat4::from_angle_y(degrees(90.0))),
-            );
+            value.borrow_mut().model = Some(Gm {
+                geometry: Mesh::new(context, &trimesh),
+                material: construct_filament_material(),
+            });
+        }
 
-            objects.push(model);
+        for entry in meshes.iter_mut() {
+            entry
+                .1
+                .borrow_mut()
+                .model
+                .as_mut()
+                .unwrap()
+                .set_transformation(
+                    Mat4::from_translation(vec3(0.0, 5.0, 0.0))
+                        .concat(&Mat4::from_angle_y(degrees(90.0))),
+                );
         }
 
         //model.set_transformation(Mat4::from_translation(vec3(0.0, 40.0, 0.0)));
 
-        Ok(objects)
+        Ok(meshes)
     }
 }
 
-pub fn build_test_meshes<'a>(context: Context) -> Vec<LayerModel<'a>> {
+pub fn build_test_meshes<'a>() -> HashMap<usize, RefCell<LayerModel<'a>>> {
     let content = fs::read_to_string("gcode/test2.gcode").unwrap();
     //println!("{}", content);
     let gcode: GCode = content.try_into().unwrap();
 
     let toolpath = ToolPath::from(gcode);
 
-    std::convert::Into::<Vec<LayerMesh<'a>>>::into(toolpath)
-        .into_iter()
-        .map(|mesh| mesh.into_model(context.clone()))
-        .collect()
+    let modul_map: HashMap<usize, Vec<PathModul>> = toolpath.into();
+
+    let mut layers: HashMap<usize, RefCell<LayerModel<'a>>> = HashMap::new();
+
+    for entry in modul_map.iter() {
+        let layer = LayerModel::empty();
+        layers.insert(*entry.0, RefCell::new(layer));
+    }
+
+    unsafe {
+        for entry in modul_map.into_iter() {
+            let layer = layers.get(&entry.0).unwrap();
+            let coordinator = PartCoordinator::new(layer.as_ptr().as_mut().unwrap());
+
+            for modul in entry.1 {
+                compute_modul_with_coordinator(&modul, &coordinator);
+            }
+        }
+    }
+
+    layers
 }

@@ -76,7 +76,7 @@ impl Environment {
 }
 
 impl FrameHandle for Environment {
-    fn frame(&mut self, input: &FrameInput, application: Ref<'_, Application>) {
+    fn frame(&mut self, input: &FrameInput, application: &Application) {
         //update viewport
         {
             if input.viewport.height != 0 && input.viewport.width != 0 {

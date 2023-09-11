@@ -1,4 +1,7 @@
-use std::{collections::HashMap, cell::Ref};
+use std::{
+    cell::{Ref, RefCell},
+    collections::HashMap,
+};
 
 use three_d::*;
 
@@ -39,7 +42,7 @@ impl<O: Object + ?Sized + 'static> HideableObject<O> {
 
 pub struct ObjectBuffer<'a, O: Object + ?Sized + 'static> {
     skybox: Option<Skybox>,
-    layers: Vec<LayerModel<'a>>,
+    layers: Vec<RefCell<LayerModel<'a>>>,
     models: HashMap<String, HideableObject<O>>,
     objects: HashMap<String, HideableObject<O>>,
     interactive_objects: HashMap<String, HideableObject<O>>,
@@ -67,7 +70,7 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         self.skybox = Some(skybox);
     }
 
-    pub fn add_layer(&mut self, layer: LayerModel<'a>) {
+    pub fn add_layer(&mut self, layer: RefCell<LayerModel<'a>>) {
         self.layers.push(layer);
     }
 
@@ -106,10 +109,6 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         self.interactive_objects.insert(name.into(), object);
     }
 
-    pub fn get_layer(&self, index: usize) -> Option<&LayerModel> {
-        self.layers.get(index)
-    }
-
     pub fn get_model<S: Into<&'a String>>(&self, name: S) -> Option<&O> {
         if let Some(model) = self.models.get(name.into()) {
             Some(&model.inner)
@@ -132,10 +131,6 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         } else {
             None
         }
-    }
-
-    pub fn remove_layer(&mut self, index: usize) -> LayerModel {
-        self.layers.remove(index)
     }
 
     pub fn remove_model<S: Into<&'a String>>(&mut self, name: S) -> Box<O> {
@@ -191,15 +186,18 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         self.clear_interactive_objects();
     }
 
-    pub fn render(&self, environment: &environment::Environment, application: Ref<'_, Application>) {
+    pub fn render(&self, environment: &environment::Environment, application: &Application) {
         if let Some(ref skybox) = self.skybox {
             skybox.render(environment.camera(), &[]);
         }
 
         if application.context().is_mode(Mode::Preview) {
-            for layer in &self.layers {
+            for layer in self.layers.iter() {
                 layer
+                    .borrow()
                     .model
+                    .as_ref()
+                    .unwrap()
                     .render(environment.camera(), environment.lights().as_slice());
             }
         }
@@ -240,18 +238,7 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
                 button, position, ..
             } = event
             {
-                if *button == MouseButton::Right {
-                    for (layer_id, layer_model) in self.layers.iter_mut().enumerate() {
-                        if let Some(_pick) = pick(
-                            context,
-                            environment.camera(),
-                            position,
-                            &layer_model.model.geometry,
-                        ) {
-                            println!("Layer: {}", layer_id);
-                        }
-                    }
-                }
+                if *button == MouseButton::Right {}
             }
         }
     }

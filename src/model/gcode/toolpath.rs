@@ -1,11 +1,16 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use three_d::Vector3;
-use three_d_asset::{vec3, Srgba};
+use three_d_asset::{vec3, TriMesh};
 
-use crate::model::layer::*;
+use crate::model::layer::{self, *};
 
-use super::{instruction::InstructionType, movement, state::State, GCode};
+use super::{
+    instruction::InstructionType,
+    movement,
+    state::{self, State},
+    GCode,
+};
 
 #[derive(Debug, Clone)]
 pub struct PathLine {
@@ -119,68 +124,58 @@ impl From<GCode> for ToolPath {
     }
 }
 
-#[allow(dead_code)]
-impl<'a> LayerPart<'a> {
-    fn from_with_coordinator(
-        path_modul: &PathModul,
-        coordinator: &'a mut PartCoordinator<'a>,
-    ) -> Self {
-        let diameter = 0.4;
-        let mut last_cross: Option<Cross> = None;
-        let mut parts = Vec::new();
+pub fn compute_modul_with_coordinator<'a>(
+    path_modul: &'a PathModul,
+    coordinator: &'a PartCoordinator,
+) {
+    let diameter = 0.4;
+    let mut last_cross: Option<Cross> = None;
 
-        let color = path_modul
-            .state
-            .print_type
-            .as_ref()
-            .unwrap_or(&crate::slicer::print_type::PrintType::Unknown)
-            .get_color();
+    let color = path_modul
+        .state
+        .print_type
+        .as_ref()
+        .unwrap_or(&crate::slicer::print_type::PrintType::Unknown)
+        .get_color();
 
-        for element in path_modul.paths.iter().enumerate() {
-            let path = element.1;
+    for element in path_modul.paths.iter().enumerate() {
+        let path = element.1;
 
-            if path.print {
-                let direction = path.direction();
-                let cross = get_cross(direction, diameter / 2.0);
+        if path.print {
+            let direction = path.direction();
+            let cross = get_cross(direction, diameter / 2.0);
 
-                if let Some(last) = last_cross.take() {
-                    draw_cross_connection(&path.start, &cross, &last, &color, coordinator);
-                } else {
-                    draw_rect_with_cross(&path.start, &cross, &color, coordinator);
-                }
-
-                draw_path((path.start, path.end), &color, coordinator, &cross);
-                last_cross = Some(cross);
-            } else if let Some(last) = last_cross.take() {
-                let part = end_part((path.start, path.end), &color, last, coordinator);
-                parts.push(part);
+            if let Some(last) = last_cross.take() {
+                draw_cross_connection(&path.start, &cross, &last, &color, coordinator);
+            } else {
+                draw_rect_with_cross(&path.start, &cross, &color, coordinator);
             }
 
-            if element.0 == path_modul.paths.len() - 1 {
-                if let Some(last) = last_cross.take() {
-                    let part = end_part((path.start, path.end), &color, last, coordinator);
-                    parts.push(part);
-                }
-            }
+            draw_path((path.start, path.end), &color, coordinator, &cross);
+            last_cross = Some(cross);
+        } else if let Some(last) = last_cross.take() {
+            draw_rect_with_cross(&path.end, &last, &color, coordinator);
+
+            coordinator
+                .next_part_meshref(path_modul.state.clone(), path_modul.line_range)
+                .unwrap();
         }
 
-        let main = coordinator.finish();
-        Self::new(main, path_modul.state.clone(), path_modul.line_range, parts)
+        if element.0 == path_modul.paths.len() - 1 {
+            if let Some(last) = last_cross.take() {
+                draw_rect_with_cross(&path.end, &last, &color, coordinator);
+
+                coordinator
+                    .next_part_meshref(path_modul.state.clone(), path_modul.line_range)
+                    .unwrap();
+            }
+        }
     }
+
+    coordinator.finish().unwrap();
 }
 
-pub fn end_part<'a>(
-    path: (Vector3<f64>, Vector3<f64>),
-    color: &Srgba,
-    last: Cross,
-    coordinator: &'a mut PartCoordinator<'a>,
-) -> MeshRef<'a> {
-    draw_rect_with_cross(&path.1, &last, color, coordinator);
-
-    coordinator.next_part_meshref()
-}
-
-impl<'a> From<ToolPath> for Vec<LayerMesh<'a>> {
+impl From<ToolPath> for HashMap<usize, Vec<PathModul>> {
     fn from(tool_path: ToolPath) -> Self {
         let mut layers: HashMap<usize, Vec<PathModul>> = HashMap::new();
 
@@ -194,18 +189,19 @@ impl<'a> From<ToolPath> for Vec<LayerMesh<'a>> {
             }
         }
 
-        //let mut layers: HashMap<usize, LayerMesh> = HashMap::new();
-        let mut layers_vector = Vec::new();
+        layers
+    }
+}
 
-        for layer_moduls in layers.values_mut() {
-            let mut mesh_elements = MeshElements::new();
-            let mut coordinator = PartCoordinator::new(&mut mesh_elements);
+pub fn compute_layer_mesh_map<'a>(
+    layermap: &'a HashMap<usize, Vec<PathModul>>,
+    layers: &'a mut HashMap<usize, LayerModel<'a>>,
+) {
+    for entry in layers.iter_mut() {
+        let coordinator = PartCoordinator::new(entry.1);
 
-            for modul in layer_moduls.iter() {
-                let mut part = LayerPart::from_with_coordinator(modul, &mut coordinator);
-            }
+        for modul in layermap.get(entry.0).unwrap().iter() {
+            compute_modul_with_coordinator(modul, &coordinator);
         }
-
-        layers_vector
     }
 }

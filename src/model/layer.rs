@@ -1,39 +1,59 @@
-use three_d::{Gm, Mesh, PhysicalMaterial, RenderStates, Context};
+use std::cell::{Cell, RefCell};
+
+use three_d::CpuMesh;
+
+use three_d::{Context, Gm, Mesh, PhysicalMaterial, RenderStates};
 use three_d_asset::{vec3, InnerSpace, LightingModel, Positions, Srgba, TriMesh, Vector3};
 
 use super::gcode::state::State;
 
 pub struct PartCoordinator<'a> {
-    parts: &'a mut MeshElements,
-    offset_start: usize,
-    offset_end: usize,
-    offset_part_start: usize,
-    offset_part_end: usize,
+    mesh: RefCell<&'a mut LayerModel<'a>>,
+    offset_start: Cell<usize>,
+    offset_end: Cell<usize>,
+    offset_part_start: Cell<usize>,
+    offset_part_end: Cell<usize>,
+}
+
+pub fn push_position<'a>(mut mesh: &'a mut TriMesh, position: Vector3<f64>) -> Result<(), ()> {
+    match &mut mesh.positions {
+        Positions::F64(positions) => {
+            positions.push(position);
+            Ok(())
+        }
+        _ => Err(()),
+    }
+}
+
+pub fn push_color<'a>(mut mesh: &'a mut TriMesh, color: Srgba) {
+    let colors = mesh.colors.as_mut().unwrap();
+    colors.push(color);
+}
+
+pub fn push_normal<'a>(mut mesh: &'a mut TriMesh, normal: Vector3<f32>) {
+    let normals = mesh.normals.as_mut().unwrap();
+    normals.push(normal);
 }
 
 impl<'a> PartCoordinator<'a> {
-    pub fn new(parts: &'a mut MeshElements) -> Self {
+    pub fn new(mesh: &'a mut LayerModel<'a>) -> Self {
         Self {
-            parts,
-            offset_start: 0,
-            offset_end: 0,
-            offset_part_start: 0,
-            offset_part_end: 0,
+            mesh: RefCell::new(mesh),
+            offset_start: Cell::new(0),
+            offset_end: Cell::new(0),
+            offset_part_start: Cell::new(0),
+            offset_part_end: Cell::new(0),
         }
     }
 
-    pub fn add_triangle(
-        &mut self,
-        triangle: (Vector3<f64>, Vector3<f64>, Vector3<f64>),
-        color: Srgba,
-    ) {
-        self.parts.positions.push(triangle.0);
-        self.parts.positions.push(triangle.1);
-        self.parts.positions.push(triangle.2);
+    pub fn add_triangle(&self, triangle: (Vector3<f64>, Vector3<f64>, Vector3<f64>), color: Srgba) {
+        push_position(&mut self.mesh.borrow_mut().trimesh, triangle.0);
+        push_position(&mut self.mesh.borrow_mut().trimesh, triangle.1);
+        push_position(&mut self.mesh.borrow_mut().trimesh, triangle.2);
 
-        self.parts.colors.push(color);
-        self.parts.colors.push(color);
-        self.parts.colors.push(color);
+        push_color(&mut self.mesh.borrow_mut().trimesh, color);
+        push_color(&mut self.mesh.borrow_mut().trimesh, color);
+        push_color(&mut self.mesh.borrow_mut().trimesh, color);
 
         let normal_f64 = (triangle.1 - triangle.0)
             .cross(triangle.2 - triangle.0)
@@ -45,37 +65,115 @@ impl<'a> PartCoordinator<'a> {
             normal_f64.z as f32,
         );
 
-        self.parts.normals.push(normal);
-        self.parts.normals.push(normal);
-        self.parts.normals.push(normal);
+        push_normal(&mut self.mesh.borrow_mut().trimesh, normal);
+        push_normal(&mut self.mesh.borrow_mut().trimesh, normal);
+        push_normal(&mut self.mesh.borrow_mut().trimesh, normal);
 
-        self.offset_end += 3;
-        self.offset_part_end += 3;
+        self.offset_end.replace(self.offset_end.get() + 3);
+        self.offset_part_end.replace(self.offset_part_end.get() + 3);
     }
 
-    pub fn next_part_meshref(&mut self) -> MeshRef<'_> {
-        let start = self.offset_part_start;
-        let end = self.offset_part_end;
+    pub fn next_part_meshref(&self, state: State, line_range: (usize, usize)) -> Result<(), ()> {
+        let start = self.offset_part_start.get();
+        let end = self.offset_part_end.get();
 
-        self.offset_part_start = end;
+        self.offset_part_start.replace(end);
 
-        MeshRef {
-            positions: &mut self.parts.positions[start..end],
-            colors: &mut self.parts.colors[start..end],
-            normals: &mut self.parts.normals[start..end],
+        unsafe {
+            match &self.mesh.as_ptr().as_ref().unwrap().trimesh.positions {
+                Positions::F64(positions) => {
+                    let colors = self
+                        .mesh
+                        .as_ptr()
+                        .as_ref()
+                        .unwrap()
+                        .trimesh
+                        .colors
+                        .as_ref()
+                        .unwrap();
+
+                    let normals = self
+                        .mesh
+                        .as_ptr()
+                        .as_ref()
+                        .unwrap()
+                        .trimesh
+                        .normals
+                        .as_ref()
+                        .unwrap();
+
+                    let meshref = MeshRef {
+                        positions: &positions[start..end],
+                        colors: &colors[start..end],
+                        normals: &normals[start..end],
+                        start,
+                        end,
+                    };
+
+                    if self.mesh.borrow().child_models.last().is_none() {
+                        self.mesh
+                            .borrow_mut()
+                            .child_models
+                            .push(LayerPart::new(state, line_range));
+                    }
+
+                    self.mesh
+                        .borrow_mut()
+                        .child_models
+                        .last_mut()
+                        .unwrap()
+                        .push_child(meshref);
+
+                    Ok(())
+                }
+                _ => Err(()),
+            }
         }
     }
 
-    pub fn finish(&mut self) -> MeshRef<'_> {
-        let start = self.offset_start;
-        let end = self.offset_end;
+    pub fn finish(&self) -> Result<(), ()> {
+        let start = self.offset_start.get();
+        let end = self.offset_end.get();
 
-        self.offset_start = end;
+        self.offset_start.replace(end);
 
-        MeshRef {
-            positions: &mut self.parts.positions[start..end],
-            colors: &mut self.parts.colors[start..end],
-            normals: &mut self.parts.normals[start..end],
+        unsafe {
+            match &self.mesh.as_ptr().as_ref().unwrap().trimesh.positions {
+                Positions::F64(positions) => {
+                    let colors = self
+                        .mesh
+                        .as_ptr()
+                        .as_ref()
+                        .unwrap()
+                        .trimesh
+                        .colors
+                        .as_ref()
+                        .unwrap();
+
+                    let normals = self
+                        .mesh
+                        .as_ptr()
+                        .as_ref()
+                        .unwrap()
+                        .trimesh
+                        .normals
+                        .as_ref()
+                        .unwrap();
+
+                    let meshref = MeshRef {
+                        positions: &positions[start..end],
+                        colors: &colors[start..end],
+                        normals: &normals[start..end],
+                        start,
+                        end,
+                    };
+
+                    self.mesh.borrow_mut().child_models.last_mut().unwrap().main = Some(meshref);
+
+                    Ok(())
+                }
+                _ => return Err(()),
+            }
         }
     }
 }
@@ -83,7 +181,7 @@ impl<'a> PartCoordinator<'a> {
 pub fn draw_path(
     path: (Vector3<f64>, Vector3<f64>),
     color: &Srgba,
-    coordinator: &mut PartCoordinator,
+    coordinator: &PartCoordinator,
     cross: &Cross,
 ) {
     draw_rect(
@@ -128,7 +226,7 @@ pub fn draw_cross_connection<'a>(
     start_cross: &Cross,
     end_cross: &Cross,
     color: &Srgba,
-    coordinator: &'a mut PartCoordinator<'a>,
+    coordinator: &'a PartCoordinator,
 ) {
     coordinator.add_triangle(
         (
@@ -173,7 +271,7 @@ pub fn draw_rect(
     point_right_0: Vector3<f64>,
     point_right_1: Vector3<f64>,
     color: &Srgba,
-    coordinator: &mut PartCoordinator,
+    coordinator: &PartCoordinator,
 ) {
     coordinator.add_triangle((point_left_0, point_left_1, point_right_0), *color);
 
@@ -184,7 +282,7 @@ pub fn draw_rect_with_cross(
     center: &Vector3<f64>,
     cross: &Cross,
     color: &Srgba,
-    coordinator: &mut PartCoordinator,
+    coordinator: &PartCoordinator,
 ) {
     draw_rect(
         cross.up + center,
@@ -223,56 +321,23 @@ pub struct LayerMesh<'a> {
 }
 
 impl<'a> LayerMesh<'a> {
+    pub fn empty() -> Self {
+        Self {
+            trimesh: TriMesh {
+                positions: Positions::F64(Vec::new()),
+                normals: Some(Vec::new()),
+                colors: Some(Vec::new()),
+                ..Default::default()
+            },
+            child_meshes: Vec::new(),
+        }
+    }
+
     pub fn new(main: TriMesh, child_meshes: Vec<LayerPart<'a>>) -> Self {
         Self {
             trimesh: main,
             child_meshes,
         }
-    }
-}
-
-impl<'a> LayerMesh<'a> {
-    fn from_with_mesh_elements(mesh_elements: MeshElements, parts: Vec<LayerPart<'a>>) -> Self {
-        let mesh = TriMesh {
-            positions: Positions::F64(mesh_elements.positions.to_owned()),
-            colors: Some(mesh_elements.colors.to_owned()),
-            normals: Some(mesh_elements.normals.to_owned()),
-            ..Default::default()
-        };
-
-        Self {
-            trimesh: mesh,
-            child_meshes: parts,
-        }
-    }
-}
-
-impl<'a> LayerMesh<'a> {
-    pub fn into_model(self, context: Context) -> LayerModel<'a> {
-        let model = Gm::new(
-            Mesh::new(&context, &self.trimesh),
-            construct_filament_material(),
-        );
-
-        let mut min_line = usize::MAX;
-        let mut max_line = usize::MIN;
-
-        for part in &self.child_meshes {
-            min_line = min_line.min(part.line_range.0);
-            max_line = max_line.max(part.line_range.1);
-        }
-
-        //let slice = &child_models[0..5];
-
-        LayerModel {
-            model,
-            line_range: (0, 0),
-            child_models: self.child_meshes,
-        }
-    }
-
-    pub fn tri_count(&self) -> usize {
-        self.trimesh.positions.len() / 3
     }
 }
 
@@ -294,32 +359,50 @@ pub fn construct_filament_material() -> PhysicalMaterial {
 }
 
 pub struct LayerModel<'a> {
-    pub model: Gm<Mesh, PhysicalMaterial>,
-    pub line_range: (usize, usize),
+    pub model: Option<Gm<Mesh, PhysicalMaterial>>,
+    pub trimesh: TriMesh,
+    pub line_range: Option<(usize, usize)>,
     pub child_models: Vec<LayerPart<'a>>,
+}
+
+impl<'a> LayerModel<'a> {
+    pub fn empty() -> Self {
+        Self {
+            model: None,
+            trimesh: TriMesh {
+                positions: Positions::F64(Vec::new()),
+                normals: Some(Vec::new()),
+                colors: Some(Vec::new()),
+                ..Default::default()
+            },
+            line_range: None,
+            child_models: Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug)]
 pub struct LayerPart<'a> {
-    main: MeshRef<'a>,
+    pub main: Option<MeshRef<'a>>,
     state: State,
     line_range: (usize, usize),
     child_meshes: Vec<MeshRef<'a>>,
 }
 
 impl<'a> LayerPart<'a> {
-    pub fn new(
-        main: MeshRef<'a>,
-        state: State,
-        line_range: (usize, usize),
-        child_meshes: Vec<MeshRef<'a>>,
-    ) -> Self {
+    pub fn new(state: State, line_range: (usize, usize)) -> Self {
         Self {
-            main,
+            main: None,
             state,
             line_range,
-            child_meshes,
+            child_meshes: Vec::new(),
         }
+    }
+}
+
+impl<'a> LayerPart<'a> {
+    pub fn push_child(&mut self, child: MeshRef<'a>) {
+        self.child_meshes.push(child);
     }
 }
 
@@ -341,7 +424,9 @@ impl MeshElements {
 
 #[derive(Debug)]
 pub struct MeshRef<'a> {
-    positions: &'a [Vector3<f64>],
+    pub positions: &'a [Vector3<f64>],
     colors: &'a [Srgba],
     normals: &'a [Vector3<f32>],
+    start: usize,
+    end: usize,
 }

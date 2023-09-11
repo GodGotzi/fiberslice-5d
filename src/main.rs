@@ -19,8 +19,6 @@ mod utils;
 mod view;
 mod window;
 
-use std::{rc::Rc, cell::RefCell};
-
 use application::{ui_frame, Application};
 use gui::{GuiContext, Screen};
 use three_d::*;
@@ -35,11 +33,11 @@ fn main() {
     let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
     let mut environment = environment::Environment::new(&context);
 
-    let application = Rc::new(RefCell::new(Application::new(&window)));
+    let mut application = Application::new(&window);
     let mut screen = Screen::new();
 
-    let buffer: Rc<RefCell<ObjectBuffer<dyn Object>>> = Rc::new(RefCell::new(ObjectBuffer::new()));
-    test_buffer(context.clone(), application.clone(), buffer.clone());
+    let mut buffer: ObjectBuffer<dyn Object> = ObjectBuffer::new();
+    test_buffer(&context, &mut application, &mut buffer);
 
     let mut gui = three_d::GUI::new(&context);
     window.set_visible(true);
@@ -47,12 +45,12 @@ fn main() {
     // Event loop
     event_loop.run(move |event, _, control_flow| match event {
         winit::event::Event::MainEventsCleared => {
-            let frame_input = application.borrow_mut().next_frame_input(&context);
+            let frame_input = application.next_frame_input(&context);
 
             let mut ui_use = None;
 
             let gui_context = GuiContext {
-                application_ctx: &mut application.borrow_mut().context,
+                application_ctx: &mut application.context,
                 environment: &mut environment,
             };
 
@@ -90,7 +88,7 @@ fn main() {
                 environment.handle_camera_events(&mut events);
             }
 
-            environment.frame(&frame_input, application.borrow());
+            environment.frame(&frame_input, &application);
 
             //Render
             {
@@ -104,11 +102,11 @@ fn main() {
                 ));
 
                 screen.write(|| {
-                    buffer.borrow_mut().render(&environment, application.borrow());
+                    buffer.render(&environment, &application);
                     gui.render();
                 });
 
-                buffer.borrow_mut().check_picks(&context, &frame_input, &environment);
+                buffer.check_picks(&context, &frame_input, &environment);
             }
 
             context.swap_buffers().unwrap();
@@ -120,20 +118,20 @@ fn main() {
             window.request_redraw();
         }
         winit::event::Event::WindowEvent { ref event, .. } => {
-            application.borrow_mut().handle_window_event(event, &context, control_flow);
+            application.handle_window_event(event, &context, control_flow);
         }
         winit::event::Event::LoopDestroyed => {
-            application.borrow_mut().save();
-            application.borrow_mut().kill();
+            application.save();
+            application.kill();
         }
         _ => {}
     });
 }
 
-pub fn test_buffer<'a>(
-    context: Context,
-    application: Rc<RefCell<Application>>,
-    buffer: Rc<RefCell<ObjectBuffer<dyn Object>>>,
+pub fn test_buffer(
+    context: &Context,
+    application: &mut Application,
+    buffer: &mut ObjectBuffer<dyn Object>,
 ) {
     /*
         let environment_map =
@@ -146,7 +144,7 @@ pub fn test_buffer<'a>(
     let model: three_d_asset::Model =
         three_d_asset::io::load_and_deserialize("assets/without-textures.glb").unwrap();
 
-    let mut model = Model::<PhysicalMaterial>::new(&context, &model)
+    let mut model = Model::<PhysicalMaterial>::new(context, &model)
         .unwrap()
         .remove(0);
 
@@ -156,16 +154,15 @@ pub fn test_buffer<'a>(
     let translation = Mat4::from_translation(vec3(0.0, 0.0, 0.0));
     model.set_transformation(translation * rotation * scale);
 
-    buffer.borrow_mut().add_object("PRINT_BED", Box::new(model));
+    buffer.add_object("PRINT_BED", Box::new(model));
 
-    for object in application.borrow_mut()
+    for object in application
         .visualizer()
         .gcode()
-        .try_collect_objects(context.clone())
+        .try_collect_objects(context)
         .unwrap()
         .into_iter()
-        .enumerate()
     {
-        buffer.borrow_mut().add_layer(object.1);
+        buffer.add_layer(object.1);
     }
 }
