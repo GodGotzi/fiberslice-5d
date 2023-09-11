@@ -59,14 +59,15 @@ HTTPStatus Exception: 400
 
 ## 🧩 Modules
 
-<details closed><summary>Root</summary>
-
+# Seperate Systems
 | File                                                                                                                                                                                  | Summary                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| ---                                                                                                                                                                                   | ---                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ---                                                                                                                                                                                   | ---    
 | [create_protocol.py](https://github.com/GodGotzi/fiberslice-5d/blob/main/automated_prepare_gpt\create_protocol.py)                                                                    | This code is a command-line tool for creating commit protocols. It reads git commit logs, filters out relevant lines based on certain keywords, and generates protocol files for each commit. It uses OpenAI's GPT-3.5 Turbo model to describe the commit messages. The tool allows the user to specify a filename, API key, and an optional date filter for the commits. The generated protocol files are stored in separate folders for raw commits and processed commits.               |
 | [delete_all_diffs.ps1](https://github.com/GodGotzi/fiberslice-5d/blob/main/automated_prepare_gpt\delete_all_diffs.ps1)                                                                | The code retrieves a list of files from a "diffs" directory and then proceeds to delete each file forcefully.                                                                                                                                                                                                                                                                                                                                                                              |
-| [lib.rs](https://github.com/GodGotzi/fiberslice-5d/blob/main/macros\src\lib.rs)                                                                                                       | This code is a procedural macro implementation that generates a trait implementation called `TypeEq`. The trait provides a method `type_eq` which checks if two instances of the same enum variant from the input enum are equal. It supports enums and panics for structs and unions.                                                                                                                                                                                                     |
-| [less_memory_usage_2023-09-11_12-12.prtcl](https://github.com/GodGotzi/fiberslice-5d/blob/main/protocol\slicer\less_memory_usage_2023-09-11\less_memory_usage_2023-09-11_12-12.prtcl) | This code calculates the time difference between the start and end timestamps, displaying it as "1 hour 46 minutes" and provides additional information about the start timestamp.                                                                                                                                                                                                                                                                                                         |
+# Main
+| File                                                                                                                                                                                  | Summary                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ---                                                                                                                                                                                   | ---                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| [lib.rs](https://github.com/GodGotzi/fiberslice-5d/blob/main/macros\src\lib.rs)                                                                                                       | This code is a procedural macro implementation that generates a trait implementation called `TypeEq`. The trait provides a method `type_eq` which checks if two instances of the same enum variant from the input enum are equal. It supports enums and panics for structs and unions.                                                                                                                                                                                               |
 | [application.rs](https://github.com/GodGotzi/fiberslice-5d/blob/main/src\application.rs)                                                                                              | The code defines an Application struct with various methods for handling window events, tasks, and a visualizer. It also includes a TaskHandler struct for managing tasks, and an ApplicationContext struct for managing the application's context, theme, mode, and boundaries. The code includes a function for rendering the user interface and a few helper structs and enums.                                                                                                         |
 | [config.rs](https://github.com/GodGotzi/fiberslice-5d/blob/main/src\config.rs)                                                                                                        | This code defines constants and functions for GUI styling and sizes used in the project. It includes a default window size, color scheme selection, and measurements for menu bars, mode bars, task bars, and toolbars. It also has a module for potential addons and a nested module for default settings bar width.                                                                                                                                                                      |
 | [error.rs](https://github.com/GodGotzi/fiberslice-5d/blob/main/src\error.rs)                                                                                                          | The code defines an enum called `Error` with different variants representing various error types. It includes functions to format and display error messages. These error types cover common errors related to generic, missing fields, initial build, GCode parsing, unknown instruction types, setup errors, GCode state parsing, and IO errors.                                                                                                                                         |
@@ -109,9 +110,7 @@ HTTPStatus Exception: 400
 | [force.rs](https://github.com/GodGotzi/fiberslice-5d/blob/main/src\view\visualization\force.rs)                                                                                       | The `ForceVisualizer` struct has a `result` field, which is an optional shared mutex that wraps a task result. It provides a constructor method to create a new instance of the `ForceVisualizer` struct.                                                                                                                                                                                                                                                                                  |
 | [mod.rs](https://github.com/GodGotzi/fiberslice-5d/blob/main/src\view\visualization\mod.rs)                                                                                           | This code defines a visualizer trait for rendering objects in an application. It includes modules for force visualization and model handling. The VisualizerContext struct manages different types of visualizers, specifically for GCode and force visualization. The code provides methods for accessing and manipulating these visualizers.                                                                                                                                             |
 | [model.rs](https://github.com/GodGotzi/fiberslice-5d/blob/main/src\view\visualization\model.rs)                                                                                       | This code implements a GCode visualizer with the ability to set and visualize GCode instructions, generating 3D layers based on the instructions. It also includes functions for collecting and building test mesh objects.                                                                                                                                                                                                                                                                |
-| [lib.rs](https://github.com/GodGotzi/fiberslice-5d/blob/main/traits\src\lib.rs)                                                                                                       | This code defines a trait called `TypeEq` which allows for type equality checks. It has one function, `type_eq`, that compares the type of an instance implementing the trait with another given type and returns true if they are equal, and false otherwise.                                                                                                                                                                                                                             |
-
-</details>
+| [lib.rs](https://github.com/GodGotzi/fiberslice-5d/blob/main/traits\src\lib.rs)                                                                                                       | This code defines a trait called `TypeEq` which allows for type equality checks. It has one function, `type_eq`, that compares the type of an instance implementing the trait with another given type and returns true if they are equal, and false otherwise.                                                                                                                                                                                                                             
 
 ---
 
@@ -161,35 +160,6 @@ cargo test
 > - [ ] `ℹ️  Task 2: Refactor Y`
 > - [ ] `ℹ️ ...`
 
-
----
-
-## 🤝 Contributing
-
-Contributions are always welcome! Please follow these steps:
-1. Fork the project repository. This creates a copy of the project on your account that you can modify without affecting the original project.
-2. Clone the forked repository to your local machine using a Git client like Git or GitHub Desktop.
-3. Create a new branch with a descriptive name (e.g., `new-feature-branch` or `bugfix-issue-123`).
-```sh
-git checkout -b new-feature-branch
-```
-4. Make changes to the project's codebase.
-5. Commit your changes to your local branch with a clear commit message that explains the changes you've made.
-```sh
-git commit -m 'Implemented new feature.'
-```
-6. Push your changes to your forked repository on GitHub using the following command
-```sh
-git push origin new-feature-branch
-```
-7. Create a new pull request to the original project repository. In the pull request, describe the changes you've made and why they're necessary.
-The project maintainers will review your changes and provide feedback or merge them into the main branch.
-
----
-
-## 📄 License
-
-This project is licensed under the `ℹ️  INSERT-LICENSE-TYPE` License. See the [LICENSE](https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/adding-a-license-to-a-repository) file for additional info.
 
 ---
 
