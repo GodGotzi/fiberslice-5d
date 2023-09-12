@@ -1,5 +1,3 @@
-use std::cell::Ref;
-
 use three_d::*;
 
 use crate::{application::Application, config, utils::frame::FrameHandle};

@@ -1,8 +1,6 @@
 use std::cell::{Cell, RefCell};
 
-use three_d::CpuMesh;
-
-use three_d::{Context, Gm, Mesh, PhysicalMaterial, RenderStates};
+use three_d::{Gm, Mesh, PhysicalMaterial, RenderStates};
 use three_d_asset::{vec3, InnerSpace, LightingModel, Positions, Srgba, TriMesh, Vector3};
 
 use super::gcode::state::State;
@@ -15,7 +13,7 @@ pub struct PartCoordinator<'a> {
     offset_part_end: Cell<usize>,
 }
 
-pub fn push_position<'a>(mut mesh: &'a mut TriMesh, position: Vector3<f64>) -> Result<(), ()> {
+pub fn push_position(mesh: &mut TriMesh, position: Vector3<f64>) -> Result<(), ()> {
     match &mut mesh.positions {
         Positions::F64(positions) => {
             positions.push(position);
@@ -25,12 +23,12 @@ pub fn push_position<'a>(mut mesh: &'a mut TriMesh, position: Vector3<f64>) -> R
     }
 }
 
-pub fn push_color<'a>(mut mesh: &'a mut TriMesh, color: Srgba) {
+pub fn push_color(mesh: &mut TriMesh, color: Srgba) {
     let colors = mesh.colors.as_mut().unwrap();
     colors.push(color);
 }
 
-pub fn push_normal<'a>(mut mesh: &'a mut TriMesh, normal: Vector3<f32>) {
+pub fn push_normal(mesh: &mut TriMesh, normal: Vector3<f32>) {
     let normals = mesh.normals.as_mut().unwrap();
     normals.push(normal);
 }
@@ -47,9 +45,9 @@ impl<'a> PartCoordinator<'a> {
     }
 
     pub fn add_triangle(&self, triangle: (Vector3<f64>, Vector3<f64>, Vector3<f64>), color: Srgba) {
-        push_position(&mut self.mesh.borrow_mut().trimesh, triangle.0);
-        push_position(&mut self.mesh.borrow_mut().trimesh, triangle.1);
-        push_position(&mut self.mesh.borrow_mut().trimesh, triangle.2);
+        push_position(&mut self.mesh.borrow_mut().trimesh, triangle.0).unwrap();
+        push_position(&mut self.mesh.borrow_mut().trimesh, triangle.1).unwrap();
+        push_position(&mut self.mesh.borrow_mut().trimesh, triangle.2).unwrap();
 
         push_color(&mut self.mesh.borrow_mut().trimesh, color);
         push_color(&mut self.mesh.borrow_mut().trimesh, color);
@@ -172,7 +170,7 @@ impl<'a> PartCoordinator<'a> {
 
                     Ok(())
                 }
-                _ => return Err(()),
+                _ => Err(()),
             }
         }
     }
@@ -221,12 +219,12 @@ pub fn draw_path(
     );
 }
 
-pub fn draw_cross_connection<'a>(
+pub fn draw_cross_connection(
     center: &Vector3<f64>,
     start_cross: &Cross,
     end_cross: &Cross,
     color: &Srgba,
-    coordinator: &'a PartCoordinator,
+    coordinator: &PartCoordinator,
 ) {
     coordinator.add_triangle(
         (
@@ -314,33 +312,6 @@ pub fn get_cross(direction: Vector3<f64>, radius: f64) -> Cross {
     }
 }
 
-#[derive(Debug)]
-pub struct LayerMesh<'a> {
-    pub trimesh: TriMesh,
-    child_meshes: Vec<LayerPart<'a>>,
-}
-
-impl<'a> LayerMesh<'a> {
-    pub fn empty() -> Self {
-        Self {
-            trimesh: TriMesh {
-                positions: Positions::F64(Vec::new()),
-                normals: Some(Vec::new()),
-                colors: Some(Vec::new()),
-                ..Default::default()
-            },
-            child_meshes: Vec::new(),
-        }
-    }
-
-    pub fn new(main: TriMesh, child_meshes: Vec<LayerPart<'a>>) -> Self {
-        Self {
-            trimesh: main,
-            child_meshes,
-        }
-    }
-}
-
 pub fn construct_filament_material() -> PhysicalMaterial {
     PhysicalMaterial {
         name: "default".to_string(),
@@ -381,6 +352,7 @@ impl<'a> LayerModel<'a> {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct LayerPart<'a> {
     pub main: Option<MeshRef<'a>>,
@@ -406,22 +378,7 @@ impl<'a> LayerPart<'a> {
     }
 }
 
-pub struct MeshElements {
-    positions: Vec<Vector3<f64>>,
-    colors: Vec<Srgba>,
-    normals: Vec<Vector3<f32>>,
-}
-
-impl MeshElements {
-    pub fn new() -> Self {
-        Self {
-            positions: Vec::new(),
-            colors: Vec::new(),
-            normals: Vec::new(),
-        }
-    }
-}
-
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct MeshRef<'a> {
     pub positions: &'a [Vector3<f64>],

@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs;
-use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -9,13 +8,11 @@ use three_d::*;
 use three_d_asset::TriMesh;
 
 use crate::application::Application;
-use crate::model::gcode::toolpath::compute_layer_mesh_map;
 use crate::model::gcode::toolpath::compute_modul_with_coordinator;
 use crate::model::gcode::toolpath::PathModul;
 use crate::model::gcode::toolpath::ToolPath;
 use crate::model::gcode::GCode;
 use crate::model::layer::construct_filament_material;
-use crate::model::layer::LayerMesh;
 use crate::model::layer::LayerModel;
 use crate::model::layer::PartCoordinator;
 use crate::utils::debug::DebugWrapper;
@@ -78,7 +75,7 @@ impl GCodeVisualizer {
 }
 
 impl GCodeVisualizer {
-    fn visualize(&mut self, application: &mut Application) -> Result<(), crate::error::Error> {
+    fn _visualize(&mut self, application: &mut Application) -> Result<(), crate::error::Error> {
         if self.gcode.is_none() {
             return Err(crate::error::Error::FieldMissing("gcode is missing".into()));
         }
@@ -119,7 +116,7 @@ impl GCodeVisualizer {
         &self,
         context: &Context,
     ) -> Result<HashMap<usize, RefCell<LayerModel<'a>>>, crate::error::Error> {
-        let mut meshes: HashMap<usize, RefCell<LayerModel<'a>>> = build_test_meshes();
+        let meshes: HashMap<usize, RefCell<LayerModel<'a>>> = build_test_meshes();
 
         for value in meshes.values() {
             let trimesh = value.borrow().trimesh.clone();
@@ -130,17 +127,14 @@ impl GCodeVisualizer {
             });
         }
 
-        for entry in meshes.iter_mut() {
+        for entry in meshes.iter() {
             entry
                 .1
                 .borrow_mut()
                 .model
                 .as_mut()
                 .unwrap()
-                .set_transformation(
-                    Mat4::from_translation(vec3(0.0, 5.0, 0.0))
-                        .concat(&Mat4::from_angle_y(degrees(90.0))),
-                );
+                .set_transformation(Mat4::from_translation(vec3(-125.0, 5.0, 125.0)));
         }
 
         //model.set_transformation(Mat4::from_translation(vec3(0.0, 40.0, 0.0)));

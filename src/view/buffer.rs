@@ -1,7 +1,4 @@
-use std::{
-    cell::{Ref, RefCell},
-    collections::HashMap,
-};
+use std::{cell::RefCell, collections::HashMap};
 
 use three_d::*;
 
@@ -229,15 +226,12 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
 
     pub fn check_picks(
         &mut self,
-        context: &WindowedContext,
+        _context: &WindowedContext,
         frame_input: &FrameInput,
-        environment: &environment::Environment,
+        _environment: &environment::Environment,
     ) {
         for event in frame_input.events.iter() {
-            if let Event::MousePress {
-                button, position, ..
-            } = event
-            {
+            if let Event::MousePress { button, .. } = event {
                 if *button == MouseButton::Right {}
             }
         }

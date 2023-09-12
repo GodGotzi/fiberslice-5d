@@ -1,16 +1,11 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
 use three_d::Vector3;
-use three_d_asset::{vec3, TriMesh};
+use three_d_asset::vec3;
 
-use crate::model::layer::{self, *};
+use crate::model::layer::*;
 
-use super::{
-    instruction::InstructionType,
-    movement,
-    state::{self, State},
-    GCode,
-};
+use super::{instruction::InstructionType, movement, state::State, GCode};
 
 #[derive(Debug, Clone)]
 pub struct PathLine {
@@ -24,7 +19,7 @@ impl PathLine {
         self.end - self.start
     }
 
-    pub fn flip_yz(&self) -> Self {
+    pub fn flip_yz(self) -> Self {
         Self {
             start: vec3(self.start.x, self.start.z, self.start.y),
             end: vec3(self.end.x, self.end.z, self.end.y),
@@ -110,11 +105,14 @@ impl From<GCode> for ToolPath {
                 let print = instruction.instruction_type() == &InstructionType::G1
                     && current_movements.E.is_some_and(|e| e > 0.0);
 
-                points.push(PathLine {
-                    start: last_point,
-                    end: current_point,
-                    print,
-                });
+                points.push(
+                    PathLine {
+                        start: last_point,
+                        end: current_point,
+                        print,
+                    }
+                    .flip_yz(),
+                );
             }
 
             tool_path.add_line(points, instruction_modul.range(), state.clone());
@@ -190,18 +188,5 @@ impl From<ToolPath> for HashMap<usize, Vec<PathModul>> {
         }
 
         layers
-    }
-}
-
-pub fn compute_layer_mesh_map<'a>(
-    layermap: &'a HashMap<usize, Vec<PathModul>>,
-    layers: &'a mut HashMap<usize, LayerModel<'a>>,
-) {
-    for entry in layers.iter_mut() {
-        let coordinator = PartCoordinator::new(entry.1);
-
-        for modul in layermap.get(entry.0).unwrap().iter() {
-            compute_modul_with_coordinator(modul, &coordinator);
-        }
     }
 }
