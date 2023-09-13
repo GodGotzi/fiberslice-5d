@@ -19,7 +19,7 @@ impl PathLine {
         self.end - self.start
     }
 
-    pub fn flip_yz(self) -> Self {
+    pub fn flip_yz(&self) -> Self {
         Self {
             start: vec3(self.start.x, self.start.z, self.start.y),
             end: vec3(self.end.x, self.end.z, self.end.y),
@@ -110,8 +110,7 @@ impl From<GCode> for ToolPath {
                         start: last_point,
                         end: current_point,
                         print,
-                    }
-                    .flip_yz(),
+                    },
                 );
             }
 

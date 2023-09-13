@@ -134,7 +134,7 @@ impl GCodeVisualizer {
                 .model
                 .as_mut()
                 .unwrap()
-                .set_transformation(Mat4::from_translation(vec3(-125.0, 5.0, 125.0)));
+                .set_transformation(Mat4::from_translation(vec3(-125.0, 5.0, 125.0)).concat(&Mat4::from_angle_x(degrees(-90.0))));
         }
 
         //model.set_transformation(Mat4::from_translation(vec3(0.0, 40.0, 0.0)));
@@ -144,8 +144,8 @@ impl GCodeVisualizer {
 }
 
 pub fn build_test_meshes<'a>() -> HashMap<usize, RefCell<LayerModel<'a>>> {
-    let content = fs::read_to_string("gcode/test2.gcode").unwrap();
-    //println!("{}", content);
+    let content = fs::read_to_string("gcode/test.gcode").unwrap();
+
     let gcode: GCode = content.try_into().unwrap();
 
     let toolpath = ToolPath::from(gcode);
