@@ -156,13 +156,11 @@ pub fn test_buffer(
 
     buffer.add_object("PRINT_BED", Box::new(model));
 
-    for object in application
+    let toolpath =  application
         .visualizer()
         .gcode()
         .try_collect_objects(context)
-        .unwrap()
-        .into_iter()
-    {
-        buffer.add_layer(object.1);
-    }
+        .unwrap();
+
+    buffer.set_toolpath_model(toolpath);
 }

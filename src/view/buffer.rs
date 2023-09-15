@@ -1,8 +1,8 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::collections::HashMap;
 
 use three_d::*;
 
-use crate::{application::Application, model::layer::LayerModel};
+use crate::{application::Application, model::layer::ToolPathModel};
 
 use super::{environment, Mode};
 
@@ -39,7 +39,7 @@ impl<O: Object + ?Sized + 'static> HideableObject<O> {
 
 pub struct ObjectBuffer<'a, O: Object + ?Sized + 'static> {
     skybox: Option<Skybox>,
-    layers: Vec<RefCell<LayerModel<'a>>>,
+    toolpath_model: Option<ToolPathModel<'a>>,
     models: HashMap<String, HideableObject<O>>,
     objects: HashMap<String, HideableObject<O>>,
     interactive_objects: HashMap<String, HideableObject<O>>,
@@ -49,7 +49,7 @@ impl<O: Object + ?Sized + 'static> Default for ObjectBuffer<'_, O> {
     fn default() -> Self {
         Self {
             skybox: None,
-            layers: Vec::new(),
+            toolpath_model: None,
             models: HashMap::new(),
             objects: HashMap::new(),
             interactive_objects: HashMap::new(),
@@ -67,8 +67,8 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         self.skybox = Some(skybox);
     }
 
-    pub fn add_layer(&mut self, layer: RefCell<LayerModel<'a>>) {
-        self.layers.push(layer);
+    pub fn set_toolpath_model(&mut self, toolpath_model: ToolPathModel<'a>) {
+        self.toolpath_model = Some(toolpath_model);
     }
 
     pub fn add_model<S: Into<String>>(&mut self, name: S, model: Box<O>) {
@@ -160,10 +160,6 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         }
     }
 
-    pub fn clear_layers(&mut self) {
-        self.layers.clear();
-    }
-
     pub fn clear_models(&mut self) {
         self.models.clear();
     }
@@ -177,7 +173,6 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
     }
 
     pub fn clear(&mut self) {
-        self.clear_layers();
         self.clear_models();
         self.clear_objects();
         self.clear_interactive_objects();
@@ -189,13 +184,8 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         }
 
         if application.context().is_mode(Mode::Preview) {
-            for layer in self.layers.iter() {
-                layer
-                    .borrow()
-                    .model
-                    .as_ref()
-                    .unwrap()
-                    .render(environment.camera(), environment.lights().as_slice());
+            if let Some(toolpath) = self.toolpath_model.as_ref() {
+                toolpath.model.render(environment.camera(), environment.lights().as_slice());
             }
         }
 

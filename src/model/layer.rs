@@ -1,12 +1,12 @@
-use std::cell::{Cell, RefCell};
+use std::{cell::{Cell, RefCell}, collections::HashMap};
 
-use three_d::{Gm, Mesh, PhysicalMaterial, RenderStates};
+use three_d::{PhysicalMaterial, RenderStates, Gm, Mesh};
 use three_d_asset::{vec3, InnerSpace, LightingModel, Positions, Srgba, TriMesh, Vector3};
 
 use super::gcode::state::State;
 
 pub struct PartCoordinator<'a> {
-    mesh: RefCell<&'a mut LayerModel<'a>>,
+    mesh: RefCell<&'a mut LayerMesh<'a>>,
     offset_start: Cell<usize>,
     offset_end: Cell<usize>,
     offset_part_start: Cell<usize>,
@@ -34,7 +34,7 @@ pub fn push_normal(mesh: &mut TriMesh, normal: Vector3<f32>) {
 }
 
 impl<'a> PartCoordinator<'a> {
-    pub fn new(mesh: &'a mut LayerModel<'a>) -> Self {
+    pub fn new(mesh: &'a mut LayerMesh<'a>) -> Self {
         Self {
             mesh: RefCell::new(mesh),
             offset_start: Cell::new(0),
@@ -329,17 +329,15 @@ pub fn construct_filament_material() -> PhysicalMaterial {
     }
 }
 
-pub struct LayerModel<'a> {
-    pub model: Option<Gm<Mesh, PhysicalMaterial>>,
+pub struct LayerMesh<'a> {
     pub trimesh: TriMesh,
     pub line_range: Option<(usize, usize)>,
     pub child_models: Vec<LayerPart<'a>>,
 }
 
-impl<'a> LayerModel<'a> {
+impl<'a> LayerMesh<'a> {
     pub fn empty() -> Self {
         Self {
-            model: None,
             trimesh: TriMesh {
                 positions: Positions::F64(Vec::new()),
                 normals: Some(Vec::new()),
@@ -386,4 +384,9 @@ pub struct MeshRef<'a> {
     normals: &'a [Vector3<f32>],
     start: usize,
     end: usize,
+}
+
+pub struct ToolPathModel<'a> {
+    pub layers: HashMap<usize, RefCell<LayerMesh<'a>>>,
+    pub model: Gm<Mesh, PhysicalMaterial>
 }

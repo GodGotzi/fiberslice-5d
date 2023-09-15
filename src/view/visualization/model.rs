@@ -12,8 +12,9 @@ use crate::model::gcode::toolpath::compute_modul_with_coordinator;
 use crate::model::gcode::toolpath::PathModul;
 use crate::model::gcode::toolpath::ToolPath;
 use crate::model::gcode::GCode;
+use crate::model::layer::ToolPathModel;
 use crate::model::layer::construct_filament_material;
-use crate::model::layer::LayerModel;
+use crate::model::layer::LayerMesh;
 use crate::model::layer::PartCoordinator;
 use crate::utils::debug::DebugWrapper;
 use crate::utils::task::TaskWithResult;
@@ -115,35 +116,18 @@ impl GCodeVisualizer {
     pub fn try_collect_objects<'a>(
         &self,
         context: &Context,
-    ) -> Result<HashMap<usize, RefCell<LayerModel<'a>>>, crate::error::Error> {
-        let meshes: HashMap<usize, RefCell<LayerModel<'a>>> = build_test_meshes();
+    ) -> Result<ToolPathModel<'a>, crate::error::Error> {
+        let mut toolpath_model = build_test_meshes(context);
 
-        for value in meshes.values() {
-            let trimesh = value.borrow().trimesh.clone();
-
-            value.borrow_mut().model = Some(Gm {
-                geometry: Mesh::new(context, &trimesh),
-                material: construct_filament_material(),
-            });
-        }
-
-        for entry in meshes.iter() {
-            entry
-                .1
-                .borrow_mut()
-                .model
-                .as_mut()
-                .unwrap()
+        toolpath_model.model
                 .set_transformation(Mat4::from_translation(vec3(-125.0, 5.0, 125.0)).concat(&Mat4::from_angle_x(degrees(-90.0))));
-        }
-
         //model.set_transformation(Mat4::from_translation(vec3(0.0, 40.0, 0.0)));
 
-        Ok(meshes)
+        Ok(toolpath_model)
     }
 }
 
-pub fn build_test_meshes<'a>() -> HashMap<usize, RefCell<LayerModel<'a>>> {
+pub fn build_test_meshes<'a>(context: &Context) -> ToolPathModel<'a> {
     let content = fs::read_to_string("gcode/test.gcode").unwrap();
 
     let gcode: GCode = content.try_into().unwrap();
@@ -152,10 +136,10 @@ pub fn build_test_meshes<'a>() -> HashMap<usize, RefCell<LayerModel<'a>>> {
 
     let modul_map: HashMap<usize, Vec<PathModul>> = toolpath.into();
 
-    let mut layers: HashMap<usize, RefCell<LayerModel<'a>>> = HashMap::new();
+    let mut layers: HashMap<usize, RefCell<LayerMesh<'a>>> = HashMap::new();
 
     for entry in modul_map.iter() {
-        let layer = LayerModel::empty();
+        let layer = LayerMesh::empty();
         layers.insert(*entry.0, RefCell::new(layer));
     }
 
@@ -170,5 +154,34 @@ pub fn build_test_meshes<'a>() -> HashMap<usize, RefCell<LayerModel<'a>>> {
         }
     }
 
-    layers
+    let mut positions = Vec::new();
+    let mut colors = Vec::new();
+    let mut normals = Vec::new();
+
+    for entry in layers.iter() {
+        let layer = entry.1.borrow();
+
+        positions.append(&mut layer.trimesh.positions.to_f64());
+        colors.append(&mut layer.trimesh.colors.clone().unwrap_or(vec![Srgba { r: 0, g: 0, b: 0, a: 255 }; layer.trimesh.positions.len()]));
+        normals.append(&mut layer.trimesh.normals.clone().unwrap_or(vec![vec3(0.0, 0.0, 0.0); layer.trimesh.positions.len()]));
+    }
+
+    let trimesh = TriMesh {
+        positions: Positions::F64(positions.into()),
+        colors: Some(colors.into()),
+        normals: Some(normals.into()),
+        ..Default::default()
+    };
+
+    let model = Gm {
+        geometry: Mesh::new(context, &trimesh),
+        material: construct_filament_material(),
+    };
+
+    let toolpath_model = ToolPathModel {
+        layers, 
+        model,
+    };
+
+    toolpath_model
 }
