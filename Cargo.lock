@@ -512,7 +512,6 @@ dependencies = [
  "image",
  "lazy_static",
  "macros",
- "nfd2",
  "nfde",
  "serde",
  "serde_yaml",
@@ -1040,15 +1039,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3cf2aae958bd232cac5069850591667ad422d263686d75b52a065f9badeee5a3"
 dependencies = [
  "jni-sys",
-]
-
-[[package]]
-name = "nfd2"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4001f1a6d9abb85ad5e983dca9906b46dbee553c687cc789bc5d09aa0feffaa5"
-dependencies = [
- "cc",
 ]
 
 [[package]]

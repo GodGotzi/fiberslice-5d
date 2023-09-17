@@ -69,8 +69,8 @@ impl Application {
         &mut self.task_handler
     }
 
-    pub fn visualizer(&mut self) -> &mut VisualizerContext {
-        &mut self.visualizer
+    pub fn visualizer(&self) -> &VisualizerContext {
+        &self.visualizer
     }
 
     pub fn context(&self) -> &ApplicationContext {
@@ -96,9 +96,13 @@ impl Application {
 
 pub fn ui_frame(ctx: &egui::Context, screen: &mut Screen, mut gui_context: GuiContext) {
     match gui_context.application.context.theme() {
-        Theme::Light => ctx.set_visuals(Visuals::light()),
+        Theme::Light => ctx.set_visuals(Visuals::dark()),
         Theme::Dark => ctx.set_visuals(Visuals::dark()),
     };
+
+    let mut visuals = ctx.style().visuals.clone();
+    visuals.selection.bg_fill = egui::Color32::from_rgb(58, 84, 1);
+    ctx.set_visuals(visuals);
 
     screen.show(ctx, &mut gui_context);
     gui_context

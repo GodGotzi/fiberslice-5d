@@ -154,7 +154,7 @@ fn main() {
 
 pub fn test_buffer(
     context: &Context,
-    _application: &mut Application,
+    application: &mut Application,
     buffer: &mut ObjectBuffer<dyn Object>,
 ) {
     /*
@@ -180,7 +180,6 @@ pub fn test_buffer(
 
     buffer.add_object("PRINT_BED", Box::new(model));
 
-    /*
     let toolpath = application
         .visualizer()
         .gcode
@@ -188,5 +187,4 @@ pub fn test_buffer(
         .unwrap();
 
     buffer.set_toolpath_model(toolpath);
-    */
 }

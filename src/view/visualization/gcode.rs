@@ -9,6 +9,7 @@ use std::sync::Mutex;
 use three_d::*;
 use three_d_asset::TriMesh;
 
+use crate::application::Application;
 use crate::model::gcode::toolpath::compute_modul_with_coordinator;
 use crate::model::gcode::toolpath::PathModul;
 use crate::model::gcode::toolpath::ToolPath;
@@ -19,6 +20,7 @@ use crate::model::layer::PartCoordinator;
 use crate::model::layer::ToolPathModel;
 use crate::utils::debug::DebugWrapper;
 use crate::utils::task::TaskWithResult;
+use crate::view::environment;
 
 struct MeshWrapper(TriMesh);
 
@@ -80,7 +82,32 @@ impl GCodeVisualizer {
         self.gcode.clone()
     }
 
-    pub fn render() {}
+    pub fn render_gcode(
+        &self,
+        environment: &environment::Environment,
+        _application: &Application,
+        toolpath: Option<&ToolPathModel<'_>>,
+    ) {
+        if let Some(toolpath) = toolpath {
+            let model = &toolpath.model;
+            model.render(environment.camera(), environment.lights().as_slice());
+        }
+    }
+
+    pub fn try_collect_objects<'a>(
+        &self,
+        context: &Context,
+    ) -> Result<ToolPathModel<'a>, crate::error::Error> {
+        let mut toolpath_model = build_toolpath_model(context, PathBuf::from("gcode/test.gcode"));
+
+        toolpath_model.model.set_transformation(
+            Mat4::from_translation(vec3(-125.0, 5.0, 125.0))
+                .concat(&Mat4::from_angle_x(degrees(-90.0))),
+        );
+        //model.set_transformation(Mat4::from_translation(vec3(0.0, 40.0, 0.0)));
+
+        Ok(toolpath_model)
+    }
 }
 
 /*

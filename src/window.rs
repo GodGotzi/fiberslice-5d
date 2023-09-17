@@ -7,7 +7,7 @@ use winit::{
 use crate::{config, prelude::Error};
 
 pub fn build_window(event_loop: &EventLoop<()>) -> Result<Window, Error> {
-    let window_icon = load_icon("assets/icon.png");
+    let window_icon = load_icon("assets/icons/icon.png");
 
     #[cfg(not(target_arch = "wasm32"))]
     let window_builder = winit::window::WindowBuilder::new()

@@ -13,7 +13,7 @@ use crate::{
 
 use super::{environment, Mode};
 
-pub type ModelMap = Arc<Mutex<HashMap<String, HideableObject<Gm<Mesh, PhysicalMaterial>>>>>;
+pub type ModelMap = Arc<Mutex<HashMap<String, HideableObject<Mesh>>>>;
 pub type ObjectMap = Arc<Mutex<HashMap<String, HideableObject<dyn Object>>>>;
 
 type ModelManipulator = AsyncManipulator<ModelMap>;
@@ -120,18 +120,14 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         self.skybox = Some(skybox);
     }
 
-    pub fn add_model<S: Into<String>>(&mut self, name: S, model: Box<Gm<Mesh, PhysicalMaterial>>) {
+    pub fn add_model<S: Into<String>>(&mut self, name: S, model: Box<Mesh>) {
         self.models
             .lock()
             .unwrap()
             .insert(name.into(), HideableObject::new(model));
     }
 
-    pub fn add_model_and_hide<S: Into<String>>(
-        &mut self,
-        name: S,
-        model: Box<Gm<Mesh, PhysicalMaterial>>,
-    ) {
+    pub fn add_model_and_hide<S: Into<String>>(&mut self, name: S, model: Box<Mesh>) {
         let mut object = HideableObject::new(model);
         object.hide();
 
@@ -172,10 +168,7 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         }
     }
 
-    pub fn remove_model<S: Into<&'a String>>(
-        &mut self,
-        name: S,
-    ) -> Box<Gm<Mesh, PhysicalMaterial>> {
+    pub fn remove_model<S: Into<&'a String>>(&mut self, name: S) -> Box<Mesh> {
         self.models
             .lock()
             .unwrap()
@@ -237,25 +230,47 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         &self,
         environment: &environment::Environment,
         application: &Application,
-        _context: Context,
+        context: Context,
     ) {
         if let Some(ref skybox) = self.skybox {
             skybox.render(environment.camera(), &[]);
         }
 
         if application.context().is_mode(Mode::Preview) {
-            render_gcode(self.toolpath_model.as_ref());
+            application.visualizer().gcode.render_gcode(
+                environment,
+                application,
+                self.toolpath_model.as_ref(),
+            );
         }
 
-        if application.context().is_mode(Mode::Prepare)
+        let alpha = if application.context().is_mode(Mode::Prepare)
             || application.context().is_mode(Mode::ForceAnalytics)
         {
-            for model in self.models.lock().unwrap().values() {
-                if model.is_visible() {
-                    model
-                        .inner
-                        .render(environment.camera(), environment.lights().as_slice());
-                }
+            255
+        } else {
+            140
+        };
+
+        for model in self.models.lock().unwrap().values() {
+            if model.is_visible() {
+                model.inner.render_with_material(
+                    &PhysicalMaterial::new(
+                        &context,
+                        &CpuMaterial {
+                            albedo: Srgba {
+                                r: 255,
+                                g: 0,
+                                b: 0,
+                                a: alpha,
+                            },
+                            ..Default::default()
+                        },
+                    ),
+                    environment.camera(),
+                    environment.lights().as_slice(),
+                );
+                //.render(environment.camera(), environment.lights().as_slice());
             }
         }
 
@@ -306,5 +321,3 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         }
     }
 }
-
-pub fn render_gcode<'a>(toolpath: Option<&ToolPathModel<'a>>) {}

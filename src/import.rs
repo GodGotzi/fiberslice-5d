@@ -84,17 +84,9 @@ pub fn import_model(
                 let file = ModelFile(path.clone());
                 let mesh: TriMesh = file.into();
 
-                let model = Gm::new(
-                    Mesh::new(&context, &mesh),
-                    PhysicalMaterial {
-                        albedo: Srgba::BLUE,
-                        ..Default::default()
-                    },
-                );
-
                 hashmap.lock().unwrap().insert(
                     path.as_os_str().to_str().unwrap().to_string(),
-                    HideableObject::new(Box::new(model)),
+                    HideableObject::new(Box::new(Mesh::new(&context, &mesh))),
                 );
             }
             DialogResult::Err(_error_str) => {}
