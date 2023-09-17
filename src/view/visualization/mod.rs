@@ -1,7 +1,7 @@
 use crate::application::Application;
 
 pub mod force;
-pub mod model;
+pub mod gcode;
 
 pub trait Visualizer<O> {
     fn visualize(&mut self, application: &mut Application) -> Result<(), crate::error::Error>;
@@ -14,14 +14,14 @@ pub trait Visualizer<O> {
 
 #[allow(dead_code)]
 pub struct VisualizerContext {
-    gcode: model::GCodeVisualizer,
-    force: force::ForceVisualizer,
+    pub gcode: gcode::GCodeVisualizer,
+    pub force: force::ForceVisualizer,
 }
 
 impl Default for VisualizerContext {
     fn default() -> Self {
         Self {
-            gcode: model::GCodeVisualizer::new(),
+            gcode: gcode::GCodeVisualizer::new(),
             force: force::ForceVisualizer::new(),
         }
     }
@@ -31,13 +31,5 @@ impl Default for VisualizerContext {
 impl VisualizerContext {
     pub fn new() -> VisualizerContext {
         Self::default()
-    }
-
-    pub fn gcode(&mut self) -> &mut model::GCodeVisualizer {
-        &mut self.gcode
-    }
-
-    pub fn force(&mut self) -> &mut force::ForceVisualizer {
-        &mut self.force
     }
 }

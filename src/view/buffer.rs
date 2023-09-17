@@ -1,4 +1,5 @@
 use std::{
+    cell::Cell,
     collections::HashMap,
     sync::{Arc, Mutex},
 };
@@ -7,7 +8,7 @@ use three_d::*;
 
 use crate::{
     application::{Application, AsyncManipulator},
-    model::layer::ToolPathModel,
+    model::{gcode::GCode, layer::ToolPathModel},
 };
 
 use super::{environment, Mode};
@@ -18,16 +19,18 @@ pub type ObjectMap = Arc<Mutex<HashMap<String, HideableObject<dyn Object>>>>;
 type ModelManipulator = AsyncManipulator<ModelMap>;
 type ObjectManipulator = AsyncManipulator<ObjectMap>;
 
-pub struct BufferManipulator {
+pub struct ManipulatorHolder {
     pub model_manipulator: ModelManipulator,
     pub object_manipulator: ObjectManipulator,
+    pub gcode_manipulator: AsyncManipulator<Arc<Mutex<Cell<Option<GCode>>>>>,
 }
 
-impl BufferManipulator {
+impl ManipulatorHolder {
     pub fn new() -> Self {
         Self {
             model_manipulator: AsyncManipulator::new(Vec::new()),
             object_manipulator: AsyncManipulator::new(Vec::new()),
+            gcode_manipulator: AsyncManipulator::new(Vec::new()),
         }
     }
 
@@ -37,6 +40,10 @@ impl BufferManipulator {
 
     pub fn update_objects(&mut self, objects: ObjectMap) {
         self.object_manipulator.next_frame(objects);
+    }
+
+    pub fn update_gcode(&mut self, gcode: Arc<Mutex<Cell<Option<GCode>>>>) {
+        self.gcode_manipulator.next_frame(gcode);
     }
 }
 
@@ -105,12 +112,12 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         self.objects.clone()
     }
 
-    pub fn set_skybox(&mut self, skybox: Skybox) {
-        self.skybox = Some(skybox);
-    }
-
     pub fn set_toolpath_model(&mut self, toolpath_model: ToolPathModel<'a>) {
         self.toolpath_model = Some(toolpath_model);
+    }
+
+    pub fn set_skybox(&mut self, skybox: Skybox) {
+        self.skybox = Some(skybox);
     }
 
     pub fn add_model<S: Into<String>>(&mut self, name: S, model: Box<Gm<Mesh, PhysicalMaterial>>) {
@@ -237,11 +244,7 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         }
 
         if application.context().is_mode(Mode::Preview) {
-            if let Some(toolpath) = self.toolpath_model.as_ref() {
-                toolpath
-                    .model
-                    .render(environment.camera(), environment.lights().as_slice());
-            }
+            render_gcode(self.toolpath_model.as_ref());
         }
 
         if application.context().is_mode(Mode::Prepare)
@@ -303,3 +306,5 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         }
     }
 }
+
+pub fn render_gcode<'a>(toolpath: Option<&ToolPathModel<'a>>) {}

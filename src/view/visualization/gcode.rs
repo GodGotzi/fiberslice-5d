@@ -1,13 +1,14 @@
+use std::cell::Cell;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
 
 use three_d::*;
 use three_d_asset::TriMesh;
 
-use crate::application::Application;
 use crate::model::gcode::toolpath::compute_modul_with_coordinator;
 use crate::model::gcode::toolpath::PathModul;
 use crate::model::gcode::toolpath::ToolPath;
@@ -54,10 +55,19 @@ impl Layer {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Default)]
+#[derive()]
 pub struct GCodeVisualizer {
-    gcode: Option<crate::model::gcode::GCode>,
+    gcode: Arc<Mutex<Cell<Option<crate::model::gcode::GCode>>>>,
     result: Option<Arc<Mutex<TaskWithResult<Vec<Layer>>>>>,
+}
+
+impl Default for GCodeVisualizer {
+    fn default() -> Self {
+        Self {
+            gcode: Arc::new(Mutex::new(Cell::new(None))),
+            result: None,
+        }
+    }
 }
 
 #[allow(dead_code)]
@@ -66,53 +76,15 @@ impl GCodeVisualizer {
         Self::default()
     }
 
-    pub fn set_gcode(&mut self, gcode: crate::model::gcode::GCode) {
-        self.gcode = Some(gcode);
+    pub fn cell(&self) -> Arc<Mutex<Cell<Option<crate::model::gcode::GCode>>>> {
+        self.gcode.clone()
     }
 
-    pub fn gcode(&self) -> &Option<crate::model::gcode::GCode> {
-        &self.gcode
-    }
+    pub fn render() {}
 }
 
+/*
 impl GCodeVisualizer {
-    fn _visualize(&mut self, application: &mut Application) -> Result<(), crate::error::Error> {
-        if self.gcode.is_none() {
-            return Err(crate::error::Error::FieldMissing("gcode is missing".into()));
-        }
-
-        let mut result = TaskWithResult::<Vec<Layer>>::new();
-
-        let gcode = self.gcode.as_ref().unwrap().clone();
-
-        result.run(Box::new(move || {
-            let layers = Vec::new();
-
-            for _instruction in gcode.instruction_moduls.iter() {
-                /*
-
-                TODO
-
-
-
-
-                */
-
-                //strokes.push(Stroke { mesh_wrap: MeshWrapper(Mesh::new(context, cpu_mesh)), color: () })
-            }
-
-            layers
-        }));
-
-        self.result = Some(Arc::new(Mutex::new(result)));
-
-        application
-            .task_handler()
-            .add_task(self.result.as_ref().unwrap().clone());
-
-        Ok(())
-    }
-
     pub fn try_collect_objects<'a>(
         &self,
         context: &Context,
@@ -127,11 +99,10 @@ impl GCodeVisualizer {
 
         Ok(toolpath_model)
     }
-}
+}*/
 
-pub fn build_test_meshes<'a>(context: &Context) -> ToolPathModel<'a> {
-    let content = fs::read_to_string("gcode/test2.gcode").unwrap();
-
+pub fn build_toolpath_model<'a>(context: &Context, path: PathBuf) -> ToolPathModel<'a> {
+    let content = fs::read_to_string(path).unwrap();
     let gcode: GCode = content.try_into().unwrap();
 
     let toolpath = ToolPath::from(gcode);

@@ -23,7 +23,7 @@ use three_d::{
 use crate::{
     application::Application,
     prelude::*,
-    view::{buffer::BufferManipulator, environment::Environment},
+    view::{buffer::ManipulatorHolder, environment::Environment},
 };
 
 use self::components::addons;
@@ -32,7 +32,7 @@ pub struct GuiContext<'a> {
     pub application: &'a mut Application,
     pub environment: &'a mut Environment,
     pub context: &'a Context,
-    pub manipulator: Arc<Mutex<BufferManipulator>>,
+    pub manipulator: Arc<Mutex<ManipulatorHolder>>,
 }
 
 pub trait Component<T> {

@@ -6,7 +6,7 @@ use std::{
 use three_d::{Gm, Mesh, PhysicalMaterial};
 use three_d_asset::{vec3, InnerSpace, Positions, Srgba, TriMesh, Vector3};
 
-use super::gcode::state::State;
+use super::gcode::{state::State, GCode};
 
 pub struct PartCoordinator<'a> {
     mesh: RefCell<&'a mut LayerMesh<'a>>,

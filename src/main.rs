@@ -9,6 +9,7 @@ mod application;
 mod config;
 mod error;
 mod gui;
+mod import;
 mod math;
 mod model;
 mod prelude;
@@ -26,7 +27,7 @@ use gui::{GuiContext, Screen};
 use three_d::*;
 use utils::{frame::FrameHandle, Contains};
 use view::{
-    buffer::{BufferManipulator, ObjectBuffer},
+    buffer::{ManipulatorHolder, ObjectBuffer},
     environment,
 };
 use window::build_window;
@@ -37,25 +38,24 @@ fn main() {
         .build()
         .unwrap();
 
+    let event_loop = winit::event_loop::EventLoop::new();
+    let window = build_window(&event_loop).expect("Failed to build window");
+
+    let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
+    let mut environment = environment::Environment::new(&context);
+
+    let manipulator = Arc::new(Mutex::new(ManipulatorHolder::new()));
+
+    let mut application = Application::new(&window);
+    let mut screen = Screen::new();
+
+    let mut buffer: ObjectBuffer<dyn Object> = ObjectBuffer::new();
+    test_buffer(&context, &mut application, &mut buffer);
+
+    let mut gui = three_d::GUI::new(&context);
+    window.set_visible(true);
+
     rt.block_on(async move {
-        let event_loop = winit::event_loop::EventLoop::new();
-        let window = build_window(&event_loop).expect("Failed to build window");
-
-        let context =
-            WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
-        let mut environment = environment::Environment::new(&context);
-
-        let manipulator = Arc::new(Mutex::new(BufferManipulator::new()));
-
-        let mut application = Application::new(&window);
-        let mut screen = Screen::new();
-
-        let mut buffer: ObjectBuffer<dyn Object> = ObjectBuffer::new();
-        test_buffer(&context, &mut application, &mut buffer);
-
-        let mut gui = three_d::GUI::new(&context);
-        window.set_visible(true);
-
         // Event loop
         event_loop.run(move |event, _, control_flow| match event {
             winit::event::Event::MainEventsCleared => {
@@ -127,6 +127,10 @@ fn main() {
 
                 manipulator.lock().unwrap().update_models(buffer.models());
                 manipulator.lock().unwrap().update_objects(buffer.objects());
+                manipulator
+                    .lock()
+                    .unwrap()
+                    .update_gcode(application.visualizer().gcode.cell());
 
                 context.swap_buffers().unwrap();
                 control_flow.set_poll();
@@ -150,7 +154,7 @@ fn main() {
 
 pub fn test_buffer(
     context: &Context,
-    application: &mut Application,
+    _application: &mut Application,
     buffer: &mut ObjectBuffer<dyn Object>,
 ) {
     /*
@@ -176,11 +180,13 @@ pub fn test_buffer(
 
     buffer.add_object("PRINT_BED", Box::new(model));
 
+    /*
     let toolpath = application
         .visualizer()
-        .gcode()
+        .gcode
         .try_collect_objects(context)
         .unwrap();
 
     buffer.set_toolpath_model(toolpath);
+    */
 }

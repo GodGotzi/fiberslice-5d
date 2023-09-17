@@ -33,5 +33,6 @@ three-d-asset = { git = "https://github.com/asny/three-d-asset", features = [
 tokio = { version = "1", features = ["macros", "full"] }
 serde = "1.0.177"
 serde_yaml = "0.9.25"
-nfd = "0.0.4"
+nfd2 = "0.3.1"
 stl_io = "0.7.0"
+nfde = "0.0.8"

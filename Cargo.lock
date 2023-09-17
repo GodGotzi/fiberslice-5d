@@ -253,6 +253,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cmake"
+version = "0.1.50"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a31c789563b815f77f4250caee12365734369f942439b7defd71e18a48197130"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "color_quant"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -503,7 +512,8 @@ dependencies = [
  "image",
  "lazy_static",
  "macros",
- "nfd",
+ "nfd2",
+ "nfde",
  "serde",
  "serde_yaml",
  "stl_io",
@@ -577,12 +587,6 @@ name = "futures-sink"
 version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f43be4fe21a13b9781a69afa4985b0f6ee0e1afab2c6f454a8cf30e2b2237b6e"
-
-[[package]]
-name = "gcc"
-version = "0.3.55"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f5f3913fa0bfe7ee1fd8248b6b9f42a5af4b9d65ec2dd2c3c26132b950ecfc2"
 
 [[package]]
 name = "getrandom"
@@ -1039,12 +1043,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "nfd"
-version = "0.0.4"
+name = "nfd2"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e752e3c216bc8a491c5b59fa46da10f1379ae450b19ac688e07f4bb55042e98"
+checksum = "4001f1a6d9abb85ad5e983dca9906b46dbee553c687cc789bc5d09aa0feffaa5"
 dependencies = [
- "gcc",
+ "cc",
+]
+
+[[package]]
+name = "nfde"
+version = "0.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96869d5587861a8c98eb0118644fd4ea13ae68f3748a084536881bfa9d64130f"
+dependencies = [
+ "cmake",
+ "pkg-config",
+ "widestring",
 ]
 
 [[package]]
@@ -1977,6 +1992,12 @@ name = "weezl"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9193164d4de03a926d909d3bc7c30543cecb35400c02114792c2cae20d5e2dbb"
+
+[[package]]
+name = "widestring"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "653f141f39ec16bba3c5abe400a0c60da7468261cc2cbf36805022876bc721a8"
 
 [[package]]
 name = "winapi"

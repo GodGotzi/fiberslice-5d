@@ -12,7 +12,7 @@ impl HandleOrientation for Camera {
         let position = match orientation {
             Orientation::Default => vec3(0.00, 250.0, 500.0),
             Orientation::Diagonal => vec3(500.0, 500.0, 500.0),
-            Orientation::Top => vec3(0.0, 500.0, 0.1), // FIXME 0.1 is a hack to avoid the camera being inside the model, maybe there is a better way to do this
+            Orientation::Top => vec3(0.0, 900.0, 0.1), // FIXME 0.1 is a hack to avoid the camera being inside the model, maybe there is a better way to do this
             Orientation::Left => vec3(-500.0, 0.0, 0.0),
             Orientation::Right => vec3(500.0, 0.0, 0.0),
             Orientation::Front => vec3(0.0, 0.0, 500.0),
