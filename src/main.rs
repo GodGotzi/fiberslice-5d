@@ -19,112 +19,131 @@ mod utils;
 mod view;
 mod window;
 
+use std::sync::{Arc, Mutex};
+
 use application::{ui_frame, Application};
 use gui::{GuiContext, Screen};
 use three_d::*;
 use utils::{frame::FrameHandle, Contains};
-use view::{buffer::ObjectBuffer, environment};
+use view::{
+    buffer::{BufferManipulator, ObjectBuffer},
+    environment,
+};
 use window::build_window;
 
 fn main() {
-    let event_loop = winit::event_loop::EventLoop::new();
-    let window = build_window(&event_loop).expect("Failed to build window");
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap();
 
-    let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
-    let mut environment = environment::Environment::new(&context);
+    rt.block_on(async move {
+        let event_loop = winit::event_loop::EventLoop::new();
+        let window = build_window(&event_loop).expect("Failed to build window");
 
-    let mut application = Application::new(&window);
-    let mut screen = Screen::new();
+        let context =
+            WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
+        let mut environment = environment::Environment::new(&context);
 
-    let mut buffer: ObjectBuffer<dyn Object> = ObjectBuffer::new();
-    test_buffer(&context, &mut application, &mut buffer);
+        let manipulator = Arc::new(Mutex::new(BufferManipulator::new()));
 
-    let mut gui = three_d::GUI::new(&context);
-    window.set_visible(true);
+        let mut application = Application::new(&window);
+        let mut screen = Screen::new();
 
-    // Event loop
-    event_loop.run(move |event, _, control_flow| match event {
-        winit::event::Event::MainEventsCleared => {
-            let frame_input = application.next_frame_input(&context);
+        let mut buffer: ObjectBuffer<dyn Object> = ObjectBuffer::new();
+        test_buffer(&context, &mut application, &mut buffer);
 
-            let mut ui_use = None;
+        let mut gui = three_d::GUI::new(&context);
+        window.set_visible(true);
 
-            let gui_context = GuiContext {
-                application_ctx: &mut application.context,
-                environment: &mut environment,
-            };
+        // Event loop
+        event_loop.run(move |event, _, control_flow| match event {
+            winit::event::Event::MainEventsCleared => {
+                let frame_input = application.next_frame_input(&context);
 
-            let mut ui_events = frame_input.events.clone();
+                let mut ui_use = None;
 
-            gui.update(
-                &mut ui_events,
-                frame_input.accumulated_time,
-                frame_input.viewport,
-                frame_input.device_pixel_ratio,
-                |ctx| {
-                    ui_use = Some(ctx.is_using_pointer());
-                    ui_frame(ctx, &mut screen, gui_context);
-                },
-            );
+                let gui_context = GuiContext {
+                    application: &mut application,
+                    environment: &mut environment,
+                    manipulator: manipulator.clone(),
+                };
 
-            if !ui_use.unwrap() {
-                let mut events = frame_input
-                    .events
-                    .clone()
-                    .into_iter()
-                    .filter(|event| {
-                        let position = match event {
-                            Event::MousePress { position, .. } => position,
-                            Event::MouseRelease { position, .. } => position,
-                            Event::MouseMotion { position, .. } => position,
-                            Event::MouseWheel { position, .. } => position,
-                            _ => return true,
-                        };
+                let mut ui_events = frame_input.events.clone();
 
-                        environment.camera().viewport().contains(position)
-                    })
-                    .collect::<Vec<Event>>();
+                gui.update(
+                    &mut ui_events,
+                    frame_input.accumulated_time,
+                    frame_input.viewport,
+                    frame_input.device_pixel_ratio,
+                    |ctx| {
+                        ui_use = Some(ctx.is_using_pointer());
+                        ui_frame(ctx, &mut screen, gui_context);
+                    },
+                );
 
-                environment.handle_camera_events(&mut events);
+                if !ui_use.unwrap() {
+                    let mut events = frame_input
+                        .events
+                        .clone()
+                        .into_iter()
+                        .filter(|event| {
+                            let position = match event {
+                                Event::MousePress { position, .. } => position,
+                                Event::MouseRelease { position, .. } => position,
+                                Event::MouseMotion { position, .. } => position,
+                                Event::MouseWheel { position, .. } => position,
+                                _ => return true,
+                            };
+
+                            environment.camera().viewport().contains(position)
+                        })
+                        .collect::<Vec<Event>>();
+
+                    environment.handle_camera_events(&mut events);
+                }
+
+                environment.frame(&frame_input, &application);
+
+                //Render
+                {
+                    let screen: RenderTarget<'_> = frame_input.screen();
+                    screen.clear(ClearState::color_and_depth(
+                        119.0 / 255.0,
+                        119.0 / 255.0,
+                        119.0 / 255.0,
+                        1.0,
+                        1.0,
+                    ));
+
+                    screen.write(|| {
+                        buffer.render(&environment, &application, context.clone());
+                        gui.render();
+                    });
+
+                    buffer.check_picks(&context, &frame_input, &environment);
+                }
+
+                manipulator.lock().unwrap().update_models(buffer.models());
+                manipulator.lock().unwrap().update_objects(buffer.objects());
+
+                context.swap_buffers().unwrap();
+                control_flow.set_poll();
+
+                window.request_redraw();
             }
-
-            environment.frame(&frame_input, &application);
-
-            //Render
-            {
-                let screen: RenderTarget<'_> = frame_input.screen();
-                screen.clear(ClearState::color_and_depth(
-                    119.0 / 255.0,
-                    119.0 / 255.0,
-                    119.0 / 255.0,
-                    1.0,
-                    1.0,
-                ));
-
-                screen.write(|| {
-                    buffer.render(&environment, &application);
-                    gui.render();
-                });
-
-                buffer.check_picks(&context, &frame_input, &environment);
+            winit::event::Event::RedrawRequested(_) => {
+                window.request_redraw();
             }
-
-            context.swap_buffers().unwrap();
-            control_flow.set_poll();
-
-            window.request_redraw();
-        }
-        winit::event::Event::RedrawRequested(_) => {
-            window.request_redraw();
-        }
-        winit::event::Event::WindowEvent { ref event, .. } => {
-            application.handle_window_event(event, &context, control_flow);
-        }
-        winit::event::Event::LoopDestroyed => {
-            application.save();
-            application.kill();
-        }
-        _ => {}
+            winit::event::Event::WindowEvent { ref event, .. } => {
+                application.handle_window_event(event, &context, control_flow);
+            }
+            winit::event::Event::LoopDestroyed => {
+                application.save();
+                application.kill();
+            }
+            _ => {}
+        });
     });
 }
 
@@ -156,7 +175,7 @@ pub fn test_buffer(
 
     buffer.add_object("PRINT_BED", Box::new(model));
 
-    let toolpath =  application
+    let toolpath = application
         .visualizer()
         .gcode()
         .try_collect_objects(context)

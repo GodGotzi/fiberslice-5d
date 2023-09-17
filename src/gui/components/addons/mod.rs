@@ -190,7 +190,7 @@ impl gui::InnerComponent<Addons> for Addons {
             size: Vec2::new(window_size.x - 15.0, window_size.y - 15.0),
         };
 
-        match gui_context.application_ctx.mode() {
+        match gui_context.application.context.mode() {
             Mode::Prepare => prepare::show(ctx, ui, gui_context, boundary),
             Mode::Preview => preview::show(ctx, ui, gui_context, boundary),
             Mode::ForceAnalytics => force_analytics::show(ctx, ui, gui_context, boundary),

@@ -21,13 +21,14 @@ impl Component<Toolbar> for Toolbar {
             .default_width(config::gui::TOOLBAR_W)
             .show(ctx, |ui| {
                 gui_context
-                    .application_ctx
+                    .application
+                    .context
                     .event_wrapping()
                     .register(Item::ToolbarWidth(Some(ui.available_width())));
             })
             .response
             .into();
 
-        gui_context.application_ctx.boundaries_mut().toolbar = boundary;
+        gui_context.application.context.boundaries_mut().toolbar = boundary;
     }
 }

@@ -1,18 +1,56 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 use three_d::*;
 
-use crate::{application::Application, model::layer::ToolPathModel};
+use crate::{
+    application::{Application, AsyncManipulator},
+    model::layer::ToolPathModel,
+};
 
 use super::{environment, Mode};
+use three_d_asset::TriMesh;
 
-pub struct HideableObject<O: Object + ?Sized + 'static> {
+pub type ModelMap = Arc<Mutex<HashMap<String, HideableObject<TriMesh>>>>;
+pub type ObjectMap = Arc<Mutex<HashMap<String, HideableObject<dyn Object>>>>;
+
+type ModelManipulator = AsyncManipulator<ModelMap>;
+type ObjectManipulator = AsyncManipulator<ObjectMap>;
+
+pub struct BufferManipulator {
+    pub model_manipulator: ModelManipulator,
+    pub object_manipulator: ObjectManipulator,
+}
+
+impl BufferManipulator {
+    pub fn new() -> Self {
+        Self {
+            model_manipulator: AsyncManipulator::new(Vec::new()),
+            object_manipulator: AsyncManipulator::new(Vec::new()),
+        }
+    }
+
+    pub fn update_models(&mut self, models: Arc<Mutex<HashMap<String, HideableObject<TriMesh>>>>) {
+        self.model_manipulator.next_frame(models);
+    }
+
+    pub fn update_objects(
+        &mut self,
+        objects: Arc<Mutex<HashMap<String, HideableObject<dyn Object>>>>,
+    ) {
+        self.object_manipulator.next_frame(objects);
+    }
+}
+
+pub struct HideableObject<O: ?Sized + 'static> {
     inner: Box<O>,
     visible: bool,
 }
 
 #[allow(dead_code)]
-impl<O: Object + ?Sized + 'static> HideableObject<O> {
+impl<O: ?Sized + 'static> HideableObject<O> {
     pub fn new(object: Box<O>) -> Self {
         Self {
             inner: object,
@@ -40,8 +78,8 @@ impl<O: Object + ?Sized + 'static> HideableObject<O> {
 pub struct ObjectBuffer<'a, O: Object + ?Sized + 'static> {
     skybox: Option<Skybox>,
     toolpath_model: Option<ToolPathModel<'a>>,
-    models: HashMap<String, HideableObject<O>>,
-    objects: HashMap<String, HideableObject<O>>,
+    models: Arc<Mutex<HashMap<String, HideableObject<TriMesh>>>>,
+    objects: Arc<Mutex<HashMap<String, HideableObject<O>>>>,
     interactive_objects: HashMap<String, HideableObject<O>>,
 }
 
@@ -50,8 +88,8 @@ impl<O: Object + ?Sized + 'static> Default for ObjectBuffer<'_, O> {
         Self {
             skybox: None,
             toolpath_model: None,
-            models: HashMap::new(),
-            objects: HashMap::new(),
+            models: Arc::new(Mutex::new(HashMap::new())),
+            objects: Arc::new(Mutex::new(HashMap::new())),
             interactive_objects: HashMap::new(),
         }
     }
@@ -63,6 +101,14 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         Self::default()
     }
 
+    pub fn models(&self) -> Arc<Mutex<HashMap<String, HideableObject<TriMesh>>>> {
+        self.models.clone()
+    }
+
+    pub fn objects(&self) -> Arc<Mutex<HashMap<String, HideableObject<O>>>> {
+        self.objects.clone()
+    }
+
     pub fn set_skybox(&mut self, skybox: Skybox) {
         self.skybox = Some(skybox);
     }
@@ -71,19 +117,24 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         self.toolpath_model = Some(toolpath_model);
     }
 
-    pub fn add_model<S: Into<String>>(&mut self, name: S, model: Box<O>) {
-        self.models.insert(name.into(), HideableObject::new(model));
+    pub fn add_model<S: Into<String>>(&mut self, name: S, model: Box<TriMesh>) {
+        self.models
+            .lock()
+            .unwrap()
+            .insert(name.into(), HideableObject::new(model));
     }
 
-    pub fn add_model_and_hide<S: Into<String>>(&mut self, name: S, model: Box<O>) {
+    pub fn add_model_and_hide<S: Into<String>>(&mut self, name: S, model: Box<TriMesh>) {
         let mut object = HideableObject::new(model);
         object.hide();
 
-        self.models.insert(name.into(), object);
+        self.models.lock().unwrap().insert(name.into(), object);
     }
 
     pub fn add_object<S: Into<String>>(&mut self, name: S, object: Box<O>) {
         self.objects
+            .lock()
+            .unwrap()
             .insert(name.into(), HideableObject::new(object));
     }
 
@@ -91,7 +142,7 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         let mut object = HideableObject::new(object);
         object.hide();
 
-        self.objects.insert(name.into(), object);
+        self.objects.lock().unwrap().insert(name.into(), object);
     }
 
     pub fn add_interactive_object<S: Into<String>>(&mut self, name: S, object: Box<O>) {
@@ -106,22 +157,6 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         self.interactive_objects.insert(name.into(), object);
     }
 
-    pub fn get_model<S: Into<&'a String>>(&self, name: S) -> Option<&O> {
-        if let Some(model) = self.models.get(name.into()) {
-            Some(&model.inner)
-        } else {
-            None
-        }
-    }
-
-    pub fn get_object<S: Into<&'a String>>(&self, name: S) -> Option<&O> {
-        if let Some(object) = self.objects.get(name.into()) {
-            Some(&object.inner)
-        } else {
-            None
-        }
-    }
-
     pub fn get_interactive_object<S: Into<&'a String>>(&self, name: S) -> Option<&O> {
         if let Some(object) = self.interactive_objects.get(name.into()) {
             Some(&object.inner)
@@ -130,12 +165,22 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         }
     }
 
-    pub fn remove_model<S: Into<&'a String>>(&mut self, name: S) -> Box<O> {
-        self.models.remove(name.into()).unwrap().inner
+    pub fn remove_model<S: Into<&'a String>>(&mut self, name: S) -> Box<TriMesh> {
+        self.models
+            .lock()
+            .unwrap()
+            .remove(name.into())
+            .unwrap()
+            .inner
     }
 
     pub fn remove_object<S: Into<&'a String>>(&mut self, name: S) -> Box<O> {
-        self.objects.remove(name.into()).unwrap().inner
+        self.objects
+            .lock()
+            .unwrap()
+            .remove(name.into())
+            .unwrap()
+            .inner
     }
 
     pub fn remove_interactive_object<S: Into<&'a String>>(&mut self, name: S) -> Box<O> {
@@ -143,13 +188,13 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
     }
 
     pub fn hide_model<S: Into<&'a String>>(&mut self, name: S) {
-        if let Some(model) = self.models.get_mut(name.into()) {
+        if let Some(model) = self.models.lock().unwrap().get_mut(name.into()) {
             model.hide();
         }
     }
 
     pub fn hide_object<S: Into<&'a String>>(&mut self, name: S) {
-        if let Some(object) = self.objects.get_mut(name.into()) {
+        if let Some(object) = self.objects.lock().unwrap().get_mut(name.into()) {
             object.hide();
         }
     }
@@ -161,11 +206,11 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
     }
 
     pub fn clear_models(&mut self) {
-        self.models.clear();
+        self.models.lock().unwrap().clear();
     }
 
     pub fn clear_objects(&mut self) {
-        self.objects.clear();
+        self.objects.lock().unwrap().clear();
     }
 
     pub fn clear_interactive_objects(&mut self) {
@@ -178,26 +223,41 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         self.clear_interactive_objects();
     }
 
-    pub fn render(&self, environment: &environment::Environment, application: &Application) {
+    pub fn render(
+        &self,
+        environment: &environment::Environment,
+        application: &Application,
+        context: Context,
+    ) {
         if let Some(ref skybox) = self.skybox {
             skybox.render(environment.camera(), &[]);
         }
 
         if application.context().is_mode(Mode::Preview) {
             if let Some(toolpath) = self.toolpath_model.as_ref() {
-                toolpath.model.render(environment.camera(), environment.lights().as_slice());
-            }
-        }
-
-        for model in self.models.values() {
-            if model.is_visible() {
-                model
-                    .object()
+                toolpath
+                    .model
                     .render(environment.camera(), environment.lights().as_slice());
             }
         }
 
-        for object in self.objects.values() {
+        for model in self.models.lock().unwrap().values() {
+            if model.is_visible() {
+                let trimesh = model.object();
+
+                let model = Gm::new(
+                    Mesh::new(&context, trimesh),
+                    PhysicalMaterial {
+                        albedo: Srgba::WHITE,
+                        ..Default::default()
+                    },
+                );
+
+                model.render(environment.camera(), environment.lights().as_slice());
+            }
+        }
+
+        for object in self.objects.lock().unwrap().values() {
             if object.is_visible() {
                 object
                     .object()
@@ -216,13 +276,30 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
 
     pub fn check_picks(
         &mut self,
-        _context: &WindowedContext,
+        context: &WindowedContext,
         frame_input: &FrameInput,
-        _environment: &environment::Environment,
+        environment: &environment::Environment,
     ) {
         for event in frame_input.events.iter() {
-            if let Event::MousePress { button, .. } = event {
-                if *button == MouseButton::Right {}
+            if let Event::MousePress {
+                button, position, ..
+            } = event
+            {
+                if *button == MouseButton::Right {
+                    if let Some(s) = pick(
+                        context,
+                        environment.camera(),
+                        position,
+                        self.toolpath_model
+                            .as_ref()
+                            .unwrap()
+                            .model
+                            .geometry
+                            .into_iter(),
+                    ) {
+                        println!("Pick: {:?}", s);
+                    }
+                }
             }
         }
     }

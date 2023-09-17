@@ -95,13 +95,17 @@ impl Application {
 }
 
 pub fn ui_frame(ctx: &egui::Context, screen: &mut Screen, mut gui_context: GuiContext) {
-    match gui_context.application_ctx.theme() {
+    match gui_context.application.context.theme() {
         Theme::Light => ctx.set_visuals(Visuals::light()),
         Theme::Dark => ctx.set_visuals(Visuals::dark()),
     };
 
     screen.show(ctx, &mut gui_context);
-    gui_context.application_ctx.event_wrapping().next_frame();
+    gui_context
+        .application
+        .context
+        .event_wrapping()
+        .next_frame();
 }
 
 #[derive(Default)]
@@ -119,11 +123,53 @@ impl TaskHandler {
     }
 }
 
+pub struct AsyncAction<T> {
+    action: Box<dyn FnOnce(T)>,
+}
+
+impl<T> AsyncAction<T> {
+    pub fn new(action: Box<dyn FnOnce(T)>) -> Self {
+        Self { action }
+    }
+
+    pub fn run(self, value: T) {
+        (self.action)(value);
+    }
+}
+
+pub struct AsyncManipulator<T> {
+    buffer: Vec<AsyncAction<T>>,
+}
+
+impl<T: Sized + Clone> AsyncManipulator<T> {
+    pub fn new(buffer: Vec<AsyncAction<T>>) -> Self {
+        Self { buffer }
+    }
+
+    pub fn add_action(&mut self, action: AsyncAction<T>) {
+        self.buffer.push(action);
+    }
+
+    pub fn next_frame(&mut self, val: T) {
+        let mut buffer = Vec::new();
+
+        buffer.append(&mut self.buffer);
+
+        for action in buffer {
+            action.run(val.clone());
+        }
+    }
+}
+
+unsafe impl<T> Sync for AsyncManipulator<T> {}
+unsafe impl<T> Send for AsyncManipulator<T> {}
+
 pub struct ApplicationContext {
     theme: Theme,
     mode: Mode,
     wrapper: AsyncWrapper,
     boundaries: BoundaryHolder,
+    //object_buffer_manipulator: AsyncManipulator<ObjectBuffer<dyn Object>>,
     frame: Option<FrameInput>,
 }
 
@@ -140,6 +186,7 @@ impl Default for ApplicationContext {
             mode: Mode::Prepare,
             wrapper: AsyncWrapper::new(list),
             boundaries: BoundaryHolder::default(),
+            //object_buffer_manipulator: AsyncManipulator::new(Vec::new()),
             frame: None,
         }
     }

@@ -22,17 +22,17 @@ impl gui::Component<Taskbar> for Taskbar {
                 egui::menu::bar(ui, |ui| {
                     ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
                         ui.add_space(10.0);
-                        ui.label(format!("{:.2} fps", gui_context.application_ctx.fps()));
+                        ui.label(format!("{:.2} fps", gui_context.application.context.fps()));
                     });
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        theme_button(ui, gui_context.application_ctx);
+                        theme_button(ui, &mut gui_context.application.context);
                     });
                 });
             })
             .response
             .into();
 
-        gui_context.application_ctx.boundaries_mut().taskbar = boundary;
+        gui_context.application.context.boundaries_mut().taskbar = boundary;
     }
 }
 

@@ -2,6 +2,7 @@ use three_d_asset::Vector3;
 
 pub mod format;
 pub mod frame;
+pub mod model_loader;
 pub mod task;
 
 pub mod debug {

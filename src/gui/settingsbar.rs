@@ -154,7 +154,8 @@ impl Component<Settingsbar> for Settingsbar {
                 .default_width(config::gui::default::SETTINGSBAR_W)
                 .show(ctx, |ui| {
                     gui_context
-                        .application_ctx
+                        .application
+                        .context
                         .event_wrapping()
                         .register(Item::SettingsWidth(Some(ui.available_width())));
 
@@ -163,6 +164,6 @@ impl Component<Settingsbar> for Settingsbar {
                 .response,
         );
 
-        gui_context.application_ctx.boundaries_mut().settingsbar = boundary;
+        gui_context.application.context.boundaries_mut().settingsbar = boundary;
     }
 }

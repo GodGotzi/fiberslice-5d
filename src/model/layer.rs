@@ -1,7 +1,10 @@
-use std::{cell::{Cell, RefCell}, collections::HashMap};
+use std::{
+    cell::{Cell, RefCell},
+    collections::HashMap,
+};
 
-use three_d::{PhysicalMaterial, RenderStates, Gm, Mesh};
-use three_d_asset::{vec3, InnerSpace, LightingModel, Positions, Srgba, TriMesh, Vector3};
+use three_d::{Gm, Mesh, PhysicalMaterial};
+use three_d_asset::{vec3, InnerSpace, Positions, Srgba, TriMesh, Vector3};
 
 use super::gcode::state::State;
 
@@ -315,16 +318,6 @@ pub fn get_cross(direction: Vector3<f64>, radius: f64) -> Cross {
 pub fn construct_filament_material() -> PhysicalMaterial {
     PhysicalMaterial {
         name: "default".to_string(),
-        metallic: 0.0,
-        roughness: 1.0,
-        metallic_roughness_texture: None,
-        normal_texture: None,
-        normal_scale: 1.0,
-        occlusion_texture: None,
-        occlusion_strength: 1.0,
-        render_states: RenderStates::default(),
-        is_transparent: true,
-        lighting_model: LightingModel::Phong,
         ..Default::default()
     }
 }
@@ -388,5 +381,5 @@ pub struct MeshRef<'a> {
 
 pub struct ToolPathModel<'a> {
     pub layers: HashMap<usize, RefCell<LayerMesh<'a>>>,
-    pub model: Gm<Mesh, PhysicalMaterial>
+    pub model: Gm<Mesh, PhysicalMaterial>,
 }

@@ -13,15 +13,22 @@ pub mod settingsbar;
 pub mod taskbar;
 pub mod toolbar;
 
+use std::sync::{Arc, Mutex};
+
 use three_d::egui::{self, Response};
 
-use crate::{application::ApplicationContext, prelude::*, view::environment::Environment};
+use crate::{
+    application::Application,
+    prelude::*,
+    view::{buffer::BufferManipulator, environment::Environment},
+};
 
 use self::components::addons;
 
 pub struct GuiContext<'a> {
-    pub application_ctx: &'a mut ApplicationContext,
+    pub application: &'a mut Application,
     pub environment: &'a mut Environment,
+    pub manipulator: Arc<Mutex<BufferManipulator>>,
 }
 
 pub trait Component<T> {
@@ -129,10 +136,11 @@ impl Component<Screen> for Screen {
             self.addons.show(ctx, ui, gui_context);
         });
 
-        let mode = *gui_context.application_ctx.mode();
+        let mode = *gui_context.application.context.mode();
 
         gui_context
-            .application_ctx
+            .application
+            .context
             .event_wrapping()
             .register(Item::Mode(Some(mode)));
     }

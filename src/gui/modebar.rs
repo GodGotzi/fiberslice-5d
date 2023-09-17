@@ -45,7 +45,7 @@ impl Component<Modebar> for Modebar {
                             // Cells are represented as they were allocated
                             grid.cell(|ui| {
                                 ui.selectable_value(
-                                    gui_context.application_ctx.mode(),
+                                    gui_context.application.context.mode(),
                                     Mode::Prepare,
                                     "Prepare",
                                 );
@@ -57,7 +57,7 @@ impl Component<Modebar> for Modebar {
                             });
                             grid.cell(|ui| {
                                 ui.selectable_value(
-                                    gui_context.application_ctx.mode(),
+                                    gui_context.application.context.mode(),
                                     Mode::ForceAnalytics,
                                     "Force - Analytics",
                                 );
@@ -69,7 +69,7 @@ impl Component<Modebar> for Modebar {
                             });
                             grid.cell(|ui| {
                                 ui.selectable_value(
-                                    gui_context.application_ctx.mode(),
+                                    gui_context.application.context.mode(),
                                     Mode::Preview,
                                     "Preview",
                                 );
@@ -80,6 +80,6 @@ impl Component<Modebar> for Modebar {
             .response
             .into();
 
-        gui_context.application_ctx.boundaries_mut().modebar = boundary;
+        gui_context.application.context.boundaries_mut().modebar = boundary;
     }
 }
