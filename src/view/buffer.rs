@@ -11,9 +11,8 @@ use crate::{
 };
 
 use super::{environment, Mode};
-use three_d_asset::TriMesh;
 
-pub type ModelMap = Arc<Mutex<HashMap<String, HideableObject<TriMesh>>>>;
+pub type ModelMap = Arc<Mutex<HashMap<String, HideableObject<Gm<Mesh, PhysicalMaterial>>>>>;
 pub type ObjectMap = Arc<Mutex<HashMap<String, HideableObject<dyn Object>>>>;
 
 type ModelManipulator = AsyncManipulator<ModelMap>;
@@ -32,14 +31,11 @@ impl BufferManipulator {
         }
     }
 
-    pub fn update_models(&mut self, models: Arc<Mutex<HashMap<String, HideableObject<TriMesh>>>>) {
+    pub fn update_models(&mut self, models: ModelMap) {
         self.model_manipulator.next_frame(models);
     }
 
-    pub fn update_objects(
-        &mut self,
-        objects: Arc<Mutex<HashMap<String, HideableObject<dyn Object>>>>,
-    ) {
+    pub fn update_objects(&mut self, objects: ObjectMap) {
         self.object_manipulator.next_frame(objects);
     }
 }
@@ -78,8 +74,8 @@ impl<O: ?Sized + 'static> HideableObject<O> {
 pub struct ObjectBuffer<'a, O: Object + ?Sized + 'static> {
     skybox: Option<Skybox>,
     toolpath_model: Option<ToolPathModel<'a>>,
-    models: Arc<Mutex<HashMap<String, HideableObject<TriMesh>>>>,
-    objects: Arc<Mutex<HashMap<String, HideableObject<O>>>>,
+    models: ModelMap,
+    objects: ObjectMap,
     interactive_objects: HashMap<String, HideableObject<O>>,
 }
 
@@ -101,11 +97,11 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         Self::default()
     }
 
-    pub fn models(&self) -> Arc<Mutex<HashMap<String, HideableObject<TriMesh>>>> {
+    pub fn models(&self) -> ModelMap {
         self.models.clone()
     }
 
-    pub fn objects(&self) -> Arc<Mutex<HashMap<String, HideableObject<O>>>> {
+    pub fn objects(&self) -> ObjectMap {
         self.objects.clone()
     }
 
@@ -117,28 +113,32 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         self.toolpath_model = Some(toolpath_model);
     }
 
-    pub fn add_model<S: Into<String>>(&mut self, name: S, model: Box<TriMesh>) {
+    pub fn add_model<S: Into<String>>(&mut self, name: S, model: Box<Gm<Mesh, PhysicalMaterial>>) {
         self.models
             .lock()
             .unwrap()
             .insert(name.into(), HideableObject::new(model));
     }
 
-    pub fn add_model_and_hide<S: Into<String>>(&mut self, name: S, model: Box<TriMesh>) {
+    pub fn add_model_and_hide<S: Into<String>>(
+        &mut self,
+        name: S,
+        model: Box<Gm<Mesh, PhysicalMaterial>>,
+    ) {
         let mut object = HideableObject::new(model);
         object.hide();
 
         self.models.lock().unwrap().insert(name.into(), object);
     }
 
-    pub fn add_object<S: Into<String>>(&mut self, name: S, object: Box<O>) {
+    pub fn add_object<S: Into<String>>(&mut self, name: S, object: Box<dyn Object>) {
         self.objects
             .lock()
             .unwrap()
             .insert(name.into(), HideableObject::new(object));
     }
 
-    pub fn add_object_and_hide<S: Into<String>>(&mut self, name: S, object: Box<O>) {
+    pub fn add_object_and_hide<S: Into<String>>(&mut self, name: S, object: Box<dyn Object>) {
         let mut object = HideableObject::new(object);
         object.hide();
 
@@ -165,7 +165,10 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         }
     }
 
-    pub fn remove_model<S: Into<&'a String>>(&mut self, name: S) -> Box<TriMesh> {
+    pub fn remove_model<S: Into<&'a String>>(
+        &mut self,
+        name: S,
+    ) -> Box<Gm<Mesh, PhysicalMaterial>> {
         self.models
             .lock()
             .unwrap()
@@ -174,7 +177,7 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
             .inner
     }
 
-    pub fn remove_object<S: Into<&'a String>>(&mut self, name: S) -> Box<O> {
+    pub fn remove_object<S: Into<&'a String>>(&mut self, name: S) -> Box<dyn Object> {
         self.objects
             .lock()
             .unwrap()
@@ -227,7 +230,7 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         &self,
         environment: &environment::Environment,
         application: &Application,
-        context: Context,
+        _context: Context,
     ) {
         if let Some(ref skybox) = self.skybox {
             skybox.render(environment.camera(), &[]);
@@ -241,19 +244,15 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
             }
         }
 
-        for model in self.models.lock().unwrap().values() {
-            if model.is_visible() {
-                let trimesh = model.object();
-
-                let model = Gm::new(
-                    Mesh::new(&context, trimesh),
-                    PhysicalMaterial {
-                        albedo: Srgba::WHITE,
-                        ..Default::default()
-                    },
-                );
-
-                model.render(environment.camera(), environment.lights().as_slice());
+        if application.context().is_mode(Mode::Prepare)
+            || application.context().is_mode(Mode::ForceAnalytics)
+        {
+            for model in self.models.lock().unwrap().values() {
+                if model.is_visible() {
+                    model
+                        .inner
+                        .render(environment.camera(), environment.lights().as_slice());
+                }
             }
         }
 

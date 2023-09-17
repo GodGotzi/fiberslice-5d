@@ -66,6 +66,7 @@ fn main() {
                 let gui_context = GuiContext {
                     application: &mut application,
                     environment: &mut environment,
+                    context: &context,
                     manipulator: manipulator.clone(),
                 };
 

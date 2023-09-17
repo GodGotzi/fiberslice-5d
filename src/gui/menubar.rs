@@ -1,6 +1,7 @@
 use nfd::Response;
 use three_d::egui::{self, Ui};
-use three_d_asset::TriMesh;
+use three_d::{Gm, Mesh, PhysicalMaterial};
+use three_d_asset::{Srgba, TriMesh};
 
 use crate::application::AsyncAction;
 use crate::config;
@@ -45,6 +46,7 @@ fn file_button(ui: &mut Ui, gui_context: &mut GuiContext) {
         ui.style_mut().wrap = Some(false);
 
         let manipulator = gui_context.manipulator.clone();
+        let context = gui_context.context.clone();
 
         build_sub_menu(ui, "Import STL", || {
             let _handle = tokio::spawn(async move {
@@ -55,19 +57,37 @@ fn file_button(ui: &mut Ui, gui_context: &mut GuiContext) {
                     Response::Okay(path) => {
                         let file = ModelFile(path.clone());
                         let mesh: TriMesh = file.into();
+
+                        let model = Gm::new(
+                            Mesh::new(&context, &mesh),
+                            PhysicalMaterial {
+                                albedo: Srgba::BLUE,
+                                ..Default::default()
+                            },
+                        );
+
                         hashmap
                             .lock()
                             .unwrap()
-                            .insert(path, HideableObject::new(Box::new(mesh)));
+                            .insert(path, HideableObject::new(Box::new(model)));
                     }
                     Response::OkayMultiple(paths) => {
                         for path in paths {
                             let file = ModelFile(path.clone());
                             let mesh: TriMesh = file.into();
+
+                            let model = Gm::new(
+                                Mesh::new(&context, &mesh),
+                                PhysicalMaterial {
+                                    albedo: Srgba::BLUE,
+                                    ..Default::default()
+                                },
+                            );
+
                             hashmap
                                 .lock()
                                 .unwrap()
-                                .insert(path, HideableObject::new(Box::new(mesh)));
+                                .insert(path, HideableObject::new(Box::new(model)));
                         }
                     }
                     Response::Cancel => {}

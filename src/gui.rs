@@ -15,7 +15,10 @@ pub mod toolbar;
 
 use std::sync::{Arc, Mutex};
 
-use three_d::egui::{self, Response};
+use three_d::{
+    egui::{self, Response},
+    Context,
+};
 
 use crate::{
     application::Application,
@@ -28,6 +31,7 @@ use self::components::addons;
 pub struct GuiContext<'a> {
     pub application: &'a mut Application,
     pub environment: &'a mut Environment,
+    pub context: &'a Context,
     pub manipulator: Arc<Mutex<BufferManipulator>>,
 }
 
