@@ -132,6 +132,11 @@ fn main() {
                     .unwrap()
                     .update_gcode(application.visualizer().gcode.cell());
 
+                if application.visualizer().gcode.gcode_needs_computing() {
+                    let model = application.visualizer().gcode.build_gcode_model(context.clone());
+                    buffer.set_toolpath_model(model);
+                }
+
                 context.swap_buffers().unwrap();
                 control_flow.set_poll();
 
@@ -154,7 +159,7 @@ fn main() {
 
 pub fn test_buffer(
     context: &Context,
-    application: &mut Application,
+    _application: &mut Application,
     buffer: &mut ObjectBuffer<dyn Object>,
 ) {
     /*
@@ -180,11 +185,4 @@ pub fn test_buffer(
 
     buffer.add_object("PRINT_BED", Box::new(model));
 
-    let toolpath = application
-        .visualizer()
-        .gcode
-        .try_collect_objects(context)
-        .unwrap();
-
-    buffer.set_toolpath_model(toolpath);
 }

@@ -107,7 +107,7 @@ pub fn import_gcode(
 ) {
     let _handle = tokio::spawn(async move {
         let nfd = Nfd::new().unwrap();
-        let result = nfd.open_file().add_filter("STL", "stl").unwrap().show();
+        let result = nfd.open_file().add_filter("Gcode", "gcode").unwrap().show();
 
         let action = AsyncAction::new(Box::new(
             move |gcode_cell: Arc<Mutex<Cell<Option<GCode>>>>| match result {

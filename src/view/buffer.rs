@@ -237,11 +237,11 @@ impl<'a, O: Object + ?Sized + 'static> ObjectBuffer<'a, O> {
         }
 
         if application.context().is_mode(Mode::Preview) {
-            application.visualizer().gcode.render_gcode(
-                environment,
-                application,
-                self.toolpath_model.as_ref(),
-            );
+            if let Some(toolpath) = self.toolpath_model.as_ref() {
+                toolpath
+                    .model
+                    .render(environment.camera(), environment.lights().as_slice());
+            }
         }
 
         let alpha = if application.context().is_mode(Mode::Prepare)

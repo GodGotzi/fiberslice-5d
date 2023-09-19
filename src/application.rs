@@ -96,12 +96,12 @@ impl Application {
 
 pub fn ui_frame(ctx: &egui::Context, screen: &mut Screen, mut gui_context: GuiContext) {
     match gui_context.application.context.theme() {
-        Theme::Light => ctx.set_visuals(Visuals::dark()),
-        Theme::Dark => ctx.set_visuals(Visuals::dark()),
+        Theme::Light => ctx.set_visuals(Visuals::light()),
+        Theme::Dark => ctx.set_visuals(Visuals::light()),
     };
 
     let mut visuals = ctx.style().visuals.clone();
-    visuals.selection.bg_fill = egui::Color32::from_rgb(58, 84, 1);
+    visuals.selection.bg_fill = egui::Color32::from_rgb(76, 255, 0);
     ctx.set_visuals(visuals);
 
     screen.show(ctx, &mut gui_context);

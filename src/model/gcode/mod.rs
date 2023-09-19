@@ -84,4 +84,8 @@ impl GCode {
             instruction_moduls: moduls,
         }
     }
+
+    pub fn render_finished(&mut self) {
+        self.rendered = true;
+    }
 }
