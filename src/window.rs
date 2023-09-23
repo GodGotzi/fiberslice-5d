@@ -1,35 +1,39 @@
-use winit::{
-    event_loop::*,
-    platform::windows::WindowBuilderExtWindows,
-    window::{Icon, Window},
+use bevy::{
+    prelude::{Entity, NonSend, Query, With},
+    window::PrimaryWindow,
+    winit::WinitWindows,
 };
+use winit::window::Icon;
 
-use crate::{config, prelude::Error};
+pub fn setup_window(
+    windows: NonSend<WinitWindows>,
+    primary_window_query: Query<Entity, With<PrimaryWindow>>,
+) {
+    let primary_window_entity = primary_window_query.single();
+    let primary_window = windows.get_window(primary_window_entity).unwrap();
+    primary_window.set_visible(false);
 
-pub fn build_window(event_loop: &EventLoop<()>) -> Result<Window, Error> {
-    let window_icon = load_icon("assets/icons/icon.png");
-
-    #[cfg(not(target_arch = "wasm32"))]
-    let window_builder = winit::window::WindowBuilder::new()
-        .with_title("FiberSlice-5D")
-        .with_visible(false)
-        .with_window_icon(Some(window_icon.clone()))
-        .with_taskbar_icon(Some(window_icon))
-        .with_min_inner_size(config::default::WINDOW_S);
-
-    window_builder
-        .build(event_loop)
-        .map_err(|_| Error::InitialBuild("error while building window".into()))
-}
-
-fn load_icon(path: &str) -> Icon {
+    // here we use the `image` crate to load our icon data from a png file
+    // this is not a very bevy-native solution, but it will do
     let (icon_rgba, icon_width, icon_height) = {
-        let image = image::open(path)
+        let image = image::open("assets/icons/main_icon.png")
             .expect("Failed to open icon path")
             .into_rgba8();
         let (width, height) = image.dimensions();
         let rgba = image.into_raw();
         (rgba, width, height)
     };
-    Icon::from_rgba(icon_rgba, icon_width, icon_height).expect("Failed to open icon")
+
+    let icon = Icon::from_rgba(icon_rgba, icon_width, icon_height).unwrap();
+
+    primary_window.set_window_icon(Some(icon));
+}
+
+pub fn update_window(
+    windows: NonSend<WinitWindows>,
+    primary_window_query: Query<Entity, With<PrimaryWindow>>,
+) {
+    let primary_window_entity = primary_window_query.single();
+    let primary_window = windows.get_window(primary_window_entity).unwrap();
+    primary_window.set_visible(true);
 }
