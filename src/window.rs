@@ -5,13 +5,12 @@ use bevy::{
 };
 use winit::window::Icon;
 
-pub fn setup_window(
+pub fn update_window(
     windows: NonSend<WinitWindows>,
     primary_window_query: Query<Entity, With<PrimaryWindow>>,
 ) {
     let primary_window_entity = primary_window_query.single();
     let primary_window = windows.get_window(primary_window_entity).unwrap();
-    primary_window.set_visible(false);
 
     // here we use the `image` crate to load our icon data from a png file
     // this is not a very bevy-native solution, but it will do
@@ -27,13 +26,4 @@ pub fn setup_window(
     let icon = Icon::from_rgba(icon_rgba, icon_width, icon_height).unwrap();
 
     primary_window.set_window_icon(Some(icon));
-}
-
-pub fn update_window(
-    windows: NonSend<WinitWindows>,
-    primary_window_query: Query<Entity, With<PrimaryWindow>>,
-) {
-    let primary_window_entity = primary_window_query.single();
-    let primary_window = windows.get_window(primary_window_entity).unwrap();
-    primary_window.set_visible(true);
 }
