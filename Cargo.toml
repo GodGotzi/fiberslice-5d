@@ -8,8 +8,8 @@ edition = "2021"
 
 [dependencies]
 
-egui_grid = "0.1.0"
-egui_extras = "0.21.0"
+egui_grid = "0.2.0"
+egui_extras = "0.22.0"
 winit = "0.28"
 web-sys = "0.3"
 wasm-bindgen = "0.2"
@@ -19,12 +19,12 @@ image = { version = "0.24.6" }
 lazy_static = "1.4.0"
 macros = { path = "macros" }
 traits = { path = "traits" }
-three-d = { git = "https://github.com/asny/three-d.git", features = [
+three-d = { git = "https://github.com/asny/three-d.git", branch = "fix-sending-unused-attributes", features = [
     "egui-gui",
     "serde",
 ] }
 thiserror = "1.0.30"
-three-d-asset = { git = "https://github.com/asny/three-d-asset", features = [
+three-d-asset = { version = "0.6", features = [
     "gltf",
     "serde",
     "image",

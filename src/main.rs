@@ -106,6 +106,8 @@ fn main() {
 
                 environment.frame(&frame_input, &application);
 
+                buffer.check_picks(&context, &frame_input, &environment);
+
                 //Render
                 {
                     let screen: RenderTarget<'_> = frame_input.screen();
@@ -121,8 +123,6 @@ fn main() {
                         buffer.render(&environment, &application, context.clone());
                         gui.render();
                     });
-
-                    buffer.check_picks(&context, &frame_input, &environment);
                 }
 
                 manipulator.lock().unwrap().update_models(buffer.models());
@@ -133,7 +133,10 @@ fn main() {
                     .update_gcode(application.visualizer().gcode.cell());
 
                 if application.visualizer().gcode.gcode_needs_computing() {
-                    let model = application.visualizer().gcode.build_gcode_model(context.clone());
+                    let model = application
+                        .visualizer()
+                        .gcode
+                        .build_gcode_model(context.clone());
                     buffer.set_toolpath_model(model);
                 }
 
@@ -184,5 +187,4 @@ pub fn test_buffer(
     model.set_transformation(translation * rotation * scale);
 
     buffer.add_object("PRINT_BED", Box::new(model));
-
 }
