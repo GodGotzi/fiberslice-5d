@@ -20,19 +20,13 @@ use three_d::{
     Context,
 };
 
-use crate::{
-    application::Application,
-    prelude::*,
-    view::{buffer::ManipulatorHolder, environment::Environment},
-};
+use crate::{application::Application, prelude::*};
 
 use self::components::addons;
 
 pub struct GuiContext<'a> {
     pub application: &'a mut Application,
-    pub environment: &'a mut Environment,
     pub context: &'a Context,
-    pub manipulator: Arc<Mutex<ManipulatorHolder>>,
 }
 
 pub trait Component<T> {

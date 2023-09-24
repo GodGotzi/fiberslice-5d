@@ -8,9 +8,13 @@ use crate::view::Mode;
 #[allow(dead_code)]
 pub type Result<T> = std::result::Result<T, Error>;
 
+use bevy::a11y::accesskit::Orientation;
+use bevy::prelude::*;
+
+use bevy::window::{PrimaryWindow, WindowMode};
 pub struct AsyncPacket {
-    sync_element: Option<Item>,
-    async_element: Option<Item>,
+    pub sync_element: Option<Item>,
+    pub async_element: Option<Item>,
 }
 
 impl AsyncPacket {
@@ -34,15 +38,17 @@ impl AsyncPacket {
     }
 }
 
-#[derive(PartialEq, Clone, Copy, Debug, EnumIter, TypeEq)]
+#[derive(PartialEq, Clone, Copy, Debug, EnumIter, TypeEq, Event)]
 pub enum Item {
     ToolbarWidth(Option<f32>),
     SettingsWidth(Option<f32>),
     LayerValue(Option<u32>),
     TimeValue(Option<f32>),
     Mode(Option<Mode>),
+    Orientation(Option<Orientation>),
 }
 
+#[derive(Resource)]
 pub struct AsyncWrapper {
     data: Vec<AsyncPacket>,
 }
@@ -62,7 +68,6 @@ impl AsyncWrapper {
             .find(|packet| packet.get_sync().unwrap().type_eq(item))
     }
 
-    #[allow(dead_code)]
     pub fn find_packet(&self, item: Item) -> Option<&AsyncPacket> {
         self.data
             .iter()
@@ -90,20 +95,24 @@ impl AsyncWrapper {
             register_ref(item, ref_ctx);
         }
     }
+}
 
-    pub fn next_frame(&mut self) {
-        for packet in self.get_data().iter_mut() {
-            if packet.sync_element.is_some() {
-                let event = packet.sync_element.unwrap();
+pub fn maximize_window(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
+    let mut window = windows.single_mut();
+    window.set_maximized(true);
+}
 
-                if packet.async_element.is_some()
-                    && packet.async_element.unwrap() != packet.sync_element.unwrap()
-                {
-                    println!("Item Event -> {:?}", event);
-                }
-            }
+pub fn hotkeys_window(
+    mut windows: Query<&mut Window, With<PrimaryWindow>>,
+    keyboard_input: Res<Input<KeyCode>>,
+) {
+    let mut window = windows.single_mut();
 
-            packet.async_element = packet.sync_element;
+    if keyboard_input.pressed(KeyCode::F11) {
+        if window.mode == WindowMode::Fullscreen {
+            window.mode = WindowMode::Windowed;
+        } else {
+            window.mode = WindowMode::Fullscreen;
         }
     }
 }

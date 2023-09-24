@@ -3,8 +3,8 @@ use std::{
     collections::HashMap,
 };
 
-use three_d::{Gm, Mesh, PhysicalMaterial};
-use three_d_asset::{vec3, InnerSpace, Positions, Srgba, TriMesh, Vector3};
+use bevy::prelude::Mesh;
+use three_d_asset::{vec3, InnerSpace, Srgba, Vector3};
 
 use super::gcode::state::State;
 
@@ -16,24 +16,37 @@ pub struct PartCoordinator<'a> {
     offset_part_end: Cell<usize>,
 }
 
-pub fn push_position(mesh: &mut TriMesh, position: Vector3<f64>) -> Result<(), ()> {
-    match &mut mesh.positions {
-        Positions::F64(positions) => {
-            positions.push(position);
-            Ok(())
-        }
-        _ => Err(()),
+pub fn push_position(mesh: &mut MeshPart, position: [f32; 3]) {
+    mesh.positions.push(position);
+}
+
+pub fn push_color(mesh: &mut MeshPart, color: [f32; 4]) {
+    mesh.colors.push(color);
+}
+
+pub fn push_normal(mesh: &mut MeshPart, normal: [f32; 3]) {
+    mesh.normals.push(normal);
+}
+
+pub struct WSrgba(Srgba);
+
+impl From<WSrgba> for [f32; 4] {
+    fn from(value: WSrgba) -> Self {
+        [
+            value.0.r as f32 / 255.0,
+            value.0.g as f32 / 255.0,
+            value.0.b as f32 / 255.0,
+            value.0.a as f32 / 255.0,
+        ]
     }
 }
 
-pub fn push_color(mesh: &mut TriMesh, color: Srgba) {
-    let colors = mesh.colors.as_mut().unwrap();
-    colors.push(color);
-}
+pub struct WVector3(Vector3<f64>);
 
-pub fn push_normal(mesh: &mut TriMesh, normal: Vector3<f32>) {
-    let normals = mesh.normals.as_mut().unwrap();
-    normals.push(normal);
+impl From<WVector3> for [f32; 3] {
+    fn from(value: WVector3) -> Self {
+        [value.0.x as f32, value.0.z as f32, value.0.y as f32]
+    }
 }
 
 impl<'a> PartCoordinator<'a> {
@@ -48,27 +61,30 @@ impl<'a> PartCoordinator<'a> {
     }
 
     pub fn add_triangle(&self, triangle: (Vector3<f64>, Vector3<f64>, Vector3<f64>), color: Srgba) {
-        push_position(&mut self.mesh.borrow_mut().trimesh, triangle.0).unwrap();
-        push_position(&mut self.mesh.borrow_mut().trimesh, triangle.1).unwrap();
-        push_position(&mut self.mesh.borrow_mut().trimesh, triangle.2).unwrap();
+        push_position(
+            &mut self.mesh.borrow_mut().mesh,
+            WVector3(triangle.0).into(),
+        );
+        push_position(
+            &mut self.mesh.borrow_mut().mesh,
+            WVector3(triangle.1).into(),
+        );
+        push_position(
+            &mut self.mesh.borrow_mut().mesh,
+            WVector3(triangle.2).into(),
+        );
 
-        push_color(&mut self.mesh.borrow_mut().trimesh, color);
-        push_color(&mut self.mesh.borrow_mut().trimesh, color);
-        push_color(&mut self.mesh.borrow_mut().trimesh, color);
+        push_color(&mut self.mesh.borrow_mut().mesh, WSrgba(color).into());
+        push_color(&mut self.mesh.borrow_mut().mesh, WSrgba(color).into());
+        push_color(&mut self.mesh.borrow_mut().mesh, WSrgba(color).into());
 
-        let normal_f64 = (triangle.1 - triangle.0)
+        let normal = (triangle.1 - triangle.0)
             .cross(triangle.2 - triangle.0)
             .normalize();
 
-        let normal = Vector3::new(
-            normal_f64.x as f32,
-            normal_f64.y as f32,
-            normal_f64.z as f32,
-        );
-
-        push_normal(&mut self.mesh.borrow_mut().trimesh, normal);
-        push_normal(&mut self.mesh.borrow_mut().trimesh, normal);
-        push_normal(&mut self.mesh.borrow_mut().trimesh, normal);
+        push_normal(&mut self.mesh.borrow_mut().mesh, WVector3(normal).into());
+        push_normal(&mut self.mesh.borrow_mut().mesh, WVector3(normal).into());
+        push_normal(&mut self.mesh.borrow_mut().mesh, WVector3(normal).into());
 
         self.offset_end.replace(self.offset_end.get() + 3);
         self.offset_part_end.replace(self.offset_part_end.get() + 3);
@@ -81,54 +97,29 @@ impl<'a> PartCoordinator<'a> {
         self.offset_part_start.replace(end);
 
         unsafe {
-            match &self.mesh.as_ptr().as_ref().unwrap().trimesh.positions {
-                Positions::F64(positions) => {
-                    let colors = self
-                        .mesh
-                        .as_ptr()
-                        .as_ref()
-                        .unwrap()
-                        .trimesh
-                        .colors
-                        .as_ref()
-                        .unwrap();
+            let meshref = MeshRef {
+                positions: &self.mesh.as_ptr().as_ref().unwrap().mesh.positions[start..end],
+                colors: &self.mesh.as_ptr().as_ref().unwrap().mesh.colors[start..end],
+                normals: &self.mesh.as_ptr().as_ref().unwrap().mesh.normals[start..end],
+                start,
+                end,
+            };
 
-                    let normals = self
-                        .mesh
-                        .as_ptr()
-                        .as_ref()
-                        .unwrap()
-                        .trimesh
-                        .normals
-                        .as_ref()
-                        .unwrap();
-
-                    let meshref = MeshRef {
-                        positions: &positions[start..end],
-                        colors: &colors[start..end],
-                        normals: &normals[start..end],
-                        start,
-                        end,
-                    };
-
-                    if self.mesh.borrow().child_models.last().is_none() {
-                        self.mesh
-                            .borrow_mut()
-                            .child_models
-                            .push(LayerPart::new(state, line_range));
-                    }
-
-                    self.mesh
-                        .borrow_mut()
-                        .child_models
-                        .last_mut()
-                        .unwrap()
-                        .push_child(meshref);
-
-                    Ok(())
-                }
-                _ => Err(()),
+            if self.mesh.borrow().child_models.last().is_none() {
+                self.mesh
+                    .borrow_mut()
+                    .child_models
+                    .push(LayerPart::new(state, line_range));
             }
+
+            self.mesh
+                .borrow_mut()
+                .child_models
+                .last_mut()
+                .unwrap()
+                .push_child(meshref);
+
+            Ok(())
         }
     }
 
@@ -139,42 +130,17 @@ impl<'a> PartCoordinator<'a> {
         self.offset_start.replace(end);
 
         unsafe {
-            match &self.mesh.as_ptr().as_ref().unwrap().trimesh.positions {
-                Positions::F64(positions) => {
-                    let colors = self
-                        .mesh
-                        .as_ptr()
-                        .as_ref()
-                        .unwrap()
-                        .trimesh
-                        .colors
-                        .as_ref()
-                        .unwrap();
+            let meshref = MeshRef {
+                positions: &self.mesh.as_ptr().as_ref().unwrap().mesh.positions[start..end],
+                colors: &self.mesh.as_ptr().as_ref().unwrap().mesh.colors[start..end],
+                normals: &self.mesh.as_ptr().as_ref().unwrap().mesh.normals[start..end],
+                start,
+                end,
+            };
 
-                    let normals = self
-                        .mesh
-                        .as_ptr()
-                        .as_ref()
-                        .unwrap()
-                        .trimesh
-                        .normals
-                        .as_ref()
-                        .unwrap();
+            self.mesh.borrow_mut().child_models.last_mut().unwrap().main = Some(meshref);
 
-                    let meshref = MeshRef {
-                        positions: &positions[start..end],
-                        colors: &colors[start..end],
-                        normals: &normals[start..end],
-                        start,
-                        end,
-                    };
-
-                    self.mesh.borrow_mut().child_models.last_mut().unwrap().main = Some(meshref);
-
-                    Ok(())
-                }
-                _ => Err(()),
-            }
+            Ok(())
         }
     }
 }
@@ -287,12 +253,12 @@ pub fn draw_rect_with_cross(
 ) {
     draw_rect(
         cross.up + center,
-        cross.left + center,
         cross.right + center,
         cross.down + center,
+        cross.left + center,
         color,
         coordinator,
-    )
+    );
 }
 
 #[derive(Debug)]
@@ -315,15 +281,8 @@ pub fn get_cross(direction: Vector3<f64>, radius: f64) -> Cross {
     }
 }
 
-pub fn construct_filament_material() -> PhysicalMaterial {
-    PhysicalMaterial {
-        name: "default".to_string(),
-        ..Default::default()
-    }
-}
-
 pub struct LayerMesh<'a> {
-    pub trimesh: TriMesh,
+    pub mesh: MeshPart,
     pub line_range: Option<(usize, usize)>,
     pub child_models: Vec<LayerPart<'a>>,
 }
@@ -331,16 +290,21 @@ pub struct LayerMesh<'a> {
 impl<'a> LayerMesh<'a> {
     pub fn empty() -> Self {
         Self {
-            trimesh: TriMesh {
-                positions: Positions::F64(Vec::new()),
-                normals: Some(Vec::new()),
-                colors: Some(Vec::new()),
-                ..Default::default()
+            mesh: MeshPart {
+                positions: Vec::new(),
+                normals: Vec::new(),
+                colors: Vec::new(),
             },
             line_range: None,
             child_models: Vec::new(),
         }
     }
+}
+
+pub struct MeshPart {
+    pub positions: Vec<[f32; 3]>,
+    pub normals: Vec<[f32; 3]>,
+    pub colors: Vec<[f32; 4]>,
 }
 
 #[allow(dead_code)]
@@ -372,14 +336,14 @@ impl<'a> LayerPart<'a> {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct MeshRef<'a> {
-    pub positions: &'a [Vector3<f64>],
-    colors: &'a [Srgba],
-    normals: &'a [Vector3<f32>],
+    pub positions: &'a [[f32; 3]],
+    colors: &'a [[f32; 4]],
+    normals: &'a [[f32; 3]],
     start: usize,
     end: usize,
 }
 
 pub struct ToolPathModel<'a> {
     pub layers: HashMap<usize, RefCell<LayerMesh<'a>>>,
-    pub model: Gm<Mesh, PhysicalMaterial>,
+    pub mesh: Mesh,
 }

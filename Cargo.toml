@@ -35,5 +35,7 @@ serde = "1.0.177"
 serde_yaml = "0.9.25"
 stl_io = "0.7.0"
 nfde = "0.0.8"
-bevy = { git = "https://github.com/GodGotzi/evo.git" }
-bevy_egui = { git = "https://github.com/GodGotzi/evo_egui.git" }
+smooth-bevy-cameras = { git = "https://github.com/GodGotzi/evo_cameras" }
+bevy = { git = "https://github.com/GodGotzi/evo" }
+bevy_egui = { git = "https://github.com/GodGotzi/evo_egui" }
+bevy_atmosphere = { git = "https://github.com/GodGotzi/evo_atmosphere" }

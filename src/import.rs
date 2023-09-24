@@ -2,11 +2,7 @@ use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
 use three_d::*;
 use three_d_asset::TriMesh;
 
-use crate::{
-    application::AsyncAction,
-    model::gcode::GCode,
-    view::buffer::{HideableObject, ModelMap},
-};
+use crate::{application::AsyncAction, model::gcode::GCode};
 
 use std::{
     cell::Cell,
@@ -65,66 +61,4 @@ impl From<STLFile> for TriMesh {
 
         mesh
     }
-}
-
-pub fn import_model(
-    context: three_d::Context,
-    manipulator: std::sync::Arc<std::sync::Mutex<crate::view::buffer::ManipulatorHolder>>,
-) {
-    let _handle = tokio::spawn(async move {
-        let nfd = Nfd::new().unwrap();
-
-        // Show the dialog...
-        // Note: .show() will block until the dialog is closed
-        // You can also set a default path using .default_path(Path)
-        let result = nfd.open_file().add_filter("STL", "stl").unwrap().show();
-
-        let action = AsyncAction::new(Box::new(move |hashmap: ModelMap| match result {
-            DialogResult::Ok(path) => {
-                let file = ModelFile(path.clone());
-                let mesh: TriMesh = file.into();
-
-                hashmap.lock().unwrap().insert(
-                    path.as_os_str().to_str().unwrap().to_string(),
-                    HideableObject::new(Box::new(Mesh::new(&context, &mesh))),
-                );
-            }
-            DialogResult::Err(_error_str) => {}
-            DialogResult::Cancel => {}
-        }));
-
-        manipulator
-            .lock()
-            .unwrap()
-            .model_manipulator
-            .add_action(action);
-    });
-}
-
-pub fn import_gcode(
-    _context: three_d::Context,
-    manipulator: std::sync::Arc<std::sync::Mutex<crate::view::buffer::ManipulatorHolder>>,
-) {
-    let _handle = tokio::spawn(async move {
-        let nfd = Nfd::new().unwrap();
-        let result = nfd.open_file().add_filter("Gcode", "gcode").unwrap().show();
-
-        let action = AsyncAction::new(Box::new(
-            move |gcode_cell: Arc<Mutex<Cell<Option<GCode>>>>| match result {
-                DialogResult::Ok(path) => {
-                    let content = fs::read_to_string(path).unwrap();
-                    let gcode: GCode = content.try_into().unwrap();
-                    gcode_cell.lock().unwrap().replace(Some(gcode));
-                }
-                DialogResult::Err(_error_str) => {}
-                DialogResult::Cancel => {}
-            },
-        ));
-
-        manipulator
-            .lock()
-            .unwrap()
-            .gcode_manipulator
-            .add_action(action);
-    });
 }

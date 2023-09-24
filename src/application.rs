@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 
+use bevy::prelude::{EventWriter, ResMut};
 use strum::IntoEnumIterator;
 use three_d::{
     egui::{self, Visuals},
@@ -94,7 +95,13 @@ impl Application {
     }
 }
 
-pub fn ui_frame(ctx: &egui::Context, screen: &mut Screen, mut gui_context: GuiContext) {
+pub fn ui_frame(
+    ctx: &egui::Context,
+    item_wrapper: &mut ResMut<AsyncWrapper>,
+    events: &mut EventWriter<Item>,
+    screen: &mut Screen,
+    mut gui_context: GuiContext,
+) {
     match gui_context.application.context.theme() {
         Theme::Light => ctx.set_visuals(Visuals::light()),
         Theme::Dark => ctx.set_visuals(Visuals::light()),
@@ -105,11 +112,22 @@ pub fn ui_frame(ctx: &egui::Context, screen: &mut Screen, mut gui_context: GuiCo
     ctx.set_visuals(visuals);
 
     screen.show(ctx, &mut gui_context);
-    gui_context
-        .application
-        .context
-        .event_wrapping()
-        .next_frame();
+
+    for packet in item_wrapper.get_data().iter_mut() {
+        if packet.sync_element.is_some() {
+            let event = packet.sync_element.unwrap();
+
+            if packet.async_element.is_some()
+                && packet.async_element.unwrap() != packet.sync_element.unwrap()
+            {
+                println!("Item Event -> {:?}", event);
+
+                events.send(event);
+            }
+        }
+
+        packet.async_element = packet.sync_element;
+    }
 }
 
 #[derive(Default)]

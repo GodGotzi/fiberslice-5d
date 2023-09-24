@@ -20,23 +20,95 @@ mod utils;
 mod view;
 mod window;
 
-use std::f32::consts::PI;
+use std::{f32::consts::PI, fs, time::Instant};
 
-use bevy::{prelude::*, window::PrimaryWindow, winit::WinitWindows};
-use winit::window::Icon;
+use bevy::{diagnostic::Diagnostics, prelude::*, window::PrimaryWindow, winit::WinitWindows};
+use bevy_atmosphere::prelude::AtmospherePlugin;
+use model::gcode::GCode;
+use prelude::{AsyncPacket, AsyncWrapper, Item};
+use smooth_bevy_cameras::LookTransformPlugin;
+use strum::IntoEnumIterator;
+use view::{
+    camera::CameraPlugin, camera_setup, update_camera_viewport,
+    visualization::gcode::create_toolpath,
+};
+
+use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
+
+#[derive(Resource)]
+struct FPS {
+    now: Instant,
+    last: Instant,
+}
 
 fn main() {
+    let mut list: Vec<AsyncPacket> = Vec::new();
+
+    for item in Item::iter() {
+        list.push(AsyncPacket::new(item));
+    }
+
     App::new()
+        .add_event::<Item>()
+        .insert_resource(AsyncWrapper::new(list))
+        .insert_resource(FPS {
+            now: Instant::now(),
+            last: Instant::now(),
+        })
         .add_plugins(DefaultPlugins)
-        .add_systems(Startup, setup)
-        .add_systems(
-            Update,
-            (system, rotate_camera, update_config, update_window),
-        )
+        .add_plugins(FrameTimeDiagnosticsPlugin)
+        .add_plugins(LookTransformPlugin)
+        .add_plugins(CameraPlugin::default())
+        .add_plugins(AtmospherePlugin)
+        .add_systems(Startup, camera_setup)
+        .add_systems(Startup, spawn_gltf)
+        .add_systems(PostStartup, update_window)
+        .add_systems(Update, print_fps)
+        .add_systems(Update, update_camera_viewport)
         .run();
 }
 
-pub fn update_window(
+fn spawn_gltf(
+    mut commands: Commands,
+    ass: Res<AssetServer>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    // note that we have to include the `Scene0` label
+    let my_gltf = ass.load("without-textures.glb");
+
+    // to position our 3d model, simply use the Transform
+    // in the SceneBundle
+    commands.spawn(SceneBundle {
+        scene: my_gltf,
+        transform: Transform::from_xyz(0.0, 0.0, 0.0),
+        ..Default::default()
+    });
+
+    let content = fs::read_to_string("gcode/test2.gcode").unwrap();
+    let gcode: GCode = content.try_into().unwrap();
+    let toolpath = create_toolpath(&gcode);
+
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(toolpath.mesh.clone()),
+        // This is the default color, but note that vertex colors are
+        // multiplied by the base color, so you'll likely want this to be
+        // white if using vertex colors.
+        material: materials.add(Color::rgb(1., 1., 1.).into()),
+        transform: Transform::from_xyz(0.0, 0.5, 0.0),
+        ..default()
+    });
+}
+
+fn print_fps(mut fps: ResMut<FPS>) {
+    fps.now = Instant::now();
+
+    println!("FPS: {}", 1.0 / (fps.now - fps.last).as_secs_f32());
+
+    fps.last = fps.now;
+}
+
+fn update_window(
     windows: NonSend<WinitWindows>,
     primary_window_query: Query<Entity, With<PrimaryWindow>>,
 ) {

@@ -2,8 +2,6 @@ use three_d::egui::{self, Ui};
 
 use crate::config;
 use crate::gui;
-use crate::import::import_gcode;
-use crate::import::import_model;
 
 use super::GuiContext;
 
@@ -40,13 +38,8 @@ fn file_button(ui: &mut Ui, gui_context: &mut GuiContext) {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
 
-        let manipulator = gui_context.manipulator.clone();
-        let context = gui_context.context.clone();
-
-        build_sub_menu(ui, "Import", || {
-            import_model(context.clone(), manipulator.clone())
-        });
-        build_sub_menu(ui, "Import GCode", || import_gcode(context, manipulator));
+        build_sub_menu(ui, "Import", || {});
+        build_sub_menu(ui, "Import GCode", || {});
     });
 }
 

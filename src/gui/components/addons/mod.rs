@@ -94,12 +94,7 @@ pub mod orientation {
 
                     let response = ui.add_sized([30., 30.], image_button);
 
-                    if response.clicked() {
-                        gui_context
-                            .environment
-                            .camera_mut()
-                            .handle_orientation(crate::view::Orientation::Diagonal);
-                    }
+                    if response.clicked() {}
                 });
 
                 grid.cell(|ui| {
@@ -111,12 +106,7 @@ pub mod orientation {
 
                     let response = ui.add_sized([30., 30.], image_button);
 
-                    if response.clicked() {
-                        gui_context
-                            .environment
-                            .camera_mut()
-                            .handle_orientation(crate::view::Orientation::Front);
-                    }
+                    if response.clicked() {}
                 });
 
                 grid.cell(|ui| {
@@ -127,12 +117,7 @@ pub mod orientation {
 
                     let response = ui.add_sized([30., 30.], image_button);
 
-                    if response.clicked() {
-                        gui_context
-                            .environment
-                            .camera_mut()
-                            .handle_orientation(crate::view::Orientation::Top);
-                    }
+                    if response.clicked() {}
                 });
 
                 grid.cell(|ui| {
@@ -143,12 +128,7 @@ pub mod orientation {
 
                     let response = ui.add_sized([30., 30.], image_button);
 
-                    if response.clicked() {
-                        gui_context
-                            .environment
-                            .camera_mut()
-                            .handle_orientation(crate::view::Orientation::Left);
-                    }
+                    if response.clicked() {}
                 });
 
                 grid.cell(|ui| {
@@ -160,12 +140,7 @@ pub mod orientation {
 
                     let response = ui.add_sized([30., 30.], image_button);
 
-                    if response.clicked() {
-                        gui_context
-                            .environment
-                            .camera_mut()
-                            .handle_orientation(crate::view::Orientation::Right);
-                    }
+                    if response.clicked() {}
                 });
 
                 grid.empty();
