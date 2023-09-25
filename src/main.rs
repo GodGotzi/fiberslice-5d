@@ -89,6 +89,7 @@ fn spawn_bed(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+
     commands.spawn(SceneBundle {
         scene: ass.load("bed_new.glb#Scene0"),
         transform: Transform::from_scale(Vec3::new(1000.0, 1000.0, 1000.0)),
@@ -114,7 +115,7 @@ fn print_fps(mut fps: ResMut<FPS>) {
     fps.now = Instant::now();
 
     println!("FPS: {}", 1.0 / (fps.now - fps.last).as_secs_f32());
-
+  
     fps.last = fps.now;
 }
 
