@@ -5,7 +5,6 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use bevy::prelude::Mesh;
-use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
 use three_d_asset::Srgba;
 use three_d_asset::TriMesh;
@@ -144,8 +143,6 @@ impl GCodeVisualizer {
             positions.append(&mut layer.mesh.positions);
             colors.append(&mut layer.mesh.colors);
             normals.append(&mut layer.mesh.normals);
-
-            break;
         }
 
         let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
@@ -189,7 +186,6 @@ pub fn create_toolpath<'a>(gcode: &GCode) -> ToolPathModel<'a> {
         positions.append(&mut layer.mesh.positions);
         colors.append(&mut layer.mesh.colors);
         normals.append(&mut layer.mesh.normals);
-        break;
     }
 
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
@@ -198,7 +194,6 @@ pub fn create_toolpath<'a>(gcode: &GCode) -> ToolPathModel<'a> {
     //    (0..colors.len()).map(|e| e as u32).collect(),
     //)));
     mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
-        
 
     ToolPathModel { layers, mesh }
 }
