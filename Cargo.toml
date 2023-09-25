@@ -39,3 +39,5 @@ smooth-bevy-cameras = { git = "https://github.com/GodGotzi/evo_cameras" }
 bevy = { git = "https://github.com/GodGotzi/evo" }
 bevy_egui = { git = "https://github.com/GodGotzi/evo_egui" }
 bevy_atmosphere = { git = "https://github.com/GodGotzi/evo_atmosphere" }
+bevy_polyline = { git = "https://github.com/GodGotzi/evo_polyline" }
+ 

@@ -9,9 +9,9 @@ use super::{instruction::InstructionType, movement, state::State, GCode};
 
 #[derive(Debug, Clone)]
 pub struct PathLine {
-    start: Vector3<f64>,
-    end: Vector3<f64>,
-    print: bool,
+    pub start: Vector3<f64>,
+    pub end: Vector3<f64>,
+    pub print: bool,
 }
 
 impl PathLine {

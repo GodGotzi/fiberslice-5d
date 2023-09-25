@@ -20,11 +20,11 @@ mod utils;
 mod view;
 mod window;
 
-use std::{f32::consts::PI, fs, time::Instant};
+use std::{f32::consts::PI, fs, time::Instant, collections::HashMap};
 
 use bevy::{diagnostic::Diagnostics, prelude::*, window::PrimaryWindow, winit::WinitWindows};
 use bevy_atmosphere::prelude::AtmospherePlugin;
-use model::gcode::GCode;
+use model::{gcode::{GCode, toolpath::{ToolPath, PathModul}}, layer::WSrgba};
 use prelude::{AsyncPacket, AsyncWrapper, Item};
 use smooth_bevy_cameras::LookTransformPlugin;
 use strum::IntoEnumIterator;
@@ -73,6 +73,7 @@ fn spawn_gltf(
     ass: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut gizmos: Gizmos,
 ) {
     // note that we have to include the `Scene0` label
     let my_gltf = ass.load("without-textures.glb");
@@ -87,9 +88,44 @@ fn spawn_gltf(
 
     let content = fs::read_to_string("gcode/test.gcode").unwrap();
     let gcode: GCode = content.try_into().unwrap();
-    let toolpath = create_toolpath(&gcode);
+    let toolpath = ToolPath::from(gcode.clone());
+    let modul_map: HashMap<usize, Vec<PathModul>> = toolpath.into();
 
-    commands.spawn(PbrBundle {
+    for modul in modul_map.values().into_iter() {
+        for sub_modul in modul.iter() {
+
+            let color = sub_modul
+                .state()
+                .print_type
+                .as_ref()
+                .unwrap_or(&crate::slicer::print_type::PrintType::Unknown)
+                .get_color();
+
+            let vertices = Vec::new();
+            
+            for path in sub_modul.points().iter() {
+                vertices
+            }
+
+            commands.spawn(PolylineBundle {
+                polyline: polylines.add(Polyline {
+                    vertices: vec![-Vec3::ONE, Vec3::ONE],
+                }),
+                material: polyline_materials.add(PolylineMaterial {
+                    width: 10.0,
+                    color: Color::RED,
+                    perspective: true,
+                    ..default()
+                }),
+                ..default()
+            });
+        }
+
+    }
+    
+
+    /* 
+        commands.spawn(PbrBundle {
         mesh: meshes.add(toolpath.mesh.clone()),
         // This is the default color, but note that vertex colors are
         // multiplied by the base color, so you'll likely want this to be
@@ -98,12 +134,13 @@ fn spawn_gltf(
         transform: Transform::from_xyz(0.0, 0.5, 0.0),
         ..default()
     });
+    */
 }
 
 fn print_fps(mut fps: ResMut<FPS>) {
     fps.now = Instant::now();
 
-    println!("FPS: {}", 1.0 / (fps.now - fps.last).as_secs_f32());
+    println!("FPS: {}", (fps.now - fps.last).as_secs_f32());
 
     fps.last = fps.now;
 }

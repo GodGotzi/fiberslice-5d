@@ -28,7 +28,7 @@ pub fn push_normal(mesh: &mut MeshPart, normal: [f32; 3]) {
     mesh.normals.push(normal);
 }
 
-pub struct WSrgba(Srgba);
+pub struct WSrgba(pub Srgba);
 
 impl From<WSrgba> for [f32; 4] {
     fn from(value: WSrgba) -> Self {

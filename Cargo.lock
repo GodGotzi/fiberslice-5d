@@ -772,6 +772,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_polyline"
+version = "0.7.0"
+source = "git+https://github.com/GodGotzi/evo_polyline#0adc2111a2c0025295519ffb583d97e465500d54"
+dependencies = [
+ "bevy",
+ "bitflags 2.4.0",
+ "naga",
+]
+
+[[package]]
 name = "bevy_ptr"
 version = "0.11.2"
 source = "git+https://github.com/GodGotzi/evo#9d0cb733224e2cce785222fa8b62015e87964350"
@@ -1752,6 +1762,7 @@ dependencies = [
  "bevy",
  "bevy_atmosphere",
  "bevy_egui",
+ "bevy_polyline",
  "egui_extras",
  "egui_grid",
  "image",

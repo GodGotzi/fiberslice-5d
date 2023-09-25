@@ -1,4 +1,8 @@
+use bevy::prelude::Color;
+use three_d::Srgba;
 use three_d_asset::Vector3;
+
+use crate::model::layer::WSrgba;
 
 pub mod format;
 pub mod frame;
@@ -38,5 +42,16 @@ impl FlipYZ for Vector3<f64> {
 
         std::mem::swap(&mut s.y, &mut s.z);
         s
+    }
+}
+
+impl From<WSrgba> for Color {
+    fn from(value: WSrgba) -> Self {
+        Color::rgba(
+            value.0.r as f32 / 255.0,
+            value.0.g as f32 / 255.0,
+            value.0.b as f32 / 255.0,
+            1.0,
+        )
     }
 }
