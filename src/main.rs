@@ -85,7 +85,7 @@ fn spawn_gltf(
         ..Default::default()
     });
 
-    let content = fs::read_to_string("gcode/test2.gcode").unwrap();
+    let content = fs::read_to_string("gcode/test.gcode").unwrap();
     let gcode: GCode = content.try_into().unwrap();
     let toolpath = create_toolpath(&gcode);
 

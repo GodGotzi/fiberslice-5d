@@ -82,6 +82,7 @@ impl<'a> PartCoordinator<'a> {
             .cross(triangle.2 - triangle.0)
             .normalize();
 
+        
         push_normal(&mut self.mesh.borrow_mut().mesh, WVector3(normal).into());
         push_normal(&mut self.mesh.borrow_mut().mesh, WVector3(normal).into());
         push_normal(&mut self.mesh.borrow_mut().mesh, WVector3(normal).into());

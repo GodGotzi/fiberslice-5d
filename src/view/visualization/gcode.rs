@@ -144,12 +144,14 @@ impl GCodeVisualizer {
             positions.append(&mut layer.mesh.positions);
             colors.append(&mut layer.mesh.colors);
             normals.append(&mut layer.mesh.normals);
+
+            break;
         }
 
         let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
         mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+        mesh.compute_flat_normals();
 
         ToolPathModel { layers, mesh }
     }
@@ -187,15 +189,16 @@ pub fn create_toolpath<'a>(gcode: &GCode) -> ToolPathModel<'a> {
         positions.append(&mut layer.mesh.positions);
         colors.append(&mut layer.mesh.colors);
         normals.append(&mut layer.mesh.normals);
+        break;
     }
 
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-    mesh.set_indices(Some(Indices::U32(
-        (0..colors.len()).map(|e| e as u32).collect(),
-    )));
+    //mesh.set_indices(Some(Indices::U32(
+    //    (0..colors.len()).map(|e| e as u32).collect(),
+    //)));
     mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+        
 
     ToolPathModel { layers, mesh }
 }
