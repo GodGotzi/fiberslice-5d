@@ -20,7 +20,7 @@ mod utils;
 mod view;
 mod window;
 
-use std::sync::{Arc, Mutex};
+use std::{sync::{Arc, Mutex}, env};
 
 use application::{ui_frame, Application};
 use gui::{GuiContext, Screen};
@@ -38,10 +38,22 @@ fn main() {
         .build()
         .unwrap();
 
+    env::set_var("RUST_BACKTRACE", "1");
+
     let event_loop = winit::event_loop::EventLoop::new();
     let window = build_window(&event_loop).expect("Failed to build window");
 
-    let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
+    let context = match WindowedContext::from_winit_window(&window, SurfaceSettings {
+        depth_buffer: 24,
+        stencil_buffer: 0,
+        multisamples: 8,
+        hardware_acceleration: HardwareAcceleration::Required,
+        ..Default::default()
+    }) {
+        Ok(context) => context,
+        Err(error) => panic!("Failed to create context: {}", error),
+    };
+
     let mut environment = environment::Environment::new(&context);
 
     let manipulator = Arc::new(Mutex::new(ManipulatorHolder::new()));
@@ -172,6 +184,7 @@ pub fn test_buffer(
     let skybox = Skybox::new_from_equirectangular(context, &environment_map);
     buffer.set_skybox(skybox);
     */
+
 
     let model: three_d_asset::Model =
         three_d_asset::io::load_and_deserialize("assets/without-textures.glb").unwrap();
