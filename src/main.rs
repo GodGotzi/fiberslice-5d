@@ -22,7 +22,7 @@ mod window;
 
 use std::{f32::consts::PI, fs, time::Instant};
 
-use bevy::{diagnostic::Diagnostics, prelude::*, window::PrimaryWindow, winit::WinitWindows};
+use bevy::{prelude::*, window::PrimaryWindow, winit::WinitWindows};
 use bevy_atmosphere::prelude::AtmospherePlugin;
 use model::gcode::GCode;
 use prelude::{AsyncPacket, AsyncWrapper, Item};
@@ -74,18 +74,13 @@ fn spawn_gltf(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // note that we have to include the `Scene0` label
-    let my_gltf = ass.load("without-textures.glb");
-
-    // to position our 3d model, simply use the Transform
-    // in the SceneBundle
     commands.spawn(SceneBundle {
-        scene: my_gltf,
-        transform: Transform::from_xyz(0.0, 0.0, 0.0),
-        ..Default::default()
+        scene: ass.load("bed_new.glb#Scene0"),
+        transform: Transform::from_scale(Vec3::new(1000.0, 1000.0, 1000.0)),
+        ..default()
     });
 
-    let content = fs::read_to_string("gcode/test2.gcode").unwrap();
+    let content = fs::read_to_string("gcode/test3.gcode").unwrap();
     let gcode: GCode = content.try_into().unwrap();
     let toolpath = create_toolpath(&gcode);
 
@@ -95,8 +90,8 @@ fn spawn_gltf(
         // multiplied by the base color, so you'll likely want this to be
         // white if using vertex colors.
         material: materials.add(Color::rgb(1., 1., 1.).into()),
-        transform: Transform::from_xyz(0.0, 0.5, 0.0),
-        ..default()
+        transform: Transform::from_translation(Vec3::new(-125.0, 0.2, -125.0)),
+        ..Default::default()
     });
 }
 

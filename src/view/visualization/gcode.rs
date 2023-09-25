@@ -194,6 +194,7 @@ pub fn create_toolpath<'a>(gcode: &GCode) -> ToolPathModel<'a> {
     //    (0..colors.len()).map(|e| e as u32).collect(),
     //)));
     mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
 
     ToolPathModel { layers, mesh }
 }
