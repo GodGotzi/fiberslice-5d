@@ -49,12 +49,6 @@ fn main() {
         primary_window: Some(Window {
             title: "Fiberslice-5D".into(),
             resolution: config::default::WINDOW_S.into(),
-            present_mode: PresentMode::AutoNoVsync,
-            // Tells wasm to resize the window according to the available canvas
-            fit_canvas_to_parent: true,
-            // Tells wasm not to override default event handling, like F5, Ctrl+R etc.
-            prevent_default_event_handling: false,
-            window_theme: Some(WindowTheme::Dark),
             ..default()
         }),
         ..default()
@@ -89,7 +83,6 @@ fn spawn_bed(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-
     commands.spawn(SceneBundle {
         scene: ass.load("bed_new.glb#Scene0"),
         transform: Transform::from_scale(Vec3::new(1000.0, 1000.0, 1000.0)),
@@ -115,7 +108,7 @@ fn print_fps(mut fps: ResMut<FPS>) {
     fps.now = Instant::now();
 
     println!("FPS: {}", 1.0 / (fps.now - fps.last).as_secs_f32());
-  
+
     fps.last = fps.now;
 }
 
