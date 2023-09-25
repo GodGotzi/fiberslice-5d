@@ -5,11 +5,9 @@
     Please refer to the terms and conditions stated therein.
 */
 
-mod application;
 mod config;
 mod error;
 mod gui;
-mod import;
 mod math;
 mod model;
 mod prelude;
@@ -18,22 +16,27 @@ mod slicer;
 mod tests;
 mod utils;
 mod view;
-mod window;
 
-use std::{f32::consts::PI, fs, time::Instant};
+use std::{fs, time::Instant};
 
-use bevy::{prelude::*, window::PrimaryWindow, winit::WinitWindows};
+use bevy::{
+    prelude::*,
+    window::{PresentMode, PrimaryWindow, WindowTheme},
+    winit::WinitWindows,
+};
 use bevy_atmosphere::prelude::AtmospherePlugin;
+use bevy_egui::EguiPlugin;
+use gui::{ui_frame, RawUiData, Screen};
 use model::gcode::GCode;
-use prelude::{AsyncPacket, AsyncWrapper, Item};
+use prelude::hotkeys_window;
 use smooth_bevy_cameras::LookTransformPlugin;
-use strum::IntoEnumIterator;
 use view::{
     camera::CameraPlugin, camera_setup, update_camera_viewport,
     visualization::gcode::create_toolpath,
 };
 
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
+use winit::window::Icon;
 
 #[derive(Resource)]
 struct FPS {
@@ -42,33 +45,45 @@ struct FPS {
 }
 
 fn main() {
-    let mut list: Vec<AsyncPacket> = Vec::new();
-
-    for item in Item::iter() {
-        list.push(AsyncPacket::new(item));
-    }
+    let plugin = WindowPlugin {
+        primary_window: Some(Window {
+            title: "Fiberslice-5D".into(),
+            resolution: config::default::WINDOW_S.into(),
+            present_mode: PresentMode::AutoNoVsync,
+            // Tells wasm to resize the window according to the available canvas
+            fit_canvas_to_parent: true,
+            // Tells wasm not to override default event handling, like F5, Ctrl+R etc.
+            prevent_default_event_handling: false,
+            window_theme: Some(WindowTheme::Dark),
+            ..default()
+        }),
+        ..default()
+    };
 
     App::new()
-        .add_event::<Item>()
-        .insert_resource(AsyncWrapper::new(list))
+        .insert_resource(Screen::new())
+        .insert_resource(RawUiData::new(gui::Theme::Light, view::Mode::Prepare))
         .insert_resource(FPS {
             now: Instant::now(),
             last: Instant::now(),
         })
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(plugin))
         .add_plugins(FrameTimeDiagnosticsPlugin)
+        .add_plugins(EguiPlugin)
         .add_plugins(LookTransformPlugin)
         .add_plugins(CameraPlugin::default())
         .add_plugins(AtmospherePlugin)
         .add_systems(Startup, camera_setup)
-        .add_systems(Startup, spawn_gltf)
-        .add_systems(PostStartup, update_window)
+        .add_systems(Startup, spawn_bed)
+        .add_systems(PostStartup, init_window)
         .add_systems(Update, print_fps)
         .add_systems(Update, update_camera_viewport)
+        .add_systems(Update, ui_frame)
+        .add_systems(Update, hotkeys_window)
         .run();
 }
 
-fn spawn_gltf(
+fn spawn_bed(
     mut commands: Commands,
     ass: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -80,7 +95,7 @@ fn spawn_gltf(
         ..default()
     });
 
-    let content = fs::read_to_string("gcode/test3.gcode").unwrap();
+    let content = fs::read_to_string("gcode/test2.gcode").unwrap();
     let gcode: GCode = content.try_into().unwrap();
     let toolpath = create_toolpath(&gcode);
 
@@ -103,7 +118,7 @@ fn print_fps(mut fps: ResMut<FPS>) {
     fps.last = fps.now;
 }
 
-fn update_window(
+fn init_window(
     windows: NonSend<WinitWindows>,
     primary_window_query: Query<Entity, With<PrimaryWindow>>,
 ) {
@@ -111,7 +126,6 @@ fn update_window(
     let primary_window = windows.get_window(primary_window_entity).unwrap();
     primary_window.set_visible(true);
 
-    /*
     // here we use the `image` crate to load our icon data from a png file
     // this is not a very bevy-native solution, but it will do
     let (icon_rgba, icon_width, icon_height) = {
@@ -126,116 +140,4 @@ fn update_window(
     let icon = Icon::from_rgba(icon_rgba, icon_width, icon_height).unwrap();
 
     primary_window.set_window_icon(Some(icon));
-    */
-}
-
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0., 1.5, 6.).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
-    // plane
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Plane::from_size(5.0))),
-        material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
-        ..default()
-    });
-    // cube
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-        material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
-        transform: Transform::from_xyz(0.0, 0.5, 0.0),
-        ..default()
-    });
-    // light
-    commands.spawn(PointLightBundle {
-        point_light: PointLight {
-            intensity: 1500.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        transform: Transform::from_xyz(4.0, 8.0, 4.0),
-        ..default()
-    });
-
-    // example instructions
-    commands.spawn(
-        TextBundle::from_section(
-            "Press 'D' to toggle drawing gizmos on top of everything else in the scene\n\
-            Press 'P' to toggle perspective for line gizmos\n\
-            Hold 'Left' or 'Right' to change the line width",
-            TextStyle {
-                font_size: 20.,
-                ..default()
-            },
-        )
-        .with_style(Style {
-            position_type: PositionType::Absolute,
-            top: Val::Px(12.0),
-            left: Val::Px(12.0),
-            ..default()
-        }),
-    );
-}
-
-fn system(mut gizmos: Gizmos, time: Res<Time>) {
-    gizmos.cuboid(
-        Transform::from_translation(Vec3::Y * 0.5).with_scale(Vec3::splat(1.)),
-        Color::BLACK,
-    );
-    gizmos.rect(
-        Vec3::new(time.elapsed_seconds().cos() * 2.5, 1., 0.),
-        Quat::from_rotation_y(PI / 2.),
-        Vec2::splat(2.),
-        Color::GREEN,
-    );
-
-    gizmos.sphere(Vec3::new(1., 0.5, 0.), Quat::IDENTITY, 0.5, Color::RED);
-
-    for y in [0., 0.5, 1.] {
-        gizmos.ray(
-            Vec3::new(1., y, 0.),
-            Vec3::new(-3., (time.elapsed_seconds() * 3.).sin(), 0.),
-            Color::BLUE,
-        );
-    }
-
-    // Circles have 32 line-segments by default.
-    gizmos.circle(Vec3::ZERO, Vec3::Y, 3., Color::BLACK);
-    // You may want to increase this for larger circles or spheres.
-    gizmos
-        .circle(Vec3::ZERO, Vec3::Y, 3.1, Color::NAVY)
-        .segments(64);
-    gizmos
-        .sphere(Vec3::ZERO, Quat::IDENTITY, 3.2, Color::BLACK)
-        .circle_segments(64);
-}
-
-fn rotate_camera(mut query: Query<&mut Transform, With<Camera>>, time: Res<Time>) {
-    let mut transform = query.single_mut();
-
-    transform.rotate_around(Vec3::ZERO, Quat::from_rotation_y(time.delta_seconds() / 2.));
-}
-
-fn update_config(mut config: ResMut<GizmoConfig>, keyboard: Res<Input<KeyCode>>, time: Res<Time>) {
-    if keyboard.just_pressed(KeyCode::D) {
-        config.depth_bias = if config.depth_bias == 0. { -1. } else { 0. };
-    }
-    if keyboard.just_pressed(KeyCode::P) {
-        // Toggle line_perspective
-        config.line_perspective ^= true;
-        // Increase the line width when line_perspective is on
-        config.line_width *= if config.line_perspective { 5. } else { 1. / 5. };
-    }
-
-    if keyboard.pressed(KeyCode::Right) {
-        config.line_width += 5. * time.delta_seconds();
-    }
-    if keyboard.pressed(KeyCode::Left) {
-        config.line_width -= 5. * time.delta_seconds();
-    }
 }

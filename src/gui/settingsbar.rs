@@ -5,16 +5,15 @@
     Please refer to the terms and conditions stated therein.
 */
 
+use bevy_egui::egui;
 use egui_extras::Size;
 use egui_grid::GridBuilder;
-use three_d::egui;
 
 use crate::config;
-use crate::prelude::*;
 
 use super::Boundary;
 use super::Component;
-use super::GuiContext;
+use super::UiData;
 
 #[derive(PartialEq)]
 pub enum SettingsPanel {
@@ -145,7 +144,7 @@ impl Settingsbar {
 }
 
 impl Component<Settingsbar> for Settingsbar {
-    fn show(&mut self, ctx: &egui::Context, gui_context: &mut GuiContext) {
+    fn show(&mut self, ctx: &egui::Context, mut data: UiData) {
         let mut tabbed_view = TabbedSettings::init();
 
         let boundary = Boundary::from(
@@ -153,17 +152,11 @@ impl Component<Settingsbar> for Settingsbar {
                 .resizable(true)
                 .default_width(config::gui::default::SETTINGSBAR_W)
                 .show(ctx, |ui| {
-                    gui_context
-                        .application
-                        .context
-                        .event_wrapping()
-                        .register(Item::SettingsWidth(Some(ui.available_width())));
-
                     tabbed_view.show(ctx, ui, self);
                 })
                 .response,
         );
 
-        gui_context.application.context.boundaries_mut().settingsbar = boundary;
+        data.boundary_holder.set_settingsbar(boundary);
     }
 }

@@ -1,105 +1,24 @@
-use macros::TypeEq;
-use strum_macros::EnumIter;
-use traits::TypeEq;
+use std::time::Instant;
 
 pub use crate::error::Error;
-use crate::view::Mode;
 
 #[allow(dead_code)]
 pub type Result<T> = std::result::Result<T, Error>;
 
-use bevy::a11y::accesskit::Orientation;
 use bevy::prelude::*;
 
 use bevy::window::{PrimaryWindow, WindowMode};
-pub struct AsyncPacket {
-    pub sync_element: Option<Item>,
-    pub async_element: Option<Item>,
+
+#[allow(dead_code)]
+pub struct Context {
+    now: Instant,
+    latest: Instant,
 }
 
-impl AsyncPacket {
-    pub fn new(sync_element: Item) -> Self {
-        Self {
-            sync_element: Some(sync_element),
-            async_element: None,
-        }
+impl Context {
+    pub fn fps(&self) -> f32 {
+        1.0 / (self.now - self.latest).as_secs_f32()
     }
-
-    pub fn get_sync(&self) -> &Option<Item> {
-        &self.sync_element
-    }
-
-    pub fn _get_sync_mut(&mut self) -> &mut Option<Item> {
-        &mut self.sync_element
-    }
-
-    pub fn _get_async(&self) -> &Option<Item> {
-        &self.async_element
-    }
-}
-
-#[derive(PartialEq, Clone, Copy, Debug, EnumIter, TypeEq, Event)]
-pub enum Item {
-    ToolbarWidth(Option<f32>),
-    SettingsWidth(Option<f32>),
-    LayerValue(Option<u32>),
-    TimeValue(Option<f32>),
-    Mode(Option<Mode>),
-    Orientation(Option<Orientation>),
-}
-
-#[derive(Resource)]
-pub struct AsyncWrapper {
-    data: Vec<AsyncPacket>,
-}
-
-impl AsyncWrapper {
-    pub fn new(map: Vec<AsyncPacket>) -> Self {
-        Self { data: map }
-    }
-
-    pub fn get_data(&mut self) -> &mut Vec<AsyncPacket> {
-        &mut self.data
-    }
-
-    pub fn find_packet_mut(&mut self, item: Item) -> Option<&mut AsyncPacket> {
-        self.data
-            .iter_mut()
-            .find(|packet| packet.get_sync().unwrap().type_eq(item))
-    }
-
-    pub fn find_packet(&self, item: Item) -> Option<&AsyncPacket> {
-        self.data
-            .iter()
-            .find(|packet| packet.get_sync().unwrap().type_eq(item))
-    }
-
-    pub fn register(&mut self, item: Item) {
-        let packet = self.find_packet_mut(item).unwrap();
-        packet.sync_element = Some(item);
-    }
-
-    pub fn _register_with_ref<V>(
-        &mut self,
-        default: Item,
-        register_ref: fn(&mut Item, V),
-        ref_ctx: V,
-    ) {
-        let packet = self.find_packet_mut(default).unwrap();
-
-        if packet.get_sync().is_none() {
-            packet.sync_element = Some(default);
-        }
-
-        if let Some(item) = packet._get_sync_mut() {
-            register_ref(item, ref_ctx);
-        }
-    }
-}
-
-pub fn maximize_window(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
-    let mut window = windows.single_mut();
-    window.set_maximized(true);
 }
 
 pub fn hotkeys_window(

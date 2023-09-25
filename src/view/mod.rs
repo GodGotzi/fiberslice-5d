@@ -1,8 +1,7 @@
-use crate::utils::Contains;
 use bevy::{prelude::*, render::camera::Viewport, window::WindowResized};
 use bevy_atmosphere::prelude::{AtmosphereCamera, AtmosphereModel, Gradient};
 
-use crate::prelude::{AsyncWrapper, Item};
+use crate::gui::RawUiData;
 
 use self::camera::SingleCamera;
 
@@ -35,10 +34,9 @@ pub enum Mode {
 
 pub fn update_camera_viewport(
     windows: Query<&Window>,
-    mut resize_events: EventReader<WindowResized>,
-    mut gui_resize_events: EventReader<Item>,
+    resize_events: EventReader<WindowResized>,
     mut camera: Query<&mut Camera, With<SingleCamera>>,
-    item_wrapper: ResMut<AsyncWrapper>,
+    data: ResMut<RawUiData>,
 ) {
     if windows.is_empty() {
         return;
@@ -46,55 +44,17 @@ pub fn update_camera_viewport(
 
     let result_window = windows.get_single();
 
-    let settings_width_packet = item_wrapper.find_packet(Item::SettingsWidth(None)).unwrap();
-    let toolbar_width_packet = item_wrapper.find_packet(Item::ToolbarWidth(None)).unwrap();
-
     if let Ok(window) = result_window {
-        for _resize_event in resize_events.iter() {
-            if toolbar_width_packet.get_sync().is_some() {
-                if let Item::ToolbarWidth(Some(toolbar_width)) =
-                    toolbar_width_packet.get_sync().unwrap()
-                {
-                    if settings_width_packet.get_sync().is_some() {
-                        if let Item::SettingsWidth(Some(settings_width)) =
-                            settings_width_packet.get_sync().unwrap()
-                        {
-                            resize_viewport(window, &mut camera, settings_width, toolbar_width);
-                        }
-                    }
-                }
-            }
-        }
-
-        for resize_event in gui_resize_events.iter() {
-            if let Item::SettingsWidth(Some(settings_width)) = resize_event {
-                if toolbar_width_packet.get_sync().is_some() {
-                    if let Item::ToolbarWidth(Some(toolbar_width)) =
-                        toolbar_width_packet.get_sync().unwrap()
-                    {
-                        resize_viewport(window, &mut camera, *settings_width, toolbar_width);
-                    }
-                }
-            }
-
-            if let Item::ToolbarWidth(Some(toolbar_width)) = resize_event {
-                if settings_width_packet.get_sync().is_some() {
-                    if let Item::SettingsWidth(Some(settings_width)) =
-                        settings_width_packet.get_sync().unwrap()
-                    {
-                        resize_viewport(window, &mut camera, settings_width, *toolbar_width);
-                    }
-                }
-            }
-        }
+        //if !resize_events.is_empty() {
+        resize_viewport(window, &mut camera, data);
+        //}
     }
 }
 
 fn resize_viewport(
     window: &Window,
     camera: &mut Query<&mut Camera, With<SingleCamera>>,
-    settings_width: f32,
-    toolbar_width: f32,
+    data: ResMut<RawUiData>,
 ) {
     let mut camera = camera.single_mut();
 
@@ -102,19 +62,36 @@ fn resize_viewport(
         return;
     }
 
-    let new_width =
-        window.resolution.physical_width() as i32 - settings_width as i32 - toolbar_width as i32;
+    let (viewport_width, viewport_height): (f32, f32) =
+        (window.resolution.width(), window.resolution.height());
 
-    if new_width < 1 {
-        return;
+    //update viewport
+    {
+        let height = viewport_height
+            - ((data.boundary_holder.taskbar().height()
+                + data.boundary_holder.modebar().height()
+                + data.boundary_holder.menubar().height())
+                * window.scale_factor() as f32);
+
+        let viewport = Viewport {
+            physical_position: UVec2 {
+                x: (data.boundary_holder.toolbar().width() * window.scale_factor() as f32) as u32,
+                y: (data.boundary_holder.taskbar().height() * window.scale_factor() as f32) as u32,
+            },
+            physical_size: UVec2 {
+                x: (viewport_width
+                    - ((data.boundary_holder.toolbar().width()
+                        + data.boundary_holder.settingsbar().width())
+                        * window.scale_factor() as f32)) as u32,
+                y: height as u32,
+            },
+            ..default()
+        };
+
+        camera.viewport = Some(viewport);
     }
-
-    camera.viewport = Some(Viewport {
-        physical_position: UVec2::new(toolbar_width as u32, 17),
-        physical_size: UVec2::new(new_width as u32, window.resolution.physical_height() - 51),
-        ..default()
-    });
 }
+
 pub fn camera_setup(mut commands: Commands) {
     commands
         .spawn((
@@ -132,7 +109,7 @@ pub fn camera_setup(mut commands: Commands) {
         ))
         .insert(camera::CameraBundle::new(
             camera::CameraController::default(),
-            Vec3::new(5.0, 5.0, 5.0),
+            Vec3::new(250.0, 250.0, 250.0),
             Vec3::new(0., 0., 0.),
             Vec3::Y,
         ));

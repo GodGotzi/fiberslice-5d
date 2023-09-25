@@ -101,7 +101,7 @@ pub struct CameraController {
 impl Default for CameraController {
     fn default() -> Self {
         Self {
-            mouse_rotate_sensitivity: Vec2::splat(0.28),
+            mouse_rotate_sensitivity: Vec2::splat(1.0),
             mouse_translate_sensitivity: Vec2::splat(0.25),
             mouse_wheel_zoom_sensitivity: 0.1,
             smoothing_weight: 0.4,
@@ -114,7 +114,6 @@ impl Default for CameraController {
 #[derive(Event)]
 pub enum CameraControlEvent {
     Orbit(Vec2),
-    TranslateTarget(Vec2),
     Zoom(f32),
 }
 
@@ -132,7 +131,6 @@ pub fn default_input_map(
     };
     let CameraController {
         mouse_rotate_sensitivity,
-        mouse_translate_sensitivity,
         mouse_wheel_zoom_sensitivity,
         pixels_per_line,
         ..
@@ -150,9 +148,11 @@ pub fn default_input_map(
     }
 
     if mouse_buttons.pressed(MouseButton::Middle) {
+        /*
         events.send(CameraControlEvent::TranslateTarget(
             mouse_translate_sensitivity * cursor_delta,
         ));
+        */
     }
 
     let mut scalar = 1.0;
@@ -172,7 +172,7 @@ pub fn control_system(
     mut events: EventReader<CameraControlEvent>,
     mut cameras: Query<(&CameraController, &mut LookTransform, &Transform)>,
 ) {
-    let (mut transform, scene_transform) =
+    let (mut transform, _scene_transform) =
         if let Some((_, transform, scene_transform)) = cameras.iter_mut().find(|c| c.0.enabled) {
             (transform, scene_transform)
         } else {
@@ -188,11 +188,6 @@ pub fn control_system(
             CameraControlEvent::Orbit(delta) => {
                 look_angles.add_yaw(dt * -delta.x);
                 look_angles.add_pitch(dt * delta.y);
-            }
-            CameraControlEvent::TranslateTarget(delta) => {
-                let right_dir = scene_transform.rotation * -Vec3::X;
-                let up_dir = scene_transform.rotation * Vec3::Y;
-                transform.target += dt * delta.x * right_dir + dt * delta.y * up_dir;
             }
             CameraControlEvent::Zoom(scalar) => {
                 radius_scalar *= scalar;

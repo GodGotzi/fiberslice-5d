@@ -3,14 +3,13 @@
 //W = width
 
 pub mod default {
-    use winit::dpi::LogicalSize;
 
     //pub const WINDOW_S: Vec2 = Vec2::new(0., 0.);
-    pub const WINDOW_S: LogicalSize<i32> = LogicalSize::new(1200, 900);
+    pub const WINDOW_S: (f32, f32) = (1200.0, 900.0);
 }
 
 pub mod gui {
-    use three_d::egui;
+    use bevy_egui::egui;
 
     pub const fn shaded_color(darkmode: bool) -> egui::Color32 {
         match darkmode {

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
-use three_d::Vector3;
-use three_d_asset::vec3;
+use bevy::{math::vec3, prelude::Vec3};
 
 use crate::model::layer::*;
 
@@ -9,22 +8,14 @@ use super::{instruction::InstructionType, movement, state::State, GCode};
 
 #[derive(Debug, Clone)]
 pub struct PathLine {
-    pub start: Vector3<f64>,
-    pub end: Vector3<f64>,
+    pub start: Vec3,
+    pub end: Vec3,
     pub print: bool,
 }
 
 impl PathLine {
-    pub fn direction(&self) -> Vector3<f64> {
+    pub fn direction(&self) -> Vec3 {
         self.end - self.start
-    }
-
-    pub fn flip_yz(&self) -> Self {
-        Self {
-            start: vec3(self.start.x, self.start.z, self.start.y),
-            end: vec3(self.end.x, self.end.z, self.end.y),
-            print: self.print,
-        }
     }
 }
 
@@ -105,13 +96,11 @@ impl From<GCode> for ToolPath {
                 let print = instruction.instruction_type() == &InstructionType::G1
                     && current_movements.E.is_some_and(|e| e > 0.0);
 
-                points.push(
-                    PathLine {
-                        start: last_point,
-                        end: current_point,
-                        print,
-                    },
-                );
+                points.push(PathLine {
+                    start: last_point,
+                    end: current_point,
+                    print,
+                });
             }
 
             tool_path.add_line(points, instruction_modul.range(), state.clone());
@@ -133,7 +122,8 @@ pub fn compute_modul_with_coordinator<'a>(
         .print_type
         .as_ref()
         .unwrap_or(&crate::slicer::print_type::PrintType::Unknown)
-        .get_color();
+        .get_color()
+        .as_rgba_f32();
 
     for element in path_modul.paths.iter().enumerate() {
         let path = element.1;

@@ -5,11 +5,11 @@
     Please refer to the terms and conditions stated therein.
 */
 
+use bevy_egui::egui::{self, *};
 use egui_extras::{Size, StripBuilder};
-use three_d::egui::{self, *};
 
 use crate::{
-    gui::{self, Boundary, GuiContext},
+    gui::{self, Boundary, UiData},
     view::Mode,
 };
 
@@ -17,11 +17,11 @@ mod force_analytics;
 mod prepare;
 mod preview;
 
-type AddonStripBuilderClosure = dyn Fn(StripBuilder, &mut GuiContext, Color32);
+type AddonStripBuilderClosure = dyn Fn(StripBuilder, UiData, Color32);
 
 pub fn create_addon_strip_builder(
     ui: &mut Ui,
-    gui_context: &mut GuiContext,
+    data: UiData,
     boundary: Boundary,
     shaded_color: Color32,
     build: Box<AddonStripBuilderClosure>,
@@ -40,7 +40,7 @@ pub fn create_addon_strip_builder(
                     .vertical(|mut strip| {
                         strip.empty();
                         strip.strip(|builder| {
-                            build(builder, gui_context, shaded_color);
+                            build(builder, data, shaded_color);
                         });
                         strip.empty();
                     });
@@ -50,17 +50,13 @@ pub fn create_addon_strip_builder(
 }
 
 pub mod orientation {
+    use bevy_egui::egui::{self, *};
     use egui_extras::Size;
     use egui_grid::GridBuilder;
-    use three_d::egui;
-    use three_d::egui::*;
 
-    use crate::{
-        gui::{icon, GuiContext},
-        view::camera::HandleOrientation,
-    };
+    use crate::gui::{icon, UiData};
 
-    pub fn show(ui: &mut Ui, gui_context: &mut GuiContext) {
+    pub fn show(ui: &mut Ui, data: UiData) {
         let layout = egui::Layout {
             main_dir: Direction::RightToLeft,
             main_wrap: true,
@@ -157,7 +153,7 @@ impl Addons {
 }
 
 impl gui::InnerComponent<Addons> for Addons {
-    fn show(&mut self, ctx: &egui::Context, ui: &mut Ui, gui_context: &mut GuiContext) {
+    fn show(&mut self, ctx: &egui::Context, ui: &mut Ui, data: UiData) {
         let window_size = ui.available_size();
 
         let boundary = Boundary {
@@ -165,10 +161,10 @@ impl gui::InnerComponent<Addons> for Addons {
             size: Vec2::new(window_size.x - 15.0, window_size.y - 15.0),
         };
 
-        match gui_context.application.context.mode() {
-            Mode::Prepare => prepare::show(ctx, ui, gui_context, boundary),
-            Mode::Preview => preview::show(ctx, ui, gui_context, boundary),
-            Mode::ForceAnalytics => force_analytics::show(ctx, ui, gui_context, boundary),
+        match data.mode {
+            Mode::Prepare => prepare::show(ctx, ui, data, boundary),
+            Mode::Preview => preview::show(ctx, ui, data, boundary),
+            Mode::ForceAnalytics => force_analytics::show(ctx, ui, data, boundary),
         }
     }
 }

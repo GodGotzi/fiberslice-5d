@@ -3,8 +3,10 @@ use std::{
     collections::HashMap,
 };
 
-use bevy::prelude::Mesh;
-use three_d_asset::{vec3, InnerSpace, Srgba, Vector3};
+use bevy::{
+    math::vec3,
+    prelude::{Mesh, Vec3},
+};
 
 use super::gcode::state::State;
 
@@ -28,23 +30,10 @@ pub fn push_normal(mesh: &mut MeshPart, normal: [f32; 3]) {
     mesh.normals.push(normal);
 }
 
-pub struct WSrgba(pub Srgba);
+pub struct WVec3(Vec3);
 
-impl From<WSrgba> for [f32; 4] {
-    fn from(value: WSrgba) -> Self {
-        [
-            value.0.r as f32 / 255.0,
-            value.0.g as f32 / 255.0,
-            value.0.b as f32 / 255.0,
-            value.0.a as f32 / 255.0,
-        ]
-    }
-}
-
-pub struct WVector3(Vector3<f64>);
-
-impl From<WVector3> for [f32; 3] {
-    fn from(value: WVector3) -> Self {
+impl From<WVec3> for [f32; 3] {
+    fn from(value: WVec3) -> Self {
         [value.0.x as f32, value.0.z as f32, value.0.y as f32]
     }
 }
@@ -60,31 +49,22 @@ impl<'a> PartCoordinator<'a> {
         }
     }
 
-    pub fn add_triangle(&self, triangle: (Vector3<f64>, Vector3<f64>, Vector3<f64>), color: Srgba) {
-        push_position(
-            &mut self.mesh.borrow_mut().mesh,
-            WVector3(triangle.0).into(),
-        );
-        push_position(
-            &mut self.mesh.borrow_mut().mesh,
-            WVector3(triangle.1).into(),
-        );
-        push_position(
-            &mut self.mesh.borrow_mut().mesh,
-            WVector3(triangle.2).into(),
-        );
+    pub fn add_triangle(&self, triangle: (Vec3, Vec3, Vec3), color: &[f32; 4]) {
+        push_position(&mut self.mesh.borrow_mut().mesh, WVec3(triangle.0).into());
+        push_position(&mut self.mesh.borrow_mut().mesh, WVec3(triangle.1).into());
+        push_position(&mut self.mesh.borrow_mut().mesh, WVec3(triangle.2).into());
 
-        push_color(&mut self.mesh.borrow_mut().mesh, WSrgba(color).into());
-        push_color(&mut self.mesh.borrow_mut().mesh, WSrgba(color).into());
-        push_color(&mut self.mesh.borrow_mut().mesh, WSrgba(color).into());
+        push_color(&mut self.mesh.borrow_mut().mesh, *color);
+        push_color(&mut self.mesh.borrow_mut().mesh, *color);
+        push_color(&mut self.mesh.borrow_mut().mesh, *color);
 
         let normal = (triangle.1 - triangle.0)
             .cross(triangle.2 - triangle.0)
             .normalize();
 
-        push_normal(&mut self.mesh.borrow_mut().mesh, WVector3(normal).into());
-        push_normal(&mut self.mesh.borrow_mut().mesh, WVector3(normal).into());
-        push_normal(&mut self.mesh.borrow_mut().mesh, WVector3(normal).into());
+        push_normal(&mut self.mesh.borrow_mut().mesh, WVec3(normal).into());
+        push_normal(&mut self.mesh.borrow_mut().mesh, WVec3(normal).into());
+        push_normal(&mut self.mesh.borrow_mut().mesh, WVec3(normal).into());
 
         self.offset_end.replace(self.offset_end.get() + 3);
         self.offset_part_end.replace(self.offset_part_end.get() + 3);
@@ -146,8 +126,8 @@ impl<'a> PartCoordinator<'a> {
 }
 
 pub fn draw_path(
-    path: (Vector3<f64>, Vector3<f64>),
-    color: &Srgba,
+    path: (Vec3, Vec3),
+    color: &[f32; 4],
     coordinator: &PartCoordinator,
     cross: &Cross,
 ) {
@@ -189,73 +169,73 @@ pub fn draw_path(
 }
 
 pub fn draw_cross_connection(
-    center: &Vector3<f64>,
+    center: &Vec3,
     start_cross: &Cross,
     end_cross: &Cross,
-    color: &Srgba,
+    color: &[f32; 4],
     coordinator: &PartCoordinator,
 ) {
     coordinator.add_triangle(
         (
-            end_cross.up + center,
-            end_cross.right + center,
-            start_cross.right + center,
+            end_cross.up + *center,
+            end_cross.right + *center,
+            start_cross.right + *center,
         ),
-        *color,
+        color,
     );
 
     coordinator.add_triangle(
         (
-            end_cross.up + center,
-            end_cross.left + center,
-            start_cross.left + center,
+            end_cross.up + *center,
+            end_cross.left + *center,
+            start_cross.left + *center,
         ),
-        *color,
+        color,
     );
 
     coordinator.add_triangle(
         (
-            end_cross.down + center,
-            end_cross.right + center,
-            start_cross.right + center,
+            end_cross.down + *center,
+            end_cross.right + *center,
+            start_cross.right + *center,
         ),
-        *color,
+        color,
     );
 
     coordinator.add_triangle(
         (
-            end_cross.down + center,
-            end_cross.left + center,
-            start_cross.left + center,
+            end_cross.down + *center,
+            end_cross.left + *center,
+            start_cross.left + *center,
         ),
-        *color,
+        color,
     );
 }
 
 pub fn draw_rect(
-    point_left_0: Vector3<f64>,
-    point_left_1: Vector3<f64>,
-    point_right_0: Vector3<f64>,
-    point_right_1: Vector3<f64>,
-    color: &Srgba,
+    point_left_0: Vec3,
+    point_left_1: Vec3,
+    point_right_0: Vec3,
+    point_right_1: Vec3,
+    color: &[f32; 4],
     coordinator: &PartCoordinator,
 ) {
-    coordinator.add_triangle((point_left_0, point_left_1, point_right_0), *color);
+    coordinator.add_triangle((point_left_0, point_left_1, point_right_0), color);
 
-    coordinator.add_triangle((point_right_0, point_right_1, point_left_1), *color);
+    coordinator.add_triangle((point_right_0, point_right_1, point_left_1), color);
 }
 
 pub fn draw_rect_with_cross(
-    center: &Vector3<f64>,
+    center: &Vec3,
     cross: &Cross,
-    color: &Srgba,
+    color: &[f32; 4],
     coordinator: &PartCoordinator,
 ) {
     draw_rect(
-        cross.up + center,
-        cross.right + center,
-        cross.down + center,
-        cross.left + center,
+        cross.up + *center,
+        cross.right + *center,
+        cross.down + *center,
+        cross.left + *center,
         color,
         coordinator,
     );
@@ -263,21 +243,21 @@ pub fn draw_rect_with_cross(
 
 #[derive(Debug)]
 pub struct Cross {
-    up: Vector3<f64>,
-    down: Vector3<f64>,
-    left: Vector3<f64>,
-    right: Vector3<f64>,
+    up: Vec3,
+    down: Vec3,
+    left: Vec3,
+    right: Vec3,
 }
 
-pub fn get_cross(direction: Vector3<f64>, radius: f64) -> Cross {
+pub fn get_cross(direction: Vec3, radius: f32) -> Cross {
     let horizontal = direction.cross(vec3(0.0, 0.0, direction.z + 1.0));
     let vertical = direction.cross(vec3(direction.x + 1.0, direction.y + 1.0, 0.0));
 
     Cross {
-        up: vertical.normalize() * radius,
-        down: vertical.normalize() * (-radius),
-        left: horizontal.normalize() * radius,
-        right: horizontal.normalize() * (-radius),
+        up: vertical.normalize() * vec3(radius, radius, radius),
+        down: vertical.normalize() * vec3(-radius, -radius, -radius),
+        left: horizontal.normalize() * vec3(radius, radius, radius),
+        right: horizontal.normalize() * vec3(-radius, -radius, -radius),
     }
 }
 
