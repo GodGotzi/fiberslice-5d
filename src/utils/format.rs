@@ -1,10 +1,3 @@
-use std::{
-    fmt::Display,
-    ops::{Add, Sub},
-};
-
-use three_d::{Vector2, Vector3, Vector4};
-
 pub trait PrettyFormat {
     fn pretty_format(&self) -> String;
 }
@@ -150,26 +143,5 @@ impl PrettyFormat for Vec<i128> {
             .join(", ");
 
         format!("[{}]", str_vec)
-    }
-}
-
-impl<N: Add<Output = N> + Sub<Output = N> + Display> PrettyFormat for Vector3<N> {
-    fn pretty_format(&self) -> String {
-        format!("Vec3(x={:.2}, y={:.2}, z={:.2})", self.x, self.y, self.z)
-    }
-}
-
-impl<N: Add<Output = N> + Sub<Output = N> + Display> PrettyFormat for Vector4<N> {
-    fn pretty_format(&self) -> String {
-        format!(
-            "Vec4(x={:.2}, y={:.2}, z={:.2}, w={:.2})",
-            self.x, self.y, self.z, self.w
-        )
-    }
-}
-
-impl<N: Add<Output = N> + Sub<Output = N> + Display> PrettyFormat for Vector2<N> {
-    fn pretty_format(&self) -> String {
-        format!("Vec2(x={:.2}, y={:.2})", self.x, self.y)
     }
 }

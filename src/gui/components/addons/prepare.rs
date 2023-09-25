@@ -1,25 +1,20 @@
+use bevy_egui::egui;
 use egui_extras::Size;
-use three_d::egui;
 
 use crate::{
     config::gui::shaded_color,
-    gui::{Boundary, GuiContext},
+    gui::{Boundary, UiData},
 };
 
-pub fn show(
-    _ctx: &egui::Context,
-    ui: &mut egui::Ui,
-    gui_context: &mut GuiContext,
-    boundary: Boundary,
-) {
+pub fn show(_ctx: &egui::Context, ui: &mut egui::Ui, data: UiData, boundary: Boundary) {
     let shaded_color = shaded_color(ui.visuals().dark_mode);
 
     let _response = super::create_addon_strip_builder(
         ui,
-        gui_context,
+        data,
         boundary,
         shaded_color,
-        Box::new(|builder, gui_context, shaded_color| {
+        Box::new(|builder, data, shaded_color| {
             builder
                 .size(Size::remainder())
                 .size(Size::relative(0.6))
@@ -43,7 +38,7 @@ pub fn show(
                                                     shaded_color,
                                                 );
 
-                                                super::orientation::show(ui, gui_context);
+                                                super::orientation::show(ui, data);
                                             });
                                         });
                                 });

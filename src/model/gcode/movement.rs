@@ -1,15 +1,15 @@
-use three_d_asset::Vector3;
+use bevy::prelude::Vec3;
 
 use super::SourceBuilder;
 
 #[allow(non_snake_case)]
 #[derive(Debug, Clone, Default)]
 pub struct Movements {
-    pub X: Option<f64>,
-    pub Y: Option<f64>,
-    pub Z: Option<f64>,
-    pub E: Option<f64>,
-    pub F: Option<f64>,
+    pub X: Option<f32>,
+    pub Y: Option<f32>,
+    pub Z: Option<f32>,
+    pub E: Option<f32>,
+    pub F: Option<f32>,
 }
 
 impl Movements {
@@ -21,7 +21,7 @@ impl Movements {
         matches!(movement_str, "X" | "Y" | "Z" | "E" | "F")
     }
 
-    pub fn set_movement(&mut self, movement_str: &str, value: f64) {
+    pub fn set_movement(&mut self, movement_str: &str, value: f32) {
         match movement_str {
             "X" => self.X = Some(value),
             "Y" => self.Y = Some(value),
@@ -54,7 +54,7 @@ impl Movements {
         }
     }
 
-    pub fn to_vec3(&self, zero: Vector3<f64>) -> Vector3<f64> {
+    pub fn to_vec3(&self, zero: Vec3) -> Vec3 {
         let mut vec = zero;
 
         if let Some(x) = self.X.as_ref() {

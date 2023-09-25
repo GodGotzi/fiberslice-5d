@@ -44,7 +44,7 @@ impl SourceBuilder {
         }
     }
 
-    pub fn push_movement(&mut self, movement_str: &str, value: f64) {
+    pub fn push_movement(&mut self, movement_str: &str, value: f32) {
         if !self.first {
             self.source.push(' ');
         } else {

@@ -5,11 +5,9 @@
     Please refer to the terms and conditions stated therein.
 */
 
-mod application;
 mod config;
 mod error;
 mod gui;
-mod import;
 mod math;
 mod model;
 mod prelude;
@@ -18,186 +16,129 @@ mod slicer;
 mod tests;
 mod utils;
 mod view;
-mod window;
 
-use std::{sync::{Arc, Mutex}, env};
+use std::{fs, time::Instant};
 
-use application::{ui_frame, Application};
-use gui::{GuiContext, Screen};
-use three_d::*;
-use utils::{frame::FrameHandle, Contains};
-use view::{
-    buffer::{ManipulatorHolder, ObjectBuffer},
-    environment,
+use bevy::{
+    prelude::*,
+    window::{PresentMode, PrimaryWindow, WindowTheme},
+    winit::WinitWindows,
 };
-use window::build_window;
+use bevy_atmosphere::prelude::AtmospherePlugin;
+use bevy_egui::EguiPlugin;
+use gui::{ui_frame, RawUiData, Screen};
+use model::gcode::GCode;
+use prelude::hotkeys_window;
+use smooth_bevy_cameras::LookTransformPlugin;
+use view::{
+    camera::CameraPlugin, camera_setup, update_camera_viewport,
+    visualization::gcode::create_toolpath,
+};
+
+use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
+use winit::window::Icon;
+
+#[derive(Resource)]
+struct FPS {
+    now: Instant,
+    last: Instant,
+}
 
 fn main() {
-    let rt = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .unwrap();
-
-    env::set_var("RUST_BACKTRACE", "1");
-
-    let event_loop = winit::event_loop::EventLoop::new();
-    let window = build_window(&event_loop).expect("Failed to build window");
-
-    let context = match WindowedContext::from_winit_window(&window, SurfaceSettings {
-        depth_buffer: 24,
-        stencil_buffer: 0,
-        multisamples: 8,
-        hardware_acceleration: HardwareAcceleration::Required,
-        ..Default::default()
-    }) {
-        Ok(context) => context,
-        Err(error) => panic!("Failed to create context: {}", error),
+    let plugin = WindowPlugin {
+        primary_window: Some(Window {
+            title: "Fiberslice-5D".into(),
+            resolution: config::default::WINDOW_S.into(),
+            present_mode: PresentMode::AutoNoVsync,
+            // Tells wasm to resize the window according to the available canvas
+            fit_canvas_to_parent: true,
+            // Tells wasm not to override default event handling, like F5, Ctrl+R etc.
+            prevent_default_event_handling: false,
+            window_theme: Some(WindowTheme::Dark),
+            ..default()
+        }),
+        ..default()
     };
 
-    let mut environment = environment::Environment::new(&context);
+    App::new()
+        .insert_resource(Screen::new())
+        .insert_resource(RawUiData::new(gui::Theme::Light, view::Mode::Prepare))
+        .insert_resource(FPS {
+            now: Instant::now(),
+            last: Instant::now(),
+        })
+        .add_plugins(DefaultPlugins.set(plugin))
+        .add_plugins(FrameTimeDiagnosticsPlugin)
+        .add_plugins(EguiPlugin)
+        .add_plugins(LookTransformPlugin)
+        .add_plugins(CameraPlugin::default())
+        .add_plugins(AtmospherePlugin)
+        .add_systems(Startup, camera_setup)
+        .add_systems(Startup, spawn_bed)
+        .add_systems(PostStartup, init_window)
+        .add_systems(Update, print_fps)
+        .add_systems(Update, update_camera_viewport)
+        .add_systems(Update, ui_frame)
+        .add_systems(Update, hotkeys_window)
+        .run();
+}
 
-    let manipulator = Arc::new(Mutex::new(ManipulatorHolder::new()));
+fn spawn_bed(
+    mut commands: Commands,
+    ass: Res<AssetServer>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
 
-    let mut application = Application::new(&window);
-    let mut screen = Screen::new();
+    commands.spawn(SceneBundle {
+        scene: ass.load("bed_new.glb#Scene0"),
+        transform: Transform::from_scale(Vec3::new(1000.0, 1000.0, 1000.0)),
+        ..default()
+    });
 
-    let mut buffer: ObjectBuffer<dyn Object> = ObjectBuffer::new();
-    test_buffer(&context, &mut application, &mut buffer);
+    let content = fs::read_to_string("gcode/test2.gcode").unwrap();
+    let gcode: GCode = content.try_into().unwrap();
+    let toolpath = create_toolpath(&gcode);
 
-    let mut gui = three_d::GUI::new(&context);
-    window.set_visible(true);
-
-    rt.block_on(async move {
-        // Event loop
-        event_loop.run(move |event, _, control_flow| match event {
-            winit::event::Event::MainEventsCleared => {
-                let frame_input = application.next_frame_input(&context);
-
-                let mut ui_use = None;
-
-                let gui_context = GuiContext {
-                    application: &mut application,
-                    environment: &mut environment,
-                    context: &context,
-                    manipulator: manipulator.clone(),
-                };
-
-                let mut ui_events = frame_input.events.clone();
-
-                gui.update(
-                    &mut ui_events,
-                    frame_input.accumulated_time,
-                    frame_input.viewport,
-                    frame_input.device_pixel_ratio,
-                    |ctx| {
-                        ui_use = Some(ctx.is_using_pointer());
-                        ui_frame(ctx, &mut screen, gui_context);
-                    },
-                );
-
-                if !ui_use.unwrap() {
-                    let mut events = frame_input
-                        .events
-                        .clone()
-                        .into_iter()
-                        .filter(|event| {
-                            let position = match event {
-                                Event::MousePress { position, .. } => position,
-                                Event::MouseRelease { position, .. } => position,
-                                Event::MouseMotion { position, .. } => position,
-                                Event::MouseWheel { position, .. } => position,
-                                _ => return true,
-                            };
-
-                            environment.camera().viewport().contains(position)
-                        })
-                        .collect::<Vec<Event>>();
-
-                    environment.handle_camera_events(&mut events);
-                }
-
-                environment.frame(&frame_input, &application);
-
-                buffer.check_picks(&context, &frame_input, &environment);
-
-                //Render
-                {
-                    let screen: RenderTarget<'_> = frame_input.screen();
-                    screen.clear(ClearState::color_and_depth(
-                        119.0 / 255.0,
-                        119.0 / 255.0,
-                        119.0 / 255.0,
-                        1.0,
-                        1.0,
-                    ));
-
-                    screen.write(|| {
-                        buffer.render(&environment, &application, context.clone());
-                        gui.render();
-                    });
-                }
-
-                manipulator.lock().unwrap().update_models(buffer.models());
-                manipulator.lock().unwrap().update_objects(buffer.objects());
-                manipulator
-                    .lock()
-                    .unwrap()
-                    .update_gcode(application.visualizer().gcode.cell());
-
-                if application.visualizer().gcode.gcode_needs_computing() {
-                    let model = application
-                        .visualizer()
-                        .gcode
-                        .build_gcode_model(context.clone());
-                    buffer.set_toolpath_model(model);
-                }
-
-                context.swap_buffers().unwrap();
-                control_flow.set_poll();
-
-                window.request_redraw();
-            }
-            winit::event::Event::RedrawRequested(_) => {
-                window.request_redraw();
-            }
-            winit::event::Event::WindowEvent { ref event, .. } => {
-                application.handle_window_event(event, &context, control_flow);
-            }
-            winit::event::Event::LoopDestroyed => {
-                application.save();
-                application.kill();
-            }
-            _ => {}
-        });
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(toolpath.mesh.clone()),
+        // This is the default color, but note that vertex colors are
+        // multiplied by the base color, so you'll likely want this to be
+        // white if using vertex colors.
+        material: materials.add(Color::rgb(1., 1., 1.).into()),
+        transform: Transform::from_translation(Vec3::new(-125.0, 0.2, -125.0)),
+        ..Default::default()
     });
 }
 
-pub fn test_buffer(
-    context: &Context,
-    _application: &mut Application,
-    buffer: &mut ObjectBuffer<dyn Object>,
+fn print_fps(mut fps: ResMut<FPS>) {
+    fps.now = Instant::now();
+
+    println!("FPS: {}", 1.0 / (fps.now - fps.last).as_secs_f32());
+  
+    fps.last = fps.now;
+}
+
+fn init_window(
+    windows: NonSend<WinitWindows>,
+    primary_window_query: Query<Entity, With<PrimaryWindow>>,
 ) {
-    /*
-        let environment_map =
-        three_d_asset::io::load_and_deserialize("wallpapers/black_grey.jpg").unwrap();
+    let primary_window_entity = primary_window_query.single();
+    let primary_window = windows.get_window(primary_window_entity).unwrap();
+    primary_window.set_visible(true);
 
-    let skybox = Skybox::new_from_equirectangular(context, &environment_map);
-    buffer.set_skybox(skybox);
-    */
+    // here we use the `image` crate to load our icon data from a png file
+    // this is not a very bevy-native solution, but it will do
+    let (icon_rgba, icon_width, icon_height) = {
+        let image = image::open("assets/icons/main_icon.png")
+            .expect("Failed to open icon path")
+            .into_rgba8();
+        let (width, height) = image.dimensions();
+        let rgba = image.into_raw();
+        (rgba, width, height)
+    };
 
+    let icon = Icon::from_rgba(icon_rgba, icon_width, icon_height).unwrap();
 
-    let model: three_d_asset::Model =
-        three_d_asset::io::load_and_deserialize("assets/without-textures.glb").unwrap();
-
-    let mut model = Model::<PhysicalMaterial>::new(context, &model)
-        .unwrap()
-        .remove(0);
-
-    let scale = Mat4::from_scale(1.0);
-    let rotation = Mat4::from_angle_x(degrees(90.0));
-
-    let translation = Mat4::from_translation(vec3(0.0, 0.0, 0.0));
-    model.set_transformation(translation * rotation * scale);
-
-    buffer.add_object("PRINT_BED", Box::new(model));
+    primary_window.set_window_icon(Some(icon));
 }

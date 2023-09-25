@@ -1,23 +1,23 @@
+use bevy::prelude::Vec3;
 use serde::{Deserialize, Serialize};
-use three_d_asset::Vector3;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VirtualPlane {
-    position: Vector3<f32>,
-    normal: Vector3<f32>,
+    position: Vec3,
+    normal: Vec3,
 }
 
 #[allow(dead_code)]
 impl VirtualPlane {
-    pub fn new(position: Vector3<f32>, normal: Vector3<f32>) -> Self {
+    pub fn new(position: Vec3, normal: Vec3) -> Self {
         Self { position, normal }
     }
 
-    pub fn position(&self) -> &Vector3<f32> {
+    pub fn position(&self) -> &Vec3 {
         &self.position
     }
 
-    pub fn normal(&self) -> &Vector3<f32> {
+    pub fn normal(&self) -> &Vec3 {
         &self.normal
     }
 }

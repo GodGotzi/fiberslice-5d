@@ -1,8 +1,6 @@
-use three_d_asset::Vector3;
+use bevy::prelude::Color;
 
 pub mod format;
-pub mod frame;
-pub mod task;
 
 pub mod debug {
     use std::fmt::Debug;
@@ -28,15 +26,15 @@ pub trait Contains<P> {
     fn contains(&self, point: &P) -> bool;
 }
 
-pub trait FlipYZ {
-    fn flip_yz(self) -> Self;
-}
+pub struct SimpleColor;
 
-impl FlipYZ for Vector3<f64> {
-    fn flip_yz(self) -> Self {
-        let mut s = self;
-
-        std::mem::swap(&mut s.y, &mut s.z);
-        s
+impl SimpleColor {
+    pub fn new(r: u8, g: u8, b: u8, a: u8) -> Color {
+        Color::rgba(
+            r as f32 / 255.0,
+            g as f32 / 255.0,
+            b as f32 / 255.0,
+            a as f32 / 255.0,
+        )
     }
 }

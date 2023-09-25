@@ -1,11 +1,11 @@
+use bevy_egui::egui;
 use egui_extras::Size;
 use egui_grid::GridBuilder;
-use three_d::egui;
 
 use crate::config;
 use crate::view::Mode;
 
-use super::{Component, GuiContext};
+use super::{Component, UiData};
 
 pub struct Modebar;
 
@@ -16,7 +16,7 @@ impl Modebar {
 }
 
 impl Component<Modebar> for Modebar {
-    fn show(&mut self, ctx: &egui::Context, gui_context: &mut GuiContext) {
+    fn show(&mut self, ctx: &egui::Context, mut data: UiData) {
         let boundary = egui::TopBottomPanel::bottom("modebar")
             .default_height(config::gui::MODEBAR_H)
             .show(ctx, |ui: &mut egui::Ui| {
@@ -44,11 +44,7 @@ impl Component<Modebar> for Modebar {
                         .show(ui, |mut grid| {
                             // Cells are represented as they were allocated
                             grid.cell(|ui| {
-                                ui.selectable_value(
-                                    gui_context.application.context.mode(),
-                                    Mode::Prepare,
-                                    "Prepare",
-                                );
+                                ui.selectable_value(&mut data.mode, Mode::Prepare, "Prepare");
                             });
                             grid.cell(|ui| {
                                 ui.horizontal(|ui| {
@@ -57,7 +53,7 @@ impl Component<Modebar> for Modebar {
                             });
                             grid.cell(|ui| {
                                 ui.selectable_value(
-                                    gui_context.application.context.mode(),
+                                    &mut data.mode,
                                     Mode::ForceAnalytics,
                                     "Force - Analytics",
                                 );
@@ -68,11 +64,7 @@ impl Component<Modebar> for Modebar {
                                 });
                             });
                             grid.cell(|ui| {
-                                ui.selectable_value(
-                                    gui_context.application.context.mode(),
-                                    Mode::Preview,
-                                    "Preview",
-                                );
+                                ui.selectable_value(&mut data.mode, Mode::Preview, "Preview");
                             });
                         });
                 });
@@ -80,6 +72,6 @@ impl Component<Modebar> for Modebar {
             .response
             .into();
 
-        gui_context.application.context.boundaries_mut().modebar = boundary;
+        data.boundary_holder.set_modebar(boundary);
     }
 }

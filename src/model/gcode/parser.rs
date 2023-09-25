@@ -140,7 +140,7 @@ pub fn compute_parameters(
         } else if Movements::is_movement(movement) {
             movements.set_movement(
                 movement,
-                value.parse::<f64>().map_err(|_| {
+                value.parse::<f32>().map_err(|_| {
                     crate::error::Error::GCodeParseError(
                         format!("Invalid movement value: {}", value),
                         index,

@@ -10,28 +10,28 @@ edition = "2021"
 
 egui_grid = "0.2.0"
 egui_extras = "0.22.0"
-winit = "0.28"
-web-sys = "0.3"
-wasm-bindgen = "0.2"
+winit = "0.28.6"
 strum = "0.25.0"
 strum_macros = "0.25.0"
 image = { version = "0.24.6" }
 lazy_static = "1.4.0"
 macros = { path = "macros" }
 traits = { path = "traits" }
-three-d = { git = "https://github.com/asny/three-d.git", branch = "fix-sending-unused-attributes", features = [
-    "egui-gui",
-    "serde",
-] }
 thiserror = "1.0.30"
-three-d-asset = { version = "0.6", features = [
-    "gltf",
-    "serde",
-    "image",
-    "obj",
-] }
-tokio = { version = "1", features = ["macros", "full"] }
 serde = "1.0.177"
 serde_yaml = "0.9.25"
 stl_io = "0.7.0"
 nfde = "0.0.8"
+smooth-bevy-cameras = { git = "https://github.com/GodGotzi/smooth-bevy-cameras" }
+bevy = { version = "0.11.2", features = ["dynamic_linking"] }
+bevy_egui = { git = "https://github.com/mvlabat/bevy_egui" }
+bevy_atmosphere = { git = "https://github.com/JonahPlusPlus/bevy_atmosphere" }
+bevy_obj = "0.11"
+
+# Enable a small amount of optimization in debug mode
+[profile.dev]
+opt-level = 1
+
+# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
+[profile.dev.package."*"]
+opt-level = 3

@@ -1,6 +1,6 @@
+use bevy::prelude::Vec3;
 use std::fs;
 use strum_macros::Display;
-use three_d::*;
 
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +15,7 @@ pub enum Setup {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SetupContext {
-    box_offset: Vector3<f32>,
+    box_offset: Vec3,
     print_box: PrintBox,
     printer_glb_path: String,
 }
