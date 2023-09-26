@@ -98,7 +98,12 @@ fn spawn_bed(
         // This is the default color, but note that vertex colors are
         // multiplied by the base color, so you'll likely want this to be
         // white if using vertex colors.
-        material: materials.add(Color::rgb(1., 1., 1.).into()),
+        material: materials.add(StandardMaterial {
+            cull_mode: None,
+            base_color: Color::rgba(1.0, 1.0, 1.0, 1.0),
+            ..Default::default()
+        }),
+        
         transform: Transform::from_translation(Vec3::new(-125.0, 0.2, -125.0)),
         ..Default::default()
     });
