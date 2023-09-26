@@ -234,24 +234,24 @@ fn draw_rect_path(
 ) {
     match orienation {
         PathOrientation::SouthEast => {
-            coordinator.add_triangle((point_left_0, point_left_1, point_right_0), color);
-
-            coordinator.add_triangle((point_left_1, point_right_1, point_right_0), color);
-        }
-        PathOrientation::SouthWest => {
-            coordinator.add_triangle((point_right_1, point_left_1, point_left_0), color);
-
-            coordinator.add_triangle((point_left_0, point_right_0, point_right_1), color);
-        }
-        PathOrientation::NorthEast => {
             coordinator.add_triangle((point_right_0, point_left_1, point_left_0), color);
 
             coordinator.add_triangle((point_right_0, point_right_1, point_left_1), color);
         }
-        PathOrientation::NorthWest => {
-            coordinator.add_triangle((point_right_1, point_right_0, point_left_0), color);
-
+        PathOrientation::SouthWest => {
             coordinator.add_triangle((point_left_0, point_left_1, point_right_1), color);
+
+            coordinator.add_triangle((point_right_1, point_right_0, point_left_0), color);
+        }
+        PathOrientation::NorthEast => {
+            coordinator.add_triangle((point_left_0, point_left_1, point_right_0), color);
+
+            coordinator.add_triangle((point_left_1, point_right_1, point_right_0), color);
+        }
+        PathOrientation::NorthWest => {
+            coordinator.add_triangle((point_left_0, point_right_0, point_right_1), color);
+
+            coordinator.add_triangle((point_right_1, point_left_1, point_left_0), color);
         }
     }
 }
