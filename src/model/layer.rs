@@ -18,6 +18,13 @@ pub struct PartCoordinator<'a> {
     offset_part_end: Cell<usize>,
 }
 
+enum PathOrientation {
+    SouthEast,
+    SouthWest,
+    NorthEast,
+    NorthWest,
+}
+
 pub fn push_position(mesh: &mut MeshPart, position: [f32; 3]) {
     mesh.positions.push(position);
 }
@@ -34,7 +41,7 @@ pub struct WVec3(Vec3);
 
 impl From<WVec3> for [f32; 3] {
     fn from(value: WVec3) -> Self {
-        [value.0.x as f32, value.0.z as f32, value.0.y as f32]
+        [value.0.x, value.0.z, value.0.y]
     }
 }
 
@@ -131,39 +138,43 @@ pub fn draw_path(
     coordinator: &PartCoordinator,
     cross: &Cross,
 ) {
-    draw_rect(
+    draw_rect_path(
         cross.up + path.0,
         cross.right + path.0,
         cross.up + path.1,
         cross.right + path.1,
         color,
+        PathOrientation::SouthWest,
         coordinator,
     );
 
-    draw_rect(
+    draw_rect_path(
         cross.down + path.0,
         cross.right + path.0,
         cross.down + path.1,
         cross.right + path.1,
         color,
+        PathOrientation::NorthWest,
         coordinator,
     );
 
-    draw_rect(
+    draw_rect_path(
         cross.down + path.0,
         cross.left + path.0,
         cross.down + path.1,
         cross.left + path.1,
         color,
+        PathOrientation::NorthEast,
         coordinator,
     );
 
-    draw_rect(
+    draw_rect_path(
         cross.up + path.0,
         cross.left + path.0,
         cross.up + path.1,
         cross.left + path.1,
         color,
+        PathOrientation::SouthEast,
         coordinator,
     );
 }
@@ -212,6 +223,39 @@ pub fn draw_cross_connection(
     );
 }
 
+fn draw_rect_path(
+    point_left_0: Vec3,
+    point_left_1: Vec3,
+    point_right_0: Vec3,
+    point_right_1: Vec3,
+    color: &[f32; 4],
+    orienation: PathOrientation,
+    coordinator: &PartCoordinator,
+) {
+    match orienation {
+        PathOrientation::SouthEast => {
+            coordinator.add_triangle((point_left_0, point_left_1, point_right_0), color);
+
+            coordinator.add_triangle((point_left_1, point_right_1, point_right_0), color);
+        }
+        PathOrientation::SouthWest => {
+            coordinator.add_triangle((point_right_1, point_left_1, point_left_0), color);
+
+            coordinator.add_triangle((point_left_0, point_right_0, point_right_1), color);
+        }
+        PathOrientation::NorthEast => {
+            coordinator.add_triangle((point_right_0, point_left_1, point_left_0), color);
+
+            coordinator.add_triangle((point_right_0, point_right_1, point_left_1), color);
+        }
+        PathOrientation::NorthWest => {
+            coordinator.add_triangle((point_right_1, point_right_0, point_left_0), color);
+
+            coordinator.add_triangle((point_left_0, point_left_1, point_right_1), color);
+        }
+    }
+}
+
 pub fn draw_rect(
     point_left_0: Vec3,
     point_left_1: Vec3,
@@ -222,7 +266,7 @@ pub fn draw_rect(
 ) {
     coordinator.add_triangle((point_left_0, point_left_1, point_right_0), color);
 
-    coordinator.add_triangle((point_right_0, point_right_1, point_left_1), color);
+    coordinator.add_triangle((point_left_1, point_right_1, point_right_0), color);
 }
 
 pub fn draw_rect_with_cross(

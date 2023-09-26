@@ -19,11 +19,7 @@ mod view;
 
 use std::{fs, time::Instant};
 
-use bevy::{
-    prelude::*,
-    window::PrimaryWindow,
-    winit::WinitWindows,
-};
+use bevy::{prelude::*, window::PrimaryWindow, winit::WinitWindows};
 use bevy_atmosphere::prelude::AtmospherePlugin;
 use bevy_egui::EguiPlugin;
 use gui::{ui_frame, RawUiData, Screen};
@@ -89,7 +85,7 @@ fn spawn_bed(
         ..default()
     });
 
-    let content = fs::read_to_string("gcode/test.gcode").unwrap();
+    let content = fs::read_to_string("gcode/test2.gcode").unwrap();
     let gcode: GCode = content.try_into().unwrap();
     let toolpath = create_toolpath(&gcode);
 
@@ -98,7 +94,10 @@ fn spawn_bed(
         // This is the default color, but note that vertex colors are
         // multiplied by the base color, so you'll likely want this to be
         // white if using vertex colors.
-        material: materials.add(Color::rgb(1., 1., 1.).into()),
+        material: materials.add(StandardMaterial {
+            base_color: Color::rgba(1.0, 1.0, 1.0, 1.0),
+            ..Default::default()
+        }),
         transform: Transform::from_translation(Vec3::new(-125.0, 0.2, -125.0)),
         ..Default::default()
     });
