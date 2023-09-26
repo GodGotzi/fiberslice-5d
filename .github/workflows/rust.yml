@@ -17,6 +17,10 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install libasound2
         run: sudo apt install libasound2-dev
+      - name: Install libudev-dev
+        run: sudo apt install libudev-dev
+      - name: Install pkg-config
+        run: sudo apt install pkg-config
       - name: Build
         run: cargo build --verbose
       - name: Run tests
