@@ -62,12 +62,12 @@ fn resize_viewport(
         return;
     }
 
-    let (viewport_width, viewport_height): (f32, f32) =
-        (window.resolution.width(), window.resolution.height());
+    let (viewport_width, viewport_height): (u32, u32) =
+        (window.resolution.physical_width(), window.resolution.physical_height());
 
     //update viewport
     {
-        let height = viewport_height
+        let height = viewport_height as f32
             - ((data.boundary_holder.taskbar().height()
                 + data.boundary_holder.modebar().height()
                 + data.boundary_holder.menubar().height())
@@ -79,7 +79,7 @@ fn resize_viewport(
                 y: (data.boundary_holder.taskbar().height() * window.scale_factor() as f32) as u32,
             },
             physical_size: UVec2 {
-                x: (viewport_width
+                x: (viewport_width as f32
                     - ((data.boundary_holder.toolbar().width()
                         + data.boundary_holder.settingsbar().width())
                         * window.scale_factor() as f32)) as u32,
@@ -114,9 +114,14 @@ pub fn camera_setup(mut commands: Commands) {
             Vec3::Y,
         ));
 
+    commands.insert_resource(AmbientLight {
+        color: Color::rgba(0.5, 0.5, 0.5, 0.5),
+        brightness: 1.0,
+    });
+
     commands.insert_resource(AtmosphereModel::new(Gradient {
-        ground: Color::rgb(0.188, 0.188, 0.188),
-        horizon: Color::rgb(0.4, 0.4, 0.4),
-        sky: Color::rgb(0.1294, 0.1294, 0.1294),
+        ground: Color::rgb(0.5, 0.5, 0.5),
+        horizon: Color::rgb(0.75, 0.75, 0.75),
+        sky: Color::rgb(0.75, 0.75, 0.75),
     }));
 }
