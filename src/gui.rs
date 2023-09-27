@@ -15,23 +15,24 @@ pub mod toolbar;
 
 use std::cell::RefCell;
 
-use bevy::prelude::{ResMut, Resource, EventWriter, Plugin, Update, Res};
+use bevy::prelude::{EventWriter, Plugin, Res, ResMut, Resource, Update};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use egui::{Response, Visuals};
 
-use crate::{view::{Mode, Orientation}, prelude::Context};
+use crate::{
+    prelude::Context,
+    view::{Mode, Orientation},
+};
 
 use self::components::addons;
 
 pub type UiData<'a> = &'a UiDataPacket<'a>;
 
-
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app
-            .insert_resource(Screen::new())
+        app.insert_resource(Screen::new())
             .insert_resource(RawUiData::new(Theme::Dark, Mode::Prepare))
             .add_plugins(EguiPlugin)
             .add_systems(Update, ui_frame);
@@ -43,26 +44,22 @@ pub struct EventWriters<'a> {
 }
 
 pub struct UiDataPacket<'a> {
-    raw: RefCell<ResMut<'a, RawUiData>>,
-    context: Res<'a, Context>,
+    pub raw: RefCell<ResMut<'a, RawUiData>>,
+    pub context: Res<'a, Context>,
     writers: EventWriters<'a>,
 }
 
 impl<'a> UiDataPacket<'a> {
-    pub fn new(raw: ResMut<'a, RawUiData>, context: Res<'a, Context>, writers: EventWriters<'a>) -> Self {
+    pub fn new(
+        raw: ResMut<'a, RawUiData>,
+        context: Res<'a, Context>,
+        writers: EventWriters<'a>,
+    ) -> Self {
         Self {
             raw: RefCell::new(raw),
             context,
             writers,
         }
-    }
-
-    pub fn context(&self) -> &Context {
-        &self.context
-    }
-
-    pub fn raw(&self) -> &RefCell<ResMut<'a, RawUiData>> {
-        &self.raw
     }
 
     pub fn orienation_writer(&self) -> &RefCell<EventWriter<'a, Orientation>> {
@@ -72,9 +69,9 @@ impl<'a> UiDataPacket<'a> {
 
 #[derive(Resource)]
 pub struct RawUiData {
-    pub(super) theme: Theme,
-    pub(super) mode: Mode,
-    pub(super) boundary_holder: BoundaryHolder,
+    pub theme: Theme,
+    pub mode: Mode,
+    pub boundary_holder: BoundaryHolder,
 }
 
 impl RawUiData {
@@ -99,10 +96,10 @@ pub fn ui_frame(
     mut screen: ResMut<'_, Screen>,
     data: ResMut<'_, RawUiData>,
     context: Res<'_, Context>,
-    orientation_writer: EventWriter<Orientation>
+    orientation_writer: EventWriter<Orientation>,
 ) {
     let ctx = contexts.ctx_mut();
-    
+
     let writers = EventWriters {
         orientation: RefCell::new(orientation_writer),
     };

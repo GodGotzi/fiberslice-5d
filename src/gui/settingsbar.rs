@@ -157,6 +157,9 @@ impl Component<Settingsbar> for Settingsbar {
                 .response,
         );
 
-        data.raw().borrow_mut().boundary_holder.set_settingsbar(boundary);
+        data.raw
+            .borrow_mut()
+            .boundary_holder
+            .set_settingsbar(boundary);
     }
 }

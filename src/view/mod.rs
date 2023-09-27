@@ -6,12 +6,12 @@
 */
 
 use bevy::{prelude::*, render::camera::Viewport};
-use bevy_atmosphere::prelude::{AtmosphereCamera, AtmosphereModel, Gradient, AtmospherePlugin};
+use bevy_atmosphere::prelude::{AtmosphereCamera, AtmosphereModel, AtmospherePlugin, Gradient};
 use smooth_bevy_cameras::LookTransformPlugin;
 
 use crate::gui::RawUiData;
 
-use self::camera::{SingleCamera, CameraPlugin};
+use self::camera::{CameraPlugin, SingleCamera};
 
 pub mod camera;
 pub mod visualization;
@@ -20,10 +20,9 @@ pub struct ViewPlugin;
 
 impl Plugin for ViewPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_event::<Orientation>()
+        app.add_event::<Orientation>()
             .add_plugins(LookTransformPlugin)
-            .add_plugins(CameraPlugin::default())
+            .add_plugins(CameraPlugin)
             .add_plugins(AtmospherePlugin)
             .add_systems(Startup, environment_setup)
             .add_systems(Update, update_viewport);
@@ -78,28 +77,34 @@ fn resize_viewport(
         return;
     }
 
-    let (viewport_width, viewport_height): (u32, u32) =
-        (window.resolution.physical_width(), window.resolution.physical_height());
+    let (viewport_width, viewport_height): (u32, u32) = (
+        window.resolution.physical_width(),
+        window.resolution.physical_height(),
+    );
 
     //update viewport
     {
-        let height = viewport_height as f32
+        let height = viewport_height
             - ((data.boundary_holder.taskbar().height()
                 + data.boundary_holder.modebar().height()
                 + data.boundary_holder.menubar().height())
-                * window.scale_factor() as f32);
+                * window.scale_factor() as f32) as u32
+            + 4;
 
         let viewport = Viewport {
             physical_position: UVec2 {
-                x: (data.boundary_holder.toolbar().width() * window.scale_factor() as f32) as u32,
-                y: (data.boundary_holder.taskbar().height() * window.scale_factor() as f32) as u32,
+                x: (data.boundary_holder.toolbar().width() * window.scale_factor() as f32) as u32
+                    - 2,
+                y: (data.boundary_holder.menubar().height() * window.scale_factor() as f32) as u32
+                    - 2,
             },
             physical_size: UVec2 {
-                x: (viewport_width as f32
+                x: (viewport_width
                     - ((data.boundary_holder.toolbar().width()
                         + data.boundary_holder.settingsbar().width())
-                        * window.scale_factor() as f32)) as u32,
-                y: height as u32,
+                        * window.scale_factor() as f32) as u32)
+                    + 4,
+                y: height,
             },
             ..default()
         };

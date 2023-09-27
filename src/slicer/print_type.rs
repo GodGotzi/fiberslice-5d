@@ -24,19 +24,19 @@ impl PrintType {
     pub fn get_color(&self) -> Color {
         //set hard coded colors for now unique to each print type
         match &self {
-            Self::InternalInfill => SimpleColor::new(0, 0, 255, 255),
-            Self::SolidInfill => SimpleColor::new(0, 255, 0, 255),
-            Self::BridgeInfill => SimpleColor::new(255, 0, 0, 255),
-            Self::TopSolidInfill => SimpleColor::new(130, 130, 0, 255),
-            Self::Skirt => SimpleColor::new(255, 0, 255, 255),
-            Self::Brim => SimpleColor::new(0, 255, 255, 255),
-            Self::Support => SimpleColor::new(255, 255, 255, 255),
-            Self::Perimeter => SimpleColor::new(255, 0, 255, 255),
-            Self::WallOuter => SimpleColor::new(255, 0, 0, 255),
-            Self::WallInner => SimpleColor::new(255, 0, 0, 255),
-            Self::ExternalPerimeter => SimpleColor::new(255, 255, 0, 255),
-            Self::OverhangPerimeter => SimpleColor::new(0, 255, 255, 255),
-            Self::Unknown => SimpleColor::new(0, 0, 0, 255),
+            Self::InternalInfill => SimpleColor::from_u8(0, 0, 255, 255),
+            Self::SolidInfill => SimpleColor::from_u8(0, 255, 0, 255),
+            Self::BridgeInfill => SimpleColor::from_u8(255, 0, 0, 255),
+            Self::TopSolidInfill => SimpleColor::from_u8(130, 130, 0, 255),
+            Self::Skirt => SimpleColor::from_u8(255, 0, 255, 255),
+            Self::Brim => SimpleColor::from_u8(0, 255, 255, 255),
+            Self::Support => SimpleColor::from_u8(255, 255, 255, 255),
+            Self::Perimeter => SimpleColor::from_u8(255, 0, 255, 255),
+            Self::WallOuter => SimpleColor::from_u8(255, 0, 0, 255),
+            Self::WallInner => SimpleColor::from_u8(255, 0, 0, 255),
+            Self::ExternalPerimeter => SimpleColor::from_u8(255, 255, 0, 255),
+            Self::OverhangPerimeter => SimpleColor::from_u8(0, 255, 255, 255),
+            Self::Unknown => SimpleColor::from_u8(0, 0, 0, 255),
         }
     }
 }

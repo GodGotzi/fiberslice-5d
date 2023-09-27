@@ -9,14 +9,17 @@ impl Plugin for ShortcutPlugin {
 }
 
 mod window {
-    use bevy::{prelude::*, window::{PrimaryWindow, WindowMode}};
+    use bevy::{
+        prelude::*,
+        window::{PrimaryWindow, WindowMode},
+    };
 
     pub fn hotkeys_window(
         mut windows: Query<&mut Window, With<PrimaryWindow>>,
         keyboard_input: Res<Input<KeyCode>>,
     ) {
         let mut window = windows.single_mut();
-    
+
         if keyboard_input.pressed(KeyCode::F11) {
             if window.mode == WindowMode::Fullscreen {
                 window.mode = WindowMode::Windowed;
@@ -25,5 +28,4 @@ mod window {
             }
         }
     }
-
 }

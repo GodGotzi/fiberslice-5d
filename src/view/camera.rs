@@ -26,12 +26,12 @@ pub trait HandleOrientation {
 impl HandleOrientation for LookTransform {
     fn handle_orientation(&mut self, event: &Orientation) {
         let position = match event {
-            &Orientation::Default => vec3(0.00, 250.0, 400.0),
-            &Orientation::Diagonal => vec3(400.0, 400.0, 400.0),
-            &Orientation::Top => vec3(0.0, 700.0, 0.1), // FIXME 0.1 is a hack to avoid the camera being inside the model, maybe there is a better way to do this
-            &Orientation::Left => vec3(-400.0, 0.0, 0.0),
-            &Orientation::Right => vec3(400.0, 0.0, 0.0),
-            &Orientation::Front => vec3(0.0, 0.0, 400.0),
+            Orientation::Default => vec3(0.00, 250.0, 400.0),
+            Orientation::Diagonal => vec3(400.0, 400.0, 400.0),
+            Orientation::Top => vec3(0.0, 700.0, 0.1), // FIXME 0.1 is a hack to avoid the camera being inside the model, maybe there is a better way to do this
+            Orientation::Left => vec3(-400.0, 0.0, 0.0),
+            Orientation::Right => vec3(400.0, 0.0, 0.0),
+            Orientation::Front => vec3(0.0, 0.0, 400.0),
         };
 
         self.eye = position;
@@ -43,8 +43,7 @@ pub struct CameraPlugin;
 
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_event::<CameraControlEvent>()
+        app.add_event::<CameraControlEvent>()
             .add_systems(Update, control_system)
             .add_systems(Update, handle_events)
             .add_systems(Update, default_input_map);
@@ -103,6 +102,7 @@ impl Default for CameraController {
 #[derive(Event)]
 pub enum CameraControlEvent {
     Orbit(Vec2),
+    TranslateTarget(Vec2),
     Zoom(f32),
 }
 
@@ -114,7 +114,6 @@ pub fn default_input_map(
     mouse_buttons: Res<Input<MouseButton>>,
     controllers: Query<&CameraController>,
 ) {
-
     if ui_ctx.ctx_mut().is_using_pointer() {
         return;
     }
@@ -129,6 +128,7 @@ pub fn default_input_map(
         mouse_rotate_sensitivity,
         mouse_wheel_zoom_sensitivity,
         pixels_per_line,
+        mouse_translate_sensitivity,
         ..
     } = *controller;
 
@@ -144,11 +144,9 @@ pub fn default_input_map(
     }
 
     if mouse_buttons.pressed(MouseButton::Middle) {
-        /*
         events.send(CameraControlEvent::TranslateTarget(
             mouse_translate_sensitivity * cursor_delta,
         ));
-        */
     }
 
     let mut scalar = 1.0;
@@ -168,7 +166,7 @@ pub fn control_system(
     mut events: EventReader<CameraControlEvent>,
     mut cameras: Query<(&CameraController, &mut LookTransform, &Transform)>,
 ) {
-    let (mut transform, _scene_transform) =
+    let (mut transform, scene_transform) =
         if let Some((_, transform, scene_transform)) = cameras.iter_mut().find(|c| c.0.enabled) {
             (transform, scene_transform)
         } else {
@@ -185,6 +183,11 @@ pub fn control_system(
                 look_angles.add_yaw(dt * -delta.x);
                 look_angles.add_pitch(dt * delta.y);
             }
+            CameraControlEvent::TranslateTarget(delta) => {
+                let right_dir = scene_transform.rotation * -Vec3::X;
+                let up_dir = scene_transform.rotation * Vec3::Y;
+                transform.target += dt * delta.x * right_dir + dt * delta.y * up_dir;
+            }
             CameraControlEvent::Zoom(scalar) => {
                 radius_scalar *= scalar;
             }
@@ -199,8 +202,10 @@ pub fn control_system(
     transform.eye = transform.target + new_radius * look_angles.unit_vector();
 }
 
-fn handle_events(mut events: EventReader<Orientation>, mut cameras: Query<(&CameraController, &mut LookTransform, &Transform)>,) {
-
+fn handle_events(
+    mut events: EventReader<Orientation>,
+    mut cameras: Query<(&CameraController, &mut LookTransform, &Transform)>,
+) {
     let (mut transform, _scene_transform) =
         if let Some((_, transform, scene_transform)) = cameras.iter_mut().find(|c| c.0.enabled) {
             (transform, scene_transform)
@@ -211,5 +216,4 @@ fn handle_events(mut events: EventReader<Orientation>, mut cameras: Query<(&Came
     for event in events.iter() {
         transform.handle_orientation(event);
     }
-
 }

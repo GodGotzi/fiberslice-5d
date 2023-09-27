@@ -12,11 +12,11 @@ mod math;
 mod model;
 mod prelude;
 mod setup;
+mod shortcut;
 mod slicer;
 mod tests;
 mod utils;
 mod view;
-mod shortcut;
 
 use std::fs;
 
@@ -24,9 +24,7 @@ use bevy::{prelude::*, render::render_resource::Face};
 use gui::UiPlugin;
 use model::gcode::GCode;
 use prelude::MainPlugin;
-use view::{
-    visualization::gcode::create_toolpath, ViewPlugin,
-};
+use view::{visualization::gcode::create_toolpath, ViewPlugin};
 
 fn main() {
     let plugin = WindowPlugin {
@@ -59,7 +57,7 @@ fn spawn_bed(
         ..default()
     });
 
-    let content = fs::read_to_string("gcode/test.gcode").unwrap();
+    let content = fs::read_to_string("gcode/test2.gcode").unwrap();
     let gcode: GCode = content.try_into().unwrap();
     let toolpath = create_toolpath(&gcode);
 
@@ -76,7 +74,7 @@ fn spawn_bed(
             ..Default::default()
         }),
 
-        transform: Transform::from_translation(Vec3::new(-125.0, 0.2, -125.0)),
+        transform: Transform::from_translation(Vec3::new(-125.0, 0.3, -125.0)),
         ..Default::default()
     });
 }

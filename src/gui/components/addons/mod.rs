@@ -91,7 +91,9 @@ pub mod orientation {
                     let response = ui.add_sized([30., 30.], image_button);
 
                     if response.clicked() {
-                        data.orienation_writer().borrow_mut().send(crate::view::Orientation::Diagonal);
+                        data.orienation_writer()
+                            .borrow_mut()
+                            .send(crate::view::Orientation::Diagonal);
                     }
                 });
 
@@ -105,7 +107,9 @@ pub mod orientation {
                     let response = ui.add_sized([30., 30.], image_button);
 
                     if response.clicked() {
-                        data.orienation_writer().borrow_mut().send(crate::view::Orientation::Front);
+                        data.orienation_writer()
+                            .borrow_mut()
+                            .send(crate::view::Orientation::Front);
                     }
                 });
 
@@ -118,7 +122,9 @@ pub mod orientation {
                     let response = ui.add_sized([30., 30.], image_button);
 
                     if response.clicked() {
-                        data.orienation_writer().borrow_mut().send(crate::view::Orientation::Top);
+                        data.orienation_writer()
+                            .borrow_mut()
+                            .send(crate::view::Orientation::Top);
                     }
                 });
 
@@ -131,7 +137,9 @@ pub mod orientation {
                     let response = ui.add_sized([30., 30.], image_button);
 
                     if response.clicked() {
-                        data.orienation_writer().borrow_mut().send(crate::view::Orientation::Left);
+                        data.orienation_writer()
+                            .borrow_mut()
+                            .send(crate::view::Orientation::Left);
                     }
                 });
 
@@ -145,7 +153,9 @@ pub mod orientation {
                     let response = ui.add_sized([30., 30.], image_button);
 
                     if response.clicked() {
-                        data.orienation_writer().borrow_mut().send(crate::view::Orientation::Right);
+                        data.orienation_writer()
+                            .borrow_mut()
+                            .send(crate::view::Orientation::Right);
                     }
                 });
 
@@ -171,7 +181,7 @@ impl gui::InnerComponent<Addons> for Addons {
             size: Vec2::new(window_size.x - 15.0, window_size.y - 15.0),
         };
 
-        match data.raw().borrow_mut().mode {
+        match data.raw.borrow_mut().mode {
             Mode::Prepare => prepare::show(ctx, ui, data, boundary),
             Mode::Preview => preview::show(ctx, ui, data, boundary),
             Mode::ForceAnalytics => force_analytics::show(ctx, ui, data, boundary),
