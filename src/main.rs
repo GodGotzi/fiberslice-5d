@@ -16,29 +16,17 @@ mod slicer;
 mod tests;
 mod utils;
 mod view;
+mod shortcut;
 
-use std::{fs, time::Instant};
+use std::fs;
 
-use bevy::{prelude::*, render::render_resource::Face, window::PrimaryWindow, winit::WinitWindows};
-use bevy_atmosphere::prelude::AtmospherePlugin;
-use bevy_egui::EguiPlugin;
-use gui::{ui_frame, RawUiData, Screen};
+use bevy::{prelude::*, render::render_resource::Face};
+use gui::UiPlugin;
 use model::gcode::GCode;
-use prelude::hotkeys_window;
-use smooth_bevy_cameras::LookTransformPlugin;
+use prelude::MainPlugin;
 use view::{
-    camera::{CameraPlugin, handle_camera_events}, camera_setup, update_camera_viewport,
-    visualization::gcode::create_toolpath, ViewEvent,
+    visualization::gcode::create_toolpath, ViewPlugin,
 };
-
-use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
-use winit::window::Icon;
-
-#[derive(Resource)]
-struct FPS {
-    now: Instant,
-    last: Instant,
-}
 
 fn main() {
     let plugin = WindowPlugin {
@@ -51,27 +39,11 @@ fn main() {
     };
 
     App::new()
-        .add_event::<ViewEvent>()
-        .insert_resource(Screen::new())
-        .insert_resource(RawUiData::new(gui::Theme::Light, view::Mode::Prepare))
-        .insert_resource(FPS {
-            now: Instant::now(),
-            last: Instant::now(),
-        })
         .add_plugins(DefaultPlugins.set(plugin))
-        .add_plugins(FrameTimeDiagnosticsPlugin)
-        .add_plugins(EguiPlugin)
-        .add_plugins(LookTransformPlugin)
-        .add_plugins(CameraPlugin::default())
-        .add_plugins(AtmospherePlugin)
-        .add_systems(Startup, camera_setup)
+        .add_plugins(UiPlugin)
+        .add_plugins(ViewPlugin)
+        .add_plugins(MainPlugin)
         .add_systems(Startup, spawn_bed)
-        .add_systems(PostStartup, init_window)
-        .add_systems(Update, print_fps)
-        .add_systems(Update, update_camera_viewport)
-        .add_systems(Update, handle_camera_events)
-        .add_systems(Update, ui_frame)
-        .add_systems(Update, hotkeys_window)
         .run();
 }
 
@@ -82,7 +54,7 @@ fn spawn_bed(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     commands.spawn(SceneBundle {
-        scene: ass.load("bed_new.glb#Scene0"),
+        scene: ass.load("bed.glb#Scene0"),
         transform: Transform::from_scale(Vec3::new(1000.0, 1000.0, 1000.0)),
         ..default()
     });
@@ -107,36 +79,4 @@ fn spawn_bed(
         transform: Transform::from_translation(Vec3::new(-125.0, 0.2, -125.0)),
         ..Default::default()
     });
-}
-
-fn print_fps(mut fps: ResMut<FPS>) {
-    fps.now = Instant::now();
-
-    println!("FPS: {}", 1.0 / (fps.now - fps.last).as_secs_f32());
-
-    fps.last = fps.now;
-}
-
-fn init_window(
-    windows: NonSend<WinitWindows>,
-    primary_window_query: Query<Entity, With<PrimaryWindow>>,
-) {
-    let primary_window_entity = primary_window_query.single();
-    let primary_window = windows.get_window(primary_window_entity).unwrap();
-    primary_window.set_visible(true);
-
-    // here we use the `image` crate to load our icon data from a png file
-    // this is not a very bevy-native solution, but it will do
-    let (icon_rgba, icon_width, icon_height) = {
-        let image = image::open("assets/icons/main_icon.png")
-            .expect("Failed to open icon path")
-            .into_rgba8();
-        let (width, height) = image.dimensions();
-        let rgba = image.into_raw();
-        (rgba, width, height)
-    };
-
-    let icon = Icon::from_rgba(icon_rgba, icon_width, icon_height).unwrap();
-
-    primary_window.set_window_icon(Some(icon));
 }

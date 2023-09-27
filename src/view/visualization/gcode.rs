@@ -4,13 +4,9 @@ use std::collections::HashMap;
 use bevy::prelude::Mesh;
 use bevy::render::render_resource::PrimitiveTopology;
 
-use crate::model::gcode::toolpath::compute_modul_with_coordinator;
-use crate::model::gcode::toolpath::PathModul;
-use crate::model::gcode::toolpath::ToolPath;
+use crate::model::gcode::toolpath::*;
 use crate::model::gcode::GCode;
-use crate::model::layer::LayerMesh;
-use crate::model::layer::PartCoordinator;
-use crate::model::layer::ToolPathModel;
+use crate::model::layer::*;
 
 pub fn create_toolpath<'a>(gcode: &GCode) -> ToolPathModel<'a> {
     let toolpath = ToolPath::from(gcode.clone());

@@ -14,7 +14,7 @@ impl Toolbar {
 }
 
 impl Component<Toolbar> for Toolbar {
-    fn show(&mut self, ctx: &Context, mut data: UiData) {
+    fn show(&mut self, ctx: &Context, data: UiData) {
         let boundary = SidePanel::left("toolbar")
             .resizable(false)
             .default_width(config::gui::TOOLBAR_W)
@@ -22,6 +22,6 @@ impl Component<Toolbar> for Toolbar {
             .response
             .into();
 
-        data.raw.borrow_mut().boundary_holder.set_toolbar(boundary);
+        data.raw().borrow_mut().boundary_holder.set_toolbar(boundary);
     }
 }

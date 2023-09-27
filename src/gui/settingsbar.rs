@@ -144,7 +144,7 @@ impl Settingsbar {
 }
 
 impl Component<Settingsbar> for Settingsbar {
-    fn show(&mut self, ctx: &egui::Context, mut data: UiData) {
+    fn show(&mut self, ctx: &egui::Context, data: UiData) {
         let mut tabbed_view = TabbedSettings::init();
 
         let boundary = Boundary::from(
@@ -157,6 +157,6 @@ impl Component<Settingsbar> for Settingsbar {
                 .response,
         );
 
-        data.raw.borrow_mut().boundary_holder.set_settingsbar(boundary);
+        data.raw().borrow_mut().boundary_holder.set_settingsbar(boundary);
     }
 }

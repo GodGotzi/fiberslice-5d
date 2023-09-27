@@ -83,7 +83,7 @@ pub mod orientation {
                 grid.empty();
                 grid.cell(|ui| {
                     let icon =
-                        icon::ICONTABLE.get_orientation_icon(crate::view::ViewEvent::Diagonal);
+                        icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Diagonal);
 
                     let image_button =
                         ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
@@ -91,13 +91,13 @@ pub mod orientation {
                     let response = ui.add_sized([30., 30.], image_button);
 
                     if response.clicked() {
-                        data.orientation_writer.borrow_mut().send(crate::view::ViewEvent::Diagonal);
+                        data.orienation_writer().borrow_mut().send(crate::view::Orientation::Diagonal);
                     }
                 });
 
                 grid.cell(|ui| {
                     let icon =
-                        icon::ICONTABLE.get_orientation_icon(crate::view::ViewEvent::Front);
+                        icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Front);
 
                     let image_button =
                         ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
@@ -105,12 +105,12 @@ pub mod orientation {
                     let response = ui.add_sized([30., 30.], image_button);
 
                     if response.clicked() {
-                        data.orientation_writer.borrow_mut().send(crate::view::ViewEvent::Front);
+                        data.orienation_writer().borrow_mut().send(crate::view::Orientation::Front);
                     }
                 });
 
                 grid.cell(|ui| {
-                    let icon = icon::ICONTABLE.get_orientation_icon(crate::view::ViewEvent::Top);
+                    let icon = icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Top);
 
                     let image_button =
                         ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
@@ -118,12 +118,12 @@ pub mod orientation {
                     let response = ui.add_sized([30., 30.], image_button);
 
                     if response.clicked() {
-                        data.orientation_writer.borrow_mut().send(crate::view::ViewEvent::Top);
+                        data.orienation_writer().borrow_mut().send(crate::view::Orientation::Top);
                     }
                 });
 
                 grid.cell(|ui| {
-                    let icon = icon::ICONTABLE.get_orientation_icon(crate::view::ViewEvent::Left);
+                    let icon = icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Left);
 
                     let image_button =
                         ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
@@ -131,13 +131,13 @@ pub mod orientation {
                     let response = ui.add_sized([30., 30.], image_button);
 
                     if response.clicked() {
-                        data.orientation_writer.borrow_mut().send(crate::view::ViewEvent::Left);
+                        data.orienation_writer().borrow_mut().send(crate::view::Orientation::Left);
                     }
                 });
 
                 grid.cell(|ui| {
                     let icon =
-                        icon::ICONTABLE.get_orientation_icon(crate::view::ViewEvent::Right);
+                        icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Right);
 
                     let image_button =
                         ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
@@ -145,7 +145,7 @@ pub mod orientation {
                     let response = ui.add_sized([30., 30.], image_button);
 
                     if response.clicked() {
-                        data.orientation_writer.borrow_mut().send(crate::view::ViewEvent::Right);
+                        data.orienation_writer().borrow_mut().send(crate::view::Orientation::Right);
                     }
                 });
 
@@ -171,7 +171,7 @@ impl gui::InnerComponent<Addons> for Addons {
             size: Vec2::new(window_size.x - 15.0, window_size.y - 15.0),
         };
 
-        match data.raw.borrow_mut().mode {
+        match data.raw().borrow_mut().mode {
             Mode::Prepare => prepare::show(ctx, ui, data, boundary),
             Mode::Preview => preview::show(ctx, ui, data, boundary),
             Mode::ForceAnalytics => force_analytics::show(ctx, ui, data, boundary),

@@ -14,14 +14,14 @@ impl Taskbar {
 }
 
 impl gui::Component<Taskbar> for Taskbar {
-    fn show(&mut self, ctx: &egui::Context, mut data: UiData) {
+    fn show(&mut self, ctx: &egui::Context, data: UiData) {
         let boundary = egui::TopBottomPanel::bottom("taskbar")
             .default_height(config::gui::TASKBAR_H)
             .show(ctx, |ui: &mut egui::Ui| {
                 egui::menu::bar(ui, |ui| {
                     ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
                         ui.add_space(10.0);
-                        //ui.label(format!("{:.2} fps", data.context.lock().unwrap().fps()));
+                        ui.label(format!("{:.2} fps", data.context().fps()));
                     });
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         theme_button(ui, data);
@@ -31,17 +31,17 @@ impl gui::Component<Taskbar> for Taskbar {
             .response
             .into();
 
-        data.raw.borrow_mut().boundary_holder.set_taskbar(boundary);
+        data.raw().borrow_mut().boundary_holder.set_taskbar(boundary);
     }
 }
 
-fn theme_button(ui: &mut egui::Ui, mut data: UiData) {
-    let clicked = match data.raw.borrow_mut().theme {
+fn theme_button(ui: &mut egui::Ui, data: UiData) {
+    let clicked = match data.raw().borrow_mut().theme {
         gui::Theme::Dark => ui.button("💡").clicked(),
         gui::Theme::Light => ui.button("🌙").clicked(),
     };
 
     if clicked {
-        data.raw.borrow_mut().toggle_theme();
+        data.raw().borrow_mut().toggle_theme();
     }
 }

@@ -16,7 +16,7 @@ impl Modebar {
 }
 
 impl Component<Modebar> for Modebar {
-    fn show(&mut self, ctx: &egui::Context, mut data: UiData) {
+    fn show(&mut self, ctx: &egui::Context, data: UiData) {
         let boundary = egui::TopBottomPanel::bottom("modebar")
             .default_height(config::gui::MODEBAR_H)
             .show(ctx, |ui: &mut egui::Ui| {

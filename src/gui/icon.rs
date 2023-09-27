@@ -1,10 +1,9 @@
 use bevy_egui::egui;
 use egui_extras::RetainedImage;
 
-use image::imageops::resize;
 use lazy_static::lazy_static;
 
-use crate::view::ViewEvent;
+use crate::view::Orientation;
 
 lazy_static! {
     pub static ref ICONTABLE: IconTable = IconTable::new();
@@ -29,14 +28,14 @@ impl IconTable {
         }
     }
 
-    pub fn get_orientation_icon(&self, orientation: ViewEvent) -> &RetainedImage {
+    pub fn get_orientation_icon(&self, orientation: Orientation) -> &RetainedImage {
         match orientation {
-            ViewEvent::Default => &self.orientation_default,
-            ViewEvent::Diagonal => &self.orientation_default,
-            ViewEvent::Top => &self.orientation_top,
-            ViewEvent::Left => &self.orientation_left,
-            ViewEvent::Right => &self.orientation_right,
-            ViewEvent::Front => &self.orientation_front,
+            Orientation::Default => &self.orientation_default,
+            Orientation::Diagonal => &self.orientation_default,
+            Orientation::Top => &self.orientation_top,
+            Orientation::Left => &self.orientation_left,
+            Orientation::Right => &self.orientation_right,
+            Orientation::Front => &self.orientation_front,
         }
     }
 

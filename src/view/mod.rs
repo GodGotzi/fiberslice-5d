@@ -1,16 +1,38 @@
+/*
+    Copyright (c) 2023 Elias Gottsbacher, Jan Traussnigg, Nico Huetter (HTBLA Kaindorf)
+    All rights reserved.
+    Note: The complete copyright description for this software thesis can be found at the beginning of each file.
+    Please refer to the terms and conditions stated therein.
+*/
+
 use bevy::{prelude::*, render::camera::Viewport};
-use bevy_atmosphere::prelude::{AtmosphereCamera, AtmosphereModel, Gradient};
+use bevy_atmosphere::prelude::{AtmosphereCamera, AtmosphereModel, Gradient, AtmospherePlugin};
+use smooth_bevy_cameras::LookTransformPlugin;
 
 use crate::gui::RawUiData;
 
-use self::camera::SingleCamera;
+use self::camera::{SingleCamera, CameraPlugin};
 
 pub mod camera;
 pub mod visualization;
 
+pub struct ViewPlugin;
+
+impl Plugin for ViewPlugin {
+    fn build(&self, app: &mut App) {
+        app
+            .add_event::<Orientation>()
+            .add_plugins(LookTransformPlugin)
+            .add_plugins(CameraPlugin::default())
+            .add_plugins(AtmospherePlugin)
+            .add_systems(Startup, environment_setup)
+            .add_systems(Update, update_viewport);
+    }
+}
+
 #[allow(dead_code)]
 #[derive(Debug, Event)]
-pub enum ViewEvent {
+pub enum Orientation {
     Default,
     Diagonal,
     Top,
@@ -26,14 +48,7 @@ pub enum Mode {
     ForceAnalytics,
 }
 
-/*
-    Copyright (c) 2023 Elias Gottsbacher, Jan Traussnigg, Nico Huetter (HTBLA Kaindorf)
-    All rights reserved.
-    Note: The complete copyright description for this software thesis can be found at the beginning of each file.
-    Please refer to the terms and conditions stated therein.
-*/
-
-pub fn update_camera_viewport(
+pub fn update_viewport(
     windows: Query<&Window>,
     //resize_events: EventReader<WindowResized>,
     mut camera: Query<&mut Camera, With<SingleCamera>>,
@@ -93,7 +108,7 @@ fn resize_viewport(
     }
 }
 
-pub fn camera_setup(mut commands: Commands) {
+pub fn environment_setup(mut commands: Commands) {
     commands
         .spawn((
             Camera3dBundle {
@@ -116,13 +131,13 @@ pub fn camera_setup(mut commands: Commands) {
         ));
 
     commands.insert_resource(AmbientLight {
-        color: Color::rgba(0.5, 0.5, 0.5, 0.5),
+        color: Color::rgba(1.0, 1.0, 1.0, 1.0),
         brightness: 1.0,
     });
 
     commands.insert_resource(AtmosphereModel::new(Gradient {
-        ground: Color::rgb(0.5, 0.5, 0.5),
-        horizon: Color::rgb(0.75, 0.75, 0.75),
-        sky: Color::rgb(0.75, 0.75, 0.75),
+        ground: Color::WHITE,
+        horizon: Color::WHITE,
+        sky: Color::WHITE,
     }));
 }

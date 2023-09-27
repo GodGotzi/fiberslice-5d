@@ -17,21 +17,21 @@ use bevy::{
     transform::components::Transform,
 };
 
-use super::ViewEvent;
+use super::Orientation;
 
 pub trait HandleOrientation {
-    fn handle_orientation(&mut self, event: &ViewEvent);
+    fn handle_orientation(&mut self, event: &Orientation);
 }
 
 impl HandleOrientation for LookTransform {
-    fn handle_orientation(&mut self, event: &ViewEvent) {
+    fn handle_orientation(&mut self, event: &Orientation) {
         let position = match event {
-            &ViewEvent::Default => vec3(0.00, 250.0, 400.0),
-            &ViewEvent::Diagonal => vec3(400.0, 400.0, 400.0),
-            &ViewEvent::Top => vec3(0.0, 700.0, 0.1), // FIXME 0.1 is a hack to avoid the camera being inside the model, maybe there is a better way to do this
-            &ViewEvent::Left => vec3(-400.0, 0.0, 0.0),
-            &ViewEvent::Right => vec3(400.0, 0.0, 0.0),
-            &ViewEvent::Front => vec3(0.0, 0.0, 400.0),
+            &Orientation::Default => vec3(0.00, 250.0, 400.0),
+            &Orientation::Diagonal => vec3(400.0, 400.0, 400.0),
+            &Orientation::Top => vec3(0.0, 700.0, 0.1), // FIXME 0.1 is a hack to avoid the camera being inside the model, maybe there is a better way to do this
+            &Orientation::Left => vec3(-400.0, 0.0, 0.0),
+            &Orientation::Right => vec3(400.0, 0.0, 0.0),
+            &Orientation::Front => vec3(0.0, 0.0, 400.0),
         };
 
         self.eye = position;
@@ -39,27 +39,15 @@ impl HandleOrientation for LookTransform {
 }
 
 #[derive(Default)]
-pub struct CameraPlugin {
-    pub override_input_system: bool,
-}
-
-impl CameraPlugin {
-    pub fn _new(override_input_system: bool) -> Self {
-        Self {
-            override_input_system,
-        }
-    }
-}
+pub struct CameraPlugin;
 
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
-        let app = app
+        app
+            .add_event::<CameraControlEvent>()
             .add_systems(Update, control_system)
-            .add_event::<CameraControlEvent>();
-
-        if !self.override_input_system {
-            app.add_systems(Update, default_input_map);
-        }
+            .add_systems(Update, handle_events)
+            .add_systems(Update, default_input_map);
     }
 }
 
@@ -211,7 +199,7 @@ pub fn control_system(
     transform.eye = transform.target + new_radius * look_angles.unit_vector();
 }
 
-pub fn handle_camera_events(mut events: EventReader<ViewEvent>, mut cameras: Query<(&CameraController, &mut LookTransform, &Transform)>,) {
+fn handle_events(mut events: EventReader<Orientation>, mut cameras: Query<(&CameraController, &mut LookTransform, &Transform)>,) {
 
     let (mut transform, _scene_transform) =
         if let Some((_, transform, scene_transform)) = cameras.iter_mut().find(|c| c.0.enabled) {
@@ -221,8 +209,6 @@ pub fn handle_camera_events(mut events: EventReader<ViewEvent>, mut cameras: Que
         };
 
     for event in events.iter() {
-        println!("Event: {:?}", event);
-
         transform.handle_orientation(event);
     }
 
