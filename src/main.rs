@@ -27,8 +27,8 @@ use model::gcode::GCode;
 use prelude::hotkeys_window;
 use smooth_bevy_cameras::LookTransformPlugin;
 use view::{
-    camera::CameraPlugin, camera_setup, update_camera_viewport,
-    visualization::gcode::create_toolpath,
+    camera::{CameraPlugin, handle_camera_events}, camera_setup, update_camera_viewport,
+    visualization::gcode::create_toolpath, ViewEvent,
 };
 
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
@@ -51,6 +51,7 @@ fn main() {
     };
 
     App::new()
+        .add_event::<ViewEvent>()
         .insert_resource(Screen::new())
         .insert_resource(RawUiData::new(gui::Theme::Light, view::Mode::Prepare))
         .insert_resource(FPS {
@@ -68,6 +69,7 @@ fn main() {
         .add_systems(PostStartup, init_window)
         .add_systems(Update, print_fps)
         .add_systems(Update, update_camera_viewport)
+        .add_systems(Update, handle_camera_events)
         .add_systems(Update, ui_frame)
         .add_systems(Update, hotkeys_window)
         .run();

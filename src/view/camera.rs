@@ -1,24 +1,3 @@
-use super::Orientation;
-
-pub trait HandleOrientation {
-    fn handle_orientation(&mut self, orientation: Orientation);
-}
-
-impl HandleOrientation for Camera {
-    fn handle_orientation(&mut self, orientation: Orientation) {
-        let position = match orientation {
-            Orientation::Default => vec3(0.00, 250.0, 500.0),
-            Orientation::Diagonal => vec3(500.0, 500.0, 500.0),
-            Orientation::Top => vec3(0.0, 900.0, 0.1), // FIXME 0.1 is a hack to avoid the camera being inside the model, maybe there is a better way to do this
-            Orientation::Left => vec3(-500.0, 0.0, 0.0),
-            Orientation::Right => vec3(500.0, 0.0, 0.0),
-            Orientation::Front => vec3(0.0, 0.0, 500.0),
-        };
-
-        //self.set_view(position, vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0))
-    }
-}
-
 /*
     Copyright (c) 2023 Elias Gottsbacher, Jan Traussnigg, Nico Huetter (HTBLA Kaindorf)
     All rights reserved.
@@ -28,6 +7,7 @@ impl HandleOrientation for Camera {
 
 use bevy::{math::vec3, prelude::*};
 
+use bevy_egui::EguiContexts;
 use smooth_bevy_cameras::{LookAngles, LookTransform, LookTransformBundle, Smoother};
 
 use bevy::{
@@ -36,6 +16,27 @@ use bevy::{
     time::Time,
     transform::components::Transform,
 };
+
+use super::ViewEvent;
+
+pub trait HandleOrientation {
+    fn handle_orientation(&mut self, event: &ViewEvent);
+}
+
+impl HandleOrientation for LookTransform {
+    fn handle_orientation(&mut self, event: &ViewEvent) {
+        let position = match event {
+            &ViewEvent::Default => vec3(0.00, 250.0, 400.0),
+            &ViewEvent::Diagonal => vec3(400.0, 400.0, 400.0),
+            &ViewEvent::Top => vec3(0.0, 700.0, 0.1), // FIXME 0.1 is a hack to avoid the camera being inside the model, maybe there is a better way to do this
+            &ViewEvent::Left => vec3(-400.0, 0.0, 0.0),
+            &ViewEvent::Right => vec3(400.0, 0.0, 0.0),
+            &ViewEvent::Front => vec3(0.0, 0.0, 400.0),
+        };
+
+        self.eye = position;
+    }
+}
 
 #[derive(Default)]
 pub struct CameraPlugin {
@@ -121,14 +122,21 @@ pub fn default_input_map(
     mut events: EventWriter<CameraControlEvent>,
     mut mouse_wheel_reader: EventReader<MouseWheel>,
     mut mouse_motion_events: EventReader<MouseMotion>,
+    mut ui_ctx: EguiContexts,
     mouse_buttons: Res<Input<MouseButton>>,
     controllers: Query<&CameraController>,
 ) {
+
+    if ui_ctx.ctx_mut().is_using_pointer() {
+        return;
+    }
+
     let controller = if let Some(controller) = controllers.iter().find(|c| c.enabled) {
         controller
     } else {
         return;
     };
+
     let CameraController {
         mouse_rotate_sensitivity,
         mouse_wheel_zoom_sensitivity,
@@ -201,4 +209,21 @@ pub fn control_system(
         .min(1000000.0)
         .max(0.001);
     transform.eye = transform.target + new_radius * look_angles.unit_vector();
+}
+
+pub fn handle_camera_events(mut events: EventReader<ViewEvent>, mut cameras: Query<(&CameraController, &mut LookTransform, &Transform)>,) {
+
+    let (mut transform, _scene_transform) =
+        if let Some((_, transform, scene_transform)) = cameras.iter_mut().find(|c| c.0.enabled) {
+            (transform, scene_transform)
+        } else {
+            return;
+        };
+
+    for event in events.iter() {
+        println!("Event: {:?}", event);
+
+        transform.handle_orientation(event);
+    }
+
 }

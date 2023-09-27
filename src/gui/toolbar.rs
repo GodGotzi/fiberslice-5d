@@ -22,6 +22,6 @@ impl Component<Toolbar> for Toolbar {
             .response
             .into();
 
-        data.boundary_holder.set_toolbar(boundary);
+        data.raw.borrow_mut().boundary_holder.set_toolbar(boundary);
     }
 }

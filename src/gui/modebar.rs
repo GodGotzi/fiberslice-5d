@@ -44,7 +44,7 @@ impl Component<Modebar> for Modebar {
                         .show(ui, |mut grid| {
                             // Cells are represented as they were allocated
                             grid.cell(|ui| {
-                                ui.selectable_value(&mut data.mode, Mode::Prepare, "Prepare");
+                                ui.selectable_value(&mut data.raw.borrow_mut().mode, Mode::Prepare, "Prepare");
                             });
                             grid.cell(|ui| {
                                 ui.horizontal(|ui| {
@@ -53,7 +53,7 @@ impl Component<Modebar> for Modebar {
                             });
                             grid.cell(|ui| {
                                 ui.selectable_value(
-                                    &mut data.mode,
+                                    &mut data.raw.borrow_mut().mode,
                                     Mode::ForceAnalytics,
                                     "Force - Analytics",
                                 );
@@ -64,7 +64,7 @@ impl Component<Modebar> for Modebar {
                                 });
                             });
                             grid.cell(|ui| {
-                                ui.selectable_value(&mut data.mode, Mode::Preview, "Preview");
+                                ui.selectable_value(&mut data.raw.borrow_mut().mode, Mode::Preview, "Preview");
                             });
                         });
                 });
@@ -72,6 +72,6 @@ impl Component<Modebar> for Modebar {
             .response
             .into();
 
-        data.boundary_holder.set_modebar(boundary);
+        data.raw.borrow_mut().boundary_holder.set_modebar(boundary);
     }
 }

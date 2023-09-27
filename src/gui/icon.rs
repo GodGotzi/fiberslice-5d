@@ -1,9 +1,10 @@
 use bevy_egui::egui;
 use egui_extras::RetainedImage;
 
+use image::imageops::resize;
 use lazy_static::lazy_static;
 
-use crate::view::Orientation;
+use crate::view::ViewEvent;
 
 lazy_static! {
     pub static ref ICONTABLE: IconTable = IconTable::new();
@@ -20,22 +21,22 @@ pub struct IconTable {
 impl IconTable {
     pub fn new() -> Self {
         Self {
-            orientation_default: Self::load_icon("orientation_default.png").unwrap(),
-            orientation_top: Self::load_icon("orientation_top.png").unwrap(),
-            orientation_left: Self::load_icon("orientation_left.png").unwrap(),
-            orientation_right: Self::load_icon("orientation_right.png").unwrap(),
-            orientation_front: Self::load_icon("orientation_front.png").unwrap(),
+            orientation_default: Self::load_icon("orientation_default_30x30.png").unwrap(),
+            orientation_top: Self::load_icon("orientation_top_30x30.png").unwrap(),
+            orientation_left: Self::load_icon("orientation_left_30x30.png").unwrap(),
+            orientation_right: Self::load_icon("orientation_right_30x30.png").unwrap(),
+            orientation_front: Self::load_icon("orientation_front_30x30.png").unwrap(),
         }
     }
 
-    pub fn get_orientation_icon(&self, orientation: Orientation) -> &RetainedImage {
+    pub fn get_orientation_icon(&self, orientation: ViewEvent) -> &RetainedImage {
         match orientation {
-            Orientation::Default => &self.orientation_default,
-            Orientation::Diagonal => &self.orientation_default,
-            Orientation::Top => &self.orientation_top,
-            Orientation::Left => &self.orientation_left,
-            Orientation::Right => &self.orientation_right,
-            Orientation::Front => &self.orientation_front,
+            ViewEvent::Default => &self.orientation_default,
+            ViewEvent::Diagonal => &self.orientation_default,
+            ViewEvent::Top => &self.orientation_top,
+            ViewEvent::Left => &self.orientation_left,
+            ViewEvent::Right => &self.orientation_right,
+            ViewEvent::Front => &self.orientation_front,
         }
     }
 
@@ -62,6 +63,7 @@ impl IconTable {
 
         let size = [image.width() as _, image.height() as _];
         let image_buffer = image.to_rgba8();
+
         let pixels = image_buffer.as_flat_samples();
         let color_image = egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice());
 

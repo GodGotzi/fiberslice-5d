@@ -24,24 +24,24 @@ impl gui::Component<Taskbar> for Taskbar {
                         //ui.label(format!("{:.2} fps", data.context.lock().unwrap().fps()));
                     });
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        theme_button(ui, data.reborrow());
+                        theme_button(ui, data);
                     });
                 });
             })
             .response
             .into();
 
-        data.reborrow().boundary_holder.set_taskbar(boundary);
+        data.raw.borrow_mut().boundary_holder.set_taskbar(boundary);
     }
 }
 
 fn theme_button(ui: &mut egui::Ui, mut data: UiData) {
-    let clicked = match data.theme {
+    let clicked = match data.raw.borrow_mut().theme {
         gui::Theme::Dark => ui.button("💡").clicked(),
         gui::Theme::Light => ui.button("🌙").clicked(),
     };
 
     if clicked {
-        data.toggle_theme();
+        data.raw.borrow_mut().toggle_theme();
     }
 }

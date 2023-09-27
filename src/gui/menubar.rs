@@ -15,22 +15,22 @@ impl Menubar {
 }
 
 impl gui::Component<Menubar> for Menubar {
-    fn show(&mut self, ctx: &egui::Context, mut data: UiData) {
+    fn show(&mut self, ctx: &egui::Context, data: UiData) {
         let boundary = egui::TopBottomPanel::top("menubar")
             .default_height(config::gui::MENUBAR_H)
             .show(ctx, |ui: &mut Ui| {
                 egui::menu::bar(ui, |ui| {
-                    file_button(ui, data.reborrow());
-                    edit_button(ui, data.reborrow());
-                    view_button(ui, data.reborrow());
-                    settings_button(ui, data.reborrow());
-                    help_button(ui, data.reborrow());
+                    file_button(ui, data);
+                    edit_button(ui, data);
+                    view_button(ui, data);
+                    settings_button(ui, data);
+                    help_button(ui, data);
                 });
             })
             .response
             .into();
 
-        data.boundary_holder.set_menubar(boundary);
+        data.raw.borrow_mut().boundary_holder.set_menubar(boundary);
     }
 }
 

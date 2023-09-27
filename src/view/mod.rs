@@ -1,4 +1,4 @@
-use bevy::{prelude::*, render::camera::Viewport, window::WindowResized};
+use bevy::{prelude::*, render::camera::Viewport};
 use bevy_atmosphere::prelude::{AtmosphereCamera, AtmosphereModel, Gradient};
 
 use crate::gui::RawUiData;
@@ -9,7 +9,8 @@ pub mod camera;
 pub mod visualization;
 
 #[allow(dead_code)]
-pub enum Orientation {
+#[derive(Debug, Event)]
+pub enum ViewEvent {
     Default,
     Diagonal,
     Top,
@@ -34,7 +35,7 @@ pub enum Mode {
 
 pub fn update_camera_viewport(
     windows: Query<&Window>,
-    resize_events: EventReader<WindowResized>,
+    //resize_events: EventReader<WindowResized>,
     mut camera: Query<&mut Camera, With<SingleCamera>>,
     data: ResMut<RawUiData>,
 ) {

@@ -13,15 +13,35 @@ pub mod settingsbar;
 pub mod taskbar;
 pub mod toolbar;
 
-use bevy::prelude::{Mut, ResMut, Resource};
+use std::cell::RefCell;
+
+use bevy::prelude::{ResMut, Resource, EventWriter};
 use bevy_egui::{egui, EguiContexts};
 use egui::{Response, Visuals};
 
-use crate::view::Mode;
+use crate::view::{Mode, ViewEvent};
 
 use self::components::addons;
 
-pub type UiData<'a> = Mut<'a, RawUiData>;
+pub type UiData<'a> = &'a UiDataPacket<'a>;
+
+pub struct UiDataPacket<'a> {
+    pub raw: RefCell<ResMut<'a, RawUiData>>,
+    orientation_writer: RefCell<EventWriter<'a, ViewEvent>>,
+}
+
+impl<'a> UiDataPacket<'a> {
+    pub fn new(data: ResMut<'a, RawUiData>, orientation_writer: EventWriter<'a, ViewEvent>) -> Self {
+        Self {
+            raw: RefCell::new(data),
+            orientation_writer: RefCell::new(orientation_writer),
+        }
+    }
+
+    pub fn set_orientation(&mut self, orientation: ViewEvent) {
+        self.orientation_writer.borrow_mut().send(orientation);
+    }
+}
 
 #[derive(Resource)]
 pub struct RawUiData {
@@ -51,6 +71,7 @@ pub fn ui_frame(
     mut contexts: EguiContexts,
     mut screen: ResMut<'_, Screen>,
     data: ResMut<'_, RawUiData>,
+    orientation_writer: EventWriter<ViewEvent>
 ) {
     let ctx = contexts.ctx_mut();
 
@@ -65,11 +86,11 @@ pub fn ui_frame(
 
     ctx.set_visuals(visuals);
 
-    screen.show(ctx, data);
+    screen.show(ctx, data, orientation_writer);
 }
 
 pub trait SuperComponent<T> {
-    fn show(&mut self, ctx: &egui::Context, data: ResMut<RawUiData>);
+    fn show(&mut self, ctx: &egui::Context, data: ResMut<RawUiData>, orientation_writer: EventWriter<ViewEvent>);
 }
 
 pub trait Component<T> {
@@ -195,20 +216,22 @@ impl Screen {
 }
 
 impl SuperComponent<Screen> for Screen {
-    fn show(&mut self, ctx: &egui::Context, mut data: ResMut<RawUiData>) {
+    fn show(&mut self, ctx: &egui::Context, data: ResMut<RawUiData>, orientation_writer: EventWriter<ViewEvent>) {
         let frame = egui::containers::Frame {
             fill: egui::Color32::TRANSPARENT,
             ..Default::default()
         };
 
-        self.menubar.show(ctx, data.reborrow());
-        self.taskbar.show(ctx, data.reborrow());
+        let data = UiDataPacket::new(data, orientation_writer);
+
+        self.menubar.show(ctx, &data);
+        self.taskbar.show(ctx, &data);
 
         //self.addons.show(ctx, None, app);
 
-        self.settings.show(ctx, data.reborrow());
-        self.toolbar.show(ctx, data.reborrow());
-        self.modebar.show(ctx, data.reborrow());
+        self.settings.show(ctx, &data);
+        self.toolbar.show(ctx, &data);
+        self.modebar.show(ctx, &data);
 
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
             /*
@@ -217,7 +240,7 @@ impl SuperComponent<Screen> for Screen {
                 .show(ui);
             */
 
-            self.addons.show(ctx, ui, data.reborrow());
+            self.addons.show(ctx, ui, &data);
         });
     }
 }
