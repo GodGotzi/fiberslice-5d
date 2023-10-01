@@ -8,6 +8,7 @@
 use bevy::{prelude::*, render::camera::Viewport};
 use bevy_atmosphere::prelude::{AtmosphereCamera, AtmosphereModel, AtmospherePlugin, Gradient};
 use smooth_bevy_cameras::LookTransformPlugin;
+use strum_macros::{EnumIter, EnumCount};
 
 use crate::gui::RawUiData;
 
@@ -30,7 +31,7 @@ impl Plugin for ViewPlugin {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Event)]
+#[derive(Debug, Clone, Copy, Event, EnumCount, EnumIter)] //maybe performance bit worse
 pub enum Orientation {
     Default,
     Diagonal,
@@ -141,8 +142,8 @@ pub fn environment_setup(mut commands: Commands) {
     });
 
     commands.insert_resource(AtmosphereModel::new(Gradient {
-        ground: Color::WHITE,
-        horizon: Color::WHITE,
-        sky: Color::WHITE,
+        ground: Color::rgba(0.8, 0.8, 0.8, 1.0),
+        horizon: Color::rgba(0.5, 0.5, 0.5, 1.0),
+        sky: Color::rgba(0.8, 0.8, 0.8, 1.0),
     }));
 }

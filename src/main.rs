@@ -57,24 +57,28 @@ fn spawn_bed(
         ..default()
     });
 
-    let content = fs::read_to_string("gcode/test2.gcode").unwrap();
+    let content = fs::read_to_string("gcode/test.gcode").unwrap();
     let gcode: GCode = content.try_into().unwrap();
     let toolpath = create_toolpath(&gcode);
+    let mesh = toolpath.mesh.clone();
 
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(toolpath.mesh.clone()),
-        // This is the default color, but note that vertex colors are
-        // multiplied by the base color, so you'll likely want this to be
-        // white if using vertex colors.
-        material: materials.add(StandardMaterial {
-            base_color: Color::rgba(1.0, 1.0, 1.0, 1.0),
-            cull_mode: Some(Face::Front),
-            reflectance: 0.01,
-            metallic: 0.0,
+
+    commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(mesh),
+            // This is the default color, but note that vertex colors are
+            // multiplied by the base color, so you'll likely want this to be
+            // white if using vertex colors.
+            material: materials.add(StandardMaterial {
+                base_color: Color::rgba(1.0, 1.0, 1.0, 1.0),
+                cull_mode: Some(Face::Front),
+                reflectance: 0.01,
+                metallic: 0.0,
+                ..Default::default()
+            }),
+
+            transform: Transform::from_translation(Vec3::new(-125.0, 0.3, -125.0)),
             ..Default::default()
-        }),
-
-        transform: Transform::from_translation(Vec3::new(-125.0, 0.3, -125.0)),
-        ..Default::default()
-    });
+        },
+    ));
 }

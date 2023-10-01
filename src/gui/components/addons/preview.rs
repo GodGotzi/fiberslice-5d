@@ -29,7 +29,7 @@ pub fn show(_ctx: &egui::Context, ui: &mut Ui, data: UiData, boundary: Boundary)
                                 strip.strip(|builder| {
                                     builder
                                         .size(Size::remainder())
-                                        .size(Size::exact(200.0))
+                                        .size(Size::exact(220.0))
                                         .horizontal(|mut strip| {
                                             strip.empty();
                                             strip.cell(|ui| {

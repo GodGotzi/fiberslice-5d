@@ -12,17 +12,21 @@ pub mod modebar;
 pub mod settingsbar;
 pub mod taskbar;
 pub mod toolbar;
+pub mod response;
 
 use std::cell::RefCell;
 
 use bevy::prelude::{EventWriter, Plugin, Res, ResMut, Resource, Update};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use egui::{Response, Visuals};
+use strum::EnumCount;
 
 use crate::{
     prelude::Context,
     view::{Mode, Orientation},
 };
+
+use crate::gui::response::ButtonResponse;
 
 use self::components::addons;
 
@@ -33,6 +37,7 @@ pub struct UiPlugin;
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.insert_resource(Screen::new())
+            .insert_resource(ButtonResponses::new())
             .insert_resource(RawUiData::new(Theme::Dark, Mode::Prepare))
             .add_plugins(EguiPlugin)
             .add_systems(Update, ui_frame);
@@ -43,8 +48,29 @@ pub struct EventWriters<'a> {
     orientation: RefCell<EventWriter<'a, Orientation>>,
 }
 
+#[derive(Resource)]
+pub struct ButtonResponses {
+    orientation: [ButtonResponse; Orientation::COUNT],
+}
+
+impl ButtonResponses {
+    pub fn new() -> Self {
+        Self {
+            orientation: [
+                ButtonResponse::new(),
+                ButtonResponse::new(),
+                ButtonResponse::new(),
+                ButtonResponse::new(),
+                ButtonResponse::new(),
+                ButtonResponse::new(),
+            ],
+        }
+    }
+}
+
 pub struct UiDataPacket<'a> {
     pub raw: RefCell<ResMut<'a, RawUiData>>,
+    pub button_responses: RefCell<ResMut<'a, ButtonResponses>>,
     pub context: Res<'a, Context>,
     writers: EventWriters<'a>,
 }
@@ -52,11 +78,13 @@ pub struct UiDataPacket<'a> {
 impl<'a> UiDataPacket<'a> {
     pub fn new(
         raw: ResMut<'a, RawUiData>,
+        button_responses: ResMut<'a, ButtonResponses>,
         context: Res<'a, Context>,
         writers: EventWriters<'a>,
     ) -> Self {
         Self {
             raw: RefCell::new(raw),
+            button_responses: RefCell::new(button_responses),
             context,
             writers,
         }
@@ -64,6 +92,17 @@ impl<'a> UiDataPacket<'a> {
 
     pub fn orienation_writer(&self) -> &RefCell<EventWriter<'a, Orientation>> {
         &self.writers.orientation
+    }
+
+    pub fn update_orientation_response(&self, response: &Response, orientation: Orientation) {
+        self.button_responses
+            .borrow_mut()
+            .orientation[orientation as usize]
+            .update(response);
+    }
+
+    pub fn get_orientation_response(&self, orientation: Orientation) -> ButtonResponse {
+        self.button_responses.borrow().orientation[orientation as usize].clone()
     }
 }
 
@@ -95,6 +134,7 @@ pub fn ui_frame(
     mut contexts: EguiContexts,
     mut screen: ResMut<'_, Screen>,
     data: ResMut<'_, RawUiData>,
+    buttons_responses: ResMut<'_, ButtonResponses>,
     context: Res<'_, Context>,
     orientation_writer: EventWriter<Orientation>,
 ) {
@@ -104,7 +144,7 @@ pub fn ui_frame(
         orientation: RefCell::new(orientation_writer),
     };
 
-    let data = UiDataPacket::new(data, context, writers);
+    let data = UiDataPacket::new(data, buttons_responses, context, writers);
 
     match data.raw.borrow_mut().theme {
         Theme::Light => ctx.set_visuals(Visuals::light()),

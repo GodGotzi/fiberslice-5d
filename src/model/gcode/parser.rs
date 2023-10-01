@@ -40,7 +40,9 @@ pub fn parse_content(content: &str) -> Result<GCode, crate::error::Error> {
         }
     }
 
-    let code = GCode::new(moduls);
+    let lines = lines.iter().map(|str| str.to_string()).collect();
+
+    let code = GCode::new(lines, moduls);
 
     Ok(code)
 }

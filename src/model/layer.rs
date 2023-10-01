@@ -5,7 +5,7 @@ use std::{
 
 use bevy::{
     math::vec3,
-    prelude::{Mesh, Vec3},
+    prelude::{Mesh, Vec3, Component},
 };
 
 use super::gcode::state::State;
@@ -367,6 +367,7 @@ pub struct MeshRef<'a> {
     end: usize,
 }
 
+#[derive(Component)]
 pub struct ToolPathModel<'a> {
     pub layers: HashMap<usize, RefCell<LayerMesh<'a>>>,
     pub mesh: Mesh,

@@ -54,7 +54,7 @@ pub mod orientation {
     use egui_extras::Size;
     use egui_grid::GridBuilder;
 
-    use crate::gui::{icon, UiData};
+    use crate::{gui::{icon, UiData}, view::Orientation};
 
     pub fn show(ui: &mut Ui, data: UiData) {
         let layout = egui::Layout {
@@ -73,94 +73,67 @@ pub mod orientation {
             .layout_standard(layout)
             .clip(true)
             .cell(Size::remainder())
-            .cell(Size::initial(30.0))
-            .cell(Size::initial(30.0))
-            .cell(Size::initial(30.0))
-            .cell(Size::initial(30.0))
-            .cell(Size::initial(30.0))
+            .cell(Size::initial(35.0))
+            .cell(Size::initial(35.0))
+            .cell(Size::initial(35.0))
+            .cell(Size::initial(35.0))
+            .cell(Size::initial(35.0))
             .cell(Size::remainder())
             .show(ui, |mut grid| {
                 grid.empty();
                 grid.cell(|ui| {
-                    let icon =
-                        icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Diagonal);
-
-                    let image_button =
-                        ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
-
-                    let response = ui.add_sized([30., 30.], image_button);
-
-                    if response.clicked() {
-                        data.orienation_writer()
-                            .borrow_mut()
-                            .send(crate::view::Orientation::Diagonal);
-                    }
+                    add_button_icon(ui, data, Orientation::Diagonal); 
                 });
 
                 grid.cell(|ui| {
-                    let icon =
-                        icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Front);
-
-                    let image_button =
-                        ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
-
-                    let response = ui.add_sized([30., 30.], image_button);
-
-                    if response.clicked() {
-                        data.orienation_writer()
-                            .borrow_mut()
-                            .send(crate::view::Orientation::Front);
-                    }
+                    add_button_icon(ui, data, Orientation::Front);
                 });
 
                 grid.cell(|ui| {
-                    let icon = icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Top);
-
-                    let image_button =
-                        ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
-
-                    let response = ui.add_sized([30., 30.], image_button);
-
-                    if response.clicked() {
-                        data.orienation_writer()
-                            .borrow_mut()
-                            .send(crate::view::Orientation::Top);
-                    }
+                    add_button_icon(ui, data, Orientation::Top);
                 });
 
                 grid.cell(|ui| {
-                    let icon = icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Left);
-
-                    let image_button =
-                        ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
-
-                    let response = ui.add_sized([30., 30.], image_button);
-
-                    if response.clicked() {
-                        data.orienation_writer()
-                            .borrow_mut()
-                            .send(crate::view::Orientation::Left);
-                    }
+                    add_button_icon(ui, data, Orientation::Left);
                 });
 
                 grid.cell(|ui| {
-                    let icon =
-                        icon::ICONTABLE.get_orientation_icon(crate::view::Orientation::Right);
-
-                    let image_button =
-                        ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
-
-                    let response = ui.add_sized([30., 30.], image_button);
-
-                    if response.clicked() {
-                        data.orienation_writer()
-                            .borrow_mut()
-                            .send(crate::view::Orientation::Right);
-                    }
+                    add_button_icon(ui, data, Orientation::Right);
                 });
 
                 grid.empty();
             });
+    }
+
+    fn add_button_icon(ui: &mut Ui, data: &crate::gui::UiDataPacket<'_>, orientation: Orientation ) {
+        let icon = icon::ICONTABLE.get_orientation_icon(orientation.clone());
+
+        let image_button =
+            ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
+
+        ui.allocate_ui([35., 35.].into(), move |ui| {
+            ui.with_layout(Layout::centered_and_justified(Direction::TopDown), |ui| {
+                let prev_response = data.get_orientation_response(orientation.clone());
+
+                if prev_response.hovered() {
+                    ui.painter().rect_filled(
+                        ui.available_rect_before_wrap(),
+                        2.0,
+                        Color32::from_rgba_premultiplied(75, 255, 0, 100),
+                    );
+                }
+    
+                let response = ui.add_sized([30., 30.], image_button);
+    
+                data.update_orientation_response(&response, orientation.clone());
+    
+                if response.clicked() {
+                    data.orienation_writer()
+                        .borrow_mut()
+                        .send(orientation);
+                }
+            });
+        });
     }
 }
 

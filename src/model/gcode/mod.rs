@@ -74,13 +74,15 @@ impl SourceBuilder {
 #[derive(Debug, Clone)]
 pub struct GCode {
     pub rendered: bool,
+    pub lines: Vec<String>,
     pub instruction_moduls: Vec<InstructionModul>,
 }
 
 impl GCode {
-    pub fn new(moduls: Vec<InstructionModul>) -> Self {
+    pub fn new(lines: Vec<String>, moduls: Vec<InstructionModul>) -> Self {
         Self {
             rendered: false,
+            lines,
             instruction_moduls: moduls,
         }
     }

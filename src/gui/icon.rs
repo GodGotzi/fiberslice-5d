@@ -2,6 +2,7 @@ use bevy_egui::egui;
 use egui_extras::RetainedImage;
 
 use lazy_static::lazy_static;
+use strum::EnumCount;
 
 use crate::view::Orientation;
 
@@ -10,33 +11,25 @@ lazy_static! {
 }
 
 pub struct IconTable {
-    orientation_default: RetainedImage,
-    orientation_top: RetainedImage,
-    orientation_left: RetainedImage,
-    orientation_right: RetainedImage,
-    orientation_front: RetainedImage,
+    orientation: [RetainedImage; Orientation::COUNT],
 }
 
 impl IconTable {
     pub fn new() -> Self {
         Self {
-            orientation_default: Self::load_icon("orientation_default_30x30.png").unwrap(),
-            orientation_top: Self::load_icon("orientation_top_30x30.png").unwrap(),
-            orientation_left: Self::load_icon("orientation_left_30x30.png").unwrap(),
-            orientation_right: Self::load_icon("orientation_right_30x30.png").unwrap(),
-            orientation_front: Self::load_icon("orientation_front_30x30.png").unwrap(),
+            orientation: [
+                Self::load_icon("orientation_default_30x30.png").unwrap(),
+                Self::load_icon("orientation_default_30x30.png").unwrap(),
+                Self::load_icon("orientation_top_30x30.png").unwrap(),
+                Self::load_icon("orientation_left_30x30.png").unwrap(),
+                Self::load_icon("orientation_right_30x30.png").unwrap(),
+                Self::load_icon("orientation_front_30x30.png").unwrap(),
+            ],
         }
     }
 
     pub fn get_orientation_icon(&self, orientation: Orientation) -> &RetainedImage {
-        match orientation {
-            Orientation::Default => &self.orientation_default,
-            Orientation::Diagonal => &self.orientation_default,
-            Orientation::Top => &self.orientation_top,
-            Orientation::Left => &self.orientation_left,
-            Orientation::Right => &self.orientation_right,
-            Orientation::Front => &self.orientation_front,
-        }
+        &self.orientation[orientation as usize]
     }
 
     fn load_icon(path: &str) -> Option<RetainedImage> {
