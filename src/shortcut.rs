@@ -20,6 +20,7 @@ mod window {
     ) {
         let mut window = windows.single_mut();
 
+
         if keyboard_input.pressed(KeyCode::F11) {
             if window.mode == WindowMode::Fullscreen {
                 window.mode = WindowMode::Windowed;

@@ -9,10 +9,10 @@ mod components;
 mod icon;
 pub mod menubar;
 pub mod modebar;
+pub mod response;
 pub mod settingsbar;
 pub mod taskbar;
 pub mod toolbar;
-pub mod response;
 
 use std::cell::RefCell;
 
@@ -95,14 +95,11 @@ impl<'a> UiDataPacket<'a> {
     }
 
     pub fn update_orientation_response(&self, response: &Response, orientation: Orientation) {
-        self.button_responses
-            .borrow_mut()
-            .orientation[orientation as usize]
-            .update(response);
+        self.button_responses.borrow_mut().orientation[orientation as usize].update(response);
     }
 
     pub fn get_orientation_response(&self, orientation: Orientation) -> ButtonResponse {
-        self.button_responses.borrow().orientation[orientation as usize].clone()
+        self.button_responses.borrow().orientation[orientation as usize]
     }
 }
 
@@ -209,52 +206,60 @@ impl From<Response> for Boundary {
 
 #[derive(Default)]
 pub struct BoundaryHolder {
-    menubar: Boundary,
-    taskbar: Boundary,
-    modebar: Boundary,
-    toolbar: Boundary,
-    settingsbar: Boundary,
+    menubar: Option<Boundary>,
+    taskbar: Option<Boundary>,
+    modebar: Option<Boundary>,
+    toolbar: Option<Boundary>,
+    settingsbar: Option<Boundary>,
 }
 
 impl BoundaryHolder {
     pub fn set_menubar(&mut self, boundary: Boundary) {
-        self.menubar = boundary;
+        self.menubar = Some(boundary);
     }
 
     pub fn set_taskbar(&mut self, boundary: Boundary) {
-        self.taskbar = boundary;
+        self.taskbar = Some(boundary);
     }
 
     pub fn set_modebar(&mut self, boundary: Boundary) {
-        self.modebar = boundary;
+        self.modebar = Some(boundary);
     }
 
     pub fn set_toolbar(&mut self, boundary: Boundary) {
-        self.toolbar = boundary;
+        self.toolbar = Some(boundary);
     }
 
     pub fn set_settingsbar(&mut self, boundary: Boundary) {
-        self.settingsbar = boundary;
+        self.settingsbar = Some(boundary);
+    }
+
+    pub fn initialized(&self) -> bool {
+        self.menubar.is_some()
+            && self.taskbar.is_some()
+            && self.modebar.is_some()
+            && self.toolbar.is_some()
+            && self.settingsbar.is_some()
     }
 
     pub fn menubar(&self) -> &Boundary {
-        &self.menubar
+        self.menubar.as_ref().unwrap()
     }
 
     pub fn taskbar(&self) -> &Boundary {
-        &self.taskbar
+        self.taskbar.as_ref().unwrap()
     }
 
     pub fn modebar(&self) -> &Boundary {
-        &self.modebar
+        self.modebar.as_ref().unwrap()
     }
 
     pub fn toolbar(&self) -> &Boundary {
-        &self.toolbar
+        self.toolbar.as_ref().unwrap()
     }
 
     pub fn settingsbar(&self) -> &Boundary {
-        &self.settingsbar
+        self.settingsbar.as_ref().unwrap()
     }
 }
 

@@ -8,7 +8,7 @@
 use bevy::{prelude::*, render::camera::Viewport};
 use bevy_atmosphere::prelude::{AtmosphereCamera, AtmosphereModel, AtmospherePlugin, Gradient};
 use smooth_bevy_cameras::LookTransformPlugin;
-use strum_macros::{EnumIter, EnumCount};
+use strum_macros::{EnumCount, EnumIter};
 
 use crate::gui::RawUiData;
 
@@ -74,7 +74,10 @@ fn resize_viewport(
 ) {
     let mut camera = camera.single_mut();
 
-    if window.resolution.physical_width() == 0 || window.resolution.physical_height() == 0 {
+    if window.resolution.physical_width() == 0
+        || window.resolution.physical_height() == 0
+        || !data.boundary_holder.initialized()
+    {
         return;
     }
 

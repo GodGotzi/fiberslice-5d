@@ -21,13 +21,13 @@ pub struct SetupContext {
 }
 
 impl TryFrom<Setup> for SetupContext {
-    type Error = crate::error::Error;
+    type Error = Error;
 
     fn try_from(setup: Setup) -> Result<Self, Error> {
         let path = format!("setup/{}.yaml", setup);
         let content = fs::read_to_string(path)?;
         let config: SetupContext = serde_yaml::from_str(&content)
-            .map_err(|_| crate::error::Error::SetupError("Could not parse config file".into()))?;
+            .map_err(|_| Error::SetupError("Could not parse config file".into()))?;
 
         Ok(config)
     }
