@@ -17,6 +17,7 @@ mod slicer;
 mod tests;
 mod utils;
 mod view;
+mod actions;
 
 use std::fs;
 
@@ -62,13 +63,9 @@ fn spawn_bed(
     let toolpath = create_toolpath(&gcode);
     let mesh = toolpath.mesh.clone();
 
-
     commands.spawn((
         PbrBundle {
             mesh: meshes.add(mesh),
-            // This is the default color, but note that vertex colors are
-            // multiplied by the base color, so you'll likely want this to be
-            // white if using vertex colors.
             material: materials.add(StandardMaterial {
                 base_color: Color::rgba(1.0, 1.0, 1.0, 1.0),
                 cull_mode: Some(Face::Front),
