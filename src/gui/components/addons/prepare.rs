@@ -34,7 +34,7 @@ pub fn show(_ctx: &egui::Context, ui: &mut egui::Ui, data: UiData, boundary: Bou
                                             strip.cell(|ui| {
                                                 ui.painter().rect_filled(
                                                     ui.available_rect_before_wrap(),
-                                                    5.0,
+                                                    0.0,
                                                     shaded_color,
                                                 );
 
@@ -53,7 +53,7 @@ pub fn show(_ctx: &egui::Context, ui: &mut egui::Ui, data: UiData, boundary: Bou
                                 strip.cell(|ui| {
                                     ui.painter().rect_filled(
                                         ui.available_rect_before_wrap(),
-                                        5.0,
+                                        0.0,
                                         shaded_color,
                                     );
                                 });

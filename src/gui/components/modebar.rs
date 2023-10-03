@@ -3,9 +3,8 @@ use egui_extras::Size;
 use egui_grid::GridBuilder;
 
 use crate::config;
+use crate::gui::{Component, UiData};
 use crate::view::Mode;
-
-use super::{Component, UiData};
 
 pub struct Modebar;
 

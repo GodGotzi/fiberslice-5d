@@ -118,7 +118,7 @@ pub mod orientation {
                 if prev_response.hovered() {
                     ui.painter().rect_filled(
                         ui.available_rect_before_wrap(),
-                        2.0,
+                        0.0,
                         Color32::from_rgba_premultiplied(75, 255, 0, 100),
                     );
                 }

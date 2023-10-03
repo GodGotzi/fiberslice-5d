@@ -7,12 +7,7 @@
 
 mod components;
 mod icon;
-pub mod menubar;
-pub mod modebar;
-pub mod response;
-pub mod settingsbar;
-pub mod taskbar;
-pub mod toolbar;
+mod visual;
 
 use std::cell::RefCell;
 
@@ -26,7 +21,9 @@ use crate::{
     view::{Mode, Orientation},
 };
 
-use crate::gui::response::ButtonResponse;
+use crate::gui::components::*;
+use crate::gui::components::response::ButtonResponse;
+use crate::gui::visual::customize_look_and_feel;
 
 use self::components::addons;
 
@@ -148,11 +145,7 @@ pub fn ui_frame(
         Theme::Dark => ctx.set_visuals(Visuals::dark()),
     };
 
-    let mut visuals = ctx.style().visuals.clone();
-    visuals.selection.bg_fill = egui::Color32::from_rgb(76, 255, 0);
-    visuals.selection.stroke.color = egui::Color32::from_rgb(0, 0, 0);
-
-    ctx.set_visuals(visuals);
+    ctx.set_visuals(customize_look_and_feel(ctx.style().visuals.clone()));
 
     screen.show(ctx, &data);
 }

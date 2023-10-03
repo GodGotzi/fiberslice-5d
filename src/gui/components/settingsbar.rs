@@ -11,9 +11,7 @@ use egui_grid::GridBuilder;
 
 use crate::config;
 
-use super::Boundary;
-use super::Component;
-use super::UiData;
+use crate::gui::*;
 
 #[derive(PartialEq)]
 pub enum SettingsPanel {

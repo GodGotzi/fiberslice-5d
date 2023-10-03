@@ -3,8 +3,7 @@ use egui::Ui;
 
 use crate::config;
 use crate::gui;
-
-use super::UiData;
+use crate::gui::UiData;
 
 pub struct Menubar;
 

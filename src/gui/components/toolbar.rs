@@ -1,9 +1,7 @@
 use bevy_egui::egui::{Context, SidePanel};
 
 use crate::config;
-
-use super::Component;
-use super::UiData;
+use crate::gui::{Component, UiData};
 
 pub struct Toolbar;
 

@@ -2,8 +2,7 @@ use bevy_egui::egui;
 
 use crate::config;
 use crate::gui;
-
-use super::UiData;
+use crate::gui::UiData;
 
 pub struct Taskbar {}
 
