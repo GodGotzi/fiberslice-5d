@@ -125,27 +125,29 @@ impl TabbedSettings {
 
         match side_view.open_panel {
             SettingsPanel::Slice => {
-                let mut slice_settings = data.settings.printer.borrow_mut();
+                let mut printer_settings = data.settings.printer.borrow_mut();
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {
-                    egui::ScrollArea::both().show(ui, |ui| {
-                        CollapsingHeader::new("General")
-                            .default_open(true)
-                            .show(ui, |ui| {
-                                slice_settings.general.show(ctx, ui);
-                            });
+                    ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
+                        egui::ScrollArea::both().show(ui, |ui| {
+                            CollapsingHeader::new("General")
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    printer_settings.general.show(ctx, ui);
+                                });
 
-                        CollapsingHeader::new("Machine Limits")
-                            .default_open(true)
-                            .show(ui, |ui| {
-                                slice_settings.machine_limits.show(ctx, ui);
-                            });
+                            CollapsingHeader::new("Machine Limits")
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    printer_settings.machine_limits.show(ctx, ui);
+                                });
 
-                        CollapsingHeader::new("Extruder")
-                            .default_open(true)
-                            .show(ui, |ui| {
-                                slice_settings.extruder.show(ctx, ui);
-                            });
+                            CollapsingHeader::new("Extruder")
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    printer_settings.extruder.show(ctx, ui);
+                                });
+                        });
                     });
                 });
             }

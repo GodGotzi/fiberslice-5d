@@ -15,7 +15,7 @@ impl TextComponent for crate::settings::printer::General {
 impl TextComponent for crate::settings::printer::limits::Limits {
     fn show(&mut self, ctx: &bevy_egui::egui::Context, ui: &mut bevy_egui::egui::Ui) {
         CollapsingHeader::new("Maximum Feedrates (mm/s)")
-            .default_open(false)
+            .default_open(true)
             .show(ui, |ui| {
                 self.max_feedrates.movements.show(
                     ctx,
@@ -26,7 +26,7 @@ impl TextComponent for crate::settings::printer::limits::Limits {
             });
 
         CollapsingHeader::new("Maximum Accelerations (mm/s^2)")
-            .default_open(false)
+            .default_open(true)
             .show(ui, |ui| {
                 self.max_acceleration.movements.show(
                     ctx,
@@ -60,7 +60,7 @@ impl TextComponent for crate::settings::printer::limits::Limits {
             });
 
         CollapsingHeader::new("Jerk Limits")
-            .default_open(false)
+            .default_open(true)
             .show(ui, |ui| {
                 self.jerk_limits.movements.show(
                     ctx,
@@ -71,7 +71,7 @@ impl TextComponent for crate::settings::printer::limits::Limits {
             });
 
         CollapsingHeader::new("Minimum Feedrates (mm/s)")
-            .default_open(false)
+            .default_open(true)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     crate::config::gui::settings::SETTINGS_LABEL
@@ -95,7 +95,7 @@ impl TextComponent for crate::settings::printer::limits::Limits {
 impl TextComponent for crate::settings::printer::extruder::ExtruderSettings {
     fn show(&mut self, _ctx: &bevy_egui::egui::Context, ui: &mut bevy_egui::egui::Ui) {
         CollapsingHeader::new("Size")
-            .default_open(false)
+            .default_open(true)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     crate::config::gui::settings::SETTINGS_LABEL.label(ui, "Nozzle Diameter:");
@@ -105,7 +105,7 @@ impl TextComponent for crate::settings::printer::extruder::ExtruderSettings {
             });
 
         CollapsingHeader::new("Layer Height Limits(mm)")
-            .default_open(false)
+            .default_open(true)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     crate::config::gui::settings::SETTINGS_LABEL.label(ui, "Minimum Layer Height:");
@@ -120,7 +120,7 @@ impl TextComponent for crate::settings::printer::extruder::ExtruderSettings {
             });
 
         CollapsingHeader::new("Retraction")
-            .default_open(false)
+            .default_open(true)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     crate::config::gui::settings::SETTINGS_LABEL.label(ui, "Length:");
