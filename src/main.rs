@@ -19,6 +19,7 @@ mod utils;
 mod view;
 mod actions;
 
+use std::f32::consts::PI;
 use std::fs;
 
 use bevy::{prelude::*, render::render_resource::Face};
@@ -58,7 +59,7 @@ fn spawn_bed(
         ..default()
     });
 
-    let content = fs::read_to_string("gcode/test2.gcode").unwrap();
+    let content = fs::read_to_string("gcode/benchy.gcode").unwrap();
     let gcode: GCode = content.try_into().unwrap();
     let toolpath = create_toolpath(&gcode);
     let mesh = toolpath.mesh.clone();
@@ -73,8 +74,9 @@ fn spawn_bed(
                 metallic: 0.0,
                 ..Default::default()
             }),
-
-            transform: Transform::from_translation(Vec3::new(-125.0, 0.3, -125.0)),
+            
+            transform: Transform::from_rotation(Quat::from_rotation_y(-90.0 * PI / 180.0))
+                .with_translation(Vec3::new(100.0, 0.3, -125.0)),
             ..Default::default()
         },
     ));
