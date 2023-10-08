@@ -5,9 +5,9 @@
     Please refer to the terms and conditions stated therein.
 */
 
-use bevy::{math::vec3, prelude::*};
+use bevy::{math::vec3, prelude::*, render::camera::Viewport};
 
-use bevy_egui::EguiContexts;
+use bevy_egui::{egui::Pos2, EguiContexts};
 use smooth_bevy_cameras::{LookAngles, LookTransform, LookTransformBundle, Smoother};
 
 use bevy::{
@@ -16,6 +16,8 @@ use bevy::{
     time::Time,
     transform::components::Transform,
 };
+
+use crate::utils::Contains;
 
 use super::Orientation;
 
@@ -35,6 +37,20 @@ impl HandleOrientation for LookTransform {
         };
 
         self.eye = position;
+    }
+}
+
+impl Contains<Pos2> for Viewport {
+    fn contains(&self, point: &Pos2) -> bool {
+        let x = point.x;
+        let y = point.y;
+
+        let x_min = self.physical_position.x as f32;
+        let x_max = (self.physical_position.x + self.physical_size.x) as f32;
+        let y_min = self.physical_position.y as f32;
+        let y_max = (self.physical_position.y + self.physical_size.y) as f32;
+
+        x >= x_min && x <= x_max && y >= y_min && y <= y_max
     }
 }
 
@@ -107,6 +123,7 @@ pub enum CameraControlEvent {
 }
 
 pub fn default_input_map(
+    camera: Query<&mut Camera, With<SingleCamera>>,
     mut events: EventWriter<CameraControlEvent>,
     mut mouse_wheel_reader: EventReader<MouseWheel>,
     mut mouse_motion_events: EventReader<MouseMotion>,
@@ -116,6 +133,16 @@ pub fn default_input_map(
 ) {
     if ui_ctx.ctx_mut().is_using_pointer() {
         return;
+    }
+
+    if let Some(pos) = ui_ctx.ctx_mut().pointer_latest_pos() {
+        if let Ok(camera) = camera.get_single() {
+            if let Some(viewport) = camera.viewport.as_ref() {
+                if !viewport.contains(&pos) {
+                    return;
+                }
+            }
+        }
     }
 
     let controller = if let Some(controller) = controllers.iter().find(|c| c.enabled) {

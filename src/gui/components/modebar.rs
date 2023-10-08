@@ -14,7 +14,7 @@ impl Modebar {
     }
 }
 
-impl Component<Modebar> for Modebar {
+impl Component for Modebar {
     fn show(&mut self, ctx: &egui::Context, data: UiData) {
         let boundary = egui::TopBottomPanel::bottom("modebar")
             .default_height(config::gui::MODEBAR_H)
@@ -36,20 +36,20 @@ impl Component<Modebar> for Modebar {
                         .layout_standard(layout)
                         .clip(true)
                         .cell(Size::remainder())
-                        .cell(Size::initial(5.0))
+                        .cell(Size::initial(-13.0))
                         .cell(Size::remainder())
-                        .cell(Size::initial(5.0))
+                        .cell(Size::initial(-13.0))
                         .cell(Size::remainder())
                         .show(ui, |mut grid| {
                             // Cells are represented as they were allocated
                             grid.cell(|ui| {
-                                ui.selectable_value(&mut data.raw.borrow_mut().mode, Mode::Prepare, "Prepare");
+                                ui.selectable_value(
+                                    &mut data.raw.borrow_mut().mode,
+                                    Mode::Prepare,
+                                    "Prepare",
+                                );
                             });
-                            grid.cell(|ui| {
-                                ui.horizontal(|ui| {
-                                    ui.separator();
-                                });
-                            });
+                            grid.empty();
                             grid.cell(|ui| {
                                 ui.selectable_value(
                                     &mut data.raw.borrow_mut().mode,
@@ -57,13 +57,13 @@ impl Component<Modebar> for Modebar {
                                     "Force - Analytics",
                                 );
                             });
+                            grid.empty();
                             grid.cell(|ui| {
-                                ui.horizontal(|ui| {
-                                    ui.separator();
-                                });
-                            });
-                            grid.cell(|ui| {
-                                ui.selectable_value(&mut data.raw.borrow_mut().mode, Mode::Preview, "Preview");
+                                ui.selectable_value(
+                                    &mut data.raw.borrow_mut().mode,
+                                    Mode::Preview,
+                                    "Preview",
+                                );
                             });
                         });
                 });

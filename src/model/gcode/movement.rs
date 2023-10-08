@@ -8,6 +8,8 @@ pub struct Movements {
     pub X: Option<f32>,
     pub Y: Option<f32>,
     pub Z: Option<f32>,
+    pub A: Option<f32>,
+    pub C: Option<f32>,
     pub E: Option<f32>,
     pub F: Option<f32>,
 }
@@ -18,7 +20,7 @@ impl Movements {
     }
 
     pub fn is_movement(movement_str: &str) -> bool {
-        matches!(movement_str, "X" | "Y" | "Z" | "E" | "F")
+        matches!(movement_str, "X" | "Y" | "Z" | "A" | "C" | "E" | "F")
     }
 
     pub fn set_movement(&mut self, movement_str: &str, value: f32) {
@@ -26,6 +28,8 @@ impl Movements {
             "X" => self.X = Some(value),
             "Y" => self.Y = Some(value),
             "Z" => self.Z = Some(value),
+            "A" => self.A = Some(value),
+            "C" => self.C = Some(value),
             "E" => self.E = Some(value),
             "F" => self.F = Some(value),
             _ => (),
@@ -43,6 +47,14 @@ impl Movements {
 
         if let Some(z) = movements.Z.as_ref() {
             self.Z = Some(*z);
+        }
+
+        if let Some(a) = movements.A.as_ref() {
+            self.A = Some(*a);
+        }
+
+        if let Some(c) = movements.C.as_ref() {
+            self.C = Some(*c);
         }
 
         if let Some(e) = movements.E.as_ref() {
@@ -85,6 +97,14 @@ impl Movements {
 
         if let Some(z) = self.Z.as_ref() {
             builder.push_movement("Z", *z);
+        }
+
+        if let Some(a) = self.A.as_ref() {
+            builder.push_movement("A", *a);
+        }
+
+        if let Some(c) = self.C.as_ref() {
+            builder.push_movement("C", *c);
         }
 
         if let Some(e) = self.E.as_ref() {

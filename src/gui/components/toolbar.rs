@@ -11,7 +11,7 @@ impl Toolbar {
     }
 }
 
-impl Component<Toolbar> for Toolbar {
+impl Component for Toolbar {
     fn show(&mut self, ctx: &Context, data: UiData) {
         let boundary = SidePanel::left("toolbar")
             .resizable(false)

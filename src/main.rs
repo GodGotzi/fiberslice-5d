@@ -5,19 +5,20 @@
     Please refer to the terms and conditions stated therein.
 */
 
+mod actions;
 mod config;
 mod error;
 mod gui;
 mod math;
 mod model;
 mod prelude;
+mod settings;
 mod setup;
 mod shortcut;
 mod slicer;
 mod tests;
 mod utils;
 mod view;
-mod actions;
 
 use std::f32::consts::PI;
 use std::fs;
@@ -26,6 +27,7 @@ use bevy::{prelude::*, render::render_resource::Face};
 use gui::UiPlugin;
 use model::gcode::GCode;
 use prelude::MainPlugin;
+use settings::SettingsPlugin;
 use view::{visualization::gcode::create_toolpath, ViewPlugin};
 
 fn main() {
@@ -42,6 +44,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(plugin))
         .add_plugins(UiPlugin)
         .add_plugins(ViewPlugin)
+        .add_plugins(SettingsPlugin)
         .add_plugins(MainPlugin)
         .add_systems(Startup, spawn_bed)
         .run();
@@ -59,25 +62,23 @@ fn spawn_bed(
         ..default()
     });
 
-    let content = fs::read_to_string("gcode/benchy.gcode").unwrap();
+    let content = fs::read_to_string("gcode/test2.gcode").unwrap();
     let gcode: GCode = content.try_into().unwrap();
     let toolpath = create_toolpath(&gcode);
     let mesh = toolpath.mesh.clone();
 
-    commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(mesh),
-            material: materials.add(StandardMaterial {
-                base_color: Color::rgba(1.0, 1.0, 1.0, 1.0),
-                cull_mode: Some(Face::Front),
-                reflectance: 0.01,
-                metallic: 0.0,
-                ..Default::default()
-            }),
-            
-            transform: Transform::from_rotation(Quat::from_rotation_y(-90.0 * PI / 180.0))
-                .with_translation(Vec3::new(100.0, 0.3, -125.0)),
+    commands.spawn((PbrBundle {
+        mesh: meshes.add(mesh),
+        material: materials.add(StandardMaterial {
+            base_color: Color::rgba(1.0, 1.0, 1.0, 1.0),
+            cull_mode: Some(Face::Front),
+            reflectance: 0.01,
+            metallic: 0.0,
             ..Default::default()
-        },
-    ));
+        }),
+
+        transform: Transform::from_rotation(Quat::from_rotation_y(-90.0 * PI / 180.0))
+            .with_translation(Vec3::new(100.0, 0.3, -125.0)),
+        ..Default::default()
+    },));
 }

@@ -27,7 +27,13 @@ impl TabbedSettings {
         Self {}
     }
 
-    pub fn show(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui, side_view: &mut Settingsbar) {
+    pub fn show(
+        &mut self,
+        ctx: &egui::Context,
+        ui: &mut egui::Ui,
+        data: UiData,
+        side_view: &mut Settingsbar,
+    ) {
         ui.horizontal(|ui| {
             let layout = egui::Layout {
                 main_dir: egui::Direction::TopDown,
@@ -122,8 +128,13 @@ impl TabbedSettings {
                 //TODO
             }
             SettingsPanel::Printer => {
-                //ui.label("c");
-                //TODO
+                let mut printer_settings = data.settings.printer.borrow_mut();
+
+                egui::ScrollArea::both().show(ui, |ui| {
+                    printer_settings.general.show(ctx, ui);
+                    printer_settings.machine_limits.show(ctx, ui);
+                    printer_settings.extruder.show(ctx, ui);
+                });
             }
         }
     }
@@ -141,7 +152,7 @@ impl Settingsbar {
     }
 }
 
-impl Component<Settingsbar> for Settingsbar {
+impl Component for Settingsbar {
     fn show(&mut self, ctx: &egui::Context, data: UiData) {
         let mut tabbed_view = TabbedSettings::init();
 
@@ -150,7 +161,7 @@ impl Component<Settingsbar> for Settingsbar {
                 .resizable(true)
                 .default_width(config::gui::default::SETTINGSBAR_W)
                 .show(ctx, |ui| {
-                    tabbed_view.show(ctx, ui, self);
+                    tabbed_view.show(ctx, ui, data, self);
                 })
                 .response,
         );

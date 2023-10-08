@@ -54,7 +54,10 @@ pub mod orientation {
     use egui_extras::Size;
     use egui_grid::GridBuilder;
 
-    use crate::{gui::{icon, UiData}, view::Orientation};
+    use crate::{
+        gui::{icon, UiData},
+        view::Orientation,
+    };
 
     pub fn show(ui: &mut Ui, data: UiData) {
         let layout = egui::Layout {
@@ -82,7 +85,7 @@ pub mod orientation {
             .show(ui, |mut grid| {
                 grid.empty();
                 grid.cell(|ui| {
-                    add_button_icon(ui, data, Orientation::Diagonal); 
+                    add_button_icon(ui, data, Orientation::Diagonal);
                 });
 
                 grid.cell(|ui| {
@@ -105,15 +108,15 @@ pub mod orientation {
             });
     }
 
-    fn add_button_icon(ui: &mut Ui, data: &crate::gui::UiDataPacket<'_>, orientation: Orientation ) {
-        let icon = icon::ICONTABLE.get_orientation_icon(orientation.clone());
+    fn add_button_icon(ui: &mut Ui, data: &crate::gui::UiDataPacket<'_>, orientation: Orientation) {
+        let icon = icon::ICONTABLE.get_orientation_icon(orientation);
 
         let image_button =
             ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
 
         ui.allocate_ui([35., 35.].into(), move |ui| {
             ui.with_layout(Layout::centered_and_justified(Direction::TopDown), |ui| {
-                let prev_response = data.get_orientation_response(orientation.clone());
+                let prev_response = data.get_orientation_response(orientation);
 
                 if prev_response.hovered() {
                     ui.painter().rect_filled(
@@ -122,15 +125,13 @@ pub mod orientation {
                         Color32::from_rgba_premultiplied(75, 255, 0, 100),
                     );
                 }
-    
+
                 let response = ui.add_sized([30., 30.], image_button);
-    
-                data.update_orientation_response(&response, orientation.clone());
-    
+
+                data.update_orientation_response(&response, orientation);
+
                 if response.clicked() {
-                    data.orienation_writer()
-                        .borrow_mut()
-                        .send(orientation);
+                    data.orienation_writer().borrow_mut().send(orientation);
                 }
             });
         });
@@ -145,7 +146,7 @@ impl Addons {
     }
 }
 
-impl gui::InnerComponent<Addons> for Addons {
+impl gui::InnerComponent for Addons {
     fn show(&mut self, ctx: &egui::Context, ui: &mut Ui, data: UiData) {
         let window_size = ui.available_size();
 

@@ -13,7 +13,7 @@ impl Menubar {
     }
 }
 
-impl gui::Component<Menubar> for Menubar {
+impl gui::Component for Menubar {
     fn show(&mut self, ctx: &egui::Context, data: UiData) {
         let boundary = egui::TopBottomPanel::top("menubar")
             .default_height(config::gui::MENUBAR_H)

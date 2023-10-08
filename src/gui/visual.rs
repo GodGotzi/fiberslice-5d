@@ -1,22 +1,24 @@
-use bevy_egui::egui;
-use bevy_egui::egui::style::WidgetVisuals;
+use bevy_egui::egui::{self, Rounding};
 
 pub fn customize_look_and_feel(mut visuals: egui::Visuals) -> egui::Visuals {
     visuals.selection.bg_fill = egui::Color32::from_rgb(76, 255, 0);
     visuals.selection.stroke.color = egui::Color32::from_rgb(0, 0, 0);
 
-    disable_rounding(&mut visuals.widgets.noninteractive);
-    disable_rounding(&mut visuals.widgets.active);
-    disable_rounding(&mut visuals.widgets.hovered);
-    disable_rounding(&mut visuals.widgets.inactive);
-    disable_rounding(&mut visuals.widgets.open);
+    disable_rounding(&mut visuals.window_rounding);
+    disable_rounding(&mut visuals.menu_rounding);
+
+    disable_rounding(&mut visuals.widgets.noninteractive.rounding);
+    disable_rounding(&mut visuals.widgets.active.rounding);
+    disable_rounding(&mut visuals.widgets.hovered.rounding);
+    disable_rounding(&mut visuals.widgets.inactive.rounding);
+    disable_rounding(&mut visuals.widgets.open.rounding);
 
     visuals
 }
 
-pub fn disable_rounding(widget_visuals: &mut WidgetVisuals) {
-    widget_visuals.rounding.ne = 0.0;
-    widget_visuals.rounding.nw = 0.0;
-    widget_visuals.rounding.se = 0.0;
-    widget_visuals.rounding.sw = 0.0;
+pub fn disable_rounding(rounding: &mut Rounding) {
+    rounding.ne = 1.0;
+    rounding.nw = 1.0;
+    rounding.se = 1.0;
+    rounding.sw = 1.0;
 }

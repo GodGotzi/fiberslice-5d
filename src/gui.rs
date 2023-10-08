@@ -13,16 +13,18 @@ use std::cell::RefCell;
 
 use bevy::prelude::{EventWriter, Plugin, Res, ResMut, Resource, Update};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
+pub use components::size_fixed;
 use egui::{Response, Visuals};
 use strum::EnumCount;
 
 use crate::{
     prelude::Context,
+    settings::{slicer::SliceSettings, FilamentSettings, PrinterSettings},
     view::{Mode, Orientation},
 };
 
-use crate::gui::components::*;
 use crate::gui::components::response::ButtonResponse;
+use crate::gui::components::*;
 use crate::gui::visual::customize_look_and_feel;
 
 use self::components::addons;
@@ -43,6 +45,12 @@ impl Plugin for UiPlugin {
 
 pub struct EventWriters<'a> {
     orientation: RefCell<EventWriter<'a, Orientation>>,
+}
+
+pub struct SettingsPacket<'a> {
+    pub slice: RefCell<ResMut<'a, SliceSettings>>,
+    pub filament: RefCell<ResMut<'a, FilamentSettings>>,
+    pub printer: RefCell<ResMut<'a, PrinterSettings>>,
 }
 
 #[derive(Resource)]
@@ -69,6 +77,7 @@ pub struct UiDataPacket<'a> {
     pub raw: RefCell<ResMut<'a, RawUiData>>,
     pub button_responses: RefCell<ResMut<'a, ButtonResponses>>,
     pub context: Res<'a, Context>,
+    pub settings: SettingsPacket<'a>,
     writers: EventWriters<'a>,
 }
 
@@ -77,12 +86,14 @@ impl<'a> UiDataPacket<'a> {
         raw: ResMut<'a, RawUiData>,
         button_responses: ResMut<'a, ButtonResponses>,
         context: Res<'a, Context>,
+        settings: SettingsPacket<'a>,
         writers: EventWriters<'a>,
     ) -> Self {
         Self {
             raw: RefCell::new(raw),
             button_responses: RefCell::new(button_responses),
             context,
+            settings,
             writers,
         }
     }
@@ -130,19 +141,28 @@ pub fn ui_frame(
     data: ResMut<'_, RawUiData>,
     buttons_responses: ResMut<'_, ButtonResponses>,
     context: Res<'_, Context>,
+    slice_settinsg: ResMut<'_, SliceSettings>,
+    filament_settings: ResMut<'_, FilamentSettings>,
+    printer_settings: ResMut<'_, PrinterSettings>,
     orientation_writer: EventWriter<Orientation>,
 ) {
     let ctx = contexts.ctx_mut();
+
+    let settings = SettingsPacket {
+        slice: RefCell::new(slice_settinsg),
+        filament: RefCell::new(filament_settings),
+        printer: RefCell::new(printer_settings),
+    };
 
     let writers = EventWriters {
         orientation: RefCell::new(orientation_writer),
     };
 
-    let data = UiDataPacket::new(data, buttons_responses, context, writers);
+    let data = UiDataPacket::new(data, buttons_responses, context, settings, writers);
 
     match data.raw.borrow_mut().theme {
         Theme::Light => ctx.set_visuals(Visuals::light()),
-        Theme::Dark => ctx.set_visuals(Visuals::dark()),
+        Theme::Dark => ctx.set_visuals(Visuals::light()),
     };
 
     ctx.set_visuals(customize_look_and_feel(ctx.style().visuals.clone()));
@@ -150,16 +170,24 @@ pub fn ui_frame(
     screen.show(ctx, &data);
 }
 
-pub trait SuperComponent<T> {
+pub trait SuperComponent {
     fn show<'a>(&'a mut self, ctx: &egui::Context, data: &'a UiDataPacket<'a>);
 }
 
-pub trait Component<T> {
+pub trait Component {
     fn show(&mut self, ctx: &egui::Context, data: UiData);
 }
 
-pub trait InnerComponent<T> {
+pub trait InnerComponent {
     fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, data: UiData);
+}
+
+pub trait TextComponent {
+    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui);
+}
+
+pub trait InnerTextComponent<P> {
+    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, data: P);
 }
 
 #[derive(Default)]
@@ -284,7 +312,7 @@ impl Screen {
     }
 }
 
-impl SuperComponent<Screen> for Screen {
+impl SuperComponent for Screen {
     fn show<'a>(&'a mut self, ctx: &egui::Context, data: &'a UiDataPacket<'a>) {
         let frame = egui::containers::Frame {
             fill: egui::Color32::TRANSPARENT,
