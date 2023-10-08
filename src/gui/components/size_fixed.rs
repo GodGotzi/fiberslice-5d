@@ -1,26 +1,19 @@
-use bevy_egui::egui::{Response, Ui};
+use bevy_egui::egui::{Ui, WidgetText};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct StaticSizedLabel {
-    spaces: usize,
+    allocate_width: f32,
 }
 
 impl StaticSizedLabel {
-    pub const fn new(spaces: usize) -> Self {
-        Self { spaces }
+    pub const fn new(allocate_width: f32) -> Self {
+        Self { allocate_width }
     }
 }
 
 impl StaticSizedLabel {
-    pub fn label(&self, ui: &mut Ui, native: impl Into<String>) -> Response {
-        let mut label = String::new();
-        let native = native.into();
-
-        label.push_str(&native);
-
-        for _ in 0..self.spaces - native.len() {
-            label.push('-');
-        }
-        ui.label(label)
+    pub fn label(&self, ui: &mut Ui, native: impl Into<WidgetText>) {
+        let response = ui.label(native);
+        ui.add_space((self.allocate_width - response.rect.width()).max(0.0))
     }
 }

@@ -26,12 +26,12 @@ pub mod gui {
     pub mod addons {}
 
     pub mod default {
-        pub const SETTINGSBAR_W: f32 = 350.0;
+        pub const SETTINGSBAR_W: f32 = 400.0;
     }
 
     pub mod settings {
         use crate::gui::size_fixed::StaticSizedLabel;
 
-        pub const SETTINGS_LABEL: StaticSizedLabel = StaticSizedLabel::new(70);
+        pub const SETTINGS_LABEL: StaticSizedLabel = StaticSizedLabel::new(200.0);
     }
 }

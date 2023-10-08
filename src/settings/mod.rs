@@ -55,6 +55,13 @@ impl Default for PrinterSettings {
     }
 }
 
+impl Drop for PrinterSettings {
+    fn drop(&mut self) {
+        let content = serde_yaml::to_string(self).unwrap();
+        std::fs::write("settings/printer.yaml", content).unwrap();
+    }
+}
+
 impl Default for FilamentSettings {
     fn default() -> Self {
         //let content = std::fs::read_to_string("settings/filament.yaml").unwrap();
@@ -63,10 +70,24 @@ impl Default for FilamentSettings {
     }
 }
 
+impl Drop for FilamentSettings {
+    fn drop(&mut self) {
+        let content = serde_yaml::to_string(self).unwrap();
+        std::fs::write("settings/filament.yaml", content).unwrap();
+    }
+}
+
 impl Default for slicer::SliceSettings {
     fn default() -> Self {
         //let content = std::fs::read_to_string("settings/slicer.yaml").unwrap();
         //serde_yaml::from_str::<slicer::SliceSettings>(&content).unwrap()
         Self {}
+    }
+}
+
+impl Drop for slicer::SliceSettings {
+    fn drop(&mut self) {
+        let content = serde_yaml::to_string(self).unwrap();
+        std::fs::write("settings/slicer.yaml", content).unwrap();
     }
 }

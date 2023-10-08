@@ -1,0 +1,53 @@
+general:
+  max_height: 0.0
+  z_offset: 0.0
+machine_limits:
+  max_feedrates:
+    movements:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      a: 0.0
+      b: 0.0
+      c: 0.0
+      e: 0.0
+  max_acceleration:
+    movements:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      a: 0.0
+      b: 0.0
+      c: 0.0
+      e: 0.0
+    when_extruding: 0.0
+    when_retracting: 0.0
+    travel: 0.0
+  jerk_limits:
+    movements:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      a: 0.0
+      b: 0.0
+      c: 0.0
+      e: 0.0
+  minimum_feedrates:
+    when_extruding: 0.0
+    travel: 0.0
+extruder:
+  size:
+    nozzle_diameter: 0.0
+  layer_height_limits:
+    min: 0.0
+    max: 0.0
+  retraction:
+    length: 0.0
+    lift_z: 0.0
+    retract_speed: 0.0
+    deretract_speed: 0.0
+    retract_restart_extra: 0.0
+    minimum_travel: 0.0
+    retract_on_layer_change: false
+    wipe_while_retracting: false
+    retract_amount_before_wipe: 0.0

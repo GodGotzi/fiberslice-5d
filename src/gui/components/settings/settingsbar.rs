@@ -116,24 +116,35 @@ impl TabbedSettings {
                 });
         });
 
-        ui.add_space(20.0);
+        //ui.add_space(20.0);
 
         match side_view.open_panel {
             SettingsPanel::Slice => {
-                //ui.label("a");
-                //TODO
+                egui::SidePanel::left("slice_settings_navigate")
+                    .exact_width(30.0)
+                    .resizable(false)
+                    .show_inside(ui, |_ui| {});
             }
             SettingsPanel::Filament => {
-                //ui.label("b");
-                //TODO
+                egui::SidePanel::left("filament_settings_navigate")
+                    .exact_width(30.0)
+                    .resizable(false)
+                    .show_inside(ui, |_ui| {});
             }
             SettingsPanel::Printer => {
                 let mut printer_settings = data.settings.printer.borrow_mut();
 
-                egui::ScrollArea::both().show(ui, |ui| {
-                    printer_settings.general.show(ctx, ui);
-                    printer_settings.machine_limits.show(ctx, ui);
-                    printer_settings.extruder.show(ctx, ui);
+                egui::SidePanel::left("printer_settings_navigate")
+                    .exact_width(30.0)
+                    .resizable(false)
+                    .show_inside(ui, |_ui| {});
+
+                egui::CentralPanel::default().show_inside(ui, |ui| {
+                    egui::ScrollArea::both().show(ui, |ui| {
+                        printer_settings.general.show(ctx, ui);
+                        printer_settings.machine_limits.show(ctx, ui);
+                        printer_settings.extruder.show(ctx, ui);
+                    });
                 });
             }
         }
