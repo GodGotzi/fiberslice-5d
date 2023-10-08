@@ -30,7 +30,7 @@ impl gui::Component for Taskbar {
             .response
             .into();
 
-        data.raw.borrow_mut().boundary_holder.set_taskbar(boundary);
+        data.raw.borrow_mut().holder.set_taskbar(boundary);
     }
 }
 

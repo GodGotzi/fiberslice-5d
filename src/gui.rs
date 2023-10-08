@@ -115,7 +115,7 @@ impl<'a> UiDataPacket<'a> {
 pub struct RawUiData {
     pub theme: Theme,
     pub mode: Mode,
-    pub boundary_holder: BoundaryHolder,
+    pub holder: Holder,
 }
 
 impl RawUiData {
@@ -123,7 +123,7 @@ impl RawUiData {
         Self {
             theme,
             mode,
-            boundary_holder: BoundaryHolder::default(),
+            holder: Holder::default(),
         }
     }
 
@@ -138,7 +138,7 @@ impl RawUiData {
 pub fn ui_frame(
     mut contexts: EguiContexts,
     mut screen: ResMut<'_, Screen>,
-    data: ResMut<'_, RawUiData>,
+    mut data: ResMut<'_, RawUiData>,
     buttons_responses: ResMut<'_, ButtonResponses>,
     context: Res<'_, Context>,
     slice_settinsg: ResMut<'_, SliceSettings>,
@@ -158,11 +158,13 @@ pub fn ui_frame(
         orientation: RefCell::new(orientation_writer),
     };
 
+    data.holder.reset();
+
     let data = UiDataPacket::new(data, buttons_responses, context, settings, writers);
 
     match data.raw.borrow_mut().theme {
         Theme::Light => ctx.set_visuals(Visuals::light()),
-        Theme::Dark => ctx.set_visuals(Visuals::light()),
+        Theme::Dark => ctx.set_visuals(Visuals::dark()),
     };
 
     ctx.set_visuals(customize_look_and_feel(ctx.style().visuals.clone()));
@@ -187,16 +189,23 @@ pub trait TextComponent {
 }
 
 pub trait InnerTextComponent<P> {
-    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, data: P);
+    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, prefix: P, suffix: P);
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub struct Boundary {
     location: egui::Pos2,
     size: egui::Vec2,
 }
 
 impl Boundary {
+    pub fn zero() -> Self {
+        Self {
+            location: egui::Pos2::ZERO,
+            size: egui::Vec2::ZERO,
+        }
+    }
+
     #[allow(dead_code)]
     pub fn offset_x(&self) -> f32 {
         self.location.x
@@ -226,7 +235,7 @@ impl From<Response> for Boundary {
 }
 
 #[derive(Default)]
-pub struct BoundaryHolder {
+pub struct Holder {
     menubar: Option<Boundary>,
     taskbar: Option<Boundary>,
     modebar: Option<Boundary>,
@@ -234,7 +243,7 @@ pub struct BoundaryHolder {
     settingsbar: Option<Boundary>,
 }
 
-impl BoundaryHolder {
+impl Holder {
     pub fn set_menubar(&mut self, boundary: Boundary) {
         self.menubar = Some(boundary);
     }
@@ -263,24 +272,32 @@ impl BoundaryHolder {
             && self.settingsbar.is_some()
     }
 
-    pub fn menubar(&self) -> &Boundary {
-        self.menubar.as_ref().unwrap()
+    pub fn reset(&mut self) {
+        self.menubar = None;
+        self.taskbar = None;
+        self.modebar = None;
+        self.toolbar = None;
+        self.settingsbar = None;
     }
 
-    pub fn taskbar(&self) -> &Boundary {
-        self.taskbar.as_ref().unwrap()
+    pub fn menubar(&self) -> Boundary {
+        self.menubar.unwrap_or(Boundary::zero())
     }
 
-    pub fn modebar(&self) -> &Boundary {
-        self.modebar.as_ref().unwrap()
+    pub fn taskbar(&self) -> Boundary {
+        self.taskbar.unwrap_or(Boundary::zero())
     }
 
-    pub fn toolbar(&self) -> &Boundary {
-        self.toolbar.as_ref().unwrap()
+    pub fn modebar(&self) -> Boundary {
+        self.modebar.unwrap_or(Boundary::zero())
     }
 
-    pub fn settingsbar(&self) -> &Boundary {
-        self.settingsbar.as_ref().unwrap()
+    pub fn toolbar(&self) -> Boundary {
+        self.toolbar.unwrap_or(Boundary::zero())
+    }
+
+    pub fn settingsbar(&self) -> Boundary {
+        self.settingsbar.unwrap_or(Boundary::zero())
     }
 }
 

@@ -29,7 +29,7 @@ impl gui::Component for Menubar {
             .response
             .into();
 
-        data.raw.borrow_mut().boundary_holder.set_menubar(boundary);
+        data.raw.borrow_mut().holder.set_menubar(boundary);
     }
 }
 

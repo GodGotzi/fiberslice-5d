@@ -76,7 +76,7 @@ fn resize_viewport(
 
     if window.resolution.physical_width() == 0
         || window.resolution.physical_height() == 0
-        || !data.boundary_holder.initialized()
+        || !data.holder.initialized()
     {
         return;
     }
@@ -89,23 +89,20 @@ fn resize_viewport(
     //update viewport
     {
         let height = viewport_height
-            - ((data.boundary_holder.taskbar().height()
-                + data.boundary_holder.modebar().height()
-                + data.boundary_holder.menubar().height())
+            - ((data.holder.taskbar().height()
+                + data.holder.modebar().height()
+                + data.holder.menubar().height())
                 * window.scale_factor() as f32) as u32
             + 4;
 
         let viewport = Viewport {
             physical_position: UVec2 {
-                x: (data.boundary_holder.toolbar().width() * window.scale_factor() as f32) as u32
-                    - 2,
-                y: (data.boundary_holder.menubar().height() * window.scale_factor() as f32) as u32
-                    - 2,
+                x: (data.holder.toolbar().width() * window.scale_factor() as f32) as u32 - 2,
+                y: (data.holder.menubar().height() * window.scale_factor() as f32) as u32 - 2,
             },
             physical_size: UVec2 {
                 x: (viewport_width
-                    - ((data.boundary_holder.toolbar().width()
-                        + data.boundary_holder.settingsbar().width())
+                    - ((data.holder.toolbar().width() + data.holder.settingsbar().width())
                         * window.scale_factor() as f32) as u32)
                     + 4,
                 y: height,

@@ -15,6 +15,8 @@ pub enum Error {
     SetupError(String),
     #[error("GCode State Parse Error {0}")]
     GCodeStateParseError(String),
+    #[error("Settings Load Error {0}")]
+    SettingsLoadError(String),
     #[error(transparent)]
     Io(#[from] std::io::Error),
 }

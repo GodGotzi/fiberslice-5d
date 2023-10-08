@@ -71,6 +71,6 @@ impl Component for Modebar {
             .response
             .into();
 
-        data.raw.borrow_mut().boundary_holder.set_modebar(boundary);
+        data.raw.borrow_mut().holder.set_modebar(boundary);
     }
 }

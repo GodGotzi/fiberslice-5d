@@ -20,6 +20,6 @@ impl Component for Toolbar {
             .response
             .into();
 
-        data.raw.borrow_mut().boundary_holder.set_toolbar(boundary);
+        data.raw.borrow_mut().holder.set_toolbar(boundary);
     }
 }

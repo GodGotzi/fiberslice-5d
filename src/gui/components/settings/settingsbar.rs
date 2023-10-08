@@ -6,6 +6,11 @@
 */
 
 use bevy_egui::egui;
+use bevy_egui::egui::Button;
+use bevy_egui::egui::CollapsingHeader;
+
+use bevy_egui::egui::Layout;
+use bevy_egui::egui::Vec2;
 use egui_extras::Size;
 use egui_grid::GridBuilder;
 
@@ -120,34 +125,93 @@ impl TabbedSettings {
 
         match side_view.open_panel {
             SettingsPanel::Slice => {
-                egui::SidePanel::left("slice_settings_navigate")
-                    .exact_width(30.0)
-                    .resizable(false)
-                    .show_inside(ui, |_ui| {});
+                let mut slice_settings = data.settings.printer.borrow_mut();
+
+                egui::CentralPanel::default().show_inside(ui, |ui| {
+                    egui::ScrollArea::both().show(ui, |ui| {
+                        CollapsingHeader::new("General")
+                            .default_open(true)
+                            .show(ui, |ui| {
+                                slice_settings.general.show(ctx, ui);
+                            });
+
+                        CollapsingHeader::new("Machine Limits")
+                            .default_open(true)
+                            .show(ui, |ui| {
+                                slice_settings.machine_limits.show(ctx, ui);
+                            });
+
+                        CollapsingHeader::new("Extruder")
+                            .default_open(true)
+                            .show(ui, |ui| {
+                                slice_settings.extruder.show(ctx, ui);
+                            });
+                    });
+                });
             }
             SettingsPanel::Filament => {
-                egui::SidePanel::left("filament_settings_navigate")
-                    .exact_width(30.0)
-                    .resizable(false)
-                    .show_inside(ui, |_ui| {});
+                let mut filament_settings = data.settings.filament.borrow_mut();
+
+                egui::CentralPanel::default().show_inside(ui, |ui| {
+                    ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
+                        egui::ScrollArea::both().show(ui, |ui| {
+                            CollapsingHeader::new("General")
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    filament_settings.general.show(ctx, ui);
+                                });
+
+                            CollapsingHeader::new("Temperature")
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    filament_settings.temperature.show(ctx, ui);
+                                });
+
+                            CollapsingHeader::new("Cooling")
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    filament_settings.cooling.show(ctx, ui);
+                                });
+
+                            CollapsingHeader::new("Advanced")
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    filament_settings.advanced.show(ctx, ui);
+                                });
+                        });
+                    });
+                });
             }
             SettingsPanel::Printer => {
                 let mut printer_settings = data.settings.printer.borrow_mut();
 
-                egui::SidePanel::left("printer_settings_navigate")
-                    .exact_width(30.0)
-                    .resizable(false)
-                    .show_inside(ui, |_ui| {});
-
                 egui::CentralPanel::default().show_inside(ui, |ui| {
-                    egui::ScrollArea::both().show(ui, |ui| {
-                        printer_settings.general.show(ctx, ui);
-                        printer_settings.machine_limits.show(ctx, ui);
-                        printer_settings.extruder.show(ctx, ui);
+                    ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
+                        egui::ScrollArea::both().show(ui, |ui| {
+                            CollapsingHeader::new("General")
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    printer_settings.general.show(ctx, ui);
+                                });
+
+                            CollapsingHeader::new("Machine Limits")
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    printer_settings.machine_limits.show(ctx, ui);
+                                });
+
+                            CollapsingHeader::new("Extruder")
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    printer_settings.extruder.show(ctx, ui);
+                                });
+                        });
                     });
                 });
             }
         }
+
+        ui.add_space(20.0);
     }
 }
 
@@ -172,14 +236,33 @@ impl Component for Settingsbar {
                 .resizable(true)
                 .default_width(config::gui::default::SETTINGSBAR_W)
                 .show(ctx, |ui| {
-                    tabbed_view.show(ctx, ui, data, self);
+                    ui.with_layout(Layout::bottom_up(egui::Align::Center), |ui| {
+                        ui.add_space(20.0);
+
+                        ui.allocate_ui(Vec2::new(ui.available_width(), 250.0), |ui| {
+                            let export_button = Button::new("Export GCode")
+                                .min_size(Vec2::new(ui.available_width() * 0.5, 20.0));
+
+                            ui.add_enabled(false, export_button);
+
+                            let slice_button = Button::new("Slice")
+                                .min_size(Vec2::new(ui.available_width() * 0.8, 50.0));
+
+                            ui.add(slice_button);
+                        });
+
+                        ui.add_space(20.0);
+
+                        ui.separator();
+
+                        ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
+                            tabbed_view.show(ctx, ui, data, self);
+                        });
+                    });
                 })
                 .response,
         );
 
-        data.raw
-            .borrow_mut()
-            .boundary_holder
-            .set_settingsbar(boundary);
+        data.raw.borrow_mut().holder.set_settingsbar(boundary);
     }
 }
