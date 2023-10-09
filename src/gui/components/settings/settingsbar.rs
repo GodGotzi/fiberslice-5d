@@ -9,8 +9,12 @@ use bevy_egui::egui;
 use bevy_egui::egui::Button;
 use bevy_egui::egui::CollapsingHeader;
 
+use bevy_egui::egui::Color32;
+use bevy_egui::egui::FontId;
 use bevy_egui::egui::Layout;
+use bevy_egui::egui::RichText;
 use bevy_egui::egui::Vec2;
+use bevy_egui::egui::widget_text;
 use egui_extras::Size;
 use egui_grid::GridBuilder;
 
@@ -247,7 +251,11 @@ impl Component for Settingsbar {
 
                             ui.add_enabled(false, export_button);
 
-                            let slice_button = Button::new("Slice")
+                            let rich_text = RichText::new("Slice").color(Color32::BLACK)
+                                .font(FontId::new(18.0, egui::FontFamily::Monospace));
+                            let widget_text = widget_text::WidgetText::RichText(rich_text);
+
+                            let slice_button = Button::new(widget_text).fill(ui.style().visuals.selection.bg_fill)
                                 .min_size(Vec2::new(ui.available_width() * 0.8, 50.0));
 
                             ui.add(slice_button);

@@ -135,9 +135,12 @@ pub fn default_input_map(
         return;
     }
 
-    if let Some(pos) = ui_ctx.ctx_mut().pointer_latest_pos() {
+    if let Some(mut pos) = ui_ctx.ctx_mut().pointer_latest_pos() {
         if let Ok(camera) = camera.get_single() {
             if let Some(viewport) = camera.viewport.as_ref() {
+                pos.x *= ui_ctx.ctx_mut().pixels_per_point();
+                pos.y *= ui_ctx.ctx_mut().pixels_per_point();
+
                 if !viewport.contains(&pos) {
                     return;
                 }

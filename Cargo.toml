@@ -27,6 +27,7 @@ bevy = { version = "0.11.2", features = ["dynamic_linking"] }
 bevy_egui = { git = "https://github.com/mvlabat/bevy_egui" }
 bevy_atmosphere = { git = "https://github.com/JonahPlusPlus/bevy_atmosphere" }
 bevy_obj = "0.11"
+phf = { version = "0.11", features = ["macros"] }
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]

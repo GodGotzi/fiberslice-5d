@@ -22,7 +22,7 @@ impl TextComponent for crate::settings::filament::General {
         });
 
         CollapsingHeader::new("Filament")
-            .default_open(false)
+            .default_open(true)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     crate::config::gui::settings::SETTINGS_LABEL.label(ui, "Filament Diameter:");
@@ -65,7 +65,7 @@ impl TextComponent for crate::settings::filament::Temperature {
 impl TextComponent for crate::settings::filament::cooling::CoolingSettings {
     fn show(&mut self, _ctx: &bevy_egui::egui::Context, ui: &mut bevy_egui::egui::Ui) {
         CollapsingHeader::new("Enable")
-            .default_open(false)
+            .default_open(true)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     crate::config::gui::settings::SETTINGS_LABEL.label(ui, "Fan Always On:");
@@ -78,7 +78,7 @@ impl TextComponent for crate::settings::filament::cooling::CoolingSettings {
             });
 
         CollapsingHeader::new("Fan")
-            .default_open(false)
+            .default_open(true)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     crate::config::gui::settings::SETTINGS_LABEL.label(ui, "Fan Speed:");
@@ -108,7 +108,7 @@ impl TextComponent for crate::settings::filament::cooling::CoolingSettings {
 impl TextComponent for crate::settings::filament::advanced::AdvancedSettings {
     fn show(&mut self, _ctx: &bevy_egui::egui::Context, ui: &mut bevy_egui::egui::Ui) {
         CollapsingHeader::new("Print Speed Override")
-            .default_open(false)
+            .default_open(true)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     crate::config::gui::settings::SETTINGS_LABEL.label(ui, "Max Volumetric Speed:");
