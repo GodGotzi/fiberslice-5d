@@ -142,6 +142,10 @@ pub struct ComponentData {
 }
 
 impl ComponentData {
+    fn delete_cache(&mut self) {
+        self.boundary = None;
+    }
+
     pub fn boundary(&self) -> Boundary {
         self.boundary.unwrap_or(Boundary::zero())
     }
@@ -167,22 +171,15 @@ pub struct ComponentDataHolder {
     pub modebar: ComponentData,
     pub toolbar: ComponentData,
     pub settingsbar: ComponentData,
+    pub addons: ComponentData,
 }
 
 impl ComponentDataHolder {
-    pub fn initialized(&self) -> bool {
-        self.menubar.boundary.is_some()
-            && self.taskbar.boundary.is_some()
-            && self.modebar.boundary.is_some()
-            && self.toolbar.boundary.is_some()
-            && self.settingsbar.boundary.is_some()
-    }
-
-    pub fn reset_boundaries(&mut self) {
-        self.menubar.boundary = None;
-        self.taskbar.boundary = None;
-        self.modebar.boundary = None;
-        self.toolbar.boundary = None;
-        self.settingsbar.boundary = None;
+    pub fn delete_cache(&mut self) {
+        self.menubar.delete_cache();
+        self.taskbar.delete_cache();
+        self.modebar.delete_cache();
+        self.toolbar.delete_cache();
+        self.settingsbar.delete_cache();
     }
 }

@@ -74,10 +74,7 @@ fn resize_viewport(
 ) {
     let mut camera = camera.single_mut();
 
-    if window.resolution.physical_width() == 0
-        || window.resolution.physical_height() == 0
-        || !data.holder.initialized()
-    {
+    if window.resolution.physical_width() == 0 || window.resolution.physical_height() == 0 {
         return;
     }
 
@@ -86,7 +83,6 @@ fn resize_viewport(
         window.resolution.physical_height(),
     );
 
-    //update viewport
     {
         let height = viewport_height
             - ((data.holder.taskbar.boundary().height()
@@ -97,9 +93,11 @@ fn resize_viewport(
 
         let viewport = Viewport {
             physical_position: UVec2 {
-                x: (data.holder.toolbar.boundary().width() * window.scale_factor() as f32) as u32
+                x: (data.holder.toolbar.boundary().width() * window.scale_factor() as f32).max(2.0)
+                    as u32
                     - 2,
-                y: (data.holder.menubar.boundary().height() * window.scale_factor() as f32) as u32
+                y: (data.holder.menubar.boundary().height() * window.scale_factor() as f32).max(2.0)
+                    as u32
                     - 2,
             },
             physical_size: UVec2 {

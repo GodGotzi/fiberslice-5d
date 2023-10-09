@@ -66,13 +66,13 @@ pub fn ui_frame(
     (slice_settinsg, filament_settings, printer_settings): Settings,
     orientation_writer: Writers,
 ) {
+    data.holder.delete_cache();
+
     let ctx = ui_ctx.ctx_mut();
 
     let settings = SettingBundle::wrap((slice_settinsg, filament_settings, printer_settings));
 
     let writers = EventWriterBundle::wrap(orientation_writer);
-
-    data.holder.reset_boundaries();
 
     let data = UiDataBundle::wrap((data, buttons_responses, context, settings, writers));
 
@@ -190,13 +190,23 @@ pub mod screen {
             };
 
             self.menubar.show(ctx, data);
-            self.taskbar.show(ctx, data);
+
+            if data.raw.borrow_mut().holder.taskbar.enabled {
+                self.taskbar.show(ctx, data);
+            }
 
             //self.addons.show(ctx, None, app);
+            if data.raw.borrow_mut().holder.settingsbar.enabled {
+                self.settings.show(ctx, data);
+            }
 
-            self.settings.show(ctx, data);
-            self.toolbar.show(ctx, data);
-            self.modebar.show(ctx, data);
+            if data.raw.borrow_mut().holder.toolbar.enabled {
+                self.toolbar.show(ctx, data);
+            }
+
+            if data.raw.borrow_mut().holder.modebar.enabled {
+                self.modebar.show(ctx, data);
+            }
 
             egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
                 /*
@@ -205,7 +215,9 @@ pub mod screen {
                     .show(ui);
                 */
 
-                self.addons.show(ctx, ui, data);
+                if data.raw.borrow_mut().holder.addons.enabled {
+                    self.addons.show(ctx, ui, data);
+                }
             });
         }
     }

@@ -20,8 +20,9 @@ impl Component for Menubar {
                 egui::menu::bar(ui, |ui| {
                     file_button(ui, data);
                     edit_button(ui, data);
+                    window_button(ui, data);
                     view_button(ui, data);
-                    settings_button(ui, data);
+                    //settings_button(ui, data);
                     help_button(ui, data);
                 });
             })
@@ -56,15 +57,26 @@ fn edit_button(ui: &mut Ui, _data: UiData) {
     });
 }
 
-fn view_button(ui: &mut Ui, _data: UiData) {
-    ui.menu_button("View", |ui| {
+fn window_button(ui: &mut Ui, data: UiData) {
+    ui.menu_button("Window", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
+
+        ui.checkbox(&mut data.raw.borrow_mut().holder.addons.enabled, "Addons");
+        ui.separator();
+
+        ui.checkbox(&mut data.raw.borrow_mut().holder.modebar.enabled, "ModeBar");
+        ui.checkbox(&mut data.raw.borrow_mut().holder.toolbar.enabled, "ToolBar");
+        ui.checkbox(&mut data.raw.borrow_mut().holder.taskbar.enabled, "TaskBar");
+        ui.checkbox(
+            &mut data.raw.borrow_mut().holder.settingsbar.enabled,
+            "Settings",
+        );
     });
 }
 
-fn settings_button(ui: &mut Ui, _data: UiData) {
-    ui.menu_button("Settings", |ui| {
+fn view_button(ui: &mut Ui, _data: UiData) {
+    ui.menu_button("View", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
     });
