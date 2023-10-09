@@ -1,6 +1,5 @@
 pub mod filament;
 pub mod printer;
-pub mod ui;
 
 use bevy::prelude::{App, Resource};
 use serde::{Deserialize, Serialize};
