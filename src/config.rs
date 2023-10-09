@@ -30,7 +30,7 @@ pub mod gui {
     }
 
     pub mod settings {
-        use crate::gui::size_fixed::StaticSizedLabel;
+        use crate::ui::size_fixed::StaticSizedLabel;
 
         pub const SETTINGS_LABEL: StaticSizedLabel = StaticSizedLabel::new(200.0);
     }

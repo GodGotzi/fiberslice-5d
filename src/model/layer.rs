@@ -5,7 +5,7 @@ use std::{
 
 use bevy::{
     math::vec3,
-    prelude::{Mesh, Vec3, Component},
+    prelude::{Component, Mesh, Vec3},
 };
 
 use super::gcode::state::State;

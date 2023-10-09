@@ -10,7 +10,7 @@ use bevy_atmosphere::prelude::{AtmosphereCamera, AtmosphereModel, AtmospherePlug
 use smooth_bevy_cameras::LookTransformPlugin;
 use strum_macros::{EnumCount, EnumIter};
 
-use crate::gui::RawUiData;
+use crate::ui::data::RawUiData;
 
 use self::camera::{CameraPlugin, SingleCamera};
 
@@ -41,7 +41,7 @@ pub enum Orientation {
     Front,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Event)]
 pub enum Mode {
     Preview,
     Prepare,
@@ -89,20 +89,23 @@ fn resize_viewport(
     //update viewport
     {
         let height = viewport_height
-            - ((data.holder.taskbar().height()
-                + data.holder.modebar().height()
-                + data.holder.menubar().height())
+            - ((data.holder.taskbar.boundary().height()
+                + data.holder.modebar.boundary().height()
+                + data.holder.menubar.boundary().height())
                 * window.scale_factor() as f32) as u32
             + 4;
 
         let viewport = Viewport {
             physical_position: UVec2 {
-                x: (data.holder.toolbar().width() * window.scale_factor() as f32) as u32 - 2,
-                y: (data.holder.menubar().height() * window.scale_factor() as f32) as u32 - 2,
+                x: (data.holder.toolbar.boundary().width() * window.scale_factor() as f32) as u32
+                    - 2,
+                y: (data.holder.menubar.boundary().height() * window.scale_factor() as f32) as u32
+                    - 2,
             },
             physical_size: UVec2 {
                 x: (viewport_width
-                    - ((data.holder.toolbar().width() + data.holder.settingsbar().width())
+                    - ((data.holder.toolbar.boundary().width()
+                        + data.holder.settingsbar.boundary().width())
                         * window.scale_factor() as f32) as u32)
                     + 4,
                 y: height,

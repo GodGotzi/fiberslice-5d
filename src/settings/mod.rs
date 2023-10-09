@@ -1,12 +1,11 @@
 pub mod filament;
 pub mod printer;
-pub mod structure;
+pub mod ui;
 
 use bevy::prelude::{App, Resource};
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::Error;
-pub use crate::slicer::settings as slicer;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct MovementSettings<T> {
@@ -20,11 +19,7 @@ pub struct MovementSettings<T> {
 }
 
 #[derive(Resource, Serialize, Deserialize)]
-pub struct PrinterSettings {
-    pub general: printer::General,
-    pub machine_limits: printer::limits::Limits,
-    pub extruder: printer::extruder::ExtruderSettings,
-}
+pub struct SliceSettings {}
 
 #[derive(Resource, Serialize, Deserialize)]
 pub struct FilamentSettings {
@@ -35,13 +30,20 @@ pub struct FilamentSettings {
 }
 
 #[derive(Resource, Serialize, Deserialize)]
+pub struct PrinterSettings {
+    pub general: printer::General,
+    pub machine_limits: printer::limits::Limits,
+    pub extruder: printer::extruder::ExtruderSettings,
+}
+
+#[derive(Resource, Serialize, Deserialize)]
 pub struct SettingsPlugin;
 
 impl bevy::app::Plugin for SettingsPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PrinterSettings::default())
             .insert_resource(FilamentSettings::default())
-            .insert_resource(slicer::SliceSettings::default());
+            .insert_resource(SliceSettings::default());
     }
 }
 
@@ -49,14 +51,11 @@ impl Default for PrinterSettings {
     fn default() -> Self {
         match read_yaml("settings/printer.yaml") {
             Ok(settings) => settings,
-            Err(err) => {
-                println!("Error: {}", err);
-                Self {
-                    general: printer::General::default(),
-                    machine_limits: printer::limits::Limits::default(),
-                    extruder: printer::extruder::ExtruderSettings::default(),
-                }
-            }
+            Err(_err) => Self {
+                general: printer::General::default(),
+                machine_limits: printer::limits::Limits::default(),
+                extruder: printer::extruder::ExtruderSettings::default(),
+            },
         }
     }
 }
@@ -65,24 +64,20 @@ impl Default for FilamentSettings {
     fn default() -> Self {
         match read_yaml("settings/filament.yaml") {
             Ok(settings) => settings,
-            Err(err) => {
-                println!("Error: {}", err);
-                Self {
-                    general: filament::General::default(),
-                    temperature: filament::Temperature::default(),
-                    cooling: filament::cooling::CoolingSettings::default(),
-                    advanced: filament::advanced::AdvancedSettings::default(),
-                }
-            }
+            Err(_err) => Self {
+                general: filament::General::default(),
+                temperature: filament::Temperature::default(),
+                cooling: filament::cooling::CoolingSettings::default(),
+                advanced: filament::advanced::AdvancedSettings::default(),
+            },
         }
     }
 }
 
-impl Default for slicer::SliceSettings {
+impl Default for SliceSettings {
     fn default() -> Self {
-        //let content = std::fs::read_to_string("settings/slice.yaml").unwrap();
-        //serde_yaml::from_str::<slicer::SliceSettings>(&content).unwrap()
-        Self {}
+        let content = std::fs::read_to_string("settings/slice.yaml").unwrap();
+        serde_yaml::from_str::<SliceSettings>(&content).unwrap()
     }
 }
 
@@ -109,7 +104,7 @@ impl Drop for FilamentSettings {
     }
 }
 
-impl Drop for slicer::SliceSettings {
+impl Drop for SliceSettings {
     fn drop(&mut self) {
         let content = serde_yaml::to_string(self).unwrap();
         std::fs::write("settings/slice.yaml", content).unwrap();

@@ -8,7 +8,6 @@
 mod actions;
 mod config;
 mod error;
-mod gui;
 mod math;
 mod model;
 mod prelude;
@@ -17,6 +16,7 @@ mod setup;
 mod shortcut;
 mod slicer;
 mod tests;
+mod ui;
 mod utils;
 mod view;
 
@@ -24,10 +24,10 @@ use std::f32::consts::PI;
 use std::fs;
 
 use bevy::{prelude::*, render::render_resource::Face};
-use gui::UiPlugin;
 use model::gcode::GCode;
 use prelude::MainPlugin;
 use settings::SettingsPlugin;
+use ui::UiPlugin;
 use view::{visualization::gcode::create_toolpath, ViewPlugin};
 
 fn main() {
@@ -62,7 +62,7 @@ fn spawn_bed(
         ..default()
     });
 
-    let content = fs::read_to_string("gcode/benchy.gcode").unwrap();
+    let content = fs::read_to_string("gcode/test2.gcode").unwrap();
     let gcode: GCode = content.try_into().unwrap();
     let toolpath = create_toolpath(&gcode);
     let mesh = toolpath.mesh.clone();

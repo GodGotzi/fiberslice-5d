@@ -6,11 +6,11 @@ pub struct General {
     pub extrusion_multiplier: f32,
     pub density: f32,
     pub cost: f32,
-    pub filament: FilamentProperties,
+    pub filament: FilamentSettings,
 }
 
 #[derive(Default, Debug, Serialize, Deserialize)]
-pub struct FilamentProperties {
+pub struct FilamentSettings {
     pub diameter: f32,
     pub filament_type: FilamentType,
 }
@@ -59,7 +59,8 @@ pub mod advanced {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, EnumIter)]
+#[allow(clippy::upper_case_acronyms)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, Serialize, Deserialize)]
 pub enum FilamentType {
     PLA,
     ABS,
