@@ -32,7 +32,7 @@ impl TextComponent for crate::settings::printer::limits::Limits {
                     ctx,
                     ui,
                     "Max Acceleration".to_string(),
-                    "mm/s^2".to_string(),
+                    "mm/s²".to_string(),
                 );
 
                 ui.horizontal(|ui| {
@@ -41,7 +41,7 @@ impl TextComponent for crate::settings::printer::limits::Limits {
                     ui.add(
                         DragValue::new(&mut self.max_acceleration.when_extruding).max_decimals(3),
                     );
-                    ui.label("mm/s^2");
+                    ui.label("mm/s²");
                 });
                 ui.horizontal(|ui| {
                     crate::config::gui::settings::SETTINGS_LABEL
@@ -49,13 +49,13 @@ impl TextComponent for crate::settings::printer::limits::Limits {
                     ui.add(
                         DragValue::new(&mut self.max_acceleration.when_retracting).max_decimals(3),
                     );
-                    ui.label("mm/s^2");
+                    ui.label("mm/s²");
                 });
                 ui.horizontal(|ui| {
                     crate::config::gui::settings::SETTINGS_LABEL
                         .label(ui, "Max Acceleration travel:");
                     ui.add(DragValue::new(&mut self.max_acceleration.travel).max_decimals(3));
-                    ui.label("mm/s^2");
+                    ui.label("mm/s²");
                 });
             });
 

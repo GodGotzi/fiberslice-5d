@@ -63,6 +63,10 @@ impl IconTable {
     }
 
     fn format_icon_path(icon_path: &str) -> String {
-        format!("assets\\icons\\{}", icon_path)
+        format!(
+            "{}{}",
+            uni_path::Path::new("assets/icons/").to_str(),
+            icon_path
+        )
     }
 }

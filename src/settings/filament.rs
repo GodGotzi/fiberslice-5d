@@ -18,6 +18,7 @@ pub struct FilamentSettings {
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct Temperature {
     pub nozzle: f32,
+    pub enclosure: f32,
     pub bed: f32,
 }
 

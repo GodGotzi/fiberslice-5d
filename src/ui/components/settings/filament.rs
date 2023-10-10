@@ -8,12 +8,12 @@ impl TextComponent for crate::settings::filament::General {
         ui.horizontal(|ui| {
             crate::config::gui::settings::SETTINGS_LABEL.label(ui, "Extrusion Multiplier:");
             ui.add(DragValue::new(&mut self.extrusion_multiplier).max_decimals(3));
-            ui.label("mm/s^2");
+            ui.label("mm/s²");
         });
         ui.horizontal(|ui| {
             crate::config::gui::settings::SETTINGS_LABEL.label(ui, "Density:");
             ui.add(DragValue::new(&mut self.density).max_decimals(3));
-            ui.label("g/cm^3");
+            ui.label("g/cm³");
         });
         ui.horizontal(|ui| {
             crate::config::gui::settings::SETTINGS_LABEL.label(ui, "Cost:");
@@ -27,7 +27,7 @@ impl TextComponent for crate::settings::filament::General {
                 ui.horizontal(|ui| {
                     crate::config::gui::settings::SETTINGS_LABEL.label(ui, "Filament Diameter:");
                     ui.add(DragValue::new(&mut self.filament.diameter).max_decimals(3));
-                    ui.label("mm/s^2");
+                    ui.label("mm/s²");
                 });
                 ui.horizontal(|ui| {
                     crate::config::gui::settings::SETTINGS_LABEL.label(ui, "Filament Type:");
@@ -52,6 +52,11 @@ impl TextComponent for crate::settings::filament::Temperature {
         ui.horizontal(|ui| {
             crate::config::gui::settings::SETTINGS_LABEL.label(ui, "Nozzle Temperature:");
             ui.add(DragValue::new(&mut self.nozzle).max_decimals(3));
+            ui.label("°C");
+        });
+        ui.horizontal(|ui| {
+            crate::config::gui::settings::SETTINGS_LABEL.label(ui, "Enclosure:");
+            ui.add(DragValue::new(&mut self.enclosure).max_decimals(3));
             ui.label("°C");
         });
         ui.horizontal(|ui| {
@@ -116,7 +121,7 @@ impl TextComponent for crate::settings::filament::advanced::AdvancedSettings {
                         DragValue::new(&mut self.print_speed_override.max_volumetric_speed)
                             .max_decimals(3),
                     );
-                    ui.label("mm^3/s");
+                    ui.label("mm³/s");
                 });
             });
     }

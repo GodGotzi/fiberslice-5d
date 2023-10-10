@@ -1772,6 +1772,7 @@ dependencies = [
  "strum_macros",
  "thiserror",
  "traits",
+ "uni-path",
  "winit",
 ]
 
@@ -3885,6 +3886,12 @@ dependencies = [
  "cfg-if",
  "static_assertions",
 ]
+
+[[package]]
+name = "uni-path"
+version = "1.51.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25e328d505b1f855c20e7358711b7ec6398524181664f016dd15cfb36c3a6275"
 
 [[package]]
 name = "unicode-bidi"
