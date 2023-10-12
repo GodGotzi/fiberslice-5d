@@ -23,7 +23,7 @@ serde_yaml = "0.9.25"
 stl_io = "0.7.0"
 nfde = "0.0.8"
 smooth-bevy-cameras = { git = "https://github.com/GodGotzi/smooth-bevy-cameras" }
-bevy = { version = "0.11.2", features = ["dynamic_linking"] }
+bevy = { version = "0.11.2", features = ["dynamic_linking", "wayland"] }
 bevy_egui = { git = "https://github.com/mvlabat/bevy_egui" }
 bevy_atmosphere = { git = "https://github.com/JonahPlusPlus/bevy_atmosphere" }
 bevy_obj = "0.11"

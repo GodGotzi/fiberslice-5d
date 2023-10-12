@@ -1,4 +1,9 @@
 #[test]
+fn test_setting_groups() {
+    assert_eq!(true, true);
+}
+
+#[test]
 fn test_gcode_builder() {
     /*
     use crate::model::gcode::{self, toolpath};
