@@ -29,11 +29,11 @@ impl HandleOrientation for LookTransform {
     fn handle_orientation(&mut self, event: &Orientation) {
         let position = match event {
             Orientation::Default => vec3(0.00, 250.0, 400.0),
-            Orientation::Diagonal => vec3(400.0, 400.0, 400.0),
-            Orientation::Top => vec3(0.0, 700.0, 0.1), // FIXME 0.1 is a hack to avoid the camera being inside the model, maybe there is a better way to do this
-            Orientation::Left => vec3(-400.0, 0.0, 0.0),
-            Orientation::Right => vec3(400.0, 0.0, 0.0),
-            Orientation::Front => vec3(0.0, 0.0, 400.0),
+            Orientation::Diagonal => vec3(200.0, 200.0, 200.0),
+            Orientation::Top => vec3(0.0, 300.0, 0.1), // FIXME 0.1 is a hack to avoid the camera being inside the model, maybe there is a better way to do this
+            Orientation::Left => vec3(-200.0, 0.0, 0.0),
+            Orientation::Right => vec3(200.0, 0.0, 0.0),
+            Orientation::Front => vec3(0.0, 0.0, 200.0),
         };
 
         self.eye = position;
@@ -120,16 +120,21 @@ pub enum CameraControlEvent {
     Orbit(Vec2),
     TranslateTarget(Vec2),
     Zoom(f32),
+    TargetUpdate(Vec3),
+    EyeUpdate(Vec3),
 }
 
 pub fn default_input_map(
-    camera: Query<&mut Camera, With<SingleCamera>>,
     mut events: EventWriter<CameraControlEvent>,
-    mut mouse_wheel_reader: EventReader<MouseWheel>,
-    mut mouse_motion_events: EventReader<MouseMotion>,
+    mut mouse_wheel: EventReader<MouseWheel>,
+    mut mouse_motion: EventReader<MouseMotion>,
     mut ui_ctx: EguiContexts,
-    mouse_buttons: Res<Input<MouseButton>>,
-    controllers: Query<&CameraController>,
+
+    (mouse, keyboard): (Res<Input<MouseButton>>, Res<Input<KeyCode>>),
+    (camera, controllers): (
+        Query<&mut Camera, With<SingleCamera>>,
+        Query<&CameraController>,
+    ),
 ) {
     if ui_ctx.ctx_mut().is_using_pointer() {
         return;
@@ -163,24 +168,72 @@ pub fn default_input_map(
     } = *controller;
 
     let mut cursor_delta = Vec2::ZERO;
-    for event in mouse_motion_events.iter() {
+    for event in mouse_motion.iter() {
         cursor_delta += event.delta;
     }
 
-    if mouse_buttons.pressed(MouseButton::Left) {
+    if mouse.pressed(MouseButton::Left) {
         events.send(CameraControlEvent::Orbit(
             mouse_rotate_sensitivity * cursor_delta,
         ));
     }
 
-    if mouse_buttons.pressed(MouseButton::Middle) {
+    if mouse.pressed(MouseButton::Middle) {
         events.send(CameraControlEvent::TranslateTarget(
             mouse_translate_sensitivity * cursor_delta,
         ));
     }
 
+    if keyboard.pressed(KeyCode::Right) {
+        if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
+            events.send(CameraControlEvent::TranslateTarget(
+                mouse_translate_sensitivity * 100.0 * Vec2::new(1.0, 0.0),
+            ));
+        } else {
+            events.send(CameraControlEvent::Orbit(
+                mouse_translate_sensitivity * 10.0 * Vec2::new(1.0, 0.0),
+            ));
+        }
+    }
+
+    if keyboard.pressed(KeyCode::Left) {
+        if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
+            events.send(CameraControlEvent::TranslateTarget(
+                mouse_translate_sensitivity * 100.0 * Vec2::new(-1.0, 0.0),
+            ));
+        } else {
+            events.send(CameraControlEvent::Orbit(
+                mouse_translate_sensitivity * 10.0 * Vec2::new(-1.0, 0.0),
+            ));
+        }
+    }
+
+    if keyboard.pressed(KeyCode::Up) {
+        if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
+            events.send(CameraControlEvent::TranslateTarget(
+                mouse_translate_sensitivity * 100.0 * Vec2::new(0.0, -1.0),
+            ));
+        } else {
+            events.send(CameraControlEvent::Orbit(
+                mouse_translate_sensitivity * 10.0 * Vec2::new(0.0, 1.0),
+            ));
+        }
+    }
+
+    if keyboard.pressed(KeyCode::Down) {
+        if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
+            events.send(CameraControlEvent::TranslateTarget(
+                mouse_translate_sensitivity * 100.0 * Vec2::new(0.0, 1.0),
+            ));
+        } else {
+            events.send(CameraControlEvent::Orbit(
+                mouse_translate_sensitivity * 10.0 * Vec2::new(0.0, -1.0),
+            ));
+        }
+    }
+
     let mut scalar = 1.0;
-    for event in mouse_wheel_reader.iter() {
+    for event in mouse_wheel.iter() {
         let scroll_amount = match event.unit {
             MouseScrollUnit::Line => event.y,
             MouseScrollUnit::Pixel => event.y / pixels_per_line,
@@ -221,6 +274,8 @@ pub fn control_system(
             CameraControlEvent::Zoom(scalar) => {
                 radius_scalar *= scalar;
             }
+            CameraControlEvent::TargetUpdate(target) => transform.target = *target,
+            CameraControlEvent::EyeUpdate(eye) => transform.eye = *eye,
         }
     }
 

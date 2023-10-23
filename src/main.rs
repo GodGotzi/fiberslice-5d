@@ -27,6 +27,7 @@ use bevy::{prelude::*, render::render_resource::Face};
 use model::gcode::GCode;
 use prelude::MainPlugin;
 use settings::SettingsPlugin;
+use shortcut::ShortcutPlugin;
 use ui::UiPlugin;
 use view::{visualization::gcode::create_toolpath, ViewPlugin};
 
@@ -45,6 +46,7 @@ fn main() {
         .add_plugins(UiPlugin)
         .add_plugins(ViewPlugin)
         .add_plugins(SettingsPlugin)
+        .add_plugins(ShortcutPlugin)
         .add_plugins(MainPlugin)
         .add_systems(Startup, spawn_bed)
         .run();
@@ -52,17 +54,18 @@ fn main() {
 
 fn spawn_bed(
     mut commands: Commands,
-    ass: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    /*
     commands.spawn(SceneBundle {
         scene: ass.load("bed.glb#Scene0"),
         transform: Transform::from_scale(Vec3::new(1000.0, 1000.0, 1000.0)),
         ..default()
     });
+    */
 
-    let content = fs::read_to_string("gcode/test.gcode").unwrap();
+    let content = fs::read_to_string("gcode/benchy.gcode").unwrap();
     let gcode: GCode = content.try_into().unwrap();
     let toolpath = create_toolpath(&gcode);
     let mesh = toolpath.mesh.clone();
