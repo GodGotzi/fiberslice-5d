@@ -20,17 +20,13 @@ mod ui;
 mod utils;
 mod view;
 
-use std::f32::consts::PI;
-use std::fs;
-
 use actions::ActionPlugin;
-use bevy::{prelude::*, render::render_resource::Face};
-use model::gcode::GCode;
+use bevy::prelude::*;
 use prelude::MainPlugin;
 use settings::SettingsPlugin;
 use shortcut::ShortcutPlugin;
 use ui::UiPlugin;
-use view::{visualization::gcode::create_toolpath, ViewPlugin};
+use view::ViewPlugin;
 
 fn main() {
     let plugin = WindowPlugin {

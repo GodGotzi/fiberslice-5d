@@ -24,9 +24,9 @@ use crate::ui::*;
 
 #[derive(PartialEq)]
 pub enum SettingsPanel {
-    Slice,
-    Filament,
-    Printer,
+    Fiber,
+    TopologyOptimization,
+    View,
 }
 
 struct TabbedSettings;
@@ -73,8 +73,8 @@ impl TabbedSettings {
                     grid.cell(|ui| {
                         ui.selectable_value(
                             &mut side_view.open_panel,
-                            SettingsPanel::Slice,
-                            "Slicer",
+                            SettingsPanel::Fiber,
+                            "Fiber",
                         );
                     });
                     grid.cell(|ui| {
@@ -85,8 +85,8 @@ impl TabbedSettings {
                     grid.cell(|ui| {
                         ui.selectable_value(
                             &mut side_view.open_panel,
-                            SettingsPanel::Filament,
-                            "Filament",
+                            SettingsPanel::TopologyOptimization,
+                            "Topology",
                         );
                     });
                     grid.cell(|ui| {
@@ -95,29 +95,25 @@ impl TabbedSettings {
                         });
                     });
                     grid.cell(|ui| {
-                        ui.selectable_value(
-                            &mut side_view.open_panel,
-                            SettingsPanel::Printer,
-                            "Printer",
-                        );
+                        ui.selectable_value(&mut side_view.open_panel, SettingsPanel::View, "View");
                     });
                     grid.cell(|ui| {
                         ui.vertical(|ui| {
-                            if side_view.open_panel != SettingsPanel::Slice {
+                            if side_view.open_panel != SettingsPanel::Fiber {
                                 ui.separator();
                             }
                         });
                     });
                     grid.cell(|ui| {
                         ui.vertical(|ui| {
-                            if side_view.open_panel != SettingsPanel::Filament {
+                            if side_view.open_panel != SettingsPanel::TopologyOptimization {
                                 ui.separator();
                             }
                         });
                     });
                     grid.cell(|ui| {
                         ui.vertical(|ui| {
-                            if side_view.open_panel != SettingsPanel::Printer {
+                            if side_view.open_panel != SettingsPanel::View {
                                 ui.separator();
                             }
                         });
@@ -128,7 +124,7 @@ impl TabbedSettings {
         //ui.add_space(20.0);
 
         match side_view.open_panel {
-            SettingsPanel::Slice => {
+            SettingsPanel::Fiber => {
                 let mut printer_settings = data.settings.printer.borrow_mut();
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -155,7 +151,7 @@ impl TabbedSettings {
                     });
                 });
             }
-            SettingsPanel::Filament => {
+            SettingsPanel::TopologyOptimization => {
                 let mut filament_settings = data.settings.filament.borrow_mut();
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -188,7 +184,7 @@ impl TabbedSettings {
                     });
                 });
             }
-            SettingsPanel::Printer => {
+            SettingsPanel::View => {
                 let mut printer_settings = data.settings.printer.borrow_mut();
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -228,7 +224,7 @@ pub struct Settingsbar {
 impl Settingsbar {
     pub fn new() -> Self {
         Self {
-            open_panel: SettingsPanel::Slice,
+            open_panel: SettingsPanel::Fiber,
         }
     }
 }

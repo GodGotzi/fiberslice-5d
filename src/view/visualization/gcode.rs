@@ -8,11 +8,11 @@ use crate::model::gcode::toolpath::*;
 use crate::model::gcode::GCode;
 use crate::model::layer::*;
 
-pub fn create_toolpath<'a>(gcode: &GCode) -> ToolPathModel<'a> {
+pub fn create_toolpath(gcode: GCode) -> ToolPathModel {
     let toolpath = ToolPath::from(gcode.clone());
     let modul_map: HashMap<usize, Vec<PathModul>> = toolpath.into();
 
-    let mut layers: HashMap<usize, RefCell<LayerMesh<'a>>> = HashMap::new();
+    let mut layers: HashMap<usize, RefCell<LayerMesh>> = HashMap::new();
 
     for entry in modul_map.iter() {
         let layer = LayerMesh::empty();
@@ -33,6 +33,7 @@ pub fn create_toolpath<'a>(gcode: &GCode) -> ToolPathModel<'a> {
     let mut positions = Vec::new();
     let mut colors = Vec::new();
     let mut normals = Vec::new();
+    let mut mesh_models = HashMap::new();
 
     for entry in layers.iter() {
         let mut layer = entry.1.borrow_mut();
@@ -40,6 +41,13 @@ pub fn create_toolpath<'a>(gcode: &GCode) -> ToolPathModel<'a> {
         positions.append(&mut layer.mesh.positions);
         colors.append(&mut layer.mesh.colors);
         normals.append(&mut layer.mesh.normals);
+
+        mesh_models.insert(
+            *entry.0,
+            MeshModel {
+                line_range: layer.line_range,
+            },
+        );
     }
 
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
@@ -50,7 +58,11 @@ pub fn create_toolpath<'a>(gcode: &GCode) -> ToolPathModel<'a> {
     mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
 
-    ToolPathModel { layers, mesh }
+    ToolPathModel {
+        mesh,
+        gcode,
+        layers: mesh_models,
+    }
 }
 
 /*

@@ -1,6 +1,9 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap};
 
-use bevy::{math::vec3, prelude::Vec3};
+use bevy::{
+    math::vec3,
+    prelude::{Component, Mesh, Vec3},
+};
 
 use crate::model::layer::*;
 
@@ -177,5 +180,43 @@ impl From<ToolPath> for HashMap<usize, Vec<PathModul>> {
         }
 
         layers
+    }
+}
+
+pub struct SyncableLayers<'a>(HashMap<usize, LayerMesh<'a>>);
+
+impl<'a> From<HashMap<usize, RefCell<LayerMesh<'a>>>> for SyncableLayers<'a> {
+    fn from(value: HashMap<usize, RefCell<LayerMesh<'a>>>) -> Self {
+        let mut layers = HashMap::new();
+
+        for entry in value.into_iter() {
+            layers.insert(entry.0, entry.1.into_inner());
+        }
+
+        Self(layers)
+    }
+}
+
+pub struct ToolPathModel {
+    pub mesh: Mesh,
+    pub layers: HashMap<usize, MeshModel>,
+    pub gcode: GCode,
+}
+
+pub struct MeshModel {
+    pub line_range: Option<(usize, usize)>,
+}
+
+#[derive(Component)]
+pub struct Layer {
+    pub id: usize,
+    pub line_range: Option<(usize, usize)>,
+}
+
+impl std::fmt::Debug for ToolPathModel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ToolPathModel")
+            .field("layers", &self.layers.keys())
+            .finish()
     }
 }

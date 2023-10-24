@@ -73,7 +73,6 @@ impl SourceBuilder {
 
 #[derive(Debug, Clone)]
 pub struct GCode {
-    pub rendered: bool,
     pub lines: Vec<String>,
     pub instruction_moduls: Vec<InstructionModul>,
 }
@@ -81,13 +80,8 @@ pub struct GCode {
 impl GCode {
     pub fn new(lines: Vec<String>, moduls: Vec<InstructionModul>) -> Self {
         Self {
-            rendered: false,
             lines,
             instruction_moduls: moduls,
         }
-    }
-
-    pub fn render_finished(&mut self) {
-        self.rendered = true;
     }
 }

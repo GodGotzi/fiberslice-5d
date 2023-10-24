@@ -1,12 +1,6 @@
-use std::{
-    cell::{Cell, RefCell},
-    collections::HashMap,
-};
+use std::cell::{Cell, RefCell};
 
-use bevy::{
-    math::vec3,
-    prelude::{Component, Mesh, Vec3},
-};
+use bevy::{math::vec3, prelude::Vec3};
 
 use super::gcode::state::State;
 
@@ -365,10 +359,4 @@ pub struct MeshRef<'a> {
     normals: &'a [[f32; 3]],
     start: usize,
     end: usize,
-}
-
-#[derive(Component)]
-pub struct ToolPathModel<'a> {
-    pub layers: HashMap<usize, RefCell<LayerMesh<'a>>>,
-    pub mesh: Mesh,
 }

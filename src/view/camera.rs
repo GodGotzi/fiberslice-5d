@@ -115,6 +115,7 @@ impl Default for CameraController {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Event)]
 pub enum CameraControlEvent {
     Orbit(Vec2),
