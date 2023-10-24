@@ -756,6 +756,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_mod_raycast"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75e5d9c1d97ce48b74078ff9261b4d7df3986c8f79ae48f71ab92885ecb8f04a"
+dependencies = [
+ "bevy",
+ "crossbeam-channel",
+]
+
+[[package]]
 name = "bevy_obj"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1756,6 +1766,7 @@ dependencies = [
  "bevy",
  "bevy_atmosphere",
  "bevy_egui",
+ "bevy_mod_raycast",
  "bevy_obj",
  "egui_extras",
  "egui_grid",
