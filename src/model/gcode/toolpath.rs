@@ -114,7 +114,7 @@ pub fn compute_modul_with_coordinator<'a>(
     path_modul: &'a PathModul,
     coordinator: &'a PartCoordinator,
 ) {
-    let diameter = 0.4;
+    let diameter = 0.05;
     let mut last_cross: Option<Cross> = None;
 
     let color = path_modul

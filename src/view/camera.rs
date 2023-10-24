@@ -172,6 +172,15 @@ pub fn default_input_map(
         cursor_delta += event.delta;
     }
 
+    let mut scalar = 1.0;
+    for event in mouse_wheel.iter() {
+        let scroll_amount = match event.unit {
+            MouseScrollUnit::Line => event.y,
+            MouseScrollUnit::Pixel => event.y / pixels_per_line,
+        };
+        scalar *= 1.0 - scroll_amount * mouse_wheel_zoom_sensitivity;
+    }
+
     if mouse.pressed(MouseButton::Left) {
         events.send(CameraControlEvent::Orbit(
             mouse_rotate_sensitivity * cursor_delta,
@@ -182,6 +191,38 @@ pub fn default_input_map(
         events.send(CameraControlEvent::TranslateTarget(
             mouse_translate_sensitivity * cursor_delta,
         ));
+    }
+
+    if keyboard.pressed(KeyCode::AltLeft) || keyboard.pressed(KeyCode::AltRight) {
+        if keyboard.pressed(KeyCode::Up) {
+            scalar *= 1.0 - 0.1 * mouse_wheel_zoom_sensitivity;
+        } else if keyboard.pressed(KeyCode::Down) {
+            scalar *= 1.0 + 0.1 * mouse_wheel_zoom_sensitivity;
+        }
+    } else {
+        if keyboard.pressed(KeyCode::Up) {
+            if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
+                events.send(CameraControlEvent::TranslateTarget(
+                    mouse_translate_sensitivity * 100.0 * Vec2::new(0.0, -1.0),
+                ));
+            } else {
+                events.send(CameraControlEvent::Orbit(
+                    mouse_translate_sensitivity * 10.0 * Vec2::new(0.0, 1.0),
+                ));
+            }
+        }
+
+        if keyboard.pressed(KeyCode::Down) {
+            if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
+                events.send(CameraControlEvent::TranslateTarget(
+                    mouse_translate_sensitivity * 100.0 * Vec2::new(0.0, 1.0),
+                ));
+            } else {
+                events.send(CameraControlEvent::Orbit(
+                    mouse_translate_sensitivity * 10.0 * Vec2::new(0.0, -1.0),
+                ));
+            }
+        }
     }
 
     if keyboard.pressed(KeyCode::Right) {
@@ -206,39 +247,6 @@ pub fn default_input_map(
                 mouse_translate_sensitivity * 10.0 * Vec2::new(-1.0, 0.0),
             ));
         }
-    }
-
-    if keyboard.pressed(KeyCode::Up) {
-        if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
-            events.send(CameraControlEvent::TranslateTarget(
-                mouse_translate_sensitivity * 100.0 * Vec2::new(0.0, -1.0),
-            ));
-        } else {
-            events.send(CameraControlEvent::Orbit(
-                mouse_translate_sensitivity * 10.0 * Vec2::new(0.0, 1.0),
-            ));
-        }
-    }
-
-    if keyboard.pressed(KeyCode::Down) {
-        if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
-            events.send(CameraControlEvent::TranslateTarget(
-                mouse_translate_sensitivity * 100.0 * Vec2::new(0.0, 1.0),
-            ));
-        } else {
-            events.send(CameraControlEvent::Orbit(
-                mouse_translate_sensitivity * 10.0 * Vec2::new(0.0, -1.0),
-            ));
-        }
-    }
-
-    let mut scalar = 1.0;
-    for event in mouse_wheel.iter() {
-        let scroll_amount = match event.unit {
-            MouseScrollUnit::Line => event.y,
-            MouseScrollUnit::Pixel => event.y / pixels_per_line,
-        };
-        scalar *= 1.0 - scroll_amount * mouse_wheel_zoom_sensitivity;
     }
 
     events.send(CameraControlEvent::Zoom(scalar));

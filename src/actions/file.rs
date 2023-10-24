@@ -2,7 +2,7 @@ use std::f32::consts::PI;
 
 use bevy::{
     prelude::*,
-    render::render_resource::{Face, PrimitiveTopology},
+    render::render_resource::Face,
     tasks::{AsyncComputeTaskPool, Task},
 };
 
@@ -72,6 +72,5 @@ pub fn load_gcode(data: UiData) {
         FileActionResult::LoadGCode(create_toolpath(&gcode))
     });
 
-    println!("Spawned task");
     data.commands.borrow_mut().spawn(ComputeFileAction(task));
 }
