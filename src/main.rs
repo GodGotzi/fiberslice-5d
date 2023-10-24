@@ -23,6 +23,7 @@ mod view;
 use std::f32::consts::PI;
 use std::fs;
 
+use actions::ActionPlugin;
 use bevy::{prelude::*, render::render_resource::Face};
 use model::gcode::GCode;
 use prelude::MainPlugin;
@@ -47,41 +48,8 @@ fn main() {
         .add_plugins(ViewPlugin)
         .add_plugins(SettingsPlugin)
         .add_plugins(ShortcutPlugin)
+        .add_plugins(ActionPlugin)
         .add_plugins(MainPlugin)
-        .add_systems(Startup, spawn_bed)
+        //.add_systems(Startup, spawn_bed)
         .run();
-}
-
-fn spawn_bed(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    /*
-    commands.spawn(SceneBundle {
-        scene: ass.load("bed.glb#Scene0"),
-        transform: Transform::from_scale(Vec3::new(1000.0, 1000.0, 1000.0)),
-        ..default()
-    });
-    */
-
-    let content = fs::read_to_string("gcode/benchy.gcode").unwrap();
-    let gcode: GCode = content.try_into().unwrap();
-    let toolpath = create_toolpath(&gcode);
-    let mesh = toolpath.mesh.clone();
-
-    commands.spawn((PbrBundle {
-        mesh: meshes.add(mesh),
-        material: materials.add(StandardMaterial {
-            base_color: Color::rgba(1.0, 1.0, 1.0, 1.0),
-            cull_mode: Some(Face::Front),
-            reflectance: 0.01,
-            metallic: 0.0,
-            ..Default::default()
-        }),
-
-        transform: Transform::from_rotation(Quat::from_rotation_y(-90.0 * PI / 180.0))
-            .with_translation(Vec3::new(100.0, 0.3, -125.0)),
-        ..Default::default()
-    },));
 }

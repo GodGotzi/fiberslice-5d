@@ -29,6 +29,7 @@ bevy_atmosphere = { git = "https://github.com/JonahPlusPlus/bevy_atmosphere" }
 bevy_obj = "0.11"
 uni-path = "1.51.1"
 phf = { version = "0.11", features = ["macros"] }
+futures-lite = "1.11.2"
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]

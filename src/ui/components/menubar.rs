@@ -1,6 +1,7 @@
 use bevy_egui::egui;
 use egui::Ui;
 
+use crate::actions::file::load_gcode;
 use crate::config;
 use crate::ui::{Component, UiData};
 
@@ -33,7 +34,7 @@ impl Component for Menubar {
     }
 }
 
-fn file_button(ui: &mut Ui, _data: UiData) {
+fn file_button(ui: &mut Ui, data: UiData) {
     ui.menu_button("File", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
@@ -41,12 +42,7 @@ fn file_button(ui: &mut Ui, _data: UiData) {
         //let manipulator = gui_context.manipulator.clone();
         //let context = gui_context.context.clone();
 
-        build_sub_menu(ui, "Import", || {
-            //import_model(context.clone(), manipulator.clone())
-        });
-        build_sub_menu(ui, "Import GCode", || {
-            //import_gcode(context, manipulator)
-        });
+        build_sub_menu(ui, "Load GCode", || load_gcode(data));
     });
 }
 

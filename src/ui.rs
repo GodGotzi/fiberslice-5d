@@ -12,7 +12,7 @@ mod icon;
 mod response;
 mod visual;
 
-use bevy::prelude::{EventWriter, Plugin, Res, ResMut, Update};
+use bevy::prelude::{Commands, EventWriter, Plugin, Res, ResMut, Update};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 pub use components::size_fixed;
 use egui::Visuals;
@@ -65,6 +65,7 @@ pub fn ui_frame(
     (mut ui_ctx, mut screen, mut data, buttons_responses): UiContext,
     (slice_settinsg, filament_settings, printer_settings): Settings,
     orientation_writer: Writers,
+    commands: Commands,
 ) {
     data.holder.delete_cache();
 
@@ -74,7 +75,14 @@ pub fn ui_frame(
 
     let writers = EventWriterBundle::wrap(orientation_writer);
 
-    let data = UiDataBundle::wrap((data, buttons_responses, context, settings, writers));
+    let data = UiDataBundle::wrap((
+        data,
+        buttons_responses,
+        context,
+        settings,
+        writers,
+        commands,
+    ));
 
     match data.raw.borrow_mut().theme {
         Theme::Light => ctx.set_visuals(Visuals::light()),

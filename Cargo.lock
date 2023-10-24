@@ -1759,6 +1759,7 @@ dependencies = [
  "bevy_obj",
  "egui_extras",
  "egui_grid",
+ "futures-lite",
  "image",
  "lazy_static",
  "macros",

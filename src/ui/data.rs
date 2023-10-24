@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use bevy::prelude::{EventWriter, Res, ResMut, Resource};
+use bevy::prelude::{Commands, EventWriter, Res, ResMut, Resource};
 use bevy_egui::egui;
 use egui::Response;
 
@@ -65,6 +65,7 @@ impl<'a>
 pub struct UiDataBundle<'a> {
     pub raw: RefCell<ResMut<'a, RawUiData>>,
     pub responses: RefCell<ResMut<'a, Responses>>,
+    pub commands: RefCell<Commands<'a, 'a>>,
     pub context: Res<'a, Context>,
     pub settings: SettingBundle<'a>,
     writers: EventWriterBundle<'a>,
@@ -77,15 +78,17 @@ impl<'a>
         Res<'a, Context>,
         SettingBundle<'a>,
         EventWriterBundle<'a>,
+        Commands<'a, 'a>,
     )> for UiDataBundle<'a>
 {
     fn wrap(
-        (raw, responses, context, settings, writers): (
+        (raw, responses, context, settings, writers, commands): (
             ResMut<'a, RawUiData>,
             ResMut<'a, Responses>,
             Res<'a, Context>,
             SettingBundle<'a>,
             EventWriterBundle<'a>,
+            Commands<'a, 'a>,
         ),
     ) -> Self {
         Self {
@@ -94,6 +97,7 @@ impl<'a>
             context,
             settings,
             writers,
+            commands: RefCell::new(commands),
         }
     }
 }
