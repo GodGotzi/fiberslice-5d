@@ -147,7 +147,7 @@ pub fn environment_setup(mut commands: Commands) {
 
     commands.insert_resource(AmbientLight {
         color: Color::rgba(1.0, 1.0, 1.0, 1.0),
-        brightness: 0.5,
+        brightness: 0.2,
     });
 
     commands.insert_resource(AtmosphereModel::new(Gradient {

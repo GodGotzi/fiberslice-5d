@@ -2,7 +2,7 @@ use std::cell::{Cell, RefCell};
 
 use bevy::{math::vec3, prelude::Vec3};
 
-use super::gcode::state::State;
+use super::{gcode::state::State, shapes::Rect3d};
 
 pub struct PartCoordinator<'a> {
     mesh: RefCell<&'a mut LayerMesh<'a>>,
@@ -10,52 +10,6 @@ pub struct PartCoordinator<'a> {
     offset_end: Cell<usize>,
     offset_part_start: Cell<usize>,
     offset_part_end: Cell<usize>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PathOrientationFlipper {
-    flip1: Option<(PathOrientation, PathOrientation)>,
-    flip2: Option<(PathOrientation, PathOrientation)>,
-}
-
-impl PathOrientationFlipper {
-    pub fn flip(&self, orientation: PathOrientation) -> PathOrientation {
-        if let Some((flip1, flip2)) = &self.flip1 {
-            if orientation == *flip1 {
-                return *flip2;
-            } else if orientation == *flip2 {
-                return *flip1;
-            }
-        }
-
-        if let Some((flip1, flip2)) = &self.flip2 {
-            if orientation == *flip1 {
-                return *flip2;
-            } else if orientation == *flip2 {
-                return *flip1;
-            }
-        }
-
-        orientation
-    }
-}
-
-impl From<&Vec3> for PathOrientationFlipper {
-    fn from(value: &Vec3) -> Self {
-        let flip1 = if value.x < 0.0 || value.y < 0.0 {
-            Some((PathOrientation::SouthEast, PathOrientation::NorthWest))
-        } else {
-            None
-        };
-
-        let flip2 = if value.x < 0.0 || value.y < 0.0 {
-            Some((PathOrientation::SouthWest, PathOrientation::NorthEast))
-        } else {
-            None
-        };
-
-        Self { flip1, flip2 }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -181,179 +135,166 @@ impl<'a> PartCoordinator<'a> {
             Ok(())
         }
     }
-}
 
-pub fn draw_path(
-    path: (Vec3, Vec3),
-    color: &[f32; 4],
-    flip: bool,
-    coordinator: &PartCoordinator,
-    cross: &Cross,
-) {
-    draw_rect_path(
-        cross.up + path.0,
-        cross.right + path.0,
-        cross.up + path.1,
-        cross.right + path.1,
-        color,
-        flip,
-        PathOrientation::SouthWest,
-        coordinator,
-    );
+    pub fn draw_path(&self, path: (Vec3, Vec3), color: &[f32; 4], flip: bool, cross: &Cross) {
+        self.draw_rect_path(
+            Rect3d {
+                left_0: cross.up + path.0,
+                left_1: cross.right + path.0,
+                right_0: cross.up + path.1,
+                right_1: cross.right + path.1,
+            },
+            color,
+            flip,
+            PathOrientation::SouthWest,
+        );
 
-    draw_rect_path(
-        cross.down + path.0,
-        cross.right + path.0,
-        cross.down + path.1,
-        cross.right + path.1,
-        color,
-        flip,
-        PathOrientation::NorthWest,
-        coordinator,
-    );
+        self.draw_rect_path(
+            Rect3d {
+                left_0: cross.down + path.0,
+                left_1: cross.right + path.0,
+                right_0: cross.down + path.1,
+                right_1: cross.right + path.1,
+            },
+            color,
+            flip,
+            PathOrientation::NorthWest,
+        );
 
-    draw_rect_path(
-        cross.down + path.0,
-        cross.left + path.0,
-        cross.down + path.1,
-        cross.left + path.1,
-        color,
-        flip,
-        PathOrientation::NorthEast,
-        coordinator,
-    );
+        self.draw_rect_path(
+            Rect3d {
+                left_0: cross.down + path.0,
+                left_1: cross.left + path.0,
+                right_0: cross.down + path.1,
+                right_1: cross.left + path.1,
+            },
+            color,
+            flip,
+            PathOrientation::NorthEast,
+        );
 
-    draw_rect_path(
-        cross.up + path.0,
-        cross.left + path.0,
-        cross.up + path.1,
-        cross.left + path.1,
-        color,
-        flip,
-        PathOrientation::SouthEast,
-        coordinator,
-    );
-}
-
-pub fn draw_cross_connection(
-    center: &Vec3,
-    start_cross: &Cross,
-    end_cross: &Cross,
-    color: &[f32; 4],
-    coordinator: &PartCoordinator,
-) {
-    coordinator.add_triangle(
-        (
-            end_cross.up + *center,
-            end_cross.right + *center,
-            start_cross.right + *center,
-        ),
-        color,
-    );
-
-    coordinator.add_triangle(
-        (
-            end_cross.up + *center,
-            end_cross.left + *center,
-            start_cross.left + *center,
-        ),
-        color,
-    );
-
-    coordinator.add_triangle(
-        (
-            end_cross.down + *center,
-            end_cross.right + *center,
-            start_cross.right + *center,
-        ),
-        color,
-    );
-
-    coordinator.add_triangle(
-        (
-            end_cross.down + *center,
-            end_cross.left + *center,
-            start_cross.left + *center,
-        ),
-        color,
-    );
-}
-
-fn draw_rect_path(
-    point_left_0: Vec3,
-    point_left_1: Vec3,
-    point_right_0: Vec3,
-    point_right_1: Vec3,
-    color: &[f32; 4],
-    flip: bool,
-    orienation: PathOrientation,
-    coordinator: &PartCoordinator,
-) {
-    //println!("orienation: {:?}", orienation);
-
-    let (mut triangle1, mut triangle2) = match orienation {
-        PathOrientation::SouthEast => {
-            let triangle1 = (point_right_0, point_left_1, point_left_0);
-            let triangle2 = (point_right_0, point_right_1, point_left_1);
-
-            (triangle1, triangle2)
-        }
-        PathOrientation::SouthWest => {
-            let triangle1 = (point_left_0, point_left_1, point_right_1);
-            let triangle2 = (point_right_1, point_right_0, point_left_0);
-
-            (triangle1, triangle2)
-        }
-        PathOrientation::NorthEast => {
-            let triangle1 = (point_left_0, point_left_1, point_right_0);
-            let triangle2 = (point_left_1, point_right_1, point_right_0);
-
-            (triangle1, triangle2)
-        }
-        PathOrientation::NorthWest => {
-            let triangle1 = (point_left_0, point_right_0, point_right_1);
-            let triangle2 = (point_right_1, point_left_1, point_left_0);
-
-            (triangle1, triangle2)
-        }
-    };
-
-    if flip {
-        triangle1.flip();
-        triangle2.flip();
+        self.draw_rect_path(
+            Rect3d {
+                left_0: cross.up + path.0,
+                left_1: cross.left + path.0,
+                right_0: cross.up + path.1,
+                right_1: cross.left + path.1,
+            },
+            color,
+            flip,
+            PathOrientation::SouthEast,
+        );
     }
 
-    coordinator.add_triangle(triangle1, color);
-    coordinator.add_triangle(triangle2, color);
-}
+    pub fn draw_cross_connection(
+        &self,
+        center: &Vec3,
+        start_cross: &Cross,
+        end_cross: &Cross,
+        color: &[f32; 4],
+    ) {
+        self.add_triangle(
+            (
+                end_cross.up + *center,
+                end_cross.right + *center,
+                start_cross.right + *center,
+            ),
+            color,
+        );
 
-pub fn draw_rect(
-    point_left_0: Vec3,
-    point_left_1: Vec3,
-    point_right_0: Vec3,
-    point_right_1: Vec3,
-    color: &[f32; 4],
-    coordinator: &PartCoordinator,
-) {
-    coordinator.add_triangle((point_left_0, point_left_1, point_right_0), color);
+        self.add_triangle(
+            (
+                end_cross.up + *center,
+                end_cross.left + *center,
+                start_cross.left + *center,
+            ),
+            color,
+        );
 
-    coordinator.add_triangle((point_left_1, point_right_1, point_right_0), color);
-}
+        self.add_triangle(
+            (
+                end_cross.down + *center,
+                end_cross.right + *center,
+                start_cross.right + *center,
+            ),
+            color,
+        );
 
-pub fn draw_rect_with_cross(
-    center: &Vec3,
-    cross: &Cross,
-    color: &[f32; 4],
-    coordinator: &PartCoordinator,
-) {
-    draw_rect(
-        cross.up + *center,
-        cross.right + *center,
-        cross.down + *center,
-        cross.left + *center,
-        color,
-        coordinator,
-    );
+        self.add_triangle(
+            (
+                end_cross.down + *center,
+                end_cross.left + *center,
+                start_cross.left + *center,
+            ),
+            color,
+        );
+    }
+
+    fn draw_rect_path(
+        &self,
+        rect: Rect3d,
+        color: &[f32; 4],
+        flip: bool,
+        orienation: PathOrientation,
+    ) {
+        let (mut triangle1, mut triangle2) = match orienation {
+            PathOrientation::SouthEast => {
+                let triangle1 = (rect.right_0, rect.left_1, rect.left_0);
+                let triangle2 = (rect.right_0, rect.right_1, rect.left_1);
+
+                (triangle1, triangle2)
+            }
+            PathOrientation::SouthWest => {
+                let triangle1 = (rect.left_0, rect.left_1, rect.right_1);
+                let triangle2 = (rect.right_1, rect.right_0, rect.left_0);
+
+                (triangle1, triangle2)
+            }
+            PathOrientation::NorthEast => {
+                let triangle1 = (rect.left_0, rect.left_1, rect.right_0);
+                let triangle2 = (rect.left_1, rect.right_1, rect.right_0);
+
+                (triangle1, triangle2)
+            }
+            PathOrientation::NorthWest => {
+                let triangle1 = (rect.left_0, rect.right_0, rect.right_1);
+                let triangle2 = (rect.right_1, rect.left_1, rect.left_0);
+
+                (triangle1, triangle2)
+            }
+        };
+
+        if flip {
+            triangle1.flip();
+            triangle2.flip();
+        }
+
+        self.add_triangle(triangle1, color);
+        self.add_triangle(triangle2, color);
+    }
+
+    pub fn draw_rect(
+        &self,
+        point_left_0: Vec3,
+        point_left_1: Vec3,
+        point_right_0: Vec3,
+        point_right_1: Vec3,
+        color: &[f32; 4],
+    ) {
+        self.add_triangle((point_left_0, point_left_1, point_right_0), color);
+
+        self.add_triangle((point_left_1, point_right_1, point_right_0), color);
+    }
+
+    pub fn draw_rect_with_cross(&self, center: &Vec3, cross: &Cross, color: &[f32; 4]) {
+        self.draw_rect(
+            cross.up + *center,
+            cross.right + *center,
+            cross.down + *center,
+            cross.left + *center,
+            color,
+        );
+    }
 }
 
 #[derive(Debug)]

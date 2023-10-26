@@ -117,14 +117,6 @@ impl From<GCode> for ToolPath {
     }
 }
 
-pub fn negate(value1: f32, value2: f32) -> bool {
-    if value1 < 0.0 && value2 < 0.0 {
-        false
-    } else {
-        !(value1 >= 0.0 && value2 >= 0.0)
-    }
-}
-
 pub fn compute_modul_with_coordinator<'a>(
     path_modul: &'a PathModul,
     coordinator: &'a PartCoordinator,
@@ -151,9 +143,9 @@ pub fn compute_modul_with_coordinator<'a>(
             let cross = get_cross(direction, diameter / 2.0);
 
             if let Some(last) = last_cross.take() {
-                draw_cross_connection(&path.start, &cross, &last, &color, coordinator);
+                coordinator.draw_cross_connection(&path.start, &cross, &last, &color);
             } else {
-                draw_rect_with_cross(&path.start, &cross, &color, coordinator);
+                coordinator.draw_rect_with_cross(&path.start, &cross, &color);
             }
 
             let alpha = (direction.x
@@ -162,15 +154,15 @@ pub fn compute_modul_with_coordinator<'a>(
             .to_degrees();
 
             let flip = if (-45.0..=45.0).contains(&alpha) {
-                direction.y < 0.0
+                direction.y >= 0.0
             } else {
-                direction.x >= 0.0
+                direction.x < 0.0
             };
 
-            draw_path((path.start, path.end), &color, flip, coordinator, &cross);
+            coordinator.draw_path((path.start, path.end), &color, !flip, &cross);
             last_cross = Some(cross);
         } else if let Some(last) = last_cross.take() {
-            draw_rect_with_cross(&path.end, &last, &color, coordinator);
+            coordinator.draw_rect_with_cross(&path.end, &last, &color);
 
             coordinator
                 .next_part_meshref(path_modul.state.clone(), path_modul.line_range)
@@ -179,7 +171,7 @@ pub fn compute_modul_with_coordinator<'a>(
 
         if element.0 == path_modul.paths.len() - 1 {
             if let Some(last) = last_cross.take() {
-                draw_rect_with_cross(&path.end, &last, &color, coordinator);
+                coordinator.draw_rect_with_cross(&path.end, &last, &color);
 
                 coordinator
                     .next_part_meshref(path_modul.state.clone(), path_modul.line_range)
