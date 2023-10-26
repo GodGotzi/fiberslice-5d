@@ -204,7 +204,7 @@ pub fn default_input_map(
         if keyboard.pressed(KeyCode::Up) {
             if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
                 events.send(CameraControlEvent::TranslateTarget(
-                    mouse_translate_sensitivity * 100.0 * Vec2::new(0.0, -1.0),
+                    mouse_translate_sensitivity * 100.0 * Vec2::new(0.0, 1.0),
                 ));
             } else {
                 events.send(CameraControlEvent::Orbit(
@@ -216,7 +216,7 @@ pub fn default_input_map(
         if keyboard.pressed(KeyCode::Down) {
             if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
                 events.send(CameraControlEvent::TranslateTarget(
-                    mouse_translate_sensitivity * 100.0 * Vec2::new(0.0, 1.0),
+                    mouse_translate_sensitivity * 100.0 * Vec2::new(0.0, -1.0),
                 ));
             } else {
                 events.send(CameraControlEvent::Orbit(
@@ -229,11 +229,11 @@ pub fn default_input_map(
     if keyboard.pressed(KeyCode::Right) {
         if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
             events.send(CameraControlEvent::TranslateTarget(
-                mouse_translate_sensitivity * 100.0 * Vec2::new(1.0, 0.0),
+                mouse_translate_sensitivity * 100.0 * Vec2::new(-1.0, 0.0),
             ));
         } else {
             events.send(CameraControlEvent::Orbit(
-                mouse_translate_sensitivity * 10.0 * Vec2::new(1.0, 0.0),
+                mouse_translate_sensitivity * 10.0 * Vec2::new(-1.0, 0.0),
             ));
         }
     }
@@ -241,11 +241,11 @@ pub fn default_input_map(
     if keyboard.pressed(KeyCode::Left) {
         if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
             events.send(CameraControlEvent::TranslateTarget(
-                mouse_translate_sensitivity * 100.0 * Vec2::new(-1.0, 0.0),
+                mouse_translate_sensitivity * 100.0 * Vec2::new(1.0, 0.0),
             ));
         } else {
             events.send(CameraControlEvent::Orbit(
-                mouse_translate_sensitivity * 10.0 * Vec2::new(-1.0, 0.0),
+                mouse_translate_sensitivity * 10.0 * Vec2::new(1.0, 0.0),
             ));
         }
     }

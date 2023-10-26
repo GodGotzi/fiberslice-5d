@@ -96,6 +96,10 @@ impl From<GCode> for ToolPath {
 
                 let current_point = current_movements.to_vec3(vec3(0.0, 0.0, 0.0));
 
+                if current_point == last_point {
+                    continue;
+                }
+
                 let print = instruction.instruction_type() == &InstructionType::G1
                     && current_movements.E.is_some_and(|e| e > 0.0);
 
@@ -110,6 +114,14 @@ impl From<GCode> for ToolPath {
         }
 
         tool_path
+    }
+}
+
+pub fn negate(value1: f32, value2: f32) -> bool {
+    if value1 < 0.0 && value2 < 0.0 {
+        false
+    } else {
+        !(value1 >= 0.0 && value2 >= 0.0)
     }
 }
 
@@ -133,6 +145,9 @@ pub fn compute_modul_with_coordinator<'a>(
 
         if path.print {
             let direction = path.direction();
+            //println!("direction: {:?}", direction);
+            //println!("alpha: {}", (direction.x / direction.y).atan().to_degrees());
+
             let cross = get_cross(direction, diameter / 2.0);
 
             if let Some(last) = last_cross.take() {
@@ -141,7 +156,18 @@ pub fn compute_modul_with_coordinator<'a>(
                 draw_rect_with_cross(&path.start, &cross, &color, coordinator);
             }
 
-            draw_path((path.start, path.end), &color, coordinator, &cross);
+            let alpha = (direction.x
+                / (direction.y * direction.y + direction.x * direction.x).sqrt())
+            .asin()
+            .to_degrees();
+
+            let flip = if (-45.0..=45.0).contains(&alpha) {
+                direction.y < 0.0
+            } else {
+                direction.x >= 0.0
+            };
+
+            draw_path((path.start, path.end), &color, flip, coordinator, &cross);
             last_cross = Some(cross);
         } else if let Some(last) = last_cross.take() {
             draw_rect_with_cross(&path.end, &last, &color, coordinator);
