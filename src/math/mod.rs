@@ -1,23 +1,17 @@
 use bevy::prelude::Vec3;
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct VirtualPlane {
-    position: Vec3,
-    normal: Vec3,
+use crate::utils::Flip;
+
+pub struct FSVec3(pub Vec3);
+
+impl From<FSVec3> for [f32; 3] {
+    fn from(value: FSVec3) -> Self {
+        [value.0.x, value.0.z, value.0.y]
+    }
 }
 
-#[allow(dead_code)]
-impl VirtualPlane {
-    pub fn new(position: Vec3, normal: Vec3) -> Self {
-        Self { position, normal }
-    }
-
-    pub fn position(&self) -> &Vec3 {
-        &self.position
-    }
-
-    pub fn normal(&self) -> &Vec3 {
-        &self.normal
+impl Flip for (Vec3, Vec3, Vec3) {
+    fn flip(&mut self) {
+        std::mem::swap(&mut self.0, &mut self.2);
     }
 }

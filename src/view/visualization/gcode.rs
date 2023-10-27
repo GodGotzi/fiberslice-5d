@@ -6,7 +6,7 @@ use bevy::render::render_resource::PrimitiveTopology;
 
 use crate::model::gcode::toolpath::*;
 use crate::model::gcode::GCode;
-use crate::model::layer::*;
+use crate::model::mesh::*;
 
 pub fn create_toolpath(gcode: GCode) -> ToolPathModel {
     let toolpath = ToolPath::from(gcode.clone());
@@ -25,7 +25,8 @@ pub fn create_toolpath(gcode: GCode) -> ToolPathModel {
             let coordinator = PartCoordinator::new(layer.as_ptr().as_mut().unwrap());
 
             for modul in entry.1 {
-                compute_modul_with_coordinator(&modul, &coordinator);
+                coordinator.compute_model(&modul);
+                coordinator.finish();
             }
         }
     }
@@ -44,7 +45,8 @@ pub fn create_toolpath(gcode: GCode) -> ToolPathModel {
 
         mesh_models.insert(
             *entry.0,
-            MeshModel {
+            LayerContext {
+                id: *entry.0,
                 line_range: layer.line_range,
             },
         );

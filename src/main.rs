@@ -12,7 +12,6 @@ mod math;
 mod model;
 mod prelude;
 mod settings;
-mod setup;
 mod shortcut;
 mod slicer;
 mod tests;

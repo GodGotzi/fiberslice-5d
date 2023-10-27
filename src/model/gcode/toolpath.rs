@@ -1,11 +1,9 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::collections::HashMap;
 
 use bevy::{
     math::vec3,
     prelude::{Component, Mesh, Vec3},
 };
-
-use crate::model::layer::*;
 
 use super::{instruction::InstructionType, movement, state::State, GCode};
 
@@ -23,9 +21,9 @@ impl PathLine {
 }
 
 pub struct PathModul {
-    paths: Vec<PathLine>,
-    line_range: (usize, usize),
-    state: State,
+    pub paths: Vec<PathLine>,
+    pub line_range: (usize, usize),
+    pub state: State,
 }
 
 impl PathModul {
@@ -117,72 +115,6 @@ impl From<GCode> for ToolPath {
     }
 }
 
-pub fn compute_modul_with_coordinator<'a>(
-    path_modul: &'a PathModul,
-    coordinator: &'a PartCoordinator,
-) {
-    let diameter = 0.45;
-    let mut last_cross: Option<Cross> = None;
-
-    let color = path_modul
-        .state
-        .print_type
-        .as_ref()
-        .unwrap_or(&crate::slicer::print_type::PrintType::Unknown)
-        .get_color()
-        .as_rgba_f32();
-
-    for element in path_modul.paths.iter().enumerate() {
-        let path = element.1;
-
-        if path.print {
-            let direction = path.direction();
-            //println!("direction: {:?}", direction);
-            //println!("alpha: {}", (direction.x / direction.y).atan().to_degrees());
-
-            let cross = get_cross(direction, diameter / 2.0);
-
-            if let Some(last) = last_cross.take() {
-                coordinator.draw_cross_connection(&path.start, &cross, &last, &color);
-            } else {
-                coordinator.draw_rect_with_cross(&path.start, &cross, &color);
-            }
-
-            let alpha = (direction.x
-                / (direction.y * direction.y + direction.x * direction.x).sqrt())
-            .asin()
-            .to_degrees();
-
-            let flip = if (-45.0..=45.0).contains(&alpha) {
-                direction.y >= 0.0
-            } else {
-                direction.x < 0.0
-            };
-
-            coordinator.draw_path((path.start, path.end), &color, !flip, &cross);
-            last_cross = Some(cross);
-        } else if let Some(last) = last_cross.take() {
-            coordinator.draw_rect_with_cross(&path.end, &last, &color);
-
-            coordinator
-                .next_part_meshref(path_modul.state.clone(), path_modul.line_range)
-                .unwrap();
-        }
-
-        if element.0 == path_modul.paths.len() - 1 {
-            if let Some(last) = last_cross.take() {
-                coordinator.draw_rect_with_cross(&path.end, &last, &color);
-
-                coordinator
-                    .next_part_meshref(path_modul.state.clone(), path_modul.line_range)
-                    .unwrap();
-            }
-        }
-    }
-
-    coordinator.finish().unwrap();
-}
-
 impl From<ToolPath> for HashMap<usize, Vec<PathModul>> {
     fn from(tool_path: ToolPath) -> Self {
         let mut layers: HashMap<usize, Vec<PathModul>> = HashMap::new();
@@ -201,32 +133,14 @@ impl From<ToolPath> for HashMap<usize, Vec<PathModul>> {
     }
 }
 
-pub struct SyncableLayers<'a>(HashMap<usize, LayerMesh<'a>>);
-
-impl<'a> From<HashMap<usize, RefCell<LayerMesh<'a>>>> for SyncableLayers<'a> {
-    fn from(value: HashMap<usize, RefCell<LayerMesh<'a>>>) -> Self {
-        let mut layers = HashMap::new();
-
-        for entry in value.into_iter() {
-            layers.insert(entry.0, entry.1.into_inner());
-        }
-
-        Self(layers)
-    }
-}
-
 pub struct ToolPathModel {
     pub mesh: Mesh,
-    pub layers: HashMap<usize, MeshModel>,
+    pub layers: HashMap<usize, LayerContext>,
     pub gcode: GCode,
 }
 
-pub struct MeshModel {
-    pub line_range: Option<(usize, usize)>,
-}
-
 #[derive(Component)]
-pub struct Layer {
+pub struct LayerContext {
     pub id: usize,
     pub line_range: Option<(usize, usize)>,
 }

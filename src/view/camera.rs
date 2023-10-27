@@ -4,11 +4,17 @@
     Note: The complete copyright description for this software thesis can be found at the beginning of each file.
     Please refer to the terms and conditions stated therein.
 */
+mod angles;
+mod transform;
+
+pub use transform::LookTransformPlugin;
 
 use bevy::{math::vec3, prelude::*, render::camera::Viewport};
 
+use angles::LookAngles;
+use transform::{LookTransform, LookTransformBundle, Smoother};
+
 use bevy_egui::{egui::Pos2, EguiContexts};
-use smooth_bevy_cameras::{LookAngles, LookTransform, LookTransformBundle, Smoother};
 
 use bevy::{
     ecs::bundle::Bundle,

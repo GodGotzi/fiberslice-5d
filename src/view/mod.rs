@@ -8,10 +8,12 @@
 use bevy::{prelude::*, render::camera::Viewport};
 use bevy_atmosphere::prelude::{AtmosphereCamera, AtmosphereModel, AtmospherePlugin, Gradient};
 use bevy_mod_raycast::{RaycastPluginState, RaycastSource};
-use smooth_bevy_cameras::LookTransformPlugin;
+
 use strum_macros::{EnumCount, EnumIter};
 
 use crate::ui::data::RawUiData;
+
+use camera::LookTransformPlugin;
 
 use self::{
     camera::{CameraPlugin, SingleCamera},
@@ -30,7 +32,7 @@ impl Plugin for ViewPlugin {
             .add_plugins(LookTransformPlugin)
             .add_plugins(CameraPlugin)
             .add_plugins(AtmospherePlugin)
-            .add_plugins(picking::PickPlugin)
+            //.add_plugins(picking::PickPlugin)
             .add_systems(Startup, environment_setup)
             .add_systems(Update, update_viewport);
     }
@@ -56,7 +58,6 @@ pub enum Mode {
 
 pub fn update_viewport(
     windows: Query<&Window>,
-    //resize_events: EventReader<WindowResized>,
     mut camera: Query<&mut Camera, With<SingleCamera>>,
     data: ResMut<RawUiData>,
 ) {
@@ -67,9 +68,7 @@ pub fn update_viewport(
     let result_window = windows.get_single();
 
     if let Ok(window) = result_window {
-        //if !resize_events.is_empty() {
         resize_viewport(window, &mut camera, data);
-        //}
     }
 }
 
@@ -147,7 +146,7 @@ pub fn environment_setup(mut commands: Commands) {
 
     commands.insert_resource(AmbientLight {
         color: Color::rgba(1.0, 1.0, 1.0, 1.0),
-        brightness: 0.2,
+        brightness: 0.6,
     });
 
     commands.insert_resource(AtmosphereModel::new(Gradient {

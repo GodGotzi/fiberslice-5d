@@ -260,8 +260,8 @@ dependencies = [
  "async-lock",
  "async-task",
  "concurrent-queue",
- "fastrand",
- "futures-lite",
+ "fastrand 1.9.0",
+ "futures-lite 1.13.0",
  "slab",
 ]
 
@@ -394,7 +394,7 @@ dependencies = [
  "bevy_winit",
  "crossbeam-channel",
  "downcast-rs",
- "fastrand",
+ "fastrand 1.9.0",
  "js-sys",
  "notify",
  "parking_lot",
@@ -875,7 +875,7 @@ dependencies = [
  "codespan-reporting",
  "downcast-rs",
  "encase",
- "futures-lite",
+ "futures-lite 1.13.0",
  "hexasphere",
  "image",
  "js-sys",
@@ -964,7 +964,7 @@ dependencies = [
  "async-executor",
  "async-task",
  "concurrent-queue",
- "futures-lite",
+ "futures-lite 1.13.0",
  "wasm-bindgen-futures",
 ]
 
@@ -1751,6 +1751,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fastrand"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25cbce373ec4653f1a01a31e8a5e5ec0c622dc27ff9c4e6606eefef5cbbed4a5"
+
+[[package]]
 name = "fdeflate"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1763,6 +1769,7 @@ dependencies = [
 name = "fiberslice-5d"
 version = "0.1.0"
 dependencies = [
+ "approx",
  "bevy",
  "bevy_atmosphere",
  "bevy_egui",
@@ -1770,7 +1777,7 @@ dependencies = [
  "bevy_obj",
  "egui_extras",
  "egui_grid",
- "futures-lite",
+ "futures-lite 2.0.0",
  "image",
  "lazy_static",
  "macros",
@@ -1778,7 +1785,6 @@ dependencies = [
  "phf",
  "serde",
  "serde_yaml",
- "smooth-bevy-cameras",
  "stl_io",
  "strum",
  "strum_macros",
@@ -1895,7 +1901,22 @@ version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49a9d51ce47660b1e808d3c990b4709f2f415d928835a17dfd16991515c46bce"
 dependencies = [
- "fastrand",
+ "fastrand 1.9.0",
+ "futures-core",
+ "futures-io",
+ "memchr",
+ "parking",
+ "pin-project-lite",
+ "waker-fn",
+]
+
+[[package]]
+name = "futures-lite"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c1155db57329dca6d018b61e76b1488ce9a2e5e44028cac420a5898f4fcef63"
+dependencies = [
+ "fastrand 2.0.1",
  "futures-core",
  "futures-io",
  "memchr",
@@ -3539,15 +3560,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74212e6bbe9a4352329b2f68ba3130c15a3f26fe88ff22dbdc6cdd58fa85e99c"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "smooth-bevy-cameras"
-version = "0.9.0"
-source = "git+https://github.com/GodGotzi/smooth-bevy-cameras#f73e0d04e631da68aef7166ab55e1eb70f960b52"
-dependencies = [
- "approx",
- "bevy",
 ]
 
 [[package]]

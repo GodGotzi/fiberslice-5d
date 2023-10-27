@@ -22,15 +22,15 @@ serde = "1.0.177"
 serde_yaml = "0.9.25"
 stl_io = "0.7.0"
 nfde = "0.0.8"
-smooth-bevy-cameras = { git = "https://github.com/GodGotzi/smooth-bevy-cameras" }
 bevy = { version = "0.11.2", features = ["dynamic_linking", "wayland"] }
 bevy_egui = { git = "https://github.com/mvlabat/bevy_egui" }
 bevy_atmosphere = { git = "https://github.com/JonahPlusPlus/bevy_atmosphere" }
 bevy_obj = "0.11"
 uni-path = "1.51.1"
 phf = { version = "0.11", features = ["macros"] }
-futures-lite = "1.11.2"
+futures-lite = "2.0.0"
 bevy_mod_raycast = "0.14.1"
+approx = "0.5.1"
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]
