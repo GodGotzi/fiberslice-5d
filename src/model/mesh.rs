@@ -17,16 +17,100 @@ pub enum PathOrientation {
     NorthWest,
 }
 
-pub fn push_position(mesh: &mut MeshPart, position: [f32; 3]) {
-    mesh.positions.push(position);
+#[derive(Debug)]
+pub struct Cross {
+    pub up: Vec3,
+    pub down: Vec3,
+    pub left: Vec3,
+    pub right: Vec3,
 }
 
-pub fn push_color(mesh: &mut MeshPart, color: [f32; 4]) {
-    mesh.colors.push(color);
+pub fn get_cross(direction: Vec3, radius: f32) -> Cross {
+    let horizontal = direction.cross(vec3(0.0, 0.0, direction.z + 1.0));
+    let vertical = direction.cross(vec3(direction.x + 1.0, direction.y + 1.0, 0.0));
+
+    Cross {
+        up: vertical.normalize() * vec3(radius, radius, radius),
+        down: vertical.normalize() * vec3(-radius, -radius, -radius),
+        left: horizontal.normalize() * vec3(radius, radius, radius),
+        right: horizontal.normalize() * vec3(-radius, -radius, -radius),
+    }
 }
 
-pub fn push_normal(mesh: &mut MeshPart, normal: [f32; 3]) {
-    mesh.normals.push(normal);
+pub struct LayerMesh<'a> {
+    pub mesh: MeshPart,
+    pub line_range: Option<(usize, usize)>,
+    pub child_models: Vec<LayerPart<'a>>,
+}
+
+impl<'a> LayerMesh<'a> {
+    pub fn empty() -> Self {
+        Self {
+            mesh: MeshPart {
+                positions: Vec::new(),
+                normals: Vec::new(),
+                colors: Vec::new(),
+            },
+            line_range: None,
+            child_models: Vec::new(),
+        }
+    }
+}
+
+pub struct MeshPart {
+    pub positions: Vec<[f32; 3]>,
+    pub normals: Vec<[f32; 3]>,
+    pub colors: Vec<[f32; 4]>,
+}
+
+impl MeshPart {
+    pub fn push_position(&mut self, position: [f32; 3]) {
+        self.positions.push(position);
+    }
+
+    pub fn push_color(&mut self, color: [f32; 4]) {
+        self.colors.push(color);
+    }
+
+    pub fn push_normal(&mut self, normal: [f32; 3]) {
+        self.normals.push(normal);
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug)]
+pub struct LayerPart<'a> {
+    pub main: Option<MeshRef<'a>>,
+    state: State,
+    line_range: (usize, usize),
+    child_meshes: Vec<MeshRef<'a>>,
+}
+
+impl<'a> LayerPart<'a> {
+    pub fn new(state: State, line_range: (usize, usize)) -> Self {
+        Self {
+            main: None,
+            state,
+            line_range,
+            child_meshes: Vec::new(),
+        }
+    }
+}
+
+impl<'a> LayerPart<'a> {
+    pub fn push_child(&mut self, child: MeshRef<'a>) {
+        self.child_meshes.push(child);
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug)]
+pub struct MeshRef<'a> {
+    pub positions: &'a [[f32; 3]],
+    colors: &'a [[f32; 4]],
+    normals: &'a [[f32; 3]],
+    start: usize,
+    end: usize,
 }
 
 pub struct PartCoordinator<'a> {
@@ -49,21 +133,22 @@ impl<'a> PartCoordinator<'a> {
     }
 
     pub fn add_triangle(&self, triangle: (Vec3, Vec3, Vec3), color: &[f32; 4]) {
-        push_position(&mut self.mesh.borrow_mut().mesh, FSVec3(triangle.0).into());
-        push_position(&mut self.mesh.borrow_mut().mesh, FSVec3(triangle.1).into());
-        push_position(&mut self.mesh.borrow_mut().mesh, FSVec3(triangle.2).into());
+        let mesh = &mut self.mesh.borrow_mut().mesh;
+        mesh.push_position(FSVec3(triangle.0).into());
+        mesh.push_position(FSVec3(triangle.1).into());
+        mesh.push_position(FSVec3(triangle.2).into());
 
-        push_color(&mut self.mesh.borrow_mut().mesh, *color);
-        push_color(&mut self.mesh.borrow_mut().mesh, *color);
-        push_color(&mut self.mesh.borrow_mut().mesh, *color);
+        mesh.push_color(*color);
+        mesh.push_color(*color);
+        mesh.push_color(*color);
 
         let normal = (triangle.1 - triangle.0)
             .cross(triangle.2 - triangle.0)
             .normalize();
 
-        push_normal(&mut self.mesh.borrow_mut().mesh, FSVec3(normal).into());
-        push_normal(&mut self.mesh.borrow_mut().mesh, FSVec3(normal).into());
-        push_normal(&mut self.mesh.borrow_mut().mesh, FSVec3(normal).into());
+        mesh.push_normal(FSVec3(normal).into());
+        mesh.push_normal(FSVec3(normal).into());
+        mesh.push_normal(FSVec3(normal).into());
 
         self.offset_end.replace(self.offset_end.get() + 3);
         self.offset_part_end.replace(self.offset_part_end.get() + 3);
@@ -333,86 +418,4 @@ impl<'a> PartCoordinator<'a> {
             color,
         );
     }
-}
-
-#[derive(Debug)]
-pub struct Cross {
-    pub up: Vec3,
-    pub down: Vec3,
-    pub left: Vec3,
-    pub right: Vec3,
-}
-
-pub fn get_cross(direction: Vec3, radius: f32) -> Cross {
-    let horizontal = direction.cross(vec3(0.0, 0.0, direction.z + 1.0));
-    let vertical = direction.cross(vec3(direction.x + 1.0, direction.y + 1.0, 0.0));
-
-    Cross {
-        up: vertical.normalize() * vec3(radius, radius, radius),
-        down: vertical.normalize() * vec3(-radius, -radius, -radius),
-        left: horizontal.normalize() * vec3(radius, radius, radius),
-        right: horizontal.normalize() * vec3(-radius, -radius, -radius),
-    }
-}
-
-pub struct LayerMesh<'a> {
-    pub mesh: MeshPart,
-    pub line_range: Option<(usize, usize)>,
-    pub child_models: Vec<LayerPart<'a>>,
-}
-
-impl<'a> LayerMesh<'a> {
-    pub fn empty() -> Self {
-        Self {
-            mesh: MeshPart {
-                positions: Vec::new(),
-                normals: Vec::new(),
-                colors: Vec::new(),
-            },
-            line_range: None,
-            child_models: Vec::new(),
-        }
-    }
-}
-
-pub struct MeshPart {
-    pub positions: Vec<[f32; 3]>,
-    pub normals: Vec<[f32; 3]>,
-    pub colors: Vec<[f32; 4]>,
-}
-
-#[allow(dead_code)]
-#[derive(Debug)]
-pub struct LayerPart<'a> {
-    pub main: Option<MeshRef<'a>>,
-    state: State,
-    line_range: (usize, usize),
-    child_meshes: Vec<MeshRef<'a>>,
-}
-
-impl<'a> LayerPart<'a> {
-    pub fn new(state: State, line_range: (usize, usize)) -> Self {
-        Self {
-            main: None,
-            state,
-            line_range,
-            child_meshes: Vec::new(),
-        }
-    }
-}
-
-impl<'a> LayerPart<'a> {
-    pub fn push_child(&mut self, child: MeshRef<'a>) {
-        self.child_meshes.push(child);
-    }
-}
-
-#[allow(dead_code)]
-#[derive(Debug)]
-pub struct MeshRef<'a> {
-    pub positions: &'a [[f32; 3]],
-    colors: &'a [[f32; 4]],
-    normals: &'a [[f32; 3]],
-    start: usize,
-    end: usize,
 }
