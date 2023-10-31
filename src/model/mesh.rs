@@ -120,10 +120,15 @@ fn adjust_faces(direction: Vec3) -> bool {
         (direction.z, direction.x),
     ]
     .iter()
-    .filter(|(x, y)| !adjust_pane(*x, *y))
+    .filter(|(x, y)| {
+        println!("{} {}", x, y);
+        let ret = !adjust_pane(*x, *y);
+        println!("{}", ret);
+        ret
+    })
     .count()
         % 2
-        == 0
+        == 1
 }
 
 fn adjust_pane(x: f32, y: f32) -> bool {
@@ -253,9 +258,9 @@ impl<'a> PartCoordinator<'a> {
                     self.draw_rect_with_cross(&path.start, &cross, &color);
                 }
 
-                let flip = adjust_faces(direction);
+                let flip = !adjust_pane(direction.x, direction.y);
 
-                self.draw_path((path.start, path.end), &color, flip, &cross);
+                self.draw_path((path.start, path.end), &color, !flip, &cross);
                 last_cross = Some(cross);
             } else if let Some(last) = last_cross.take() {
                 self.draw_rect_with_cross(&path.end, &last, &color);
