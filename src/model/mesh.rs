@@ -113,6 +113,29 @@ pub struct MeshRef<'a> {
     end: usize,
 }
 
+fn adjust_faces(direction: Vec3) -> bool {
+    [
+        (direction.x, direction.y),
+        (direction.y, direction.z),
+        (direction.z, direction.x),
+    ]
+    .iter()
+    .filter(|(x, y)| !adjust_pane(*x, *y))
+    .count()
+        % 2
+        == 0
+}
+
+fn adjust_pane(x: f32, y: f32) -> bool {
+    let alpha = (x / (y * y + x * x).sqrt()).asin().to_degrees();
+
+    if (-45.0..=45.0).contains(&alpha) {
+        y > 0.0
+    } else {
+        x < 0.0
+    }
+}
+
 pub struct PartCoordinator<'a> {
     mesh: RefCell<&'a mut LayerMesh<'a>>,
     offset_start: Cell<usize>,
@@ -230,18 +253,9 @@ impl<'a> PartCoordinator<'a> {
                     self.draw_rect_with_cross(&path.start, &cross, &color);
                 }
 
-                let alpha = (direction.x
-                    / (direction.y * direction.y + direction.x * direction.x).sqrt())
-                .asin()
-                .to_degrees();
+                let flip = adjust_faces(direction);
 
-                let flip = if (-45.0..=45.0).contains(&alpha) {
-                    direction.y >= 0.0
-                } else {
-                    direction.x < 0.0
-                };
-
-                self.draw_path((path.start, path.end), &color, !flip, &cross);
+                self.draw_path((path.start, path.end), &color, flip, &cross);
                 last_cross = Some(cross);
             } else if let Some(last) = last_cross.take() {
                 self.draw_rect_with_cross(&path.end, &last, &color);
