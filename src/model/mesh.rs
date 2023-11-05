@@ -114,21 +114,7 @@ pub struct MeshRef<'a> {
 }
 
 fn adjust_faces(direction: Vec3) -> bool {
-    [
-        (direction.x, direction.y),
-        (direction.y, direction.z),
-        (direction.z, direction.x),
-    ]
-    .iter()
-    .filter(|(x, y)| {
-        println!("{} {}", x, y);
-        let ret = !adjust_pane(*x, *y);
-        println!("{}", ret);
-        ret
-    })
-    .count()
-        % 2
-        == 1
+    !adjust_pane(direction.x, direction.y)
 }
 
 fn adjust_pane(x: f32, y: f32) -> bool {
@@ -247,6 +233,14 @@ impl<'a> PartCoordinator<'a> {
         for element in path_modul.paths.iter().enumerate() {
             let path = element.1;
 
+            if element.0 == path_modul.paths.len() - 1 {
+                if let Some(last) = last_cross.take() {
+                    self.draw_rect_with_cross(&path.end, &last, &color);
+
+                    self.finished_child(path_modul.state.clone(), path_modul.line_range);
+                }
+            }
+
             if path.print {
                 let direction = path.direction();
 
@@ -258,7 +252,7 @@ impl<'a> PartCoordinator<'a> {
                     self.draw_rect_with_cross(&path.start, &cross, &color);
                 }
 
-                let flip = !adjust_pane(direction.x, direction.y);
+                let flip = !adjust_faces(direction);
 
                 self.draw_path((path.start, path.end), &color, !flip, &cross);
                 last_cross = Some(cross);
@@ -266,14 +260,6 @@ impl<'a> PartCoordinator<'a> {
                 self.draw_rect_with_cross(&path.end, &last, &color);
 
                 self.finished_child(path_modul.state.clone(), path_modul.line_range);
-            }
-
-            if element.0 == path_modul.paths.len() - 1 {
-                if let Some(last) = last_cross.take() {
-                    self.draw_rect_with_cross(&path.end, &last, &color);
-
-                    self.finished_child(path_modul.state.clone(), path_modul.line_range);
-                }
             }
         }
     }

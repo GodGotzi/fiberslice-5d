@@ -7,14 +7,17 @@ use bevy::{
     tasks::{AsyncComputeTaskPool, Task},
 };
 
-use bevy_mod_raycast::RaycastMesh;
+use bevy_mod_picking::{
+    prelude::{Click, On, Pointer},
+    PickableBundle,
+};
 use futures_lite::future::{self, block_on};
 use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
 
 use crate::{
     model::{gcode::toolpath::ToolPathModel, gcode::GCode},
     ui::data::UiData,
-    view::{picking::RaycastSet, visualization::gcode::create_toolpath},
+    view::visualization::gcode::create_toolpath,
 };
 
 #[derive(Debug)]
@@ -50,8 +53,8 @@ pub(super) fn handle_tasks(
                             Transform::from_rotation(Quat::from_rotation_y(-90.0 * PI / 180.0))
                                 .with_translation(Vec3::new(100.0, 0.3, -125.0));
 
-                        commands
-                            .spawn(PbrBundle {
+                        commands.spawn((
+                            PbrBundle {
                                 mesh: meshes.add(toolpath.mesh),
                                 material: materials.add(StandardMaterial {
                                     base_color: Color::rgba(1.0, 1.0, 1.0, 1.0),
@@ -62,8 +65,14 @@ pub(super) fn handle_tasks(
                                 }),
                                 transform,
                                 ..Default::default()
-                            })
-                            .insert(RaycastMesh::<RaycastSet>::default());
+                            },
+                            PickableBundle::default(),
+                            On::<Pointer<Click>>::target_component_mut::<Handle<StandardMaterial>>(
+                                |commands, component| {
+                                    println!("Clicked on entity with material: {:?}", component);
+                                },
+                            ),
+                        ));
                     }
                     FileActionResult::Exit => {
                         app_events.send(AppExit);

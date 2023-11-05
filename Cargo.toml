@@ -29,7 +29,7 @@ bevy_obj = "0.11"
 uni-path = "1.51.1"
 phf = { version = "0.11", features = ["macros"] }
 futures-lite = "2.0.0"
-bevy_mod_raycast = "0.14.1"
+bevy_mod_picking = "0.16.0"
 approx = "0.5.1"
 
 # Enable a small amount of optimization in debug mode

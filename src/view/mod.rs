@@ -7,7 +7,6 @@
 
 use bevy::{prelude::*, render::camera::Viewport};
 use bevy_atmosphere::prelude::{AtmosphereCamera, AtmosphereModel, AtmospherePlugin, Gradient};
-use bevy_mod_raycast::{RaycastPluginState, RaycastSource};
 
 use strum_macros::{EnumCount, EnumIter};
 
@@ -15,10 +14,7 @@ use crate::ui::data::RawUiData;
 
 use camera::LookTransformPlugin;
 
-use self::{
-    camera::{CameraPlugin, SingleCamera},
-    picking::RaycastSet,
-};
+use self::camera::{CameraPlugin, SingleCamera};
 
 pub mod camera;
 pub mod picking;
@@ -121,7 +117,6 @@ fn resize_viewport(
 }
 
 pub fn environment_setup(mut commands: Commands) {
-    commands.insert_resource(RaycastPluginState::<RaycastSet>::default().with_debug_cursor());
     commands
         .spawn((
             Camera3dBundle {
@@ -141,8 +136,7 @@ pub fn environment_setup(mut commands: Commands) {
             Vec3::new(250.0, 250.0, 250.0),
             Vec3::new(0., 0., 0.),
             Vec3::Y,
-        ))
-        .insert(RaycastSource::<RaycastSet>::new());
+        ));
 
     commands.insert_resource(AmbientLight {
         color: Color::rgba(1.0, 1.0, 1.0, 1.0),
