@@ -67,11 +67,6 @@ pub(super) fn handle_tasks(
                                 ..Default::default()
                             },
                             PickableBundle::default(),
-                            On::<Pointer<Click>>::target_component_mut::<Handle<StandardMaterial>>(
-                                |commands, component| {
-                                    println!("Clicked on entity with material: {:?}", component);
-                                },
-                            ),
                         ));
                     }
                     FileActionResult::Exit => {

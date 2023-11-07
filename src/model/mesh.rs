@@ -1,6 +1,9 @@
 use std::cell::{Cell, RefCell};
 
-use bevy::{math::vec3, prelude::Vec3};
+use bevy::{
+    math::vec3,
+    prelude::{Color, Vec3},
+};
 
 use crate::{math::FSVec3, utils::Flip};
 
@@ -214,7 +217,9 @@ impl<'a> PartCoordinator<'a> {
                 end,
             };
 
-            self.mesh.borrow_mut().child_models.last_mut().unwrap().main = Some(meshref);
+            if let Some(last) = self.mesh.borrow_mut().child_models.last_mut() {
+                last.main = Some(meshref);
+            }
         }
     }
 
@@ -423,4 +428,12 @@ impl<'a> PartCoordinator<'a> {
             color,
         );
     }
+}
+
+pub fn rand_color() -> Color {
+    Color::rgb(
+        rand::random::<f32>(),
+        rand::random::<f32>(),
+        rand::random::<f32>(),
+    )
 }
