@@ -1,7 +1,9 @@
 use bevy_egui::egui;
 use egui::Ui;
 
-use crate::actions::file::{exit, load_gcode, save_as_gcode, save_gcode};
+use crate::actions::file::{
+    exit, import_intersection_object, load_gcode, save_as_gcode, save_gcode,
+};
 use crate::config;
 use crate::ui::{Component, UiData};
 
@@ -43,6 +45,9 @@ fn file_button(ui: &mut Ui, data: UiData) {
         //let context = gui_context.context.clone();
 
         build_sub_menu(ui, "Load GCode", || load_gcode(data));
+        build_sub_menu(ui, "Import Intersection Object", || {
+            import_intersection_object(data)
+        });
 
         ui.separator();
 

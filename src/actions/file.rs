@@ -23,6 +23,7 @@ use crate::{
 #[derive(Debug)]
 pub enum FileActionResult {
     LoadGCode(ToolPathModel),
+    ImportIntersectionObject,
     SaveAs,
     Save,
     Exit,
@@ -105,6 +106,23 @@ pub fn load_gcode(data: UiData) {
                 let gcode: GCode = content.try_into().unwrap();
                 Ok(FileActionResult::LoadGCode(create_toolpath(gcode)))
             }
+            DialogResult::Err(err) => Err(FileActionError::Error(err.to_string())),
+            DialogResult::Cancel => Err(FileActionError::Cancelled),
+        }
+    });
+
+    data.commands.borrow_mut().spawn(ComputeFileAction(task));
+}
+
+pub fn import_intersection_object(data: UiData) {
+    let thread_pool = AsyncComputeTaskPool::get();
+
+    let task = thread_pool.spawn(async move {
+        let nfd = Nfd::new().unwrap();
+        let result = nfd.open_file().add_filter("Gcode", "gcode").unwrap().show();
+
+        match result {
+            DialogResult::Ok(_path) => Ok(FileActionResult::ImportIntersectionObject),
             DialogResult::Err(err) => Err(FileActionError::Error(err.to_string())),
             DialogResult::Cancel => Err(FileActionError::Cancelled),
         }

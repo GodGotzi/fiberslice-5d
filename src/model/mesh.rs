@@ -429,11 +429,3 @@ impl<'a> PartCoordinator<'a> {
         );
     }
 }
-
-pub fn rand_color() -> Color {
-    Color::rgb(
-        rand::random::<f32>(),
-        rand::random::<f32>(),
-        rand::random::<f32>(),
-    )
-}
