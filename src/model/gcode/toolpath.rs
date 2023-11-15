@@ -5,6 +5,8 @@ use bevy::{
     prelude::{Component, Mesh, Vec3},
 };
 
+use crate::slicer::print_type::PrintType;
+
 use super::{instruction::InstructionType, movement, state::State, GCode};
 
 #[derive(Debug, Clone)]
@@ -50,68 +52,125 @@ impl PathModul {
 
 #[derive(Default)]
 pub struct ToolPath {
-    path: Vec<PathModul>,
+    moduls: Vec<PathModul>,
+    pub center: Option<Vec3>,
 }
 
 impl ToolPath {
-    pub fn new() -> Self {
-        Self { path: Vec::new() }
-    }
-
-    pub fn add_line(
-        &mut self,
-        points: Vec<PathLine>,
-        line_range: (usize, usize),
-        state: super::state::State,
-    ) {
-        self.path.push(PathModul {
-            paths: points,
-            line_range,
-            state,
-        });
-    }
-
     pub fn path(&self) -> &Vec<PathModul> {
-        &self.path
+        &self.moduls
     }
 }
 
 impl From<GCode> for ToolPath {
     fn from(value: GCode) -> Self {
-        let mut tool_path = ToolPath::new();
+        let mut moduls = Vec::new();
 
         let mut current_movements = movement::Movements::new();
+        let mut toolpath_center = None;
+        let mut modul_count = 0;
 
         for instruction_modul in value.instruction_moduls.iter() {
             let mut points = Vec::new();
-            let state = instruction_modul.state();
+            let mut modul_average = None;
+            let mut chunk_count = 0;
 
-            for instruction in instruction_modul.instructions() {
-                let movements = instruction.movements();
-                let last_point = current_movements.to_vec3(vec3(0.0, 0.0, 0.0));
+            //split instuctions into chunks of 5000 for performance
+            compute_instruction_modul(
+                instruction_modul,
+                &mut current_movements,
+                &mut points,
+                &mut chunk_count,
+                &mut modul_average,
+            );
 
-                current_movements.add_movements(movements);
+            moduls.push(PathModul {
+                paths: points.clone(),
+                line_range: instruction_modul.range(),
+                state: instruction_modul.state().clone(),
+            });
 
-                let current_point = current_movements.to_vec3(vec3(0.0, 0.0, 0.0));
+            if let Some(average) = modul_average {
+                modul_count += 1;
 
-                if current_point == last_point {
-                    continue;
+                if let Some(center) = toolpath_center.as_mut() {
+                    *center += average / chunk_count as f32;
+                } else {
+                    toolpath_center = Some(average / chunk_count as f32);
                 }
-
-                let print = instruction.instruction_type() == &InstructionType::G1
-                    && current_movements.E.is_some_and(|e| e > 0.0);
-
-                points.push(PathLine {
-                    start: last_point,
-                    end: current_point,
-                    print,
-                });
             }
-
-            tool_path.add_line(points, instruction_modul.range(), state.clone());
         }
 
-        tool_path
+        if let Some(center) = toolpath_center.as_mut() {
+            *center /= modul_count as f32;
+            std::mem::swap(&mut center.y, &mut center.z)
+        }
+
+        ToolPath {
+            moduls,
+            center: toolpath_center,
+        }
+    }
+}
+
+fn compute_instruction_modul(
+    instruction_modul: &super::instruction::InstructionModul,
+    current_movements: &mut movement::Movements,
+    points: &mut Vec<PathLine>,
+    chunk_count: &mut i32,
+    modul_average: &mut Option<Vec3>,
+) {
+    for instructions in instruction_modul.instructions().chunks(500) {
+        let mut chunk_average = None;
+        let mut instruction_count = 0;
+
+        for instruction in instructions {
+            let movements = instruction.movements();
+            let last_point = current_movements.to_vec3(vec3(0.0, 0.0, 0.0));
+
+            current_movements.add_movements(movements);
+
+            let current_point = current_movements.to_vec3(vec3(0.0, 0.0, 0.0));
+
+            if current_point == last_point {
+                continue;
+            }
+
+            let print = instruction.instruction_type() == &InstructionType::G1
+                && current_movements.E.is_some_and(|e| e > 0.0);
+
+            if print {
+                if let Some(print_type) = instruction_modul.state().print_type.as_ref() {
+                    if print_type == &PrintType::WallOuter
+                        || print_type == &PrintType::ExternalPerimeter
+                    {
+                        instruction_count += 1;
+
+                        if let Some(average) = chunk_average.as_mut() {
+                            *average += (current_point + last_point) / 2.0;
+                        } else {
+                            chunk_average = Some((current_point + last_point) / 2.0);
+                        }
+                    }
+                }
+            }
+
+            points.push(PathLine {
+                start: last_point,
+                end: current_point,
+                print,
+            });
+        }
+
+        if let Some(chunk_average) = chunk_average {
+            *chunk_count += 1;
+
+            if let Some(average) = modul_average.as_mut() {
+                *average += chunk_average / instruction_count as f32;
+            } else {
+                *modul_average = Some(chunk_average / instruction_count as f32);
+            }
+        }
     }
 }
 
@@ -119,7 +178,7 @@ impl From<ToolPath> for HashMap<usize, Vec<PathModul>> {
     fn from(tool_path: ToolPath) -> Self {
         let mut layers: HashMap<usize, Vec<PathModul>> = HashMap::new();
 
-        for path_modul in tool_path.path.into_iter() {
+        for path_modul in tool_path.moduls.into_iter() {
             let layer = path_modul.state.layer.unwrap_or(0);
 
             if let Some(layer_moduls) = layers.get_mut(&layer) {
@@ -137,6 +196,7 @@ pub struct ToolPathModel {
     pub mesh: Mesh,
     pub layers: HashMap<usize, LayerContext>,
     pub gcode: GCode,
+    pub center: Option<Vec3>,
 }
 
 #[derive(Component)]

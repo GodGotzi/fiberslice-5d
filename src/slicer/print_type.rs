@@ -3,7 +3,7 @@ use strum_macros::EnumString;
 
 use crate::utils::SimpleColor;
 
-#[derive(Debug, Clone, EnumString)]
+#[derive(Debug, Clone, EnumString, PartialEq, Eq)]
 pub enum PrintType {
     InternalInfill,
     SolidInfill,

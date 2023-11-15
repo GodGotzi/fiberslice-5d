@@ -1,9 +1,6 @@
 use std::cell::{Cell, RefCell};
 
-use bevy::{
-    math::vec3,
-    prelude::{Color, Vec3},
-};
+use bevy::{math::vec3, prelude::Vec3};
 
 use crate::{math::FSVec3, utils::Flip};
 

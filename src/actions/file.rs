@@ -2,22 +2,19 @@ use std::f32::consts::PI;
 
 use bevy::{
     app::AppExit,
+    math::vec3,
     prelude::*,
     render::render_resource::Face,
     tasks::{AsyncComputeTaskPool, Task},
 };
 
-use bevy_mod_picking::{
-    prelude::{Click, On, Pointer},
-    PickableBundle,
-};
+use bevy_mod_picking::PickableBundle;
 use futures_lite::future::{self, block_on};
 use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
 
 use crate::{
     model::{gcode::toolpath::ToolPathModel, gcode::GCode},
     ui::data::UiData,
-    view::visualization::gcode::create_toolpath,
 };
 
 #[derive(Debug)]
@@ -50,9 +47,14 @@ pub(super) fn handle_tasks(
             if let Ok(result) = result {
                 match result {
                     FileActionResult::LoadGCode(toolpath) => {
-                        let transform =
-                            Transform::from_rotation(Quat::from_rotation_y(-90.0 * PI / 180.0))
-                                .with_translation(Vec3::new(100.0, 0.3, -125.0));
+                        let mut transform = Transform::from_translation(vec3(0.0, 0.0, 0.0))
+                            .with_rotation(Quat::from_rotation_y(-PI / 2.0));
+
+                        if let Some(center) = toolpath.center {
+                            let rotated_center = transform * center;
+
+                            transform = transform.with_translation(-rotated_center);
+                        }
 
                         commands.spawn((
                             PbrBundle {
@@ -104,7 +106,7 @@ pub fn load_gcode(data: UiData) {
             DialogResult::Ok(path) => {
                 let content = std::fs::read_to_string(path).unwrap();
                 let gcode: GCode = content.try_into().unwrap();
-                Ok(FileActionResult::LoadGCode(create_toolpath(gcode)))
+                Ok(FileActionResult::LoadGCode(gcode.into_toolpath()))
             }
             DialogResult::Err(err) => Err(FileActionError::Error(err.to_string())),
             DialogResult::Cancel => Err(FileActionError::Cancelled),
