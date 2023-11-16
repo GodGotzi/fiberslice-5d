@@ -5,7 +5,7 @@ use bevy::{
     prelude::{Component, Mesh, Vec3},
 };
 
-use crate::slicer::print_type::PrintType;
+use crate::{slicer::print_type::PrintType, utils::Average};
 
 use super::{instruction::InstructionType, movement, state::State, GCode};
 
@@ -67,22 +67,14 @@ impl From<GCode> for ToolPath {
         let mut moduls = Vec::new();
 
         let mut current_movements = movement::Movements::new();
-        let mut toolpath_center = None;
-        let mut modul_count = 0;
+        let mut toolpath_average = Average::<Vec3>::default();
 
         for instruction_modul in value.instruction_moduls.iter() {
             let mut points = Vec::new();
-            let mut modul_average = None;
-            let mut chunk_count = 0;
 
             //split instuctions into chunks of 5000 for performance
-            compute_instruction_modul(
-                instruction_modul,
-                &mut current_movements,
-                &mut points,
-                &mut chunk_count,
-                &mut modul_average,
-            );
+            let modul_average =
+                compute_instruction_modul(instruction_modul, &mut current_movements, &mut points);
 
             moduls.push(PathModul {
                 paths: points.clone(),
@@ -90,26 +82,17 @@ impl From<GCode> for ToolPath {
                 state: instruction_modul.state().clone(),
             });
 
-            if let Some(average) = modul_average {
-                modul_count += 1;
-
-                if let Some(center) = toolpath_center.as_mut() {
-                    *center += average / chunk_count as f32;
-                } else {
-                    toolpath_center = Some(average / chunk_count as f32);
-                }
-            }
+            toolpath_average += modul_average;
         }
 
-        if let Some(center) = toolpath_center.as_mut() {
-            *center /= modul_count as f32;
-            std::mem::swap(&mut center.y, &mut center.z)
-        }
+        let center = if let Some(mut center) = toolpath_average.divide_average() {
+            std::mem::swap(&mut center.y, &mut center.z);
+            Some(center)
+        } else {
+            None
+        };
 
-        ToolPath {
-            moduls,
-            center: toolpath_center,
-        }
+        ToolPath { moduls, center }
     }
 }
 
@@ -117,12 +100,11 @@ fn compute_instruction_modul(
     instruction_modul: &super::instruction::InstructionModul,
     current_movements: &mut movement::Movements,
     points: &mut Vec<PathLine>,
-    chunk_count: &mut i32,
-    modul_average: &mut Option<Vec3>,
-) {
+) -> Average<Vec3> {
+    let mut modul_average = Average::<Vec3>::default();
+
     for instructions in instruction_modul.instructions().chunks(500) {
-        let mut chunk_average = None;
-        let mut instruction_count = 0;
+        let mut instruction_average = Average::<Vec3>::default();
 
         for instruction in instructions {
             let movements = instruction.movements();
@@ -144,13 +126,7 @@ fn compute_instruction_modul(
                     if print_type == &PrintType::WallOuter
                         || print_type == &PrintType::ExternalPerimeter
                     {
-                        instruction_count += 1;
-
-                        if let Some(average) = chunk_average.as_mut() {
-                            *average += (current_point + last_point) / 2.0;
-                        } else {
-                            chunk_average = Some((current_point + last_point) / 2.0);
-                        }
+                        instruction_average.add((current_point + last_point) / 2.0);
                     }
                 }
             }
@@ -162,16 +138,10 @@ fn compute_instruction_modul(
             });
         }
 
-        if let Some(chunk_average) = chunk_average {
-            *chunk_count += 1;
-
-            if let Some(average) = modul_average.as_mut() {
-                *average += chunk_average / instruction_count as f32;
-            } else {
-                *modul_average = Some(chunk_average / instruction_count as f32);
-            }
-        }
+        modul_average += instruction_average;
     }
+
+    modul_average
 }
 
 impl From<ToolPath> for HashMap<usize, Vec<PathModul>> {
