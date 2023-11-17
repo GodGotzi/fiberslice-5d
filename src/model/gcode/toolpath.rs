@@ -3,9 +3,14 @@ use std::collections::HashMap;
 use bevy::{
     math::vec3,
     prelude::{Component, Mesh, Vec3},
+    render::render_resource::PrimitiveTopology,
 };
 
-use crate::{slicer::print_type::PrintType, utils::Average};
+use crate::{
+    model::mesh::{LayerMesh, PartCoordinator},
+    slicer::print_type::PrintType,
+    utils::Average,
+};
 
 use super::{instruction::InstructionType, movement, state::State, GCode};
 
@@ -167,6 +172,63 @@ pub struct ToolPathModel {
     pub layers: HashMap<usize, LayerContext>,
     pub gcode: GCode,
     pub center: Option<Vec3>,
+}
+
+impl GCode {
+    pub fn into_toolpath(self) -> ToolPathModel {
+        let toolpath = ToolPath::from(self.clone());
+        let center = toolpath.center;
+        let modul_map: HashMap<usize, Vec<PathModul>> = toolpath.into();
+
+        let mut layers: HashMap<usize, LayerMesh> = HashMap::new();
+
+        for entry in modul_map.iter() {
+            layers.insert(*entry.0, LayerMesh::empty());
+        }
+
+        for entry in modul_map.into_iter() {
+            let layer = layers.get_mut(&entry.0).unwrap();
+            let mut coordinator = PartCoordinator::new(layer);
+
+            for modul in entry.1 {
+                coordinator.compute_model(&modul);
+                coordinator.finish();
+            }
+        }
+
+        let mut positions = Vec::new();
+        let mut colors = Vec::new();
+        let mut normals = Vec::new();
+        let mut mesh_models = HashMap::new();
+
+        for entry in layers.iter() {
+            let layer_mesh = entry.1;
+
+            positions.append(&mut layer_mesh.cpu_mesh.positions.clone());
+            colors.append(&mut layer_mesh.cpu_mesh.colors.clone());
+            normals.append(&mut layer_mesh.cpu_mesh.normals.clone());
+
+            mesh_models.insert(
+                *entry.0,
+                LayerContext {
+                    id: *entry.0,
+                    line_range: layer_mesh.line_range,
+                },
+            );
+        }
+
+        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+
+        ToolPathModel {
+            mesh,
+            gcode: self,
+            layers: mesh_models,
+            center,
+        }
+    }
 }
 
 #[derive(Component)]

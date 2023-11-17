@@ -1,4 +1,4 @@
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 
 use bevy::{math::vec3, prelude::Vec3};
 
@@ -37,16 +37,16 @@ pub fn get_cross(direction: Vec3, radius: f32) -> Cross {
     }
 }
 
-pub struct LayerMesh<'a> {
-    pub mesh: MeshPart,
+pub struct LayerMesh {
+    pub cpu_mesh: CpuMesh,
     pub line_range: Option<(usize, usize)>,
-    pub child_models: Vec<LayerPart<'a>>,
+    pub child_models: Vec<LayerPart>,
 }
 
-impl<'a> LayerMesh<'a> {
+impl LayerMesh {
     pub fn empty() -> Self {
         Self {
-            mesh: MeshPart {
+            cpu_mesh: CpuMesh {
                 positions: Vec::new(),
                 normals: Vec::new(),
                 colors: Vec::new(),
@@ -57,13 +57,13 @@ impl<'a> LayerMesh<'a> {
     }
 }
 
-pub struct MeshPart {
+pub struct CpuMesh {
     pub positions: Vec<[f32; 3]>,
     pub normals: Vec<[f32; 3]>,
     pub colors: Vec<[f32; 4]>,
 }
 
-impl MeshPart {
+impl CpuMesh {
     pub fn push_position(&mut self, position: [f32; 3]) {
         self.positions.push(position);
     }
@@ -77,16 +77,15 @@ impl MeshPart {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
-pub struct LayerPart<'a> {
-    pub main: Option<MeshRef<'a>>,
+pub struct LayerPart {
+    pub main: Option<MeshRef>,
     state: State,
     line_range: (usize, usize),
-    child_meshes: Vec<MeshRef<'a>>,
+    child_meshes: Vec<MeshRef>,
 }
 
-impl<'a> LayerPart<'a> {
+impl LayerPart {
     pub fn new(state: State, line_range: (usize, usize)) -> Self {
         Self {
             main: None,
@@ -97,18 +96,14 @@ impl<'a> LayerPart<'a> {
     }
 }
 
-impl<'a> LayerPart<'a> {
-    pub fn push_child(&mut self, child: MeshRef<'a>) {
+impl LayerPart {
+    pub fn push_child(&mut self, child: MeshRef) {
         self.child_meshes.push(child);
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
-pub struct MeshRef<'a> {
-    pub positions: &'a [[f32; 3]],
-    colors: &'a [[f32; 4]],
-    normals: &'a [[f32; 3]],
+pub struct MeshRef {
     start: usize,
     end: usize,
 }
@@ -128,7 +123,7 @@ fn adjust_pane(x: f32, y: f32) -> bool {
 }
 
 pub struct PartCoordinator<'a> {
-    mesh: RefCell<&'a mut LayerMesh<'a>>,
+    mesh: &'a mut LayerMesh,
     offset_start: Cell<usize>,
     offset_end: Cell<usize>,
     offset_part_start: Cell<usize>,
@@ -136,9 +131,9 @@ pub struct PartCoordinator<'a> {
 }
 
 impl<'a> PartCoordinator<'a> {
-    pub fn new(mesh: &'a mut LayerMesh<'a>) -> Self {
+    pub fn new(mesh: &'a mut LayerMesh) -> Self {
         Self {
-            mesh: RefCell::new(mesh),
+            mesh,
             offset_start: Cell::new(0),
             offset_end: Cell::new(0),
             offset_part_start: Cell::new(0),
@@ -146,8 +141,8 @@ impl<'a> PartCoordinator<'a> {
         }
     }
 
-    pub fn add_triangle(&self, triangle: (Vec3, Vec3, Vec3), color: &[f32; 4]) {
-        let mesh = &mut self.mesh.borrow_mut().mesh;
+    pub fn add_triangle(&mut self, triangle: (Vec3, Vec3, Vec3), color: &[f32; 4]) {
+        let mesh = &mut self.mesh.cpu_mesh;
         mesh.push_position(FSVec3(triangle.0).into());
         mesh.push_position(FSVec3(triangle.1).into());
         mesh.push_position(FSVec3(triangle.2).into());
@@ -168,59 +163,41 @@ impl<'a> PartCoordinator<'a> {
         self.offset_part_end.replace(self.offset_part_end.get() + 3);
     }
 
-    pub fn finished_child(&self, state: State, line_range: (usize, usize)) {
+    pub fn finished_child(&mut self, state: State, line_range: (usize, usize)) {
         let start = self.offset_part_start.get();
         let end = self.offset_part_end.get();
 
         self.offset_part_start.replace(end);
 
-        unsafe {
-            let meshref = MeshRef {
-                positions: &self.mesh.as_ptr().as_ref().unwrap().mesh.positions[start..end],
-                colors: &self.mesh.as_ptr().as_ref().unwrap().mesh.colors[start..end],
-                normals: &self.mesh.as_ptr().as_ref().unwrap().mesh.normals[start..end],
-                start,
-                end,
-            };
+        let meshref = MeshRef { start, end };
 
-            if self.mesh.borrow().child_models.last().is_none() {
-                self.mesh
-                    .borrow_mut()
-                    .child_models
-                    .push(LayerPart::new(state, line_range));
-            }
-
+        if self.mesh.child_models.last().is_none() {
             self.mesh
-                .borrow_mut()
                 .child_models
-                .last_mut()
-                .unwrap()
-                .push_child(meshref);
+                .push(LayerPart::new(state, line_range));
         }
+
+        self.mesh
+            .child_models
+            .last_mut()
+            .unwrap()
+            .push_child(meshref);
     }
 
-    pub fn finish(&self) {
+    pub fn finish(&mut self) {
         let start = self.offset_start.get();
         let end = self.offset_end.get();
 
         self.offset_start.replace(end);
 
-        unsafe {
-            let meshref = MeshRef {
-                positions: &self.mesh.as_ptr().as_ref().unwrap().mesh.positions[start..end],
-                colors: &self.mesh.as_ptr().as_ref().unwrap().mesh.colors[start..end],
-                normals: &self.mesh.as_ptr().as_ref().unwrap().mesh.normals[start..end],
-                start,
-                end,
-            };
+        let meshref = MeshRef { start, end };
 
-            if let Some(last) = self.mesh.borrow_mut().child_models.last_mut() {
-                last.main = Some(meshref);
-            }
+        if let Some(last) = self.mesh.child_models.last_mut() {
+            last.main = Some(meshref);
         }
     }
 
-    pub fn compute_model(&self, path_modul: &PathModul) {
+    pub fn compute_model(&mut self, path_modul: &PathModul) {
         let diameter = 0.45;
         let mut last_cross: Option<Cross> = None;
 
@@ -266,7 +243,7 @@ impl<'a> PartCoordinator<'a> {
         }
     }
 
-    pub fn draw_path(&self, path: (Vec3, Vec3), color: &[f32; 4], flip: bool, cross: &Cross) {
+    pub fn draw_path(&mut self, path: (Vec3, Vec3), color: &[f32; 4], flip: bool, cross: &Cross) {
         self.draw_rect_path(
             Rect3d {
                 left_0: cross.up + path.0,
@@ -317,7 +294,7 @@ impl<'a> PartCoordinator<'a> {
     }
 
     pub fn draw_cross_connection(
-        &self,
+        &mut self,
         center: &Vec3,
         start_cross: &Cross,
         end_cross: &Cross,
@@ -361,7 +338,7 @@ impl<'a> PartCoordinator<'a> {
     }
 
     fn draw_rect_path(
-        &self,
+        &mut self,
         rect: Rect3d,
         color: &[f32; 4],
         flip: bool,
@@ -404,7 +381,7 @@ impl<'a> PartCoordinator<'a> {
     }
 
     pub fn draw_rect(
-        &self,
+        &mut self,
         point_left_0: Vec3,
         point_left_1: Vec3,
         point_right_0: Vec3,
@@ -416,7 +393,7 @@ impl<'a> PartCoordinator<'a> {
         self.add_triangle((point_left_1, point_right_1, point_right_0), color);
     }
 
-    pub fn draw_rect_with_cross(&self, center: &Vec3, cross: &Cross, color: &[f32; 4]) {
+    pub fn draw_rect_with_cross(&mut self, center: &Vec3, cross: &Cross, color: &[f32; 4]) {
         self.draw_rect(
             cross.up + *center,
             cross.right + *center,

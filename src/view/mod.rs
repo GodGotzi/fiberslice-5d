@@ -18,7 +18,6 @@ use self::camera::{CameraPlugin, SingleCamera};
 
 pub mod camera;
 pub mod picking;
-pub mod visualization;
 
 pub struct ViewPlugin;
 
