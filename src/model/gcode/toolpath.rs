@@ -1,18 +1,21 @@
 use std::collections::HashMap;
 
 use bevy::{
+    ecs::component::Component,
     math::vec3,
-    prelude::{Component, Mesh, Vec3},
+    prelude::{Mesh, Vec3},
     render::render_resource::PrimitiveTopology,
 };
 
-use crate::{
-    model::mesh::{LayerMesh, PartCoordinator},
-    slicer::print_type::PrintType,
-    utils::Average,
-};
+use crate::{api::Average, slicer::print_type::PrintType};
 
-use super::{instruction::InstructionType, movement, state::State, GCode};
+use super::{
+    instruction::InstructionType,
+    mesh::{Layer, PartCoordinator},
+    movement,
+    state::State,
+    GCode,
+};
 
 #[derive(Debug, Clone)]
 pub struct PathLine {
@@ -44,14 +47,6 @@ impl PathModul {
             line_range,
             state,
         }
-    }
-
-    pub fn points(&self) -> &Vec<PathLine> {
-        &self.paths
-    }
-
-    pub fn state(&self) -> &super::state::State {
-        &self.state
     }
 }
 
@@ -167,23 +162,23 @@ impl From<ToolPath> for HashMap<usize, Vec<PathModul>> {
     }
 }
 
-pub struct ToolPathModel {
-    pub mesh: Mesh,
-    pub layers: HashMap<usize, LayerContext>,
+#[derive(Debug, Component)]
+pub struct ToolpathModel {
+    pub layers: HashMap<usize, Layer>,
     pub gcode: GCode,
     pub center: Option<Vec3>,
 }
 
 impl GCode {
-    pub fn into_toolpath(self) -> ToolPathModel {
+    pub fn into_toolpath(self) -> (Mesh, ToolpathModel) {
         let toolpath = ToolPath::from(self.clone());
         let center = toolpath.center;
         let modul_map: HashMap<usize, Vec<PathModul>> = toolpath.into();
 
-        let mut layers: HashMap<usize, LayerMesh> = HashMap::new();
+        let mut layers: HashMap<usize, Layer> = HashMap::new();
 
         for entry in modul_map.iter() {
-            layers.insert(*entry.0, LayerMesh::empty());
+            layers.insert(*entry.0, Layer::empty());
         }
 
         for entry in modul_map.into_iter() {
@@ -199,7 +194,6 @@ impl GCode {
         let mut positions = Vec::new();
         let mut colors = Vec::new();
         let mut normals = Vec::new();
-        let mut mesh_models = HashMap::new();
 
         for entry in layers.iter() {
             let layer_mesh = entry.1;
@@ -207,14 +201,6 @@ impl GCode {
             positions.append(&mut layer_mesh.cpu_mesh.positions.clone());
             colors.append(&mut layer_mesh.cpu_mesh.colors.clone());
             normals.append(&mut layer_mesh.cpu_mesh.normals.clone());
-
-            mesh_models.insert(
-                *entry.0,
-                LayerContext {
-                    id: *entry.0,
-                    line_range: layer_mesh.line_range,
-                },
-            );
         }
 
         let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
@@ -222,25 +208,13 @@ impl GCode {
         mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
 
-        ToolPathModel {
+        (
             mesh,
-            gcode: self,
-            layers: mesh_models,
-            center,
-        }
-    }
-}
-
-#[derive(Component)]
-pub struct LayerContext {
-    pub id: usize,
-    pub line_range: Option<(usize, usize)>,
-}
-
-impl std::fmt::Debug for ToolPathModel {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ToolPathModel")
-            .field("layers", &self.layers.keys())
-            .finish()
+            ToolpathModel {
+                gcode: self,
+                layers,
+                center,
+            },
+        )
     }
 }

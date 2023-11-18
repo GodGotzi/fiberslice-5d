@@ -6,6 +6,7 @@
 */
 
 mod actions;
+mod api;
 mod config;
 mod error;
 mod math;
@@ -16,7 +17,6 @@ mod shortcut;
 mod slicer;
 mod tests;
 mod ui;
-mod utils;
 mod view;
 
 use actions::ActionPlugin;

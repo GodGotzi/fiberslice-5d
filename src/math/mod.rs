@@ -1,6 +1,6 @@
 use bevy::prelude::Vec3;
 
-use crate::utils::Flip;
+use crate::api::Flip;
 
 pub struct FSVec3(pub Vec3);
 

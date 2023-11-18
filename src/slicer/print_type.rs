@@ -1,7 +1,7 @@
 use bevy::prelude::Color;
 use strum_macros::EnumString;
 
-use crate::utils::SimpleColor;
+use crate::api::SimpleColor;
 
 #[derive(Debug, Clone, EnumString, PartialEq, Eq)]
 pub enum PrintType {
