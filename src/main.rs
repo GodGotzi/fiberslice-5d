@@ -21,6 +21,7 @@ mod view;
 
 use actions::ActionPlugin;
 use bevy::prelude::*;
+use model::gcode::toolpath::ToolpathModel;
 use prelude::MainPlugin;
 use settings::SettingsPlugin;
 use shortcut::ShortcutPlugin;
@@ -45,6 +46,16 @@ fn main() {
         .add_plugins(ShortcutPlugin)
         .add_plugins(ActionPlugin)
         .add_plugins(MainPlugin)
-        //.add_systems(Startup, spawn_bed)
+        .add_systems(Update, frame)
         .run();
+}
+
+pub fn frame(mut toolpath: Query<(&Handle<Mesh>, &ToolpathModel)>) {
+    let mesh = toolpath.get_single_mut();
+
+    if let Ok((_mesh, toolpath)) = mesh {
+        //println!("Layer amount: {}", toolpath.layers.len());
+    } else {
+        //println!("No mesh");
+    }
 }

@@ -4,14 +4,13 @@ use bevy::{
     ecs::component::Component,
     math::vec3,
     prelude::{Mesh, Vec3},
-    render::render_resource::PrimitiveTopology,
 };
 
 use crate::{api::Average, slicer::print_type::PrintType};
 
 use super::{
     instruction::InstructionType,
-    mesh::{Layer, PartCoordinator},
+    mesh::{Layer, Layers, PartCoordinator},
     movement,
     state::State,
     GCode,
@@ -177,36 +176,19 @@ impl GCode {
 
         let mut layers: HashMap<usize, Layer> = HashMap::new();
 
-        for entry in modul_map.iter() {
-            layers.insert(*entry.0, Layer::empty());
-        }
-
         for entry in modul_map.into_iter() {
-            let layer = layers.get_mut(&entry.0).unwrap();
-            let mut coordinator = PartCoordinator::new(layer);
+            let mut layer = Layer::empty();
+            let mut coordinator = PartCoordinator::new(&mut layer);
 
             for modul in entry.1 {
                 coordinator.compute_model(&modul);
                 coordinator.finish();
             }
+
+            layers.insert(entry.0, layer);
         }
 
-        let mut positions = Vec::new();
-        let mut colors = Vec::new();
-        let mut normals = Vec::new();
-
-        for entry in layers.iter() {
-            let layer_mesh = entry.1;
-
-            positions.append(&mut layer_mesh.cpu_mesh.positions.clone());
-            colors.append(&mut layer_mesh.cpu_mesh.colors.clone());
-            normals.append(&mut layer_mesh.cpu_mesh.normals.clone());
-        }
-
-        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+        let mesh: Mesh = Layers(&layers).into();
 
         (
             mesh,

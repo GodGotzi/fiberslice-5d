@@ -2,8 +2,10 @@ use crate::slicer::print_type::PrintType;
 
 #[derive(Debug, Clone)]
 #[allow(clippy::upper_case_acronyms)]
+#[allow(non_camel_case_types)]
 #[allow(non_snake_case, dead_code)]
 pub enum StateField {
+    LAYER_CHANGE,
     LAYER(usize),
     TYPE(PrintType),
     MESH(String),
@@ -13,8 +15,10 @@ impl TryFrom<String> for StateField {
     type Error = crate::error::Error;
 
     fn try_from(s: String) -> Result<Self, Self::Error> {
-        let variant = match s.split(':').next() {
-            Some(variant) => variant,
+        let splited = s.split(':').collect::<Vec<&str>>();
+
+        let variant = match splited.first() {
+            Some(variant) => *variant,
             None => {
                 return Err(crate::error::Error::GCodeStateParseError(
                     "Invalid GCode".into(),
@@ -22,13 +26,9 @@ impl TryFrom<String> for StateField {
             }
         };
 
-        let value = match s.split(':').nth(1) {
-            Some(variant) => variant,
-            None => {
-                return Err(crate::error::Error::GCodeStateParseError(
-                    "Invalid State Change".into(),
-                ))
-            }
+        let value = match splited.get(1) {
+            Some(variant) => *variant,
+            None => "",
         };
 
         match variant {
@@ -39,6 +39,7 @@ impl TryFrom<String> for StateField {
 
                 Ok(StateField::LAYER(value))
             }
+            "LAYER_CHANGE" => Ok(StateField::LAYER_CHANGE),
             "TYPE" => {
                 let mut value = value.trim().to_ascii_lowercase();
                 value[0..1].make_ascii_uppercase();
@@ -92,11 +93,12 @@ impl State {
     pub fn parse(&mut self, line: String) -> Result<(), crate::error::Error> {
         let variant: StateField = line.try_into()?;
 
-        //println!("State Change: {:?}", variant);
-
         match variant {
             StateField::LAYER(value) => {
                 self.layer = Some(value);
+            }
+            StateField::LAYER_CHANGE => {
+                self.layer = Some(self.layer.unwrap_or(0) + 1);
             }
             StateField::TYPE(value) => {
                 self.print_type = Some(value);

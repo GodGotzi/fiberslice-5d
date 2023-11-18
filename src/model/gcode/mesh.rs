@@ -1,6 +1,10 @@
-use std::cell::Cell;
+use std::{cell::Cell, collections::HashMap};
 
-use bevy::{math::vec3, prelude::Vec3};
+use bevy::{
+    math::vec3,
+    prelude::Vec3,
+    render::{mesh::Mesh, render_resource::PrimitiveTopology},
+};
 
 use crate::{
     api::Flip,
@@ -53,7 +57,6 @@ impl Layer {
         Self {
             cpu_mesh: CpuMesh {
                 positions: Vec::new(),
-                normals: Vec::new(),
                 colors: Vec::new(),
             },
             line_range: None,
@@ -98,7 +101,7 @@ impl LayerPart {
 }
 
 fn adjust_faces(direction: Vec3) -> bool {
-    !adjust_pane(direction.x, direction.y)
+    adjust_pane(direction.x, direction.y)
 }
 
 fn adjust_pane(x: f32, y: f32) -> bool {
@@ -137,16 +140,6 @@ impl<'a> PartCoordinator<'a> {
         mesh.push_position(FSVec3(triangle.2).into());
 
         mesh.push_color(*color);
-        mesh.push_color(*color);
-        mesh.push_color(*color);
-
-        let normal = (triangle.1 - triangle.0)
-            .cross(triangle.2 - triangle.0)
-            .normalize();
-
-        mesh.push_normal(FSVec3(normal).into());
-        mesh.push_normal(FSVec3(normal).into());
-        mesh.push_normal(FSVec3(normal).into());
 
         self.offset_end.replace(self.offset_end.get() + 3);
         self.offset_part_end.replace(self.offset_part_end.get() + 3);
@@ -390,5 +383,35 @@ impl<'a> PartCoordinator<'a> {
             cross.left + *center,
             color,
         );
+    }
+}
+
+pub struct Layers<'a>(pub &'a HashMap<usize, Layer>);
+
+impl<'a> From<Layers<'a>> for Mesh {
+    fn from(layers: Layers) -> Self {
+        let mut positions = Vec::new();
+        let mut colors = Vec::new();
+
+        for entry in layers.0.iter() {
+            let layer_mesh = entry.1;
+
+            positions.append(&mut layer_mesh.cpu_mesh.positions.clone());
+            colors.reserve_exact(layer_mesh.cpu_mesh.colors.len());
+
+            for color in layer_mesh.cpu_mesh.colors.iter() {
+                colors.push(*color);
+                colors.push(*color);
+                colors.push(*color);
+            }
+        }
+
+        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
+
+        mesh.compute_flat_normals();
+
+        mesh
     }
 }

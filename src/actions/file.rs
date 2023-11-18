@@ -60,7 +60,7 @@ pub(super) fn handle_tasks(
                                 mesh: meshes.add(toolpath_mesh),
                                 material: materials.add(StandardMaterial {
                                     base_color: Color::rgba(1.0, 1.0, 1.0, 1.0),
-                                    cull_mode: Some(Face::Front),
+                                    cull_mode: Some(Face::Back),
                                     reflectance: 0.01,
                                     metallic: 0.0,
                                     ..Default::default()
