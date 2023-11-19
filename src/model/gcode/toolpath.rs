@@ -163,7 +163,7 @@ impl From<ToolPath> for HashMap<usize, Vec<PathModul>> {
 
 #[derive(Debug, Component)]
 pub struct ToolpathModel {
-    pub layers: HashMap<usize, Layer>,
+    //pub layers: HashMap<usize, Layer>,
     pub gcode: GCode,
     pub center: Option<Vec3>,
 }
@@ -172,20 +172,23 @@ impl GCode {
     pub fn into_toolpath(self) -> (Mesh, ToolpathModel) {
         let toolpath = ToolPath::from(self.clone());
         let center = toolpath.center;
-        let modul_map: HashMap<usize, Vec<PathModul>> = toolpath.into();
 
         let mut layers: HashMap<usize, Layer> = HashMap::new();
 
-        for entry in modul_map.into_iter() {
-            let mut layer = Layer::empty();
-            let mut coordinator = PartCoordinator::new(&mut layer);
+        {
+            let modul_map: HashMap<usize, Vec<PathModul>> = toolpath.into();
 
-            for modul in entry.1 {
-                coordinator.compute_model(&modul);
-                coordinator.finish();
+            for entry in modul_map.into_iter() {
+                let mut layer = Layer::empty();
+                let mut coordinator = PartCoordinator::new(&mut layer);
+
+                for modul in entry.1 {
+                    coordinator.compute_model(&modul);
+                    coordinator.finish();
+                }
+
+                layers.insert(entry.0, layer);
             }
-
-            layers.insert(entry.0, layer);
         }
 
         let mesh: Mesh = Layers(&layers).into();
@@ -194,7 +197,7 @@ impl GCode {
             mesh,
             ToolpathModel {
                 gcode: self,
-                layers,
+                //layers,
                 center,
             },
         )

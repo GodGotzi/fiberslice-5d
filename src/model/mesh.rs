@@ -1,7 +1,9 @@
+use crate::api::U8Color;
+
 #[derive(Debug)]
 pub struct CpuMesh {
     pub positions: Vec<[f32; 3]>,
-    pub colors: Vec<[f32; 4]>,
+    pub colors: Vec<U8Color>,
 }
 
 impl CpuMesh {
@@ -9,7 +11,7 @@ impl CpuMesh {
         self.positions.push(position);
     }
 
-    pub fn push_color(&mut self, color: [f32; 4]) {
+    pub fn push_color(&mut self, color: U8Color) {
         self.colors.push(color);
     }
 }
@@ -25,7 +27,14 @@ impl MeshRef {
         Self { start, end }
     }
 
-    pub fn slice_from_vec<'a>(&self, vec: &'a [[f32; 3]]) -> &'a [[f32; 3]] {
+    pub fn slice_from_positions<'a>(&self, vec: &'a [[f32; 3]]) -> &'a [[f32; 3]] {
+        let start = self.start;
+        let end = self.end;
+
+        &vec[start..end]
+    }
+
+    pub fn slice_from_colors<'a>(&self, vec: &'a [[u8; 4]]) -> &'a [[u8; 4]] {
         let start = self.start;
         let end = self.end;
 

@@ -1,7 +1,6 @@
-use bevy::prelude::Color;
 use strum_macros::EnumString;
 
-use crate::api::SimpleColor;
+use crate::api::U8Color;
 
 #[derive(Debug, Clone, EnumString, PartialEq, Eq)]
 pub enum PrintType {
@@ -21,22 +20,22 @@ pub enum PrintType {
 }
 
 impl PrintType {
-    pub fn get_color(&self) -> Color {
+    pub fn get_color(&self) -> U8Color {
         //set hard coded colors for now unique to each print type
         match &self {
-            Self::InternalInfill => SimpleColor::from_u8(0, 0, 255, 255),
-            Self::SolidInfill => SimpleColor::from_u8(0, 255, 0, 255),
-            Self::BridgeInfill => SimpleColor::from_u8(255, 0, 0, 255),
-            Self::TopSolidInfill => SimpleColor::from_u8(130, 130, 0, 255),
-            Self::Skirt => SimpleColor::from_u8(255, 0, 255, 255),
-            Self::Brim => SimpleColor::from_u8(0, 255, 255, 255),
-            Self::Support => SimpleColor::from_u8(255, 255, 255, 255),
-            Self::Perimeter => SimpleColor::from_u8(255, 0, 255, 255),
-            Self::WallOuter => SimpleColor::from_u8(255, 0, 0, 255),
-            Self::WallInner => SimpleColor::from_u8(255, 0, 0, 255),
-            Self::ExternalPerimeter => SimpleColor::from_u8(255, 255, 0, 255),
-            Self::OverhangPerimeter => SimpleColor::from_u8(0, 255, 255, 255),
-            Self::Unknown => SimpleColor::from_u8(0, 0, 0, 255),
+            Self::InternalInfill => U8Color([0, 0, 255, 255]),
+            Self::SolidInfill => U8Color([0, 255, 0, 255]),
+            Self::BridgeInfill => U8Color([255, 0, 0, 255]),
+            Self::TopSolidInfill => U8Color([130, 130, 0, 255]),
+            Self::Skirt => U8Color([255, 0, 255, 255]),
+            Self::Brim => U8Color([0, 255, 255, 255]),
+            Self::Support => U8Color([255, 255, 255, 255]),
+            Self::Perimeter => U8Color([255, 0, 255, 255]),
+            Self::WallOuter => U8Color([255, 0, 0, 255]),
+            Self::WallInner => U8Color([255, 0, 0, 255]),
+            Self::ExternalPerimeter => U8Color([255, 255, 0, 255]),
+            Self::OverhangPerimeter => U8Color([0, 255, 255, 255]),
+            Self::Unknown => U8Color([0, 0, 0, 255]),
         }
     }
 }

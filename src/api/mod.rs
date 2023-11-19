@@ -1,7 +1,5 @@
 use std::ops::AddAssign;
 
-use bevy::prelude::Color;
-
 pub mod format;
 
 pub mod debug {
@@ -32,16 +30,28 @@ pub trait Contains<P> {
     fn contains(&self, point: &P) -> bool;
 }
 
-pub struct SimpleColor;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct U8Color(pub [u8; 4]);
 
-impl SimpleColor {
-    pub fn from_u8(r: u8, g: u8, b: u8, a: u8) -> Color {
-        Color::rgba(
-            r as f32 / 255.0,
-            g as f32 / 255.0,
-            b as f32 / 255.0,
-            a as f32 / 255.0,
-        )
+impl From<&U8Color> for [f32; 4] {
+    fn from(color: &U8Color) -> Self {
+        [
+            color.0[0] as f32 / 255.0,
+            color.0[1] as f32 / 255.0,
+            color.0[2] as f32 / 255.0,
+            color.0[3] as f32 / 255.0,
+        ]
+    }
+}
+
+impl From<U8Color> for [f32; 4] {
+    fn from(color: U8Color) -> Self {
+        [
+            color.0[0] as f32 / 255.0,
+            color.0[1] as f32 / 255.0,
+            color.0[2] as f32 / 255.0,
+            color.0[3] as f32 / 255.0,
+        ]
     }
 }
 

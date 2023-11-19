@@ -7,7 +7,7 @@ use bevy::{
 };
 
 use crate::{
-    api::Flip,
+    api::{Flip, U8Color},
     math::FSVec3,
     model::{
         mesh::{CpuMesh, MeshRef},
@@ -133,7 +133,7 @@ impl<'a> PartCoordinator<'a> {
         }
     }
 
-    pub fn add_triangle(&mut self, triangle: (Vec3, Vec3, Vec3), color: &[f32; 4]) {
+    pub fn add_triangle(&mut self, triangle: (Vec3, Vec3, Vec3), color: &U8Color) {
         let mesh = &mut self.mesh.cpu_mesh;
         mesh.push_position(FSVec3(triangle.0).into());
         mesh.push_position(FSVec3(triangle.1).into());
@@ -188,8 +188,7 @@ impl<'a> PartCoordinator<'a> {
             .print_type
             .as_ref()
             .unwrap_or(&crate::slicer::print_type::PrintType::Unknown)
-            .get_color()
-            .as_rgba_f32();
+            .get_color();
 
         for element in path_modul.paths.iter().enumerate() {
             let path = element.1;
@@ -225,7 +224,7 @@ impl<'a> PartCoordinator<'a> {
         }
     }
 
-    pub fn draw_path(&mut self, path: (Vec3, Vec3), color: &[f32; 4], flip: bool, cross: &Cross) {
+    pub fn draw_path(&mut self, path: (Vec3, Vec3), color: &U8Color, flip: bool, cross: &Cross) {
         self.draw_rect_path(
             Rect3d {
                 left_0: cross.up + path.0,
@@ -280,7 +279,7 @@ impl<'a> PartCoordinator<'a> {
         center: &Vec3,
         start_cross: &Cross,
         end_cross: &Cross,
-        color: &[f32; 4],
+        color: &U8Color,
     ) {
         self.add_triangle(
             (
@@ -322,7 +321,7 @@ impl<'a> PartCoordinator<'a> {
     fn draw_rect_path(
         &mut self,
         rect: Rect3d,
-        color: &[f32; 4],
+        color: &U8Color,
         flip: bool,
         orienation: PathOrientation,
     ) {
@@ -368,14 +367,14 @@ impl<'a> PartCoordinator<'a> {
         point_left_1: Vec3,
         point_right_0: Vec3,
         point_right_1: Vec3,
-        color: &[f32; 4],
+        color: &U8Color,
     ) {
         self.add_triangle((point_left_0, point_left_1, point_right_0), color);
 
         self.add_triangle((point_left_1, point_right_1, point_right_0), color);
     }
 
-    pub fn draw_rect_with_cross(&mut self, center: &Vec3, cross: &Cross, color: &[f32; 4]) {
+    pub fn draw_rect_with_cross(&mut self, center: &Vec3, cross: &Cross, color: &U8Color) {
         self.draw_rect(
             cross.up + *center,
             cross.right + *center,
@@ -391,7 +390,7 @@ pub struct Layers<'a>(pub &'a HashMap<usize, Layer>);
 impl<'a> From<Layers<'a>> for Mesh {
     fn from(layers: Layers) -> Self {
         let mut positions = Vec::new();
-        let mut colors = Vec::new();
+        let mut colors: Vec<[f32; 4]> = Vec::new();
 
         for entry in layers.0.iter() {
             let layer_mesh = entry.1;
@@ -400,9 +399,9 @@ impl<'a> From<Layers<'a>> for Mesh {
             colors.reserve_exact(layer_mesh.cpu_mesh.colors.len());
 
             for color in layer_mesh.cpu_mesh.colors.iter() {
-                colors.push(*color);
-                colors.push(*color);
-                colors.push(*color);
+                colors.push(color.into());
+                colors.push(color.into());
+                colors.push(color.into());
             }
         }
 
