@@ -199,4 +199,35 @@ impl GCode {
             },
         )
     }
+
+    pub fn into_cpu_mesh(self) -> (three_d::CpuMesh, ToolpathModel) {
+        let toolpath = ToolPath::from(self.clone());
+        let center = toolpath.center;
+        let modul_map: HashMap<usize, Vec<PathModul>> = toolpath.into();
+
+        let mut layers: HashMap<usize, Layer> = HashMap::new();
+
+        for entry in modul_map.into_iter() {
+            let mut layer = Layer::empty();
+            let mut coordinator = PartCoordinator::new(&mut layer);
+
+            for modul in entry.1 {
+                coordinator.compute_model(&modul);
+                coordinator.finish();
+            }
+
+            layers.insert(entry.0, layer);
+        }
+
+        let mesh: three_d::CpuMesh = Layers(&layers).into();
+
+        (
+            mesh,
+            ToolpathModel {
+                gcode: self,
+                layers,
+                center,
+            },
+        )
+    }
 }

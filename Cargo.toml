@@ -32,6 +32,7 @@ futures-lite = "2.0.0"
 bevy_mod_picking = "0.16.0"
 approx = "0.5.1"
 rand = "0.8.5"
+three-d = { git = "https://github.com/asny/three-d.git" }
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]

@@ -5,6 +5,7 @@ use bevy::{
     prelude::Vec3,
     render::{mesh::Mesh, render_resource::PrimitiveTopology},
 };
+use three_d::{Positions, Srgba};
 
 use crate::{
     api::Flip,
@@ -413,5 +414,40 @@ impl<'a> From<Layers<'a>> for Mesh {
         mesh.compute_flat_normals();
 
         mesh
+    }
+}
+
+impl<'a> From<Layers<'a>> for three_d::CpuMesh {
+    fn from(layers: Layers) -> Self {
+        let mut positions = Vec::new();
+        let mut colors = Vec::new();
+
+        for entry in layers.0.iter() {
+            let layer_mesh = entry.1;
+
+            for position in layer_mesh.cpu_mesh.positions.iter() {
+                positions.push((*position).into());
+            }
+
+            colors.reserve_exact(layer_mesh.cpu_mesh.colors.len());
+
+            for color in layer_mesh.cpu_mesh.colors.iter() {
+                let srgba = Srgba::from(*color);
+
+                colors.push(srgba);
+                colors.push(srgba);
+                colors.push(srgba);
+            }
+        }
+
+        let mut cpu_mesh = three_d::CpuMesh {
+            positions: Positions::F32(positions),
+            colors: Some(colors),
+            ..Default::default()
+        };
+
+        cpu_mesh.compute_normals();
+
+        cpu_mesh
     }
 }
