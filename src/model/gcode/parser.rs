@@ -63,9 +63,8 @@ fn compute_comment(
     moduls: &mut Vec<InstructionModul>,
 ) {
     if modul.as_ref().unwrap().is_empty() {
-        let _ = parse_comment_into_state(line, modul.as_mut().unwrap().state_mut());
-    } else if let Ok(result) = parse_comment_to_state(line, modul.as_ref().unwrap().state().clone())
-    {
+        let _ = parse_comment_into_state(line, &mut modul.as_mut().unwrap().state);
+    } else if let Ok(result) = parse_comment_to_state(line, modul.as_ref().unwrap().state.clone()) {
         let mut owned_modul = modul.take().unwrap();
         owned_modul.finish(count - 1);
 

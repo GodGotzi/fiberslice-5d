@@ -79,7 +79,7 @@ impl From<GCode> for ToolPath {
             moduls.push(PathModul {
                 paths: points.clone(),
                 line_range: instruction_modul.range(),
-                state: instruction_modul.state().clone(),
+                state: instruction_modul.state.clone(),
             });
 
             toolpath_average += modul_average;
@@ -122,7 +122,7 @@ fn compute_instruction_modul(
                 && current_movements.E.is_some_and(|e| e > 0.0);
 
             if print {
-                if let Some(print_type) = instruction_modul.state().print_type.as_ref() {
+                if let Some(print_type) = instruction_modul.state.print_type.as_ref() {
                     if print_type == &PrintType::WallOuter
                         || print_type == &PrintType::ExternalPerimeter
                     {

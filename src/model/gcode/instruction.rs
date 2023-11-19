@@ -97,10 +97,10 @@ impl Instruction {
 
 #[derive(Debug, Clone)]
 pub struct InstructionModul {
-    instructions: Vec<Instruction>,
+    pub instructions: Vec<Instruction>,
     start: usize,
     end: Option<usize>,
-    state: State,
+    pub state: State,
 }
 
 impl InstructionModul {
@@ -124,14 +124,6 @@ impl InstructionModul {
 
     pub fn instructions(&self) -> &Vec<Instruction> {
         &self.instructions
-    }
-
-    pub fn state(&self) -> &State {
-        &self.state
-    }
-
-    pub fn state_mut(&mut self) -> &mut State {
-        &mut self.state
     }
 
     pub fn is_empty(&self) -> bool {
