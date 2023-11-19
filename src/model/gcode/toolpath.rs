@@ -1,13 +1,20 @@
 use std::collections::HashMap;
 
 use bevy::{
+    ecs::component::Component,
     math::vec3,
-    prelude::{Component, Mesh, Vec3},
+    prelude::{Mesh, Vec3},
 };
 
-use crate::{slicer::print_type::PrintType, utils::Average};
+use crate::{api::Average, slicer::print_type::PrintType};
 
-use super::{instruction::InstructionType, movement, state::State, GCode};
+use super::{
+    instruction::InstructionType,
+    mesh::{Layer, Layers, PartCoordinator},
+    movement,
+    state::State,
+    GCode,
+};
 
 #[derive(Debug, Clone)]
 pub struct PathLine {
@@ -39,14 +46,6 @@ impl PathModul {
             line_range,
             state,
         }
-    }
-
-    pub fn points(&self) -> &Vec<PathLine> {
-        &self.paths
-    }
-
-    pub fn state(&self) -> &super::state::State {
-        &self.state
     }
 }
 
@@ -162,23 +161,45 @@ impl From<ToolPath> for HashMap<usize, Vec<PathModul>> {
     }
 }
 
-pub struct ToolPathModel {
-    pub mesh: Mesh,
-    pub layers: HashMap<usize, LayerContext>,
+#[derive(Debug, Component)]
+pub struct ToolpathModel {
+    //pub layers: HashMap<usize, Layer>,
     pub gcode: GCode,
     pub center: Option<Vec3>,
 }
 
-#[derive(Component)]
-pub struct LayerContext {
-    pub id: usize,
-    pub line_range: Option<(usize, usize)>,
-}
+impl GCode {
+    pub fn into_toolpath(self) -> (Mesh, ToolpathModel) {
+        let toolpath = ToolPath::from(self.clone());
+        let center = toolpath.center;
 
-impl std::fmt::Debug for ToolPathModel {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ToolPathModel")
-            .field("layers", &self.layers.keys())
-            .finish()
+        let mut layers: HashMap<usize, Layer> = HashMap::new();
+
+        {
+            let modul_map: HashMap<usize, Vec<PathModul>> = toolpath.into();
+
+            for entry in modul_map.into_iter() {
+                let mut layer = Layer::empty();
+                let mut coordinator = PartCoordinator::new(&mut layer);
+
+                for modul in entry.1 {
+                    coordinator.compute_model(&modul);
+                    coordinator.finish();
+                }
+
+                layers.insert(entry.0, layer);
+            }
+        }
+
+        let mesh: Mesh = Layers(&layers).into();
+
+        (
+            mesh,
+            ToolpathModel {
+                gcode: self,
+                //layers,
+                center,
+            },
+        )
     }
 }

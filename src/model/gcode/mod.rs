@@ -4,6 +4,7 @@ use self::{
 };
 
 pub mod instruction;
+pub mod mesh;
 pub mod movement;
 pub mod parser;
 pub mod state;

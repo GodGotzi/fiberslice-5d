@@ -1,0 +1,8 @@
+$Start: 2023-11-17 23:57:11 +0100
+$End: 2023-11-18 01:23:35 +0100
+§1 hours 26 minutes
+Info [End: 2023-11-17 23:57:15 +0100]: start
+
+Info [End: 2023-11-18 01:22:38 +0100]: toolpath cleanup no lifetimes
+
+Info [End: 2023-11-18 01:22:50 +0100]: toolpathmodel is now bevy component
