@@ -11,18 +11,16 @@ use crate::{
 #[allow(dead_code)]
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Clone)]
 pub struct ApplicationSettings {
-    slice_settings: SliceSettings,
-    printer_settings: PrinterSettings,
-    filament_settings: FilamentSettings,
+    pub slice_settings: SliceSettings,
+    pub printer_settings: PrinterSettings,
+    pub filament_settings: FilamentSettings,
 }
 
-#[derive(Clone)]
 pub struct ApplicationState {
     frame_input: Option<FrameInput>,
     component_data: Arc<Mutex<ComponentDataHolder>>,
-    settings: ApplicationSettings,
+    pub settings: ApplicationSettings,
 }
 
 impl Default for ApplicationState {
@@ -30,6 +28,11 @@ impl Default for ApplicationState {
         Self {
             frame_input: None,
             component_data: Arc::new(Mutex::new(ComponentDataHolder::default())),
+            settings: ApplicationSettings {
+                slice_settings: SliceSettings::default(),
+                printer_settings: PrinterSettings::default(),
+                filament_settings: FilamentSettings::default(),
+            },
         }
     }
 }

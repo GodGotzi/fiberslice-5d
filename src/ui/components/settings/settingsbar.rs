@@ -125,7 +125,7 @@ impl TabbedSettings {
 
         match side_view.open_panel {
             SettingsPanel::Fiber => {
-                let mut printer_settings = data.settings.printer.borrow_mut();
+                let mut printer_settings = &mut data.context.settings.printer_settings;
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
@@ -152,7 +152,7 @@ impl TabbedSettings {
                 });
             }
             SettingsPanel::TopologyOptimization => {
-                let mut filament_settings = data.settings.filament.borrow_mut();
+                let mut filament_settings = &mut data.context.settings.filament_settings;
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
@@ -185,7 +185,7 @@ impl TabbedSettings {
                 });
             }
             SettingsPanel::View => {
-                let mut printer_settings = data.settings.printer.borrow_mut();
+                let mut printer_settings = &mut data.context.settings.printer_settings;
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
