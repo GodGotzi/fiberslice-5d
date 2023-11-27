@@ -13,6 +13,7 @@ mod actions;
 mod api;
 mod config;
 mod error;
+mod event;
 mod math;
 mod model;
 mod prelude;
