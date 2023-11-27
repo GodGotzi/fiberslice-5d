@@ -17,11 +17,11 @@ mod force_analytics;
 mod prepare;
 mod preview;
 
-type AddonStripBuilderClosure = dyn Fn(StripBuilder, UiData, Color32);
+type AddonStripBuilderClosure = dyn Fn(StripBuilder, &mut UiData, Color32);
 
 pub fn create_addon_strip_builder(
     ui: &mut Ui,
-    data: UiData,
+    data: &mut UiData,
     boundary: Boundary,
     shaded_color: Color32,
     build: Box<AddonStripBuilderClosure>,
@@ -50,16 +50,17 @@ pub fn create_addon_strip_builder(
 }
 
 pub mod orientation {
+    use bevy::pbr::CascadeShadowConfig;
     use bevy_egui::egui::{self, *};
     use egui_extras::Size;
     use egui_grid::GridBuilder;
 
     use crate::{
-        ui::{data::UiDataBundle, icon, response::Responsive, UiData},
+        ui::{icon, UiData},
         view::Orientation,
     };
 
-    pub fn show(ui: &mut Ui, data: UiData) {
+    pub fn show(ui: &mut Ui, data: &mut UiData) {
         let layout = egui::Layout {
             main_dir: Direction::RightToLeft,
             main_wrap: true,
@@ -108,7 +109,7 @@ pub mod orientation {
             });
     }
 
-    fn add_button_icon(ui: &mut Ui, data: &UiDataBundle<'_>, orientation: Orientation) {
+    fn add_button_icon(ui: &mut Ui, data: &mut UiData, orientation: Orientation) {
         let icon = icon::ICONTABLE.get_orientation_icon(orientation);
 
         let image_button =
@@ -147,7 +148,7 @@ impl Addons {
 }
 
 impl InnerComponent for Addons {
-    fn show(&mut self, ctx: &egui::Context, ui: &mut Ui, data: UiData) {
+    fn show(&mut self, ctx: &egui::Context, ui: &mut Ui, data: &mut UiData) {
         let window_size = ui.available_size();
 
         let boundary = Boundary {
@@ -155,7 +156,7 @@ impl InnerComponent for Addons {
             size: Vec2::new(window_size.x - 15.0, window_size.y - 15.0),
         };
 
-        match data.raw.borrow_mut().mode {
+        match data.mode {
             Mode::Prepare => prepare::show(ctx, ui, data, boundary),
             Mode::Preview => preview::show(ctx, ui, data, boundary),
             Mode::ForceAnalytics => force_analytics::show(ctx, ui, data, boundary),

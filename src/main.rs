@@ -24,8 +24,11 @@ mod ui;
 mod view;
 mod window;
 
+use ui::screen::Screen;
 use window::build_window;
 use winit::event_loop;
+
+use crate::ui::SuperComponent;
 
 pub fn main() {
     let event_loop = event_loop::EventLoop::new();
@@ -33,31 +36,13 @@ pub fn main() {
 
     let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
 
+    let data = ui::data::UiData::default();
+    let screen = Screen::new();
+
     let environment = view::environment::Environment::new(&context);
+    let mut gui = three_d::GUI::new(&context);
 
-    let nfd = Nfd::new().unwrap();
-    let result = nfd.open_file().add_filter("Gcode", "gcode").unwrap().show();
-
-    let cpu_mesh = match result {
-        DialogResult::Ok(path) => {
-            let content = std::fs::read_to_string(path).unwrap();
-            let gcode: GCode = content.try_into().unwrap();
-
-            let toolpath = gcode.into_cpu_mesh();
-
-            (toolpath.0, toolpath.1.center)
-        }
-        _ => (CpuMesh::cube(), None),
-    };
-
-    let mut cpu_model = Gm::new(
-        Mesh::new(&context, &cpu_mesh.0),
-        PhysicalMaterial::new(&context, &CpuMaterial::default()),
-    );
-
-    if let Some(vec) = cpu_mesh.1 {
-        cpu_model.set_transformation(Mat4::from_translation(Vector3::new(-vec.x, -vec.y, -vec.z)));
-    }
+    let cpu_model = create_toolpath(&context);
 
     let mut frame_input_generator = FrameInputGenerator::from_winit_window(&window);
     event_loop.run(move |event, _, control_flow| match event {
@@ -68,6 +53,16 @@ pub fn main() {
             let mut frame_input = frame_input_generator.generate(&context);
 
             environment.handle_camera_events(&mut frame_input.events);
+
+            gui.update(
+                &mut frame_input.events,
+                frame_input.accumulated_time,
+                frame_input.viewport,
+                frame_input.device_pixel_ratio,
+                |gui_context| {
+                    screen.show(gui_context, &mut data);
+                },
+            );
 
             frame_input
                 .screen()
@@ -97,4 +92,32 @@ pub fn main() {
         }
         _ => {}
     });
+}
+
+pub fn create_toolpath(context: &Context) -> Gm<Mesh, PhysicalMaterial> {
+    let nfd = Nfd::new().unwrap();
+    let result = nfd.open_file().add_filter("Gcode", "gcode").unwrap().show();
+
+    let cpu_mesh = match result {
+        DialogResult::Ok(path) => {
+            let content = std::fs::read_to_string(path).unwrap();
+            let gcode: GCode = content.try_into().unwrap();
+
+            let toolpath = gcode.into_cpu_mesh();
+
+            (toolpath.0, toolpath.1.center)
+        }
+        _ => (CpuMesh::cube(), None),
+    };
+
+    let mut cpu_model = Gm::new(
+        Mesh::new(context, &cpu_mesh.0),
+        PhysicalMaterial::new(context, &CpuMaterial::default()),
+    );
+
+    if let Some(vec) = cpu_mesh.1 {
+        cpu_model.set_transformation(Mat4::from_translation(Vector3::new(-vec.x, -vec.y, -vec.z)));
+    }
+
+    cpu_model
 }

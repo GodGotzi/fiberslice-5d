@@ -1817,6 +1817,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_glow"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f8c2752cdf1b0ef5fcda59a898cacabad974d4f5880e92a420b2c917022da64"
+dependencies = [
+ "bytemuck",
+ "egui",
+ "glow",
+ "log",
+ "memoffset 0.6.5",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "egui_grid"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4064,6 +4079,9 @@ version = "0.17.0"
 source = "git+https://github.com/asny/three-d.git#ad76d31717e6b6f23f0d0b00ef8325109b8b309f"
 dependencies = [
  "cgmath",
+ "egui",
+ "egui_glow",
+ "getrandom",
  "glow",
  "glutin",
  "instant",

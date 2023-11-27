@@ -1,5 +1,7 @@
 use std::sync::{Arc, Mutex, MutexGuard};
 
+use three_d::FrameInput;
+
 use crate::view::Mode;
 
 use super::{boundary::Boundary, Theme};
@@ -8,7 +10,7 @@ pub struct UiData {
     pub theme: Theme,
     pub mode: Mode,
 
-    pub context: UiContext,
+    pub context: ApplicationContext,
 }
 
 impl Default for UiData {
@@ -16,26 +18,46 @@ impl Default for UiData {
         Self {
             theme: Theme::Light,
             mode: Mode::Preview,
+            context: ApplicationContext::default(),
         }
     }
 }
 
+impl UiData {
+    pub fn toggle_theme(&mut self) {
+        self.theme = match self.theme {
+            Theme::Light => Theme::Dark,
+            Theme::Dark => Theme::Light,
+        };
+    }
+}
+
 #[derive(Clone)]
-pub struct UiContext {
+pub struct ApplicationContext {
+    pub frame_input: Option<FrameInput>,
     component_data: Arc<Mutex<ComponentDataHolder>>,
 }
 
-impl Default for UiContext {
+impl Default for ApplicationContext {
     fn default() -> Self {
         Self {
+            frame_input: None,
             component_data: Arc::new(Mutex::new(ComponentDataHolder::default())),
         }
     }
 }
 
-impl UiContext {
+impl ApplicationContext {
     pub fn get_component_data_mut(&self) -> MutexGuard<ComponentDataHolder> {
         self.component_data.lock().unwrap()
+    }
+
+    pub fn fps(&self) -> Option<f32> {
+        if let Some(frame_input) = &self.frame_input {
+            Some((1000.0 / frame_input.elapsed_time) as f32)
+        } else {
+            None
+        }
     }
 }
 

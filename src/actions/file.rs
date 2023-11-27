@@ -11,7 +11,10 @@ use bevy::{
 use futures_lite::future::{self, block_on};
 use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
 
-use crate::model::{gcode::toolpath::ToolpathModel, gcode::GCode};
+use crate::{
+    model::{gcode::toolpath::ToolpathModel, gcode::GCode},
+    ui::UiData,
+};
 
 #[derive(Debug)]
 pub enum FileActionResult {
@@ -28,6 +31,7 @@ pub enum FileActionError {
     Error(String),
 }
 
+/*
 #[derive(Component)]
 pub struct ComputeFileAction(Task<Result<FileActionResult, FileActionError>>);
 
@@ -153,3 +157,4 @@ pub fn exit(data: UiData) {
 
     data.commands.borrow_mut().spawn(ComputeFileAction(task));
 }
+*/

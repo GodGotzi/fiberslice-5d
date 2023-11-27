@@ -12,13 +12,8 @@ mod icon;
 mod response;
 mod visual;
 
-use std::sync::{Arc, Mutex, MutexGuard};
-
 pub use components::size_fixed;
-
-use crate::view::Mode;
-
-use self::data::ComponentDataHolder;
+pub use data::UiData;
 
 #[derive(Clone)]
 pub enum Theme {
@@ -26,40 +21,16 @@ pub enum Theme {
     Dark,
 }
 
-#[derive(Clone)]
-pub struct UiContext {
-    pub theme: Theme,
-    pub mode: Mode,
-
-    component_data: Arc<Mutex<ComponentDataHolder>>,
-}
-
-impl Default for UiContext {
-    fn default() -> Self {
-        Self {
-            theme: Theme::Light,
-            mode: Mode::Preview,
-            component_data: Arc::new(Mutex::new(ComponentDataHolder::default())),
-        }
-    }
-}
-
-impl UiContext {
-    pub fn get_component_data_mut(&self) -> MutexGuard<ComponentDataHolder> {
-        self.component_data.lock().unwrap()
-    }
-}
-
 pub trait SuperComponent {
-    fn show<'a>(&'a mut self, ctx: &egui::Context, ui_ctx: UiContext);
+    fn show<'a>(&'a mut self, ctx: &egui::Context, ui_ctx: &mut UiData);
 }
 
 pub trait Component {
-    fn show(&mut self, ctx: &egui::Context, ui_ctx: UiContext);
+    fn show(&mut self, ctx: &egui::Context, ui_ctx: &mut UiData);
 }
 
 pub trait InnerComponent {
-    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, ui_ctx: UiContext);
+    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, ui_ctx: &mut UiData);
 }
 
 pub trait TextComponent {
@@ -147,7 +118,7 @@ pub mod screen {
     }
 
     impl SuperComponent for Screen {
-        fn show<'a>(&'a mut self, ctx: &egui::Context, ui_ctx: UiContext) {
+        fn show<'a>(&'a mut self, ctx: &egui::Context, ui_ctx: &mut UiData) {
             let frame = egui::containers::Frame {
                 fill: egui::Color32::TRANSPARENT,
                 ..Default::default()
@@ -155,20 +126,20 @@ pub mod screen {
 
             self.menubar.show(ctx, ui_ctx);
 
-            if ui_ctx.get_component_data_mut().taskbar.enabled {
+            if ui_ctx.context.get_component_data_mut().taskbar.enabled {
                 self.taskbar.show(ctx, ui_ctx);
             }
 
             //self.addons.show(ctx, None, app);
-            if ui_ctx.get_component_data_mut().settingsbar.enabled {
+            if ui_ctx.context.get_component_data_mut().settingsbar.enabled {
                 self.settings.show(ctx, ui_ctx);
             }
 
-            if ui_ctx.get_component_data_mut().toolbar.enabled {
+            if ui_ctx.context.get_component_data_mut().toolbar.enabled {
                 self.toolbar.show(ctx, ui_ctx);
             }
 
-            if ui_ctx.get_component_data_mut().modebar.enabled {
+            if ui_ctx.context.get_component_data_mut().modebar.enabled {
                 self.modebar.show(ctx, ui_ctx);
             }
 
@@ -179,7 +150,7 @@ pub mod screen {
                     .show(ui);
                 */
 
-                if ui_ctx.get_component_data_mut().addons.enabled {
+                if ui_ctx.context.get_component_data_mut().addons.enabled {
                     self.addons.show(ctx, ui, ui_ctx);
                 }
             });

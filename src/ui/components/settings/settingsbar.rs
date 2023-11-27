@@ -40,7 +40,7 @@ impl TabbedSettings {
         &mut self,
         ctx: &egui::Context,
         ui: &mut egui::Ui,
-        data: UiData,
+        data: &mut UiData,
         side_view: &mut Settingsbar,
     ) {
         ui.horizontal(|ui| {
@@ -230,7 +230,7 @@ impl Settingsbar {
 }
 
 impl Component for Settingsbar {
-    fn show(&mut self, ctx: &egui::Context, data: UiData) {
+    fn show(&mut self, ctx: &egui::Context, data: &mut UiData) {
         let mut tabbed_view = TabbedSettings::init();
 
         let boundary = Boundary::from(
@@ -271,9 +271,8 @@ impl Component for Settingsbar {
                 .response,
         );
 
-        data.raw
-            .borrow_mut()
-            .holder
+        data.context
+            .get_component_data_mut()
             .settingsbar
             .set_boundary(boundary);
     }
