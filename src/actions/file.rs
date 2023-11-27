@@ -11,10 +11,7 @@ use bevy::{
 use futures_lite::future::{self, block_on};
 use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
 
-use crate::{
-    model::{gcode::toolpath::ToolpathModel, gcode::GCode},
-    ui::data::UiData,
-};
+use crate::model::{gcode::toolpath::ToolpathModel, gcode::GCode};
 
 #[derive(Debug)]
 pub enum FileActionResult {

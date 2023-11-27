@@ -1979,6 +1979,7 @@ dependencies = [
  "bevy_egui",
  "bevy_mod_picking",
  "bevy_obj",
+ "egui",
  "egui_extras",
  "egui_grid",
  "futures-lite 2.0.0",

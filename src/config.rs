@@ -5,7 +5,7 @@
 pub mod default {
 
     //pub const WINDOW_S: Vec2 = Vec2::new(0., 0.);
-    pub const WINDOW_S: (f32, f32) = (1200.0, 900.0);
+    pub const WINDOW_S: (u32, u32) = (1200, 900);
 }
 
 pub mod gui {

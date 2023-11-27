@@ -40,4 +40,12 @@ impl<E> EventHandler<E> {
         };
         EventHandler { reader, writer }
     }
+
+    pub fn write(&mut self, event: E) {
+        self.writer.write(event);
+    }
+
+    pub fn read(&mut self) -> Vec<E> {
+        self.reader.read()
+    }
 }

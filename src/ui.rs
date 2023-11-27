@@ -12,98 +12,54 @@ mod icon;
 mod response;
 mod visual;
 
-use bevy::prelude::{Commands, EventWriter, Plugin, Res, ResMut, Update};
-use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use std::sync::{Arc, Mutex, MutexGuard};
+
 pub use components::size_fixed;
-use egui::Visuals;
 
-use crate::{
-    prelude::Context,
-    settings::{FilamentSettings, PrinterSettings, SliceSettings},
-    view::{Mode, Orientation},
-};
+use crate::view::Mode;
 
-use visual::customize_look_and_feel;
+use self::data::ComponentDataHolder;
 
-use data::*;
-use response::Responses;
-
+#[derive(Clone)]
 pub enum Theme {
     Light,
     Dark,
 }
 
-pub struct UiPlugin;
+#[derive(Clone)]
+pub struct UiContext {
+    pub theme: Theme,
+    pub mode: Mode,
 
-impl Plugin for UiPlugin {
-    fn build(&self, app: &mut bevy::prelude::App) {
-        app.insert_resource(screen::Screen::new())
-            .insert_resource(Responses::new())
-            .insert_resource(RawUiData::new(Theme::Dark, Mode::Prepare))
-            .add_plugins(EguiPlugin)
-            .add_systems(Update, ui_frame);
+    component_data: Arc<Mutex<ComponentDataHolder>>,
+}
+
+impl Default for UiContext {
+    fn default() -> Self {
+        Self {
+            theme: Theme::Light,
+            mode: Mode::Preview,
+            component_data: Arc::new(Mutex::new(ComponentDataHolder::default())),
+        }
     }
 }
 
-type UiContext<'a, 'b> = (
-    EguiContexts<'a, 'b>,
-    ResMut<'a, screen::Screen>,
-    ResMut<'a, RawUiData>,
-    ResMut<'a, Responses>,
-);
-
-type Settings<'a> = (
-    ResMut<'a, SliceSettings>,
-    ResMut<'a, FilamentSettings>,
-    ResMut<'a, PrinterSettings>,
-);
-
-type Writers<'a> = EventWriter<'a, Orientation>;
-
-pub fn ui_frame(
-    context: Res<'_, Context>,
-    (mut ui_ctx, mut screen, mut data, buttons_responses): UiContext,
-    (slice_settinsg, filament_settings, printer_settings): Settings,
-    orientation_writer: Writers,
-    commands: Commands,
-) {
-    data.holder.delete_cache();
-
-    let ctx = ui_ctx.ctx_mut();
-
-    let settings = SettingBundle::wrap((slice_settinsg, filament_settings, printer_settings));
-
-    let writers = EventWriterBundle::wrap(orientation_writer);
-
-    let data = UiDataBundle::wrap((
-        data,
-        buttons_responses,
-        context,
-        settings,
-        writers,
-        commands,
-    ));
-
-    match data.raw.borrow_mut().theme {
-        Theme::Light => ctx.set_visuals(Visuals::light()),
-        Theme::Dark => ctx.set_visuals(Visuals::dark()),
-    };
-
-    ctx.set_visuals(customize_look_and_feel(ctx.style().visuals.clone()));
-
-    screen.show(ctx, &data);
+impl UiContext {
+    pub fn get_component_data_mut(&self) -> MutexGuard<ComponentDataHolder> {
+        self.component_data.lock().unwrap()
+    }
 }
 
 pub trait SuperComponent {
-    fn show<'a>(&'a mut self, ctx: &egui::Context, data: &'a UiDataBundle<'a>);
+    fn show<'a>(&'a mut self, ctx: &egui::Context, ui_ctx: UiContext);
 }
 
 pub trait Component {
-    fn show(&mut self, ctx: &egui::Context, data: UiData);
+    fn show(&mut self, ctx: &egui::Context, ui_ctx: UiContext);
 }
 
 pub trait InnerComponent {
-    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, data: UiData);
+    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, ui_ctx: UiContext);
 }
 
 pub trait TextComponent {
@@ -191,29 +147,29 @@ pub mod screen {
     }
 
     impl SuperComponent for Screen {
-        fn show<'a>(&'a mut self, ctx: &egui::Context, data: &'a UiDataBundle<'a>) {
+        fn show<'a>(&'a mut self, ctx: &egui::Context, ui_ctx: UiContext) {
             let frame = egui::containers::Frame {
                 fill: egui::Color32::TRANSPARENT,
                 ..Default::default()
             };
 
-            self.menubar.show(ctx, data);
+            self.menubar.show(ctx, ui_ctx);
 
-            if data.raw.borrow_mut().holder.taskbar.enabled {
-                self.taskbar.show(ctx, data);
+            if ui_ctx.get_component_data_mut().taskbar.enabled {
+                self.taskbar.show(ctx, ui_ctx);
             }
 
             //self.addons.show(ctx, None, app);
-            if data.raw.borrow_mut().holder.settingsbar.enabled {
-                self.settings.show(ctx, data);
+            if ui_ctx.get_component_data_mut().settingsbar.enabled {
+                self.settings.show(ctx, ui_ctx);
             }
 
-            if data.raw.borrow_mut().holder.toolbar.enabled {
-                self.toolbar.show(ctx, data);
+            if ui_ctx.get_component_data_mut().toolbar.enabled {
+                self.toolbar.show(ctx, ui_ctx);
             }
 
-            if data.raw.borrow_mut().holder.modebar.enabled {
-                self.modebar.show(ctx, data);
+            if ui_ctx.get_component_data_mut().modebar.enabled {
+                self.modebar.show(ctx, ui_ctx);
             }
 
             egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
@@ -223,8 +179,8 @@ pub mod screen {
                     .show(ui);
                 */
 
-                if data.raw.borrow_mut().holder.addons.enabled {
-                    self.addons.show(ctx, ui, data);
+                if ui_ctx.get_component_data_mut().addons.enabled {
+                    self.addons.show(ctx, ui, ui_ctx);
                 }
             });
         }
