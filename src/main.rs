@@ -16,6 +16,7 @@ mod prelude;
 mod setup;
 mod slicer;
 mod tests;
+mod ui;
 mod utils;
 mod view;
 mod window;

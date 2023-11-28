@@ -1,3 +1,5 @@
+use strum::EnumCount;
+use strum_macros::{EnumCount, EnumIter};
 use three_d::LogicalPoint;
 use three_d_asset::Viewport;
 
@@ -18,6 +20,7 @@ impl Contains<LogicalPoint> for Viewport {
 }
 
 #[allow(dead_code)]
+#[derive(Debug, Clone, Copy, EnumCount, EnumIter)]
 pub enum Orientation {
     Default,
     Diagonal,
