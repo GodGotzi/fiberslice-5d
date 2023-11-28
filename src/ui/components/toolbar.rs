@@ -1,7 +1,8 @@
 use bevy_egui::egui::{Context, SidePanel};
 
 use crate::config;
-use crate::ui::{Component, UiData};
+use crate::ui::data::UiData;
+use crate::ui::Component;
 
 pub struct Toolbar;
 
@@ -20,9 +21,6 @@ impl Component for Toolbar {
             .response
             .into();
 
-        data.context
-            .get_component_data_mut()
-            .toolbar
-            .set_boundary(boundary);
+        data.get_component_data_mut().toolbar.set_boundary(boundary);
     }
 }

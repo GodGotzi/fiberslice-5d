@@ -63,9 +63,6 @@ impl Component for Modebar {
             .response
             .into();
 
-        data.context
-            .get_component_data_mut()
-            .menubar
-            .set_boundary(boundary);
+        data.get_component_data_mut().menubar.set_boundary(boundary);
     }
 }

@@ -29,10 +29,7 @@ impl Component for Taskbar {
             .response
             .into();
 
-        data.context
-            .get_component_data_mut()
-            .taskbar
-            .set_boundary(boundary);
+        data.get_component_data_mut().taskbar.set_boundary(boundary);
     }
 }
 

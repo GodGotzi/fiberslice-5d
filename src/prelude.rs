@@ -1,12 +1,7 @@
-use std::sync::{Arc, Mutex, MutexGuard};
-
 use three_d::FrameInput;
 
 pub use crate::error::Error;
-use crate::{
-    settings::FilamentSettings, settings::PrinterSettings, settings::SliceSettings,
-    ui::data::ComponentDataHolder,
-};
+use crate::{settings::FilamentSettings, settings::PrinterSettings, settings::SliceSettings};
 
 #[allow(dead_code)]
 pub type Result<T> = std::result::Result<T, Error>;
@@ -19,15 +14,13 @@ pub struct ApplicationSettings {
 
 pub struct ApplicationState {
     frame_input: Option<FrameInput>,
-    component_data: Arc<Mutex<ComponentDataHolder>>,
-    pub settings: ApplicationSettings,
+    settings: ApplicationSettings,
 }
 
 impl Default for ApplicationState {
     fn default() -> Self {
         Self {
             frame_input: None,
-            component_data: Arc::new(Mutex::new(ComponentDataHolder::default())),
             settings: ApplicationSettings {
                 slice_settings: SliceSettings::default(),
                 printer_settings: PrinterSettings::default(),
@@ -38,10 +31,6 @@ impl Default for ApplicationState {
 }
 
 impl ApplicationState {
-    pub fn get_component_data_mut(&self) -> MutexGuard<ComponentDataHolder> {
-        self.component_data.lock().unwrap()
-    }
-
     pub fn update_frame_input(&mut self, frame_input: FrameInput) {
         self.frame_input = Some(frame_input);
     }

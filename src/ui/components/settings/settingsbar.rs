@@ -125,7 +125,7 @@ impl TabbedSettings {
 
         match side_view.open_panel {
             SettingsPanel::Fiber => {
-                let mut printer_settings = &mut data.context.settings.printer_settings;
+                let mut printer_settings = &mut data.settings.printer_settings;
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {

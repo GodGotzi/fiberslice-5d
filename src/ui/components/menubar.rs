@@ -2,7 +2,8 @@ use bevy_egui::egui;
 use egui::Ui;
 
 use crate::config;
-use crate::ui::{Component, UiData};
+use crate::ui::data::UiData;
+use crate::ui::Component;
 
 pub struct Menubar;
 
@@ -29,10 +30,7 @@ impl Component for Menubar {
             .response
             .into();
 
-        data.context
-            .get_component_data_mut()
-            .menubar
-            .set_boundary(boundary);
+        data.get_component_data_mut().menubar.set_boundary(boundary);
     }
 }
 
@@ -91,11 +89,11 @@ fn window_button(ui: &mut Ui, data: &mut UiData) {
             "ToolBar",
         );
         ui.checkbox(
-            &mut data.context.get_component_data_mut().taskbar.enabled,
+            &mut data.get_component_data_mut().taskbar.enabled,
             "TaskBar",
         );
         ui.checkbox(
-            &mut data.context.get_component_data_mut().settingsbar.enabled,
+            &mut data.get_component_data_mut().settingsbar.enabled,
             "Settings",
         );
     });
