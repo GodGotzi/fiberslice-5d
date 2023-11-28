@@ -14,7 +14,7 @@ pub struct ApplicationSettings {
 
 pub struct ApplicationState {
     frame_input: Option<FrameInput>,
-    settings: ApplicationSettings,
+    pub settings: ApplicationSettings,
 }
 
 impl Default for ApplicationState {

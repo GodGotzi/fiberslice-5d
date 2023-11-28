@@ -8,7 +8,7 @@ use winit::{
 use crate::{config, prelude::Error};
 
 pub fn build_window(event_loop: &EventLoop<()>) -> Result<Window, Error> {
-    let window_icon = load_icon("assets/icons/icon.png");
+    let window_icon = load_icon("assets/icons/main_icon.png");
     let window_settings = WindowSettings {
         title: "Shapes!".to_string(),
         max_size: Some(config::default::WINDOW_S),

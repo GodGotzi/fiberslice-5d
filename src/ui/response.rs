@@ -4,6 +4,8 @@ use bevy_egui::egui::Response;
 use crate::view::Orientation;
 use strum::EnumCount;
 
+use super::data::UiData;
+
 pub trait Responsive {
     fn empty() -> Self;
     fn clicked(&self) -> bool;
@@ -56,5 +58,19 @@ impl Responses {
                 ButtonResponse::empty(),
             ],
         }
+    }
+}
+
+impl UiData {
+    pub fn get_orientation_response(&self, orientation: &Orientation) -> ButtonResponse {
+        self.responses.lock().unwrap().orientation[*orientation as usize]
+    }
+
+    pub fn update_orientation_response(&mut self, orientation: &Orientation, response: Response) {
+        let button_response =
+            &mut self.responses.lock().unwrap().orientation[*orientation as usize];
+
+        button_response.clicked = response.clicked();
+        button_response.hovered = response.hovered();
     }
 }

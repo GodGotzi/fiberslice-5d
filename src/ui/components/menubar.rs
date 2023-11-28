@@ -30,7 +30,7 @@ impl Component for Menubar {
             .response
             .into();
 
-        data.get_component_data_mut().menubar.set_boundary(boundary);
+        data.get_components_mut().menubar.set_boundary(boundary);
     }
 }
 
@@ -74,26 +74,14 @@ fn window_button(ui: &mut Ui, data: &mut UiData) {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
 
-        ui.checkbox(
-            &mut data.context.get_component_data_mut().addons.enabled,
-            "Addons",
-        );
+        ui.checkbox(&mut data.get_components_mut().addons.enabled, "Addons");
         ui.separator();
 
+        ui.checkbox(&mut data.get_components_mut().modebar.enabled, "ModeBar");
+        ui.checkbox(&mut data.get_components_mut().toolbar.enabled, "ToolBar");
+        ui.checkbox(&mut data.get_components_mut().taskbar.enabled, "TaskBar");
         ui.checkbox(
-            &mut data.context.get_component_data_mut().modebar.enabled,
-            "ModeBar",
-        );
-        ui.checkbox(
-            &mut data.context.get_component_data_mut().toolbar.enabled,
-            "ToolBar",
-        );
-        ui.checkbox(
-            &mut data.get_component_data_mut().taskbar.enabled,
-            "TaskBar",
-        );
-        ui.checkbox(
-            &mut data.get_component_data_mut().settingsbar.enabled,
+            &mut data.get_components_mut().settingsbar.enabled,
             "Settings",
         );
     });

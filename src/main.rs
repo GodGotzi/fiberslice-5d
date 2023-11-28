@@ -36,10 +36,10 @@ pub fn main() {
 
     let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
 
-    let data = ui::data::UiData::default();
-    let screen = Screen::new();
+    let mut data = ui::data::UiData::default();
+    let mut screen = Screen::new();
 
-    let environment = view::environment::Environment::new(&context);
+    let mut environment = view::environment::Environment::new(&context);
     let mut gui = three_d::GUI::new(&context);
 
     let cpu_model = create_toolpath(&context);
@@ -54,6 +54,11 @@ pub fn main() {
 
             environment.handle_camera_events(&mut frame_input.events);
 
+            frame_input
+                .screen()
+                .clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0))
+                .render(environment.camera(), &cpu_model, &environment.lights());
+
             gui.update(
                 &mut frame_input.events,
                 frame_input.accumulated_time,
@@ -63,11 +68,6 @@ pub fn main() {
                     screen.show(gui_context, &mut data);
                 },
             );
-
-            frame_input
-                .screen()
-                .clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0))
-                .render(environment.camera(), &cpu_model, &environment.lights());
 
             println!("Elapsed: {}", 1000.0 / frame_input.elapsed_time);
 

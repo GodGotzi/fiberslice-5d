@@ -56,7 +56,7 @@ pub mod orientation {
     use egui_grid::GridBuilder;
 
     use crate::{
-        ui::{icon, UiData},
+        ui::{icon, response::Responsive, UiData},
         view::Orientation,
     };
 
@@ -117,7 +117,7 @@ pub mod orientation {
 
         ui.allocate_ui([35., 35.].into(), move |ui| {
             ui.with_layout(Layout::centered_and_justified(Direction::TopDown), |ui| {
-                let prev_response = data.get_orientation_response(orientation);
+                let prev_response = data.get_orientation_response(&orientation);
 
                 if prev_response.hovered() {
                     ui.painter().rect_filled(
@@ -129,11 +129,13 @@ pub mod orientation {
 
                 let response = ui.add_sized([30., 30.], image_button);
 
-                data.update_orientation_response(&response, orientation);
+                data.update_orientation_response(&orientation, response);
 
+                /*
                 if response.clicked() {
                     data.orienation_writer().borrow_mut().send(orientation);
                 }
+                */
             });
         });
     }

@@ -127,20 +127,20 @@ pub mod screen {
 
             self.menubar.show(ctx, ui_ctx);
 
-            if ui_ctx.get_component_data_mut().taskbar.enabled {
+            if ui_ctx.get_components_mut().taskbar.enabled {
                 self.taskbar.show(ctx, ui_ctx);
             }
 
             //self.addons.show(ctx, None, app);
-            if ui_ctx.get_component_data_mut().settingsbar.enabled {
+            if ui_ctx.get_components_mut().settingsbar.enabled {
                 self.settings.show(ctx, ui_ctx);
             }
 
-            if ui_ctx.get_component_data_mut().toolbar.enabled {
+            if ui_ctx.get_components_mut().toolbar.enabled {
                 self.toolbar.show(ctx, ui_ctx);
             }
 
-            if ui_ctx.get_component_data_mut().modebar.enabled {
+            if ui_ctx.get_components_mut().modebar.enabled {
                 self.modebar.show(ctx, ui_ctx);
             }
 
@@ -151,7 +151,7 @@ pub mod screen {
                     .show(ui);
                 */
 
-                if ui_ctx.get_component_data_mut().addons.enabled {
+                if ui_ctx.get_components_mut().addons.enabled {
                     self.addons.show(ctx, ui, ui_ctx);
                 }
             });

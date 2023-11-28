@@ -21,6 +21,6 @@ impl Component for Toolbar {
             .response
             .into();
 
-        data.get_component_data_mut().toolbar.set_boundary(boundary);
+        data.get_components_mut().toolbar.set_boundary(boundary);
     }
 }
