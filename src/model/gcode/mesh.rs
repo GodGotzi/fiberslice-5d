@@ -1,15 +1,10 @@
-use std::{
-    cell::Cell,
-    collections::HashMap,
-    ops::{Mul, MulAssign},
-};
+use std::{cell::Cell, collections::HashMap};
 use three_d::{vec3, InnerSpace, Positions, Srgba, Vector3};
 
 use crate::{
-    api::Flip,
-    math::FSVec3,
+    api::{math::DirectMul, FlipYZ, Reverse},
     model::{
-        mesh::{CpuMesh, MeshRef},
+        mesh::{MeshRef, SimpleMesh},
         shapes::Rect3d,
     },
 };
@@ -37,16 +32,24 @@ pub fn get_cross(direction: Vector3<f32>, radius: f32) -> Cross {
     let vertical = direction.cross(vec3(direction.x + 1.0, direction.y + 1.0, 0.0));
 
     Cross {
-        up: vertical.normalize() * vec3(radius, radius, radius),
-        down: vertical.normalize() * vec3(-radius, -radius, -radius),
-        left: horizontal.normalize() * vec3(radius, radius, radius),
-        right: horizontal.normalize() * vec3(-radius, -radius, -radius),
+        up: vertical
+            .normalize()
+            .direct_mul(&vec3(radius, radius, radius)),
+        down: vertical
+            .normalize()
+            .direct_mul(&vec3(-radius, -radius, -radius)),
+        left: horizontal
+            .normalize()
+            .direct_mul(&vec3(radius, radius, radius)),
+        right: horizontal
+            .normalize()
+            .direct_mul(&vec3(-radius, -radius, -radius)),
     }
 }
 
 #[derive(Debug)]
 pub struct Layer {
-    pub cpu_mesh: CpuMesh,
+    pub cpu_mesh: SimpleMesh,
     pub line_range: Option<(usize, usize)>,
     child_models: Vec<LayerPart>,
 }
@@ -54,7 +57,7 @@ pub struct Layer {
 impl Layer {
     pub fn empty() -> Self {
         Self {
-            cpu_mesh: CpuMesh {
+            cpu_mesh: SimpleMesh {
                 positions: Vec::new(),
                 colors: Vec::new(),
             },
@@ -134,13 +137,15 @@ impl<'a> PartCoordinator<'a> {
 
     pub fn add_triangle(
         &mut self,
-        triangle: (Vector3<f32>, Vector3<f32>, Vector3<f32>),
+        mut triangle: (Vector3<f32>, Vector3<f32>, Vector3<f32>),
         color: &Srgba,
     ) {
+        triangle.flip();
+
         let mesh = &mut self.mesh.cpu_mesh;
-        mesh.push_position(FSVec3(triangle.0).into());
-        mesh.push_position(FSVec3(triangle.1).into());
-        mesh.push_position(FSVec3(triangle.2).into());
+        mesh.push_position(triangle.0);
+        mesh.push_position(triangle.1);
+        mesh.push_position(triangle.2);
 
         mesh.push_color(*color);
 
@@ -331,7 +336,7 @@ impl<'a> PartCoordinator<'a> {
         &mut self,
         rect: Rect3d,
         color: &Srgba,
-        flip: bool,
+        face_flip: bool,
         orienation: PathOrientation,
     ) {
         let (mut triangle1, mut triangle2) = match orienation {
@@ -361,9 +366,9 @@ impl<'a> PartCoordinator<'a> {
             }
         };
 
-        if flip {
-            triangle1.flip();
-            triangle2.flip();
+        if face_flip {
+            triangle1.reverse();
+            triangle2.reverse();
         }
 
         self.add_triangle(triangle1, color);
@@ -405,7 +410,7 @@ impl<'a> From<Layers<'a>> for three_d::CpuMesh {
             let layer_mesh = entry.1;
 
             for position in layer_mesh.cpu_mesh.positions.iter() {
-                positions.push((*position).into());
+                positions.push(*position);
             }
 
             colors.reserve_exact(layer_mesh.cpu_mesh.colors.len());

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use three_d::{vec3, Vector3};
 
-use crate::{api::Average, slicer::print_type::PrintType};
+use crate::{api::math::Average, slicer::print_type::PrintType};
 
 use super::{
     instruction::InstructionType,

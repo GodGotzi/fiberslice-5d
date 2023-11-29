@@ -1,13 +1,13 @@
-use three_d::Srgba;
+use three_d::{Srgba, Vector3};
 
 #[derive(Debug)]
-pub struct CpuMesh {
-    pub positions: Vec<[f32; 3]>,
+pub struct SimpleMesh {
+    pub positions: Vec<Vector3<f32>>,
     pub colors: Vec<Srgba>,
 }
 
-impl CpuMesh {
-    pub fn push_position(&mut self, position: [f32; 3]) {
+impl SimpleMesh {
+    pub fn push_position(&mut self, position: Vector3<f32>) {
         self.positions.push(position);
     }
 
