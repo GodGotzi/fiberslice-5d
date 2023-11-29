@@ -1,10 +1,6 @@
 use std::collections::HashMap;
 
-use bevy::{
-    ecs::component::Component,
-    math::vec3,
-    prelude::{Mesh, Vec3},
-};
+use three_d::{vec3, Vector3};
 
 use crate::{api::Average, slicer::print_type::PrintType};
 
@@ -18,13 +14,13 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub struct PathLine {
-    pub start: Vec3,
-    pub end: Vec3,
+    pub start: Vector3<f32>,
+    pub end: Vector3<f32>,
     pub print: bool,
 }
 
 impl PathLine {
-    pub fn direction(&self) -> Vec3 {
+    pub fn direction(&self) -> Vector3<f32> {
         self.end - self.start
     }
 }
@@ -52,7 +48,7 @@ impl PathModul {
 #[derive(Default)]
 pub struct ToolPath {
     moduls: Vec<PathModul>,
-    pub center: Option<Vec3>,
+    pub center: Option<Vector3<f32>>,
 }
 
 impl ToolPath {
@@ -66,7 +62,7 @@ impl From<GCode> for ToolPath {
         let mut moduls = Vec::new();
 
         let mut current_movements = movement::Movements::new();
-        let mut toolpath_average = Average::<Vec3>::default();
+        let mut toolpath_average = Average::<Vector3<f32>>::default();
 
         for instruction_modul in value.instruction_moduls.iter() {
             let mut points = Vec::new();
@@ -99,11 +95,11 @@ fn compute_instruction_modul(
     instruction_modul: &super::instruction::InstructionModul,
     current_movements: &mut movement::Movements,
     points: &mut Vec<PathLine>,
-) -> Average<Vec3> {
-    let mut modul_average = Average::<Vec3>::default();
+) -> Average<Vector3<f32>> {
+    let mut modul_average = Average::<Vector3<f32>>::default();
 
     for instructions in instruction_modul.instructions().chunks(500) {
-        let mut instruction_average = Average::<Vec3>::default();
+        let mut instruction_average = Average::<Vector3<f32>>::default();
 
         for instruction in instructions {
             let movements = instruction.movements();
@@ -161,46 +157,15 @@ impl From<ToolPath> for HashMap<usize, Vec<PathModul>> {
     }
 }
 
-#[derive(Debug, Component)]
+#[derive(Debug)]
 pub struct ToolpathModel {
     pub layers: HashMap<usize, Layer>,
     pub gcode: GCode,
-    pub center: Option<Vec3>,
+    pub center: Option<Vector3<f32>>,
 }
 
 impl GCode {
-    pub fn into_toolpath(self) -> (Mesh, ToolpathModel) {
-        let toolpath = ToolPath::from(self.clone());
-        let center = toolpath.center;
-        let modul_map: HashMap<usize, Vec<PathModul>> = toolpath.into();
-
-        let mut layers: HashMap<usize, Layer> = HashMap::new();
-
-        for entry in modul_map.into_iter() {
-            let mut layer = Layer::empty();
-            let mut coordinator = PartCoordinator::new(&mut layer);
-
-            for modul in entry.1 {
-                coordinator.compute_model(&modul);
-                coordinator.finish();
-            }
-
-            layers.insert(entry.0, layer);
-        }
-
-        let mesh: Mesh = Layers(&layers).into();
-
-        (
-            mesh,
-            ToolpathModel {
-                gcode: self,
-                layers,
-                center,
-            },
-        )
-    }
-
-    pub fn into_cpu_mesh(self) -> (three_d::CpuMesh, ToolpathModel) {
+    pub fn into_mesh(self) -> (three_d::CpuMesh, ToolpathModel) {
         let toolpath = ToolPath::from(self.clone());
         let center = toolpath.center;
         let modul_map: HashMap<usize, Vec<PathModul>> = toolpath.into();

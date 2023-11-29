@@ -32,18 +32,19 @@ pub trait Contains<P> {
     fn contains(&self, point: &P) -> bool;
 }
 
-pub struct SimpleColor;
-
-impl SimpleColor {
-    pub fn from_u8(r: u8, g: u8, b: u8, a: u8) -> Srgba {
-        Srgba::new(r, g, b, a)
-    }
-}
-
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Average<T: std::ops::Div<f32>> {
     pub value: Option<T>,
     pub count: usize,
+}
+
+impl<T: std::ops::Div<f32>> Default for Average<T> {
+    fn default() -> Self {
+        Self {
+            value: None,
+            count: 0,
+        }
+    }
 }
 
 impl<T: std::ops::Div<f32, Output = T>> Average<T> {

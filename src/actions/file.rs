@@ -1,21 +1,8 @@
-use std::f32::consts::PI;
-
-use bevy::{
-    app::AppExit,
-    math::vec3,
-    prelude::*,
-    render::render_resource::Face,
-    tasks::{AsyncComputeTaskPool, Task},
-};
-
-use futures_lite::future::{self, block_on};
-use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
-
-use crate::model::{gcode::toolpath::ToolpathModel, gcode::GCode};
+use crate::model::gcode::toolpath::ToolpathModel;
 
 #[derive(Debug)]
 pub enum FileActionResult {
-    LoadGCode((Mesh, ToolpathModel)),
+    LoadGCode(ToolpathModel),
     ImportIntersectionObject,
     SaveAs,
     Save,

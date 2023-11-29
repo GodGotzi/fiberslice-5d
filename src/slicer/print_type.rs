@@ -1,8 +1,6 @@
 use strum_macros::EnumString;
 use three_d::Srgba;
 
-use crate::api::SimpleColor;
-
 #[derive(Debug, Clone, EnumString, PartialEq, Eq)]
 pub enum PrintType {
     InternalInfill,
@@ -24,19 +22,19 @@ impl PrintType {
     pub fn get_color(&self) -> Srgba {
         //set hard coded colors for now unique to each print type
         match &self {
-            Self::InternalInfill => SimpleColor::from_u8(0, 0, 255, 255),
-            Self::SolidInfill => SimpleColor::from_u8(0, 255, 0, 255),
-            Self::BridgeInfill => SimpleColor::from_u8(255, 0, 0, 255),
-            Self::TopSolidInfill => SimpleColor::from_u8(130, 130, 0, 255),
-            Self::Skirt => SimpleColor::from_u8(255, 0, 255, 255),
-            Self::Brim => SimpleColor::from_u8(0, 255, 255, 255),
-            Self::Support => SimpleColor::from_u8(255, 255, 255, 255),
-            Self::Perimeter => SimpleColor::from_u8(255, 0, 255, 255),
-            Self::WallOuter => SimpleColor::from_u8(255, 0, 0, 255),
-            Self::WallInner => SimpleColor::from_u8(255, 0, 0, 255),
-            Self::ExternalPerimeter => SimpleColor::from_u8(255, 255, 0, 255),
-            Self::OverhangPerimeter => SimpleColor::from_u8(0, 255, 255, 255),
-            Self::Unknown => SimpleColor::from_u8(0, 0, 0, 255),
+            Self::InternalInfill => Srgba::new(0, 0, 255, 255),
+            Self::SolidInfill => Srgba::new(0, 255, 0, 255),
+            Self::BridgeInfill => Srgba::new(255, 0, 0, 255),
+            Self::TopSolidInfill => Srgba::new(130, 130, 0, 255),
+            Self::Skirt => Srgba::new(255, 0, 255, 255),
+            Self::Brim => Srgba::new(0, 255, 255, 255),
+            Self::Support => Srgba::new(255, 255, 255, 255),
+            Self::Perimeter => Srgba::new(255, 0, 255, 255),
+            Self::WallOuter => Srgba::new(255, 0, 0, 255),
+            Self::WallInner => Srgba::new(255, 0, 0, 255),
+            Self::ExternalPerimeter => Srgba::new(255, 255, 0, 255),
+            Self::OverhangPerimeter => Srgba::new(0, 255, 255, 255),
+            Self::Unknown => Srgba::new(0, 0, 0, 255),
         }
     }
 }

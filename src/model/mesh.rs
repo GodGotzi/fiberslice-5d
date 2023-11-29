@@ -1,7 +1,9 @@
+use three_d::Srgba;
+
 #[derive(Debug)]
 pub struct CpuMesh {
     pub positions: Vec<[f32; 3]>,
-    pub colors: Vec<[f32; 4]>,
+    pub colors: Vec<Srgba>,
 }
 
 impl CpuMesh {
@@ -9,7 +11,7 @@ impl CpuMesh {
         self.positions.push(position);
     }
 
-    pub fn push_color(&mut self, color: [f32; 4]) {
+    pub fn push_color(&mut self, color: Srgba) {
         self.colors.push(color);
     }
 }
