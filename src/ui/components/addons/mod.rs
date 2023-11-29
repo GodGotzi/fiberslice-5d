@@ -28,14 +28,14 @@ pub fn create_addon_strip_builder(
 ) -> Response {
     StripBuilder::new(ui)
         .size(Size::exact(boundary.location.x))
-        .size(Size::exact(boundary.size.x))
+        .size(Size::exact(boundary.get_width()))
         .size(Size::remainder())
         .horizontal(|mut strip| {
             strip.empty();
             strip.strip(|builder| {
                 builder
                     .size(Size::exact(boundary.location.y))
-                    .size(Size::exact(boundary.size.y))
+                    .size(Size::exact(boundary.get_height()))
                     .size(Size::remainder())
                     .vertical(|mut strip| {
                         strip.empty();
@@ -155,10 +155,10 @@ impl InnerComponent for Addons {
     fn show(&mut self, ctx: &egui::Context, ui: &mut Ui, data: &mut UiData) {
         let window_size = ui.available_size();
 
-        let boundary = Boundary {
-            location: Pos2::new(0.0, 4.0),
-            size: Vec2::new(window_size.x - 15.0, window_size.y - 15.0),
-        };
+        let boundary = Boundary::new(
+            Pos2::new(0.0, 4.0),
+            Vec2::new(window_size.x - 15.0, window_size.y - 15.0),
+        );
 
         match data.mode {
             Mode::Prepare => prepare::show(ctx, ui, data, boundary),

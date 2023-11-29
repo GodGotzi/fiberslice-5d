@@ -27,7 +27,7 @@ use ui::screen::Screen;
 use window::build_window;
 use winit::event_loop;
 
-use crate::ui::SuperComponent;
+use crate::{api::Contains, ui::SuperComponent};
 
 pub fn main() {
     let event_loop = event_loop::EventLoop::new();
@@ -46,32 +46,62 @@ pub fn main() {
     let mut frame_input_generator = FrameInputGenerator::from_winit_window(&window);
     event_loop.run(move |event, _, control_flow| match event {
         winit::event::Event::MainEventsCleared => {
-            window.request_redraw();
-        }
-        winit::event::Event::RedrawRequested(_) => {
             let mut frame_input = frame_input_generator.generate(&context);
+
+            let mut ui_use = None;
+            let mut ui_events = frame_input.events.clone();
 
             environment.handle_camera_events(&mut frame_input.events);
 
-            frame_input
-                .screen()
-                .clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0))
-                .render(environment.camera(), &cpu_model, &environment.lights());
-
             gui.update(
-                &mut frame_input.events,
+                &mut ui_events,
                 frame_input.accumulated_time,
                 frame_input.viewport,
                 frame_input.device_pixel_ratio,
                 |gui_context| {
+                    ui_use = Some(gui_context.is_using_pointer());
                     screen.show(gui_context, &mut data);
                 },
             );
+
+            if !ui_use.unwrap() {
+                let mut events = frame_input
+                    .events
+                    .clone()
+                    .into_iter()
+                    .filter(|event| {
+                        let position = match event {
+                            Event::MousePress { position, .. } => position,
+                            Event::MouseRelease { position, .. } => position,
+                            Event::MouseMotion { position, .. } => position,
+                            Event::MouseWheel { position, .. } => position,
+                            _ => return true,
+                        };
+
+                        environment.camera().viewport().contains(position)
+                    })
+                    .collect::<Vec<Event>>();
+
+                environment.handle_camera_events(&mut events);
+            }
+
+            environment.frame(&frame_input, &data);
+
+            let screen: RenderTarget<'_> = frame_input.screen();
+            screen.clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0));
+
+            screen.write(|| {
+                cpu_model.render(environment.camera(), &environment.lights());
+                gui.render();
+            });
 
             println!("Elapsed: {}", 1000.0 / frame_input.elapsed_time);
 
             context.swap_buffers().unwrap();
             control_flow.set_poll();
+            window.request_redraw();
+        }
+        winit::event::Event::RedrawRequested(_) => {
             window.request_redraw();
         }
         winit::event::Event::WindowEvent { ref event, .. } => {

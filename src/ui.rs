@@ -50,15 +50,31 @@ pub mod boundary {
     #[derive(Default, Clone, Copy)]
     pub struct Boundary {
         pub location: egui::Pos2,
-        pub size: egui::Vec2,
+        size: egui::Vec2,
     }
 
     impl Boundary {
+        pub fn new(location: egui::Pos2, size: egui::Vec2) -> Self {
+            Self { location, size }
+        }
+
         pub fn zero() -> Self {
             Self {
                 location: egui::Pos2::ZERO,
                 size: egui::Vec2::ZERO,
             }
+        }
+
+        pub fn get_width(&self) -> f32 {
+            self.size.x
+        }
+
+        pub fn get_height(&self) -> f32 {
+            self.size.y
+        }
+
+        pub fn get_size(&self) -> egui::Vec2 {
+            self.size
         }
     }
 
@@ -107,20 +123,20 @@ pub mod screen {
 
             self.menubar.show(ctx, ui_ctx);
 
-            if ui_ctx.get_components_mut().taskbar.enabled {
+            if ui_ctx.get_components().taskbar.enabled {
                 self.taskbar.show(ctx, ui_ctx);
             }
 
             //self.addons.show(ctx, None, app);
-            if ui_ctx.get_components_mut().settingsbar.enabled {
+            if ui_ctx.get_components().settingsbar.enabled {
                 self.settings.show(ctx, ui_ctx);
             }
 
-            if ui_ctx.get_components_mut().toolbar.enabled {
+            if ui_ctx.get_components().toolbar.enabled {
                 self.toolbar.show(ctx, ui_ctx);
             }
 
-            if ui_ctx.get_components_mut().modebar.enabled {
+            if ui_ctx.get_components().modebar.enabled {
                 self.modebar.show(ctx, ui_ctx);
             }
 
@@ -131,7 +147,7 @@ pub mod screen {
                     .show(ui);
                 */
 
-                if ui_ctx.get_components_mut().addons.enabled {
+                if ui_ctx.get_components().addons.enabled {
                     self.addons.show(ctx, ui, ui_ctx);
                 }
             });

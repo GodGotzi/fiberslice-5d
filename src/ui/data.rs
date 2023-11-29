@@ -1,5 +1,3 @@
-use std::sync::{Arc, Mutex, MutexGuard};
-
 use crate::{prelude::ApplicationState, view::Mode};
 
 use super::{boundary::Boundary, response::Responses, Theme};
@@ -8,8 +6,8 @@ pub struct UiData {
     pub theme: Theme,
     pub mode: Mode,
 
-    pub responses: Arc<Mutex<Responses>>,
-    pub components: Arc<Mutex<ComponentHolder>>,
+    pub responses: Responses,
+    pub components: ComponentHolder,
     pub context: ApplicationState,
 }
 
@@ -18,16 +16,28 @@ impl Default for UiData {
         Self {
             theme: Theme::Light,
             mode: Mode::Preview,
-            responses: Arc::new(Mutex::new(Responses::new())),
-            components: Arc::new(Mutex::new(ComponentHolder::default())),
+            responses: Responses::new(),
+            components: ComponentHolder::default(),
             context: ApplicationState::default(),
         }
     }
 }
 
 impl UiData {
-    pub fn get_components_mut(&mut self) -> MutexGuard<ComponentHolder> {
-        self.components.lock().unwrap()
+    pub fn get_components(&self) -> &ComponentHolder {
+        &self.components
+    }
+
+    pub fn get_components_mut(&mut self) -> &mut ComponentHolder {
+        &mut self.components
+    }
+
+    pub fn responses(&self) -> &Responses {
+        &self.responses
+    }
+
+    pub fn responses_mut(&mut self) -> &mut Responses {
+        &mut self.responses
     }
 
     pub fn toggle_theme(&mut self) {

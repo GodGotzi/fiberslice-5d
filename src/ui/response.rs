@@ -61,12 +61,11 @@ impl Responses {
 
 impl UiData {
     pub fn get_orientation_response(&self, orientation: &Orientation) -> ButtonResponse {
-        self.responses.lock().unwrap().orientation[*orientation as usize]
+        self.responses.orientation[*orientation as usize]
     }
 
     pub fn update_orientation_response(&mut self, orientation: &Orientation, response: Response) {
-        let button_response =
-            &mut self.responses.lock().unwrap().orientation[*orientation as usize];
+        let button_response = &mut self.responses.orientation[*orientation as usize];
 
         button_response.clicked = response.clicked();
         button_response.hovered = response.hovered();
