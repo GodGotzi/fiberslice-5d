@@ -42,16 +42,18 @@ pub fn main() {
     let mut gui = three_d::GUI::new(&context);
 
     let cpu_model = create_toolpath(&context);
+    window.set_visible(true);
 
     let mut frame_input_generator = FrameInputGenerator::from_winit_window(&window);
     event_loop.run(move |event, _, control_flow| match event {
         winit::event::Event::MainEventsCleared => {
-            let mut frame_input = frame_input_generator.generate(&context);
+            window.request_redraw();
+        }
+        winit::event::Event::RedrawRequested(_) => {
+            let frame_input = frame_input_generator.generate(&context);
 
             let mut ui_use = None;
             let mut ui_events = frame_input.events.clone();
-
-            environment.handle_camera_events(&mut frame_input.events);
 
             gui.update(
                 &mut ui_events,
@@ -99,9 +101,6 @@ pub fn main() {
 
             context.swap_buffers().unwrap();
             control_flow.set_poll();
-            window.request_redraw();
-        }
-        winit::event::Event::RedrawRequested(_) => {
             window.request_redraw();
         }
         winit::event::Event::WindowEvent { ref event, .. } => {

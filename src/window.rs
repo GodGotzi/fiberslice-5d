@@ -22,7 +22,7 @@ pub fn build_window(event_loop: &EventLoop<()>) -> Result<Window, Error> {
                 window_settings.min_size.0,
                 window_settings.min_size.1,
             ))
-            .with_transparent(false)
+            .with_visible(false)
             .with_window_icon(Some(window_icon))
             .with_decorations(!window_settings.borderless);
 
