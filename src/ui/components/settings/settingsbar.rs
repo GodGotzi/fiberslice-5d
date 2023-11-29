@@ -5,16 +5,9 @@
     Please refer to the terms and conditions stated therein.
 */
 
-use bevy_egui::egui;
-use bevy_egui::egui::Button;
-use bevy_egui::egui::CollapsingHeader;
+use egui::*;
+use three_d::egui;
 
-use bevy_egui::egui::widget_text;
-use bevy_egui::egui::Color32;
-use bevy_egui::egui::FontId;
-use bevy_egui::egui::Layout;
-use bevy_egui::egui::RichText;
-use bevy_egui::egui::Vec2;
 use egui_extras::Size;
 use egui_grid::GridBuilder;
 

@@ -1,6 +1,6 @@
 use std::ops::AddAssign;
 
-use bevy::prelude::Color;
+use three_d::Srgba;
 
 pub mod format;
 
@@ -35,13 +35,8 @@ pub trait Contains<P> {
 pub struct SimpleColor;
 
 impl SimpleColor {
-    pub fn from_u8(r: u8, g: u8, b: u8, a: u8) -> Color {
-        Color::rgba(
-            r as f32 / 255.0,
-            g as f32 / 255.0,
-            b as f32 / 255.0,
-            a as f32 / 255.0,
-        )
+    pub fn from_u8(r: u8, g: u8, b: u8, a: u8) -> Srgba {
+        Srgba::new(r, g, b, a)
     }
 }
 

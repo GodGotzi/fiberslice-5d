@@ -14,14 +14,14 @@ impl Environment {
     pub fn new(context: &Context) -> Self {
         let mut camera = crate::view::camera::CameraBuilder::new()
             .viewport(Viewport::new_at_origo(
-                config::default::WINDOW_S.0 as u32,
-                config::default::WINDOW_S.1 as u32,
+                config::default::WINDOW_S.0,
+                config::default::WINDOW_S.1,
             ))
             .position(vec3(0.00, 0.0, 0.0))
             .target(vec3(0.0, 0.0, 0.0))
             .up(vec3(0.0, 1.0, 0.0))
             .fov(degrees(45.0))
-            .near(0.001)
+            .near(1.0)
             .far(10000.0)
             .build()
             .expect("Failed to create camera");
@@ -31,8 +31,8 @@ impl Environment {
         //let light0 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
         //let light1 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
 
-        let light0 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
-        let light1 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
+        let light0 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
+        let light1 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
 
         //let bottom = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, -1.0, 0.0));
 

@@ -9,7 +9,6 @@ use strum_macros::{EnumCount, EnumIter};
 
 pub mod camera;
 pub mod environment;
-pub mod picking;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, EnumCount, EnumIter)] //maybe performance bit worse

@@ -1,9 +1,10 @@
-use bevy_egui::egui::{CollapsingHeader, DragValue};
+use egui::{CollapsingHeader, DragValue};
+use three_d::egui;
 
 use crate::ui::{InnerTextComponent, TextComponent};
 
 impl TextComponent for crate::settings::printer::General {
-    fn show(&mut self, _ctx: &bevy_egui::egui::Context, ui: &mut bevy_egui::egui::Ui) {
+    fn show(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             crate::config::gui::settings::SETTINGS_LABEL.label(ui, "Z Offset");
             ui.add(DragValue::new(&mut self.z_offset).max_decimals(3));
@@ -13,7 +14,7 @@ impl TextComponent for crate::settings::printer::General {
 }
 
 impl TextComponent for crate::settings::printer::limits::Limits {
-    fn show(&mut self, ctx: &bevy_egui::egui::Context, ui: &mut bevy_egui::egui::Ui) {
+    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         CollapsingHeader::new("Maximum Feedrates (mm/s)")
             .default_open(true)
             .show(ui, |ui| {
@@ -93,7 +94,7 @@ impl TextComponent for crate::settings::printer::limits::Limits {
 }
 
 impl TextComponent for crate::settings::printer::extruder::ExtruderSettings {
-    fn show(&mut self, _ctx: &bevy_egui::egui::Context, ui: &mut bevy_egui::egui::Ui) {
+    fn show(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
         CollapsingHeader::new("Size")
             .default_open(true)
             .show(ui, |ui| {
@@ -187,13 +188,7 @@ impl TextComponent for crate::settings::printer::extruder::ExtruderSettings {
 }
 
 impl InnerTextComponent<String> for crate::settings::MovementSettings<f32> {
-    fn show(
-        &mut self,
-        _ctx: &bevy_egui::egui::Context,
-        ui: &mut bevy_egui::egui::Ui,
-        prefix: String,
-        suffix: String,
-    ) {
+    fn show(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui, prefix: String, suffix: String) {
         ui.horizontal(|ui| {
             crate::config::gui::settings::SETTINGS_LABEL.label(ui, format!("{} X:", prefix));
             ui.add(DragValue::new(&mut self.x).max_decimals(3));

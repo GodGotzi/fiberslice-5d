@@ -1,4 +1,4 @@
-use bevy_egui::egui::{Context, SidePanel};
+use three_d::egui::{Context, SidePanel};
 
 use crate::config;
 use crate::ui::data::UiData;

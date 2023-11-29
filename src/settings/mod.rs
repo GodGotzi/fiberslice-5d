@@ -2,7 +2,6 @@ pub mod filament;
 pub mod printer;
 pub mod structure;
 
-use bevy::prelude::{App, Resource};
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::Error;
@@ -18,10 +17,10 @@ pub struct MovementSettings<T> {
     pub e: T,
 }
 
-#[derive(Resource, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct SliceSettings {}
 
-#[derive(Resource, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct FilamentSettings {
     pub general: filament::General,
     pub temperature: filament::Temperature,
@@ -29,22 +28,11 @@ pub struct FilamentSettings {
     pub advanced: filament::advanced::AdvancedSettings,
 }
 
-#[derive(Resource, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct PrinterSettings {
     pub general: printer::General,
     pub machine_limits: printer::limits::Limits,
     pub extruder: printer::extruder::ExtruderSettings,
-}
-
-#[derive(Resource, Serialize, Deserialize)]
-pub struct SettingsPlugin;
-
-impl bevy::app::Plugin for SettingsPlugin {
-    fn build(&self, app: &mut App) {
-        app.insert_resource(PrinterSettings::default())
-            .insert_resource(FilamentSettings::default())
-            .insert_resource(SliceSettings::default());
-    }
 }
 
 impl Default for PrinterSettings {

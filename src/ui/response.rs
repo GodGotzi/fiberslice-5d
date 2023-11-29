@@ -1,5 +1,4 @@
-use bevy::prelude::Resource;
-use bevy_egui::egui::Response;
+use three_d::egui::Response;
 
 use crate::view::Orientation;
 use strum::EnumCount;
@@ -41,7 +40,6 @@ impl Responsive for ButtonResponse {
     }
 }
 
-#[derive(Resource)]
 pub struct Responses {
     pub orientation: [ButtonResponse; Orientation::COUNT],
 }

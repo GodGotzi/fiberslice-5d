@@ -1,5 +1,5 @@
-use bevy_egui::egui;
 use egui::Ui;
+use three_d::egui;
 
 use crate::config;
 use crate::ui::data::UiData;

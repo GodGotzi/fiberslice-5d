@@ -30,9 +30,10 @@ use winit::event_loop;
 
 use crate::ui::SuperComponent;
 
-pub fn main() {
+#[tokio::main]
+pub async fn main() {
     let event_loop = event_loop::EventLoop::new();
-    let window = build_window(&event_loop).unwrap();
+    let window = build_window(&event_loop).expect("Failed to build window");
 
     let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
 
@@ -45,52 +46,56 @@ pub fn main() {
     let cpu_model = create_toolpath(&context);
 
     let mut frame_input_generator = FrameInputGenerator::from_winit_window(&window);
-    event_loop.run(move |event, _, control_flow| match event {
-        winit::event::Event::MainEventsCleared => {
-            window.request_redraw();
-        }
-        winit::event::Event::RedrawRequested(_) => {
-            let mut frame_input = frame_input_generator.generate(&context);
+    window.set_visible(true);
 
-            environment.handle_camera_events(&mut frame_input.events);
-
-            frame_input
-                .screen()
-                .clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0))
-                .render(environment.camera(), &cpu_model, &environment.lights());
-
-            gui.update(
-                &mut frame_input.events,
-                frame_input.accumulated_time,
-                frame_input.viewport,
-                frame_input.device_pixel_ratio,
-                |gui_context| {
-                    screen.show(gui_context, &mut data);
-                },
-            );
-
-            println!("Elapsed: {}", 1000.0 / frame_input.elapsed_time);
-
-            context.swap_buffers().unwrap();
-            control_flow.set_poll();
-            window.request_redraw();
-        }
-        winit::event::Event::WindowEvent { ref event, .. } => {
-            frame_input_generator.handle_winit_window_event(event);
-            match event {
-                winit::event::WindowEvent::Resized(physical_size) => {
-                    context.resize(*physical_size);
-                }
-                winit::event::WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                    context.resize(**new_inner_size);
-                }
-                winit::event::WindowEvent::CloseRequested => {
-                    control_flow.set_exit();
-                }
-                _ => (),
+    tokio::task::spawn_blocking(async move {
+        event_loop.run(move |event, _, control_flow| match event {
+            winit::event::Event::MainEventsCleared => {
+                window.request_redraw();
             }
-        }
-        _ => {}
+            winit::event::Event::RedrawRequested(_) => {
+                let mut frame_input = frame_input_generator.generate(&context);
+
+                environment.handle_camera_events(&mut frame_input.events);
+
+                frame_input
+                    .screen()
+                    .clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0))
+                    .render(environment.camera(), &cpu_model, &environment.lights());
+
+                gui.update(
+                    &mut frame_input.events,
+                    frame_input.accumulated_time,
+                    frame_input.viewport,
+                    frame_input.device_pixel_ratio,
+                    |gui_context| {
+                        screen.show(gui_context, &mut data);
+                    },
+                );
+
+                println!("Elapsed: {}", 1000.0 / frame_input.elapsed_time);
+
+                context.swap_buffers().unwrap();
+                control_flow.set_poll();
+                window.request_redraw();
+            }
+            winit::event::Event::WindowEvent { ref event, .. } => {
+                frame_input_generator.handle_winit_window_event(event);
+                match event {
+                    winit::event::WindowEvent::Resized(physical_size) => {
+                        context.resize(*physical_size);
+                    }
+                    winit::event::WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                        context.resize(**new_inner_size);
+                    }
+                    winit::event::WindowEvent::CloseRequested => {
+                        control_flow.set_exit();
+                    }
+                    _ => (),
+                }
+            }
+            _ => {}
+        });
     });
 }
 

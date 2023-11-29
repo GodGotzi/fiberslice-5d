@@ -1,10 +1,11 @@
-use bevy_egui::egui::{CollapsingHeader, ComboBox, DragValue};
+use egui::{CollapsingHeader, ComboBox, DragValue};
 use strum::IntoEnumIterator;
+use three_d::egui;
 
 use crate::{settings::filament::FilamentType, ui::TextComponent};
 
 impl TextComponent for crate::settings::filament::General {
-    fn show(&mut self, _ctx: &bevy_egui::egui::Context, ui: &mut bevy_egui::egui::Ui) {
+    fn show(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             crate::config::gui::settings::SETTINGS_LABEL.label(ui, "Extrusion Multiplier:");
             ui.add(DragValue::new(&mut self.extrusion_multiplier).max_decimals(3));
@@ -48,7 +49,7 @@ impl TextComponent for crate::settings::filament::General {
 }
 
 impl TextComponent for crate::settings::filament::Temperature {
-    fn show(&mut self, _ctx: &bevy_egui::egui::Context, ui: &mut bevy_egui::egui::Ui) {
+    fn show(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             crate::config::gui::settings::SETTINGS_LABEL.label(ui, "Nozzle Temperature:");
             ui.add(DragValue::new(&mut self.nozzle).max_decimals(3));
@@ -68,7 +69,7 @@ impl TextComponent for crate::settings::filament::Temperature {
 }
 
 impl TextComponent for crate::settings::filament::cooling::CoolingSettings {
-    fn show(&mut self, _ctx: &bevy_egui::egui::Context, ui: &mut bevy_egui::egui::Ui) {
+    fn show(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
         CollapsingHeader::new("Enable")
             .default_open(true)
             .show(ui, |ui| {
@@ -111,7 +112,7 @@ impl TextComponent for crate::settings::filament::cooling::CoolingSettings {
 }
 
 impl TextComponent for crate::settings::filament::advanced::AdvancedSettings {
-    fn show(&mut self, _ctx: &bevy_egui::egui::Context, ui: &mut bevy_egui::egui::Ui) {
+    fn show(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
         CollapsingHeader::new("Print Speed Override")
             .default_open(true)
             .show(ui, |ui| {

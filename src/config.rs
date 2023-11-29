@@ -9,7 +9,7 @@ pub mod default {
 }
 
 pub mod gui {
-    use bevy_egui::egui;
+    use three_d::egui;
 
     pub const fn shaded_color(darkmode: bool) -> egui::Color32 {
         match darkmode {

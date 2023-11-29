@@ -5,8 +5,8 @@
     Please refer to the terms and conditions stated therein.
 */
 
-use bevy_egui::egui::{self, *};
 use egui_extras::{Size, StripBuilder};
+use three_d::egui::{self, *};
 
 use crate::{
     ui::{boundary::Boundary, InnerComponent, UiData},
@@ -50,19 +50,18 @@ pub fn create_addon_strip_builder(
 }
 
 pub mod orientation {
-    use bevy::pbr::CascadeShadowConfig;
-    use bevy_egui::egui::{self, *};
     use egui_extras::Size;
     use egui_grid::GridBuilder;
+    use three_d::egui::{self, ImageButton};
 
     use crate::{
         ui::{icon, response::Responsive, UiData},
         view::Orientation,
     };
 
-    pub fn show(ui: &mut Ui, data: &mut UiData) {
+    pub fn show(ui: &mut egui::Ui, data: &mut UiData) {
         let layout = egui::Layout {
-            main_dir: Direction::RightToLeft,
+            main_dir: egui::Direction::RightToLeft,
             main_wrap: true,
             main_align: egui::Align::Center,
             main_justify: false,
@@ -109,34 +108,37 @@ pub mod orientation {
             });
     }
 
-    fn add_button_icon(ui: &mut Ui, data: &mut UiData, orientation: Orientation) {
+    fn add_button_icon(ui: &mut egui::Ui, data: &mut UiData, orientation: Orientation) {
         let icon = icon::ICONTABLE.get_orientation_icon(orientation);
 
         let image_button =
             ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
 
         ui.allocate_ui([35., 35.].into(), move |ui| {
-            ui.with_layout(Layout::centered_and_justified(Direction::TopDown), |ui| {
-                let prev_response = data.get_orientation_response(&orientation);
+            ui.with_layout(
+                egui::Layout::centered_and_justified(egui::Direction::TopDown),
+                |ui| {
+                    let prev_response = data.get_orientation_response(&orientation);
 
-                if prev_response.hovered() {
-                    ui.painter().rect_filled(
-                        ui.available_rect_before_wrap(),
-                        0.0,
-                        Color32::from_rgba_premultiplied(75, 255, 0, 100),
-                    );
-                }
+                    if prev_response.hovered() {
+                        ui.painter().rect_filled(
+                            ui.available_rect_before_wrap(),
+                            0.0,
+                            egui::Color32::from_rgba_premultiplied(75, 255, 0, 100),
+                        );
+                    }
 
-                let response = ui.add_sized([30., 30.], image_button);
+                    let response = ui.add_sized([30., 30.], image_button);
 
-                data.update_orientation_response(&orientation, response);
+                    data.update_orientation_response(&orientation, response);
 
-                /*
-                if response.clicked() {
-                    data.orienation_writer().borrow_mut().send(orientation);
-                }
-                */
-            });
+                    /*
+                    if response.clicked() {
+                        data.orienation_writer().borrow_mut().send(orientation);
+                    }
+                    */
+                },
+            );
         });
     }
 }

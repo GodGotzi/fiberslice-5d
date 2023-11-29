@@ -13,6 +13,7 @@ mod response;
 mod visual;
 
 pub use components::size_fixed;
+use three_d::egui;
 
 use self::data::UiData;
 
@@ -43,7 +44,8 @@ pub trait InnerTextComponent<P> {
 }
 
 pub mod boundary {
-    use bevy_egui::egui::{self, Response};
+    use egui::Response;
+    use three_d::egui;
 
     #[derive(Default, Clone, Copy)]
     pub struct Boundary {
@@ -58,24 +60,6 @@ pub mod boundary {
                 size: egui::Vec2::ZERO,
             }
         }
-
-        #[allow(dead_code)]
-        pub fn offset_x(&self) -> f32 {
-            self.location.x
-        }
-
-        #[allow(dead_code)]
-        pub fn offset_y(&self) -> f32 {
-            self.location.y
-        }
-
-        pub fn width(&self) -> f32 {
-            self.size.x
-        }
-
-        pub fn height(&self) -> f32 {
-            self.size.y
-        }
     }
 
     impl From<Response> for Boundary {
@@ -89,13 +73,9 @@ pub mod boundary {
 }
 
 pub mod screen {
-    use bevy::prelude::Resource;
-    use bevy_egui::egui;
-
     use super::*;
     use components::{addons, menubar, modebar, settingsbar, taskbar, toolbar};
 
-    #[derive(Resource)]
     pub struct Screen {
         settings: settingsbar::Settingsbar,
         addons: addons::Addons,
@@ -119,7 +99,7 @@ pub mod screen {
     }
 
     impl SuperComponent for Screen {
-        fn show<'a>(&'a mut self, ctx: &egui::Context, ui_ctx: &mut UiData) {
+        fn show(&mut self, ctx: &egui::Context, ui_ctx: &mut UiData) {
             let frame = egui::containers::Frame {
                 fill: egui::Color32::TRANSPARENT,
                 ..Default::default()

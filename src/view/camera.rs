@@ -4,9 +4,6 @@
     Note: The complete copyright description for this software thesis can be found at the beginning of each file.
     Please refer to the terms and conditions stated therein.
 */
-mod angles;
-mod transform;
-
 use three_d::{vec3, Camera, Deg, Vec3, Viewport};
 
 use super::Orientation;

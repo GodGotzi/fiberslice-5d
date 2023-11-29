@@ -1,5 +1,5 @@
-use bevy::prelude::Color;
 use strum_macros::EnumString;
+use three_d::Srgba;
 
 use crate::api::SimpleColor;
 
@@ -21,7 +21,7 @@ pub enum PrintType {
 }
 
 impl PrintType {
-    pub fn get_color(&self) -> Color {
+    pub fn get_color(&self) -> Srgba {
         //set hard coded colors for now unique to each print type
         match &self {
             Self::InternalInfill => SimpleColor::from_u8(0, 0, 255, 255),

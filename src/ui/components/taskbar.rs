@@ -1,4 +1,4 @@
-use bevy_egui::egui;
+use three_d::egui;
 
 use crate::config;
 use crate::ui::{Component, Theme, UiData};
