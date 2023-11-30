@@ -6,64 +6,71 @@
 */
 
 pub mod components;
-pub mod data;
+pub mod state;
 
 mod icon;
 mod response;
 mod visual;
 
-use std::{
-    cell::RefCell,
-    sync::{Arc, Mutex, PoisonError},
-};
+use std::rc::Rc;
 
 pub use components::size_fixed;
 use three_d::{egui, Context, FrameInput, GUI};
 
-use self::data::UiData;
+use crate::prelude::{Adapter, Error, FrameHandle, RenderHandle};
+
+use self::state::UiState;
 
 pub struct UiAdapter {
     gui: GUI,
-    data: UiData,
+    screen: screen::Screen,
+    state: Rc<UiState>,
 }
 
-impl UiAdapter {
-    pub fn new(
-        shared_gui: SharedGUI,
-        frame_watcher: tokio::sync::watch::Receiver<FrameInput>,
-    ) -> Self {
+impl Adapter<UiResult> for UiAdapter {
+    fn from_context(context: &Context) -> Self {
         Self {
-            handle: tokio::spawn(Self::run(shared_gui, frame_watcher)),
+            gui: GUI::new(context),
+            screen: screen::Screen::new(),
+            state: Rc::new(UiState::new()),
         }
     }
 }
 
-impl UiAdapter {
-    pub async fn run(shared_gui: SharedGUI) {}
-}
+impl FrameHandle<UiResult> for UiAdapter {
+    fn handle_frame(&mut self, frame_input: &FrameInput) -> Result<UiResult, Error> {
+        let mut result = UiResult::empty();
 
-#[derive(Clone)]
-pub struct SharedGUI {
-    gui: RefCell<GUI>,
-}
+        self.gui.update(
+            &mut frame_input.events.clone(),
+            frame_input.accumulated_time,
+            frame_input.viewport,
+            frame_input.device_pixel_ratio,
+            |ctx| {
+                result.pointer_use = Some(ctx.is_using_pointer());
+                self.screen.show(ctx, self.state.clone());
+            },
+        );
 
-impl SharedGUI {
-    pub fn from_ctx(context: &Context) -> Self {
-        let gui = Arc::new(Mutex::new(GUI::new(context)));
-
-        Self { gui }
-    }
-
-    pub fn lock(
-        &self,
-    ) -> Result<std::sync::MutexGuard<GUI>, PoisonError<std::sync::MutexGuard<GUI>>> {
-        self.gui.lock()
+        Ok(result)
     }
 }
 
-unsafe impl Send for SharedGUI {}
+impl RenderHandle for UiAdapter {
+    fn handle(&self) {
+        self.gui.render();
+    }
+}
 
-unsafe impl Sync for SharedGUI {}
+pub struct UiResult {
+    pub pointer_use: Option<bool>,
+}
+
+impl UiResult {
+    fn empty() -> Self {
+        Self { pointer_use: None }
+    }
+}
 
 #[derive(Clone)]
 pub enum Theme {
@@ -72,15 +79,15 @@ pub enum Theme {
 }
 
 pub trait SuperComponent {
-    fn show<'a>(&'a mut self, ctx: &egui::Context, ui_ctx: &mut UiData);
+    fn show<'a>(&'a mut self, ctx: &egui::Context, state: Rc<UiState>);
 }
 
 pub trait Component {
-    fn show(&mut self, ctx: &egui::Context, ui_ctx: &mut UiData);
+    fn show(&mut self, ctx: &egui::Context, state: Rc<UiState>);
 }
 
 pub trait InnerComponent {
-    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, ui_ctx: &mut UiData);
+    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, state: Rc<UiState>);
 }
 
 pub trait TextComponent {
@@ -163,7 +170,7 @@ pub mod screen {
     }
 
     impl SuperComponent for Screen {
-        fn show(&mut self, ctx: &egui::Context, ui_ctx: &mut UiData) {
+        fn show(&mut self, ctx: &egui::Context, ui_ctx: Rc<UiState>) {
             let frame = egui::containers::Frame {
                 fill: egui::Color32::TRANSPARENT,
                 ..Default::default()
@@ -171,20 +178,20 @@ pub mod screen {
 
             self.menubar.show(ctx, ui_ctx);
 
-            if ui_ctx.get_components().taskbar.enabled {
+            if ui_ctx.components.taskbar.enabled {
                 self.taskbar.show(ctx, ui_ctx);
             }
 
             //self.addons.show(ctx, None, app);
-            if ui_ctx.get_components().settingsbar.enabled {
+            if ui_ctx.components.settingsbar.enabled {
                 self.settings.show(ctx, ui_ctx);
             }
 
-            if ui_ctx.get_components().toolbar.enabled {
+            if ui_ctx.components.toolbar.enabled {
                 self.toolbar.show(ctx, ui_ctx);
             }
 
-            if ui_ctx.get_components().modebar.enabled {
+            if ui_ctx.components.modebar.enabled {
                 self.modebar.show(ctx, ui_ctx);
             }
 
@@ -195,7 +202,7 @@ pub mod screen {
                     .show(ui);
                 */
 
-                if ui_ctx.get_components().addons.enabled {
+                if ui_ctx.components.addons.enabled {
                     self.addons.show(ctx, ui, ui_ctx);
                 }
             });

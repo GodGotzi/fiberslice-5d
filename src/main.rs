@@ -1,7 +1,6 @@
 use model::gcode::GCode;
 use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
-use prelude::SharedState;
-use render::RenderThread;
+use prelude::*;
 /*
     Copyright (c) 2023 Elias Gottsbacher, Jan Traussnigg, Nico Huetter (HTBLA Kaindorf)
     All rights reserved.
@@ -13,6 +12,7 @@ use three_d::*;
 mod actions;
 mod api;
 mod config;
+mod environment;
 mod error;
 mod event;
 mod model;
@@ -26,30 +26,24 @@ mod ui;
 mod view;
 mod window;
 
-use ui::screen::Screen;
 use window::build_window;
 use winit::event_loop;
 
-use crate::{api::Contains, ui::SuperComponent};
+use crate::prelude::{FrameHandle, RenderHandle};
 
 pub fn main() {
     let event_loop = event_loop::EventLoop::new();
     let window = build_window(&event_loop).unwrap();
-
     let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
 
-    let shared_state = SharedState::new();
+    let shared_state = SharedState::default();
 
-    let mut data = ui::data::UiData::new(&context);
-    let mut screen = Screen::new();
-
-    let mut environment = view::environment::Environment::new(&context);
-    let mut gui = three_d::GUI::new(&context);
+    let ui_adapter = ui::UiAdapter::from_context(&context);
+    let environment_adapter = environment::EnvironmentAdapter::from_context(&context);
+    let render_adapter = render::RenderAdapter::from_context(&context);
 
     let cpu_model = create_toolpath(&context);
     window.set_visible(true);
-
-    let render_thread = RenderThread::new();
 
     let mut frame_input_generator = FrameInputGenerator::from_winit_window(&window);
     event_loop.run(move |event, _, control_flow| match event {
@@ -59,21 +53,11 @@ pub fn main() {
         winit::event::Event::RedrawRequested(_) => {
             let frame_input = frame_input_generator.generate(&context);
 
-            let mut ui_use = None;
-            let mut ui_events = frame_input.events.clone();
+            let ui_result = ui_adapter
+                .handle_frame(&frame_input)
+                .expect("Failed to handle frame");
 
-            gui.update(
-                &mut ui_events,
-                frame_input.accumulated_time,
-                frame_input.viewport,
-                frame_input.device_pixel_ratio,
-                |gui_context| {
-                    ui_use = Some(gui_context.is_using_pointer());
-                    screen.show(gui_context, &mut data);
-                },
-            );
-
-            if !ui_use.unwrap() {
+            if !ui_result.pointer_use.unwrap_or(false) {
                 let mut events = frame_input
                     .events
                     .clone()
@@ -101,10 +85,8 @@ pub fn main() {
 
             screen.write(|| {
                 cpu_model.render(environment.camera(), &environment.lights());
-                gui.render();
+                ui_adapter.handle();
             });
-
-            println!("Elapsed: {}", 1000.0 / frame_input.elapsed_time);
 
             context.swap_buffers().unwrap();
             control_flow.set_poll();

@@ -1,8 +1,10 @@
+use std::rc::Rc;
+
 use egui::Ui;
 use three_d::egui;
 
 use crate::config;
-use crate::ui::data::UiData;
+use crate::ui::state::UiState;
 use crate::ui::Component;
 
 pub struct Menubar;
@@ -14,7 +16,7 @@ impl Menubar {
 }
 
 impl Component for Menubar {
-    fn show(&mut self, ctx: &egui::Context, data: &mut UiData) {
+    fn show(&mut self, ctx: &egui::Context, mut data: Rc<UiState>) {
         let boundary = egui::TopBottomPanel::top("menubar")
             .default_height(config::gui::MENUBAR_H)
             .show(ctx, |ui: &mut Ui| {
@@ -30,11 +32,11 @@ impl Component for Menubar {
             .response
             .into();
 
-        data.get_components_mut().menubar.set_boundary(boundary);
+        data.components.menubar.set_boundary(boundary);
     }
 }
 
-fn file_button(ui: &mut Ui, data: &mut UiData) {
+fn file_button(ui: &mut Ui, data: Rc<UiState>) {
     ui.menu_button("File", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
@@ -62,39 +64,36 @@ fn file_button(ui: &mut Ui, data: &mut UiData) {
     });
 }
 
-fn edit_button(ui: &mut Ui, _data: &mut UiData) {
+fn edit_button(ui: &mut Ui, _data: Rc<UiState>) {
     ui.menu_button("Edit", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
     });
 }
 
-fn window_button(ui: &mut Ui, data: &mut UiData) {
+fn window_button(ui: &mut Ui, mut data: Rc<UiState>) {
     ui.menu_button("Window", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
 
-        ui.checkbox(&mut data.get_components_mut().addons.enabled, "Addons");
+        ui.checkbox(&mut data.components.addons.enabled, "Addons");
         ui.separator();
 
-        ui.checkbox(&mut data.get_components_mut().modebar.enabled, "ModeBar");
-        ui.checkbox(&mut data.get_components_mut().toolbar.enabled, "ToolBar");
-        ui.checkbox(&mut data.get_components_mut().taskbar.enabled, "TaskBar");
-        ui.checkbox(
-            &mut data.get_components_mut().settingsbar.enabled,
-            "Settings",
-        );
+        ui.checkbox(&mut data.components.modebar.enabled, "ModeBar");
+        ui.checkbox(&mut data.components.toolbar.enabled, "ToolBar");
+        ui.checkbox(&mut data.components.taskbar.enabled, "TaskBar");
+        ui.checkbox(&mut data.components.settingsbar.enabled, "Settings");
     });
 }
 
-fn view_button(ui: &mut Ui, _data: &mut UiData) {
+fn view_button(ui: &mut Ui, _data: Rc<UiState>) {
     ui.menu_button("View", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
     });
 }
 
-fn help_button(ui: &mut Ui, _data: &mut UiData) {
+fn help_button(ui: &mut Ui, _data: Rc<UiState>) {
     ui.menu_button("Help", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);

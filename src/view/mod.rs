@@ -6,9 +6,11 @@
 */
 
 use strum_macros::{EnumCount, EnumIter};
+use three_d::{LogicalPoint, Viewport};
+
+use crate::api::Contains;
 
 pub mod camera;
-pub mod environment;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, EnumCount, EnumIter)] //maybe performance bit worse
@@ -26,4 +28,13 @@ pub enum Mode {
     Preview,
     Prepare,
     ForceAnalytics,
+}
+
+impl Contains<LogicalPoint> for Viewport {
+    fn contains(&self, point: &LogicalPoint) -> bool {
+        point.x > self.x as f32
+            && point.x < self.x as f32 + self.width as f32
+            && point.y > self.y as f32
+            && point.y < self.y as f32 + self.height as f32
+    }
 }

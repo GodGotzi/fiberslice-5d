@@ -1,15 +1,46 @@
 use three_d::*;
 
-use crate::{api::Contains, config, ui::data::UiData};
+use crate::{
+    config,
+    prelude::*,
+    ui::state::UiState,
+    view::{camera::HandleOrientation, Orientation},
+};
 
-use super::camera::HandleOrientation;
+pub struct EnvironmentAdapter {
+    shared_environment: SharedMut<Environment>,
+}
 
-impl Contains<LogicalPoint> for Viewport {
-    fn contains(&self, point: &LogicalPoint) -> bool {
-        point.x > self.x as f32
-            && point.x < self.x as f32 + self.width as f32
-            && point.y > self.y as f32
-            && point.y < self.y as f32 + self.height as f32
+impl Adapter<()> for EnvironmentAdapter {
+    fn from_context(context: &Context) -> Self {
+        Self {
+            shared_environment: SharedMut::from_inner(Environment::new(context)),
+        }
+    }
+}
+
+impl FrameHandle<UiResult> for EnvironmentAdapter {
+    fn handle_frame(&mut self, frame_input: &FrameInput) -> Result<UiResult, Error> {
+        let mut result = UiResult::empty();
+
+        self.gui.update(
+            &mut frame_input.events.clone(),
+            frame_input.accumulated_time,
+            frame_input.viewport,
+            frame_input.device_pixel_ratio,
+            |ctx| {
+                result.pointer_use = Some(ctx.is_using_pointer());
+                self.screen.show(ctx, self.state.clone());
+            },
+        );
+
+        Ok(result)
+    }
+}
+
+impl RenderHandle for UiAdapter {
+    fn handle(&self) {
+        self.gui.render();
     }
 }
 
@@ -35,7 +66,7 @@ impl Environment {
             .build()
             .expect("Failed to create camera");
 
-        camera.handle_orientation(super::Orientation::Default);
+        camera.handle_orientation(Orientation::Default);
 
         //let light0 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
         //let light1 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
@@ -69,26 +100,26 @@ impl Environment {
         self.camera_control.handle_events(&mut self.camera, events)
     }
 
-    pub fn frame(&mut self, input: &FrameInput, data: &UiData) {
+    pub fn frame(&mut self, input: &FrameInput, data: &UiState) {
         //update viewport
         {
             if input.viewport.height != 0 && input.viewport.width != 0 {
                 let height = input.viewport.height
-                    - ((data.get_components().taskbar.boundary().get_height()
-                        + data.get_components().modebar.boundary().get_height()
-                        + data.get_components().menubar.boundary().get_height())
+                    - ((data.components.taskbar.boundary().get_height()
+                        + data.components.modebar.boundary().get_height()
+                        + data.components.menubar.boundary().get_height())
                         * input.device_pixel_ratio) as u32;
                 //let extra = (height as f32 * 0.3) as u32;
 
                 let viewport = Viewport {
-                    x: (data.get_components().toolbar.boundary().get_width()
-                        * input.device_pixel_ratio) as i32,
-                    y: (((data.get_components().taskbar.boundary().get_height()
-                        + data.get_components().modebar.boundary().get_height())
+                    x: (data.components.toolbar.boundary().get_width() * input.device_pixel_ratio)
+                        as i32,
+                    y: (((data.components.taskbar.boundary().get_height()
+                        + data.components.modebar.boundary().get_height())
                         * input.device_pixel_ratio) as i32),
                     width: input.viewport.width
-                        - ((data.get_components().toolbar.boundary().get_width()
-                            + data.get_components().settingsbar.boundary().get_width())
+                        - ((data.components.toolbar.boundary().get_width()
+                            + data.components.settingsbar.boundary().get_width())
                             * input.device_pixel_ratio) as u32,
                     height,
                 };

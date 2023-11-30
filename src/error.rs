@@ -5,6 +5,8 @@ pub enum Error {
     Generic(String),
     #[error("FieldMissing {0}")]
     FieldMissing(String),
+    #[error("FrameError {0}")]
+    FrameError(String),
     #[error("InitialBuild {0}")]
     InitialBuild(String),
     #[error("GCode Parse Error {0}")]

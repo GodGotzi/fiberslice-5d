@@ -1,9 +1,11 @@
+use std::rc::Rc;
+
 use egui_extras::Size;
 use egui_grid::GridBuilder;
 use three_d::egui;
 
 use crate::config;
-use crate::ui::{Component, UiData};
+use crate::ui::{Component, UiState};
 use crate::view::Mode;
 
 pub struct Modebar;
@@ -15,7 +17,7 @@ impl Modebar {
 }
 
 impl Component for Modebar {
-    fn show(&mut self, ctx: &egui::Context, data: &mut UiData) {
+    fn show(&mut self, ctx: &egui::Context, mut data: Rc<UiState>) {
         let boundary = egui::TopBottomPanel::bottom("modebar")
             .default_height(config::gui::MODEBAR_H)
             .show(ctx, |ui: &mut egui::Ui| {
@@ -63,6 +65,6 @@ impl Component for Modebar {
             .response
             .into();
 
-        data.get_components_mut().menubar.set_boundary(boundary);
+        data.components.menubar.set_boundary(boundary);
     }
 }

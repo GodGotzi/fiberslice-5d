@@ -1,7 +1,9 @@
+use std::rc::Rc;
+
 use three_d::egui::{Context, SidePanel};
 
 use crate::config;
-use crate::ui::data::UiData;
+use crate::ui::state::UiState;
 use crate::ui::Component;
 
 pub struct Toolbar;
@@ -13,7 +15,7 @@ impl Toolbar {
 }
 
 impl Component for Toolbar {
-    fn show(&mut self, ctx: &Context, data: &mut UiData) {
+    fn show(&mut self, ctx: &Context, mut data: Rc<UiState>) {
         let boundary = SidePanel::left("toolbar")
             .resizable(false)
             .default_width(config::gui::TOOLBAR_W)
@@ -21,6 +23,6 @@ impl Component for Toolbar {
             .response
             .into();
 
-        data.get_components_mut().toolbar.set_boundary(boundary);
+        data.components.toolbar.set_boundary(boundary);
     }
 }

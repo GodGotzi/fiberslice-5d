@@ -3,7 +3,7 @@ use three_d::egui::Response;
 use crate::view::Orientation;
 use strum::EnumCount;
 
-use super::data::UiData;
+use super::state::UiState;
 
 pub trait Responsive {
     fn empty() -> Self;
@@ -59,7 +59,7 @@ impl Responses {
     }
 }
 
-impl UiData {
+impl UiState {
     pub fn get_orientation_response(&self, orientation: &Orientation) -> ButtonResponse {
         self.responses.orientation[*orientation as usize]
     }
