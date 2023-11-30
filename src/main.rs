@@ -1,5 +1,7 @@
 use model::gcode::GCode;
 use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
+use prelude::SharedState;
+use render::RenderThread;
 /*
     Copyright (c) 2023 Elias Gottsbacher, Jan Traussnigg, Nico Huetter (HTBLA Kaindorf)
     All rights reserved.
@@ -15,6 +17,7 @@ mod error;
 mod event;
 mod model;
 mod prelude;
+mod render;
 mod settings;
 mod shortcut;
 mod slicer;
@@ -35,7 +38,9 @@ pub fn main() {
 
     let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
 
-    let mut data = ui::data::UiData::default();
+    let shared_state = SharedState::new();
+
+    let mut data = ui::data::UiData::new(&context);
     let mut screen = Screen::new();
 
     let mut environment = view::environment::Environment::new(&context);
@@ -43,6 +48,8 @@ pub fn main() {
 
     let cpu_model = create_toolpath(&context);
     window.set_visible(true);
+
+    let render_thread = RenderThread::new();
 
     let mut frame_input_generator = FrameInputGenerator::from_winit_window(&window);
     event_loop.run(move |event, _, control_flow| match event {

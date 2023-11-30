@@ -12,10 +12,58 @@ mod icon;
 mod response;
 mod visual;
 
+use std::{
+    cell::RefCell,
+    sync::{Arc, Mutex, PoisonError},
+};
+
 pub use components::size_fixed;
-use three_d::egui;
+use three_d::{egui, Context, FrameInput, GUI};
 
 use self::data::UiData;
+
+pub struct UiAdapter {
+    gui: GUI,
+    data: UiData,
+}
+
+impl UiAdapter {
+    pub fn new(
+        shared_gui: SharedGUI,
+        frame_watcher: tokio::sync::watch::Receiver<FrameInput>,
+    ) -> Self {
+        Self {
+            handle: tokio::spawn(Self::run(shared_gui, frame_watcher)),
+        }
+    }
+}
+
+impl UiAdapter {
+    pub async fn run(shared_gui: SharedGUI) {}
+}
+
+#[derive(Clone)]
+pub struct SharedGUI {
+    gui: RefCell<GUI>,
+}
+
+impl SharedGUI {
+    pub fn from_ctx(context: &Context) -> Self {
+        let gui = Arc::new(Mutex::new(GUI::new(context)));
+
+        Self { gui }
+    }
+
+    pub fn lock(
+        &self,
+    ) -> Result<std::sync::MutexGuard<GUI>, PoisonError<std::sync::MutexGuard<GUI>>> {
+        self.gui.lock()
+    }
+}
+
+unsafe impl Send for SharedGUI {}
+
+unsafe impl Sync for SharedGUI {}
 
 #[derive(Clone)]
 pub enum Theme {

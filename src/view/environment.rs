@@ -78,20 +78,19 @@ impl Environment {
                         + data.get_components().modebar.boundary().get_height()
                         + data.get_components().menubar.boundary().get_height())
                         * input.device_pixel_ratio) as u32;
-                let extra = (height as f32 * 0.3) as u32;
+                //let extra = (height as f32 * 0.3) as u32;
 
                 let viewport = Viewport {
                     x: (data.get_components().toolbar.boundary().get_width()
                         * input.device_pixel_ratio) as i32,
                     y: (((data.get_components().taskbar.boundary().get_height()
                         + data.get_components().modebar.boundary().get_height())
-                        * input.device_pixel_ratio) as i32)
-                        - extra as i32,
+                        * input.device_pixel_ratio) as i32),
                     width: input.viewport.width
                         - ((data.get_components().toolbar.boundary().get_width()
                             + data.get_components().settingsbar.boundary().get_width())
                             * input.device_pixel_ratio) as u32,
-                    height: height + extra,
+                    height,
                 };
 
                 self.camera.set_viewport(viewport);

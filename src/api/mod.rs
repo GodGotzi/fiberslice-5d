@@ -11,3 +11,7 @@ pub trait Reverse {
 pub trait Contains<P> {
     fn contains(&self, point: &P) -> bool;
 }
+
+pub trait FrameHandle {
+    fn handle_frame(&mut self, frame_input: &three_d::FrameInput);
+}

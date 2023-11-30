@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use crate::{prelude::ApplicationState, view::Mode};
 
 use super::{boundary::Boundary, response::Responses, Theme};
@@ -8,17 +10,15 @@ pub struct UiData {
 
     pub responses: Responses,
     pub components: ComponentHolder,
-    pub context: ApplicationState,
 }
 
-impl Default for UiData {
-    fn default() -> Self {
+impl UiData {
+    pub fn new(application_state: Arc<Mutex<ApplicationState>>) -> Self {
         Self {
             theme: Theme::Light,
             mode: Mode::Preview,
             responses: Responses::new(),
             components: ComponentHolder::default(),
-            context: ApplicationState::default(),
         }
     }
 }
