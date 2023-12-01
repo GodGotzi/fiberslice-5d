@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use three_d::*;
 
@@ -6,7 +6,7 @@ use crate::{
     api::Contains,
     config,
     prelude::*,
-    ui::{state::UiState, UiResult},
+    ui::{UiResult, UiState},
     view::{HandleOrientation, Orientation},
 };
 
@@ -26,11 +26,11 @@ impl EnvironmentAdapter {
     }
 }
 
-impl FrameHandle<(), (Rc<UiState>, UiResult)> for EnvironmentAdapter {
+impl FrameHandle<(), (Rc<RefCell<UiState>>, UiResult)> for EnvironmentAdapter {
     fn handle_frame(
         &mut self,
         frame_input: &FrameInput,
-        (state, result): (Rc<UiState>, UiResult),
+        (state, result): (Rc<RefCell<UiState>>, UiResult),
     ) -> Result<(), Error> {
         let mut environment = self.shared_environment.lock_expect();
 
@@ -55,7 +55,7 @@ impl FrameHandle<(), (Rc<UiState>, UiResult)> for EnvironmentAdapter {
             environment.handle_camera_events(&mut events);
         }
 
-        let components = &state.components;
+        let components = &state.borrow().components;
 
         if frame_input.viewport.height != 0 && frame_input.viewport.width != 0 {
             let height = frame_input.viewport.height
@@ -85,7 +85,7 @@ impl FrameHandle<(), (Rc<UiState>, UiResult)> for EnvironmentAdapter {
     }
 }
 
-impl Adapter<(), (Rc<UiState>, UiResult)> for EnvironmentAdapter {}
+impl Adapter<(), (Rc<RefCell<UiState>>, UiResult)> for EnvironmentAdapter {}
 
 pub struct Environment {
     camera: Camera,

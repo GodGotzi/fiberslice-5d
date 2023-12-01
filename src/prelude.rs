@@ -58,9 +58,9 @@ pub trait Adapter<T, C>: FrameHandle<T, C> {}
 
 #[derive(Default)]
 pub struct SharedSettings {
-    slice_settings: SharedMut<SliceSettings>,
-    printer_settings: SharedMut<PrinterSettings>,
-    filament_settings: SharedMut<FilamentSettings>,
+    pub slice_settings: SharedMut<SliceSettings>,
+    pub printer_settings: SharedMut<PrinterSettings>,
+    pub filament_settings: SharedMut<FilamentSettings>,
 }
 
 pub struct SharedState {
@@ -70,7 +70,7 @@ pub struct SharedState {
 }
 
 impl FrameHandle<(), ()> for SharedState {
-    fn handle_frame(&mut self, frame_input: &FrameInput, context: ()) -> Result<(), Error> {
+    fn handle_frame(&mut self, _frame_input: &FrameInput, _context: ()) -> Result<(), Error> {
         Ok(())
     }
 }

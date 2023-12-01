@@ -16,13 +16,14 @@ pub struct WindowHandler {
 
 impl WindowHandler {
     pub fn from_event_loop(event_loop: &EventLoop<()>) -> Self {
-        let window = build_window(&event_loop).unwrap();
+        let window = build_window(event_loop).unwrap();
         let context = WindowedContext::from_winit_window(&window, Default::default()).unwrap();
+        let frame_input_generator = FrameInputGenerator::from_winit_window(&window);
 
         Self {
             window,
             context,
-            frame_input_generator: FrameInputGenerator::from_winit_window(&window),
+            frame_input_generator,
         }
     }
 

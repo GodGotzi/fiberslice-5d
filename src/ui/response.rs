@@ -3,7 +3,7 @@ use three_d::egui::Response;
 use crate::view::Orientation;
 use strum::EnumCount;
 
-use super::state::UiState;
+use super::UiState;
 
 pub trait Responsive {
     fn empty() -> Self;
@@ -71,3 +71,18 @@ impl UiState {
         button_response.hovered = response.hovered();
     }
 }
+
+/*
+Notes ETE
+
+
+
+
+
+
+
+
+
+
+
+*/

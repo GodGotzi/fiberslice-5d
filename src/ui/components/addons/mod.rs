@@ -5,13 +5,11 @@
     Please refer to the terms and conditions stated therein.
 */
 
-use std::rc::Rc;
-
 use egui_extras::{Size, StripBuilder};
 use three_d::egui::{self, *};
 
 use crate::{
-    ui::{boundary::Boundary, InnerComponent, UiState},
+    ui::{boundary::Boundary, InnerComponent, UiData},
     view::Mode,
 };
 
@@ -19,11 +17,11 @@ mod force_analytics;
 mod prepare;
 mod preview;
 
-type AddonStripBuilderClosure = dyn Fn(StripBuilder, Rc<UiState>, Color32);
+type AddonStripBuilderClosure = dyn Fn(StripBuilder, &mut UiData, Color32);
 
 pub fn create_addon_strip_builder(
     ui: &mut Ui,
-    data: Rc<UiState>,
+    data: &mut UiData,
     boundary: Boundary,
     shaded_color: Color32,
     build: Box<AddonStripBuilderClosure>,
@@ -52,18 +50,16 @@ pub fn create_addon_strip_builder(
 }
 
 pub mod orientation {
-    use std::rc::Rc;
-
     use egui_extras::Size;
     use egui_grid::GridBuilder;
     use three_d::egui::{self, ImageButton};
 
     use crate::{
-        ui::{icon, response::Responsive, UiState},
+        ui::{icon, response::Responsive, UiData},
         view::Orientation,
     };
 
-    pub fn show(ui: &mut egui::Ui, data: Rc<UiState>) {
+    pub fn show(ui: &mut egui::Ui, data: &mut UiData) {
         let layout = egui::Layout {
             main_dir: egui::Direction::RightToLeft,
             main_wrap: true,
@@ -112,7 +108,7 @@ pub mod orientation {
             });
     }
 
-    fn add_button_icon(ui: &mut egui::Ui, data: Rc<UiState>, orientation: Orientation) {
+    fn add_button_icon(ui: &mut egui::Ui, data: &mut UiData, orientation: Orientation) {
         let icon = icon::ICONTABLE.get_orientation_icon(orientation);
 
         let image_button =
@@ -122,7 +118,9 @@ pub mod orientation {
             ui.with_layout(
                 egui::Layout::centered_and_justified(egui::Direction::TopDown),
                 |ui| {
-                    let prev_response = data.get_orientation_response(&orientation);
+                    let prev_response = data
+                        .borrow_ui_state()
+                        .get_orientation_response(&orientation);
 
                     if prev_response.hovered() {
                         ui.painter().rect_filled(
@@ -134,7 +132,8 @@ pub mod orientation {
 
                     let response = ui.add_sized([30., 30.], image_button);
 
-                    data.update_orientation_response(&orientation, response);
+                    data.borrow_mut_ui_state()
+                        .update_orientation_response(&orientation, response);
 
                     /*
                     if response.clicked() {
@@ -156,7 +155,7 @@ impl Addons {
 }
 
 impl InnerComponent for Addons {
-    fn show(&mut self, ctx: &egui::Context, ui: &mut Ui, state: Rc<UiState>) {
+    fn show(&mut self, ctx: &egui::Context, ui: &mut Ui, state: &mut UiData) {
         let window_size = ui.available_size();
 
         let boundary = Boundary::new(
@@ -164,7 +163,9 @@ impl InnerComponent for Addons {
             Vec2::new(window_size.x - 15.0, window_size.y - 15.0),
         );
 
-        match state.mode {
+        let mode = state.borrow_ui_state().mode.clone();
+
+        match mode {
             Mode::Prepare => prepare::show(ctx, ui, state, boundary),
             Mode::Preview => preview::show(ctx, ui, state, boundary),
             Mode::ForceAnalytics => force_analytics::show(ctx, ui, state, boundary),

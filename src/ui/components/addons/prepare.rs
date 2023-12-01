@@ -1,14 +1,12 @@
-use std::rc::Rc;
-
 use egui_extras::Size;
 use three_d::egui;
 
 use crate::{
     config::gui::shaded_color,
-    ui::{boundary::Boundary, UiState},
+    ui::{boundary::Boundary, UiData},
 };
 
-pub fn show(_ctx: &egui::Context, ui: &mut egui::Ui, data: Rc<UiState>, boundary: Boundary) {
+pub fn show(_ctx: &egui::Context, ui: &mut egui::Ui, data: &mut UiData, boundary: Boundary) {
     let shaded_color = shaded_color(ui.visuals().dark_mode);
 
     let _response = super::create_addon_strip_builder(

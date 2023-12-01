@@ -33,7 +33,7 @@ impl TabbedSettings {
         &mut self,
         ctx: &egui::Context,
         ui: &mut egui::Ui,
-        data: &mut UiState,
+        data: &mut UiData,
         side_view: &mut Settingsbar,
     ) {
         ui.horizontal(|ui| {
@@ -118,7 +118,11 @@ impl TabbedSettings {
 
         match side_view.open_panel {
             SettingsPanel::Fiber => {
-                let printer_settings = &mut data.context.settings.printer_settings;
+                let mut printer_settings = data
+                    .borrow_shared_state()
+                    .settings
+                    .printer_settings
+                    .lock_expect();
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
@@ -145,7 +149,11 @@ impl TabbedSettings {
                 });
             }
             SettingsPanel::TopologyOptimization => {
-                let filament_settings = &mut data.context.settings.filament_settings;
+                let filament_settings = &mut data
+                    .borrow_shared_state()
+                    .settings
+                    .filament_settings
+                    .lock_expect();
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
@@ -178,7 +186,11 @@ impl TabbedSettings {
                 });
             }
             SettingsPanel::View => {
-                let printer_settings = &mut data.context.settings.printer_settings;
+                let printer_settings = &mut data
+                    .borrow_shared_state()
+                    .settings
+                    .printer_settings
+                    .lock_expect();
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
@@ -223,7 +235,7 @@ impl Settingsbar {
 }
 
 impl Component for Settingsbar {
-    fn show(&mut self, ctx: &egui::Context, data: &mut UiState) {
+    fn show(&mut self, ctx: &egui::Context, data: &mut UiData) {
         let mut tabbed_view = TabbedSettings::init();
 
         let boundary = Boundary::from(
@@ -264,6 +276,9 @@ impl Component for Settingsbar {
                 .response,
         );
 
-        data.get_components_mut().settingsbar.set_boundary(boundary);
+        data.borrow_mut_ui_state()
+            .components
+            .settingsbar
+            .set_boundary(boundary);
     }
 }

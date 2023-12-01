@@ -1,9 +1,7 @@
-use std::rc::Rc;
-
 use three_d::egui;
 
 use crate::config;
-use crate::ui::{Component, Theme, UiState};
+use crate::ui::{Component, Theme, UiData};
 
 pub struct Taskbar {}
 
@@ -14,7 +12,7 @@ impl Taskbar {
 }
 
 impl Component for Taskbar {
-    fn show(&mut self, ctx: &egui::Context, mut data: Rc<UiState>) {
+    fn show(&mut self, ctx: &egui::Context, mut data: &mut UiData) {
         let boundary = egui::TopBottomPanel::bottom("taskbar")
             .default_height(config::gui::TASKBAR_H)
             .show(ctx, |ui: &mut egui::Ui| {
@@ -31,17 +29,20 @@ impl Component for Taskbar {
             .response
             .into();
 
-        data.components.taskbar.set_boundary(boundary);
+        data.borrow_mut_ui_state()
+            .components
+            .taskbar
+            .set_boundary(boundary);
     }
 }
 
-fn theme_button(ui: &mut egui::Ui, mut data: Rc<UiState>) {
-    let clicked = match data.theme {
+fn theme_button(ui: &mut egui::Ui, data: &mut UiData) {
+    let clicked = match data.borrow_ui_state().theme {
         Theme::Dark => ui.button("💡").clicked(),
         Theme::Light => ui.button("🌙").clicked(),
     };
 
     if clicked {
-        data.toggle_theme();
+        data.borrow_mut_ui_state().toggle_theme();
     }
 }

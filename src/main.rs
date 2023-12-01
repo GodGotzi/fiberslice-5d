@@ -37,14 +37,15 @@ pub fn main() {
     let event_loop = EventLoop::new();
 
     let mut window_handler = window::WindowHandler::from_event_loop(&event_loop);
-    let context = window_handler.borrow_context();
 
-    let mut render_adapter = render::RenderAdapter::from_context(context);
-    let mut environment_adapter = environment::EnvironmentAdapter::from_context(context);
-    let mut ui_adapter = ui::UiAdapter::from_context(context);
-    let mut picking_adapter = picking::PickingAdapter::from_context(context);
+    let mut render_adapter = render::RenderAdapter::from_context(window_handler.borrow_context());
+    let mut environment_adapter =
+        environment::EnvironmentAdapter::from_context(window_handler.borrow_context());
+    let mut ui_adapter = ui::UiAdapter::from_context(window_handler.borrow_context());
+    let mut picking_adapter =
+        picking::PickingAdapter::from_context(window_handler.borrow_context());
 
-    let mut shared_state = SharedState {
+    let shared_state = SharedState {
         settings: SharedSettings::default(),
         render_state: render_adapter.share_state(),
         environment: environment_adapter.share_environment(),
@@ -61,14 +62,14 @@ pub fn main() {
             let frame_input = window_handler.next_frame_input();
 
             let ui_result = ui_adapter
-                .handle_frame(&frame_input, ())
+                .handle_frame(&frame_input, &shared_state)
                 .expect("Failed to handle frame");
 
-            let _ = environment_adapter
+            environment_adapter
                 .handle_frame(&frame_input, (ui_adapter.share_state(), ui_result))
                 .expect("Failed to handle frame");
 
-            let _ = render_adapter
+            render_adapter
                 .handle_frame(
                     &frame_input,
                     (
@@ -78,11 +79,11 @@ pub fn main() {
                 )
                 .expect("Failed to handle frame");
 
-            let _ = picking_adapter
+            picking_adapter
                 .handle_frame(&frame_input, render_adapter.share_state())
                 .expect("Failed to handle frame");
 
-            context.swap_buffers().unwrap();
+            window_handler.borrow_context().swap_buffers().unwrap();
             control_flow.set_poll();
             window_handler.request_redraw();
         }

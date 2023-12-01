@@ -17,7 +17,7 @@ impl FrameHandle<(), SharedMut<RenderState>> for PickingAdapter {
     fn handle_frame(
         &mut self,
         _frame_input: &three_d::FrameInput,
-        state: SharedMut<RenderState>,
+        _state: SharedMut<RenderState>,
     ) -> Result<(), Error> {
         Ok(())
     }
