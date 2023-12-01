@@ -1,7 +1,17 @@
 use std::sync::{Arc, Mutex};
 
+use crate::prelude::SharedMut;
+
 pub struct EventReader<E> {
-    events: Arc<Mutex<Vec<E>>>,
+    events: SharedMut<Vec<E>>,
+}
+
+impl<E> Clone for EventReader<E> {
+    fn clone(&self) -> Self {
+        Self {
+            events: self.events.clone(),
+        }
+    }
 }
 
 impl<E> EventReader<E> {
@@ -14,38 +24,20 @@ impl<E> EventReader<E> {
 }
 
 pub struct EventWriter<E> {
-    events: Arc<Mutex<Vec<E>>>,
+    events: SharedMut<Vec<E>>,
+}
+
+impl<E> Clone for EventWriter<E> {
+    fn clone(&self) -> Self {
+        Self {
+            events: self.events.clone(),
+        }
+    }
 }
 
 impl<E> EventWriter<E> {
     pub fn write(&mut self, event: E) {
         let mut events = self.events.lock().unwrap();
         events.push(event);
-    }
-}
-
-pub struct EventHandler<E> {
-    reader: EventReader<E>,
-    writer: EventWriter<E>,
-}
-
-impl<E> EventHandler<E> {
-    pub fn new() -> Self {
-        let events = Arc::new(Mutex::new(Vec::new()));
-        let reader = EventReader {
-            events: events.clone(),
-        };
-        let writer = EventWriter {
-            events: events.clone(),
-        };
-        EventHandler { reader, writer }
-    }
-
-    pub fn write(&mut self, event: E) {
-        self.writer.write(event);
-    }
-
-    pub fn read(&mut self) -> Vec<E> {
-        self.reader.read()
     }
 }
