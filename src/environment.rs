@@ -7,7 +7,7 @@ use crate::{
     config,
     prelude::*,
     ui::{state::UiState, UiResult},
-    view::{camera::HandleOrientation, Orientation},
+    view::{HandleOrientation, Orientation},
 };
 
 pub struct EnvironmentAdapter {
@@ -95,7 +95,7 @@ pub struct Environment {
 
 impl Environment {
     pub fn new(context: &Context) -> Self {
-        let mut camera = crate::view::camera::CameraBuilder::new()
+        let mut camera = crate::view::CameraBuilder::new()
             .viewport(Viewport::new_at_origo(
                 config::default::WINDOW_S.0,
                 config::default::WINDOW_S.1,
