@@ -1,12 +1,14 @@
-use model::gcode::GCode;
-use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
-use prelude::*;
 /*
     Copyright (c) 2023 Elias Gottsbacher, Jan Traussnigg, Nico Huetter (HTBLA Kaindorf)
     All rights reserved.
     Note: The complete copyright description for this software thesis can be found at the beginning of each file.
     Please refer to the terms and conditions stated therein.
 */
+
+use model::gcode::GCode;
+use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
+
+use prelude::{SharedSettings, SharedState};
 use three_d::*;
 
 mod actions;
@@ -16,6 +18,7 @@ mod environment;
 mod error;
 mod event;
 mod model;
+mod picking;
 mod prelude;
 mod render;
 mod settings;
@@ -26,86 +29,65 @@ mod ui;
 mod view;
 mod window;
 
-use window::build_window;
-use winit::event_loop;
+use winit::event_loop::EventLoop;
 
-use crate::prelude::{FrameHandle, RenderHandle};
+use crate::prelude::FrameHandle;
 
 pub fn main() {
-    let event_loop = event_loop::EventLoop::new();
-    let window = build_window(&event_loop).unwrap();
-    let context = WindowedContext::from_winit_window(&window, SurfaceSettings::default()).unwrap();
+    let event_loop = EventLoop::new();
 
-    let shared_state = SharedState::default();
+    let mut window_handler = window::WindowHandler::from_event_loop(&event_loop);
+    let context = window_handler.borrow_context();
 
-    let ui_adapter = ui::UiAdapter::from_context(&context);
-    let environment_adapter = environment::EnvironmentAdapter::from_context(&context);
-    let render_adapter = render::RenderAdapter::from_context(&context);
+    let mut render_adapter = render::RenderAdapter::from_context(context);
+    let mut environment_adapter = environment::EnvironmentAdapter::from_context(context);
+    let mut ui_adapter = ui::UiAdapter::from_context(context);
+    let mut picking_adapter = picking::PickingAdapter::from_context(context);
 
-    let cpu_model = create_toolpath(&context);
-    window.set_visible(true);
+    let mut shared_state = SharedState {
+        settings: SharedSettings::default(),
+        render_state: render_adapter.share_state(),
+        environment: environment_adapter.share_environment(),
+    };
 
-    let mut frame_input_generator = FrameInputGenerator::from_winit_window(&window);
+    //let cpu_model = create_toolpath(&context);
+    window_handler.init();
+
     event_loop.run(move |event, _, control_flow| match event {
         winit::event::Event::MainEventsCleared => {
-            window.request_redraw();
+            window_handler.request_redraw();
         }
         winit::event::Event::RedrawRequested(_) => {
-            let frame_input = frame_input_generator.generate(&context);
+            let frame_input = window_handler.next_frame_input();
 
             let ui_result = ui_adapter
-                .handle_frame(&frame_input)
+                .handle_frame(&frame_input, ())
                 .expect("Failed to handle frame");
 
-            if !ui_result.pointer_use.unwrap_or(false) {
-                let mut events = frame_input
-                    .events
-                    .clone()
-                    .into_iter()
-                    .filter(|event| {
-                        let position = match event {
-                            Event::MousePress { position, .. } => position,
-                            Event::MouseRelease { position, .. } => position,
-                            Event::MouseMotion { position, .. } => position,
-                            Event::MouseWheel { position, .. } => position,
-                            _ => return true,
-                        };
+            let _ = environment_adapter
+                .handle_frame(&frame_input, (ui_adapter.share_state(), ui_result))
+                .expect("Failed to handle frame");
 
-                        environment.camera().viewport().contains(position)
-                    })
-                    .collect::<Vec<Event>>();
+            let _ = render_adapter
+                .handle_frame(
+                    &frame_input,
+                    (
+                        environment_adapter.share_environment(),
+                        ui_adapter.borrow_gui(),
+                    ),
+                )
+                .expect("Failed to handle frame");
 
-                environment.handle_camera_events(&mut events);
-            }
-
-            environment.frame(&frame_input, &data);
-
-            let screen: RenderTarget<'_> = frame_input.screen();
-            screen.clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0));
-
-            screen.write(|| {
-                cpu_model.render(environment.camera(), &environment.lights());
-                ui_adapter.handle();
-            });
+            let _ = picking_adapter
+                .handle_frame(&frame_input, render_adapter.share_state())
+                .expect("Failed to handle frame");
 
             context.swap_buffers().unwrap();
             control_flow.set_poll();
-            window.request_redraw();
+            window_handler.request_redraw();
         }
         winit::event::Event::WindowEvent { ref event, .. } => {
-            frame_input_generator.handle_winit_window_event(event);
-            match event {
-                winit::event::WindowEvent::Resized(physical_size) => {
-                    context.resize(*physical_size);
-                }
-                winit::event::WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                    context.resize(**new_inner_size);
-                }
-                winit::event::WindowEvent::CloseRequested => {
-                    control_flow.set_exit();
-                }
-                _ => (),
-            }
+            window_handler.handle_winit_event(event, control_flow);
         }
         _ => {}
     });

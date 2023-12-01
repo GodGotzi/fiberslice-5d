@@ -1,9 +1,12 @@
+use std::rc::Rc;
+
 use three_d::*;
 
 use crate::{
+    api::Contains,
     config,
     prelude::*,
-    ui::state::UiState,
+    ui::{state::UiState, UiResult},
     view::{camera::HandleOrientation, Orientation},
 };
 
@@ -11,38 +14,78 @@ pub struct EnvironmentAdapter {
     shared_environment: SharedMut<Environment>,
 }
 
-impl Adapter<()> for EnvironmentAdapter {
-    fn from_context(context: &Context) -> Self {
+impl EnvironmentAdapter {
+    pub fn from_context(context: &Context) -> Self {
         Self {
             shared_environment: SharedMut::from_inner(Environment::new(context)),
         }
     }
-}
 
-impl FrameHandle<UiResult> for EnvironmentAdapter {
-    fn handle_frame(&mut self, frame_input: &FrameInput) -> Result<UiResult, Error> {
-        let mut result = UiResult::empty();
-
-        self.gui.update(
-            &mut frame_input.events.clone(),
-            frame_input.accumulated_time,
-            frame_input.viewport,
-            frame_input.device_pixel_ratio,
-            |ctx| {
-                result.pointer_use = Some(ctx.is_using_pointer());
-                self.screen.show(ctx, self.state.clone());
-            },
-        );
-
-        Ok(result)
+    pub fn share_environment(&self) -> SharedMut<Environment> {
+        self.shared_environment.clone()
     }
 }
 
-impl RenderHandle for UiAdapter {
-    fn handle(&self) {
-        self.gui.render();
+impl FrameHandle<(), (Rc<UiState>, UiResult)> for EnvironmentAdapter {
+    fn handle_frame(
+        &mut self,
+        frame_input: &FrameInput,
+        (state, result): (Rc<UiState>, UiResult),
+    ) -> Result<(), Error> {
+        let mut environment = self.shared_environment.lock_expect();
+
+        if !result.pointer_use.unwrap_or(false) {
+            let mut events = frame_input
+                .events
+                .clone()
+                .into_iter()
+                .filter(|event| {
+                    let position = match event {
+                        Event::MousePress { position, .. } => position,
+                        Event::MouseRelease { position, .. } => position,
+                        Event::MouseMotion { position, .. } => position,
+                        Event::MouseWheel { position, .. } => position,
+                        _ => return true,
+                    };
+
+                    environment.camera.viewport().contains(position)
+                })
+                .collect::<Vec<Event>>();
+
+            environment.handle_camera_events(&mut events);
+        }
+
+        let components = &state.components;
+
+        if frame_input.viewport.height != 0 && frame_input.viewport.width != 0 {
+            let height = frame_input.viewport.height
+                - ((components.taskbar.boundary().get_height()
+                    + components.modebar.boundary().get_height()
+                    + components.menubar.boundary().get_height())
+                    * frame_input.device_pixel_ratio) as u32;
+            //let extra = (height as f32 * 0.3) as u32;
+
+            let viewport = Viewport {
+                x: (components.toolbar.boundary().get_width() * frame_input.device_pixel_ratio)
+                    as i32,
+                y: (((components.taskbar.boundary().get_height()
+                    + components.modebar.boundary().get_height())
+                    * frame_input.device_pixel_ratio) as i32),
+                width: frame_input.viewport.width
+                    - ((components.toolbar.boundary().get_width()
+                        + components.settingsbar.boundary().get_width())
+                        * frame_input.device_pixel_ratio) as u32,
+                height,
+            };
+
+            environment.camera.set_viewport(viewport);
+        }
+
+        Ok(())
     }
 }
+
+impl Adapter<(), (Rc<UiState>, UiResult)> for EnvironmentAdapter {}
 
 pub struct Environment {
     camera: Camera,
@@ -83,49 +126,7 @@ impl Environment {
         }
     }
 
-    pub fn camera(&self) -> &Camera {
-        &self.camera
-    }
-
-    pub fn lights(&self) -> Vec<&dyn Light> {
-        let lights: Vec<&dyn Light> = self.owned_lights.iter().map(Box::as_ref).collect();
-        lights
-    }
-
-    pub fn camera_mut(&mut self) -> &mut Camera {
-        &mut self.camera
-    }
-
     pub fn handle_camera_events(&mut self, events: &mut [Event]) -> bool {
         self.camera_control.handle_events(&mut self.camera, events)
-    }
-
-    pub fn frame(&mut self, input: &FrameInput, data: &UiState) {
-        //update viewport
-        {
-            if input.viewport.height != 0 && input.viewport.width != 0 {
-                let height = input.viewport.height
-                    - ((data.components.taskbar.boundary().get_height()
-                        + data.components.modebar.boundary().get_height()
-                        + data.components.menubar.boundary().get_height())
-                        * input.device_pixel_ratio) as u32;
-                //let extra = (height as f32 * 0.3) as u32;
-
-                let viewport = Viewport {
-                    x: (data.components.toolbar.boundary().get_width() * input.device_pixel_ratio)
-                        as i32,
-                    y: (((data.components.taskbar.boundary().get_height()
-                        + data.components.modebar.boundary().get_height())
-                        * input.device_pixel_ratio) as i32),
-                    width: input.viewport.width
-                        - ((data.components.toolbar.boundary().get_width()
-                            + data.components.settingsbar.boundary().get_width())
-                            * input.device_pixel_ratio) as u32,
-                    height,
-                };
-
-                self.camera.set_viewport(viewport);
-            }
-        }
     }
 }

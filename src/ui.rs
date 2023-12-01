@@ -17,7 +17,7 @@ use std::rc::Rc;
 pub use components::size_fixed;
 use three_d::{egui, Context, FrameInput, GUI};
 
-use crate::prelude::{Adapter, Error, FrameHandle, RenderHandle};
+use crate::prelude::{Adapter, Error, FrameHandle};
 
 use self::state::UiState;
 
@@ -27,18 +27,26 @@ pub struct UiAdapter {
     state: Rc<UiState>,
 }
 
-impl Adapter<UiResult> for UiAdapter {
-    fn from_context(context: &Context) -> Self {
+impl UiAdapter {
+    pub fn from_context(context: &Context) -> Self {
         Self {
             gui: GUI::new(context),
             screen: screen::Screen::new(),
             state: Rc::new(UiState::new()),
         }
     }
+
+    pub fn borrow_gui(&self) -> &GUI {
+        &self.gui
+    }
+
+    pub fn share_state(&self) -> Rc<UiState> {
+        self.state.clone()
+    }
 }
 
-impl FrameHandle<UiResult> for UiAdapter {
-    fn handle_frame(&mut self, frame_input: &FrameInput) -> Result<UiResult, Error> {
+impl FrameHandle<UiResult, ()> for UiAdapter {
+    fn handle_frame(&mut self, frame_input: &FrameInput, context: ()) -> Result<UiResult, Error> {
         let mut result = UiResult::empty();
 
         self.gui.update(
@@ -56,11 +64,7 @@ impl FrameHandle<UiResult> for UiAdapter {
     }
 }
 
-impl RenderHandle for UiAdapter {
-    fn handle(&self) {
-        self.gui.render();
-    }
-}
+impl Adapter<UiResult, ()> for UiAdapter {}
 
 pub struct UiResult {
     pub pointer_use: Option<bool>,

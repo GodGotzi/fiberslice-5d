@@ -1,9 +1,12 @@
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use three_d::{Context, FrameInput};
+use three_d::FrameInput;
 
 pub use crate::error::Error;
-use crate::{settings::FilamentSettings, settings::PrinterSettings, settings::SliceSettings};
+use crate::{
+    environment::Environment, render::RenderState, settings::FilamentSettings,
+    settings::PrinterSettings, settings::SliceSettings,
+};
 
 #[derive(Default)]
 pub struct SharedMut<T> {
@@ -47,17 +50,11 @@ impl<T> Shared<T> {
     }
 }
 
-pub trait FrameHandle<T> {
-    fn handle_frame(&mut self, frame_input: &three_d::FrameInput) -> Result<T, Error>;
+pub trait FrameHandle<T, C> {
+    fn handle_frame(&mut self, frame_input: &three_d::FrameInput, context: C) -> Result<T, Error>;
 }
 
-pub trait RenderHandle {
-    fn handle(&self);
-}
-
-pub trait Adapter<T>: FrameHandle<T> {
-    fn from_context(context: &Context) -> Self;
-}
+pub trait Adapter<T, C>: FrameHandle<T, C> {}
 
 #[derive(Default)]
 pub struct SharedSettings {
@@ -66,26 +63,14 @@ pub struct SharedSettings {
     filament_settings: SharedMut<FilamentSettings>,
 }
 
-#[derive(Default)]
 pub struct SharedState {
-    frame_input: Option<FrameInput>,
-    settings: SharedSettings,
+    pub settings: SharedSettings,
+    pub render_state: SharedMut<RenderState>,
+    pub environment: SharedMut<Environment>,
 }
 
-impl SharedState {
-    pub fn fps(&self) -> Option<f32> {
-        if let Some(frame_input) = self.frame_input.as_ref() {
-            Some((1000.0 / frame_input.elapsed_time) as f32)
-        } else {
-            None
-        }
-    }
-}
-
-impl FrameHandle<()> for SharedState {
-    fn handle_frame(&mut self, frame_input: &FrameInput) -> Result<(), Error> {
-        self.frame_input = Some(frame_input.clone());
-
+impl FrameHandle<(), ()> for SharedState {
+    fn handle_frame(&mut self, frame_input: &FrameInput, context: ()) -> Result<(), Error> {
         Ok(())
     }
 }
