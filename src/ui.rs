@@ -15,7 +15,6 @@ mod visual;
 
 use std::{
     cell::{Ref, RefCell, RefMut},
-    ops::{Deref, DerefMut},
     rc::Rc,
 };
 
@@ -23,27 +22,24 @@ pub use components::size_fixed;
 use three_d::{egui, Context, FrameInput, GUI};
 
 use crate::{
+    event::EventReader,
     prelude::{Adapter, Error, FrameHandle, SharedState},
     view::Mode,
 };
 
 use self::{boundary::Boundary, response::Responses};
 
+#[derive(Debug)]
+pub enum UiEvent {}
+
 pub struct UiAdapter {
     gui: GUI,
     screen: screen::Screen,
     state: Rc<RefCell<UiState>>,
+    event_reader: EventReader<UiEvent>,
 }
 
 impl UiAdapter {
-    pub fn from_context(context: &Context) -> Self {
-        Self {
-            gui: GUI::new(context),
-            screen: screen::Screen::new(),
-            state: Rc::new(RefCell::new(UiState::new())),
-        }
-    }
-
     pub fn borrow_gui(&self) -> &GUI {
         &self.gui
     }
@@ -82,7 +78,31 @@ impl FrameHandle<UiResult, &SharedState> for UiAdapter {
     }
 }
 
-impl Adapter<UiResult, &SharedState> for UiAdapter {}
+impl Adapter<UiResult, &SharedState, UiEvent> for UiAdapter {
+    fn from_context(context: &Context) -> (crate::event::EventWriter<UiEvent>, Self) {
+        let (reader, writer) = crate::event::create_event_bundle::<UiEvent>();
+
+        (
+            writer,
+            Self {
+                gui: GUI::new(context),
+                screen: screen::Screen::new(),
+                state: Rc::new(RefCell::new(UiState::new())),
+                event_reader: reader,
+            },
+        )
+    }
+
+    fn get_reader(&self) -> &EventReader<UiEvent> {
+        &self.event_reader
+    }
+
+    fn handle_event(&mut self, event: UiEvent) {}
+
+    fn get_adapter_description(&self) -> String {
+        "UiAdapter".to_string()
+    }
+}
 
 pub struct UiState {
     pub theme: Theme,

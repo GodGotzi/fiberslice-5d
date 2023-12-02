@@ -133,13 +133,13 @@ pub mod orientation {
                     let response = ui.add_sized([30., 30.], image_button);
 
                     data.borrow_mut_ui_state()
-                        .update_orientation_response(&orientation, response);
+                        .update_orientation_response(&orientation, response.clone());
 
-                    /*
                     if response.clicked() {
-                        data.orienation_writer().borrow_mut().send(orientation);
+                        data.borrow_shared_state().writer_environment_event.send(
+                            crate::environment::EnvironmentEvent::SendOrientation(orientation),
+                        )
                     }
-                    */
                 },
             );
         });
@@ -163,7 +163,7 @@ impl InnerComponent for Addons {
             Vec2::new(window_size.x - 15.0, window_size.y - 15.0),
         );
 
-        let mode = state.borrow_ui_state().mode.clone();
+        let mode = state.borrow_ui_state().mode;
 
         match mode {
             Mode::Prepare => prepare::show(ctx, ui, state, boundary),

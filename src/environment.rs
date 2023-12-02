@@ -5,22 +5,23 @@ use three_d::*;
 use crate::{
     api::Contains,
     config,
+    event::EventReader,
     prelude::*,
     ui::{UiResult, UiState},
     view::{HandleOrientation, Orientation},
 };
 
+#[derive(Debug)]
+pub enum EnvironmentEvent {
+    SendOrientation(Orientation),
+}
+
 pub struct EnvironmentAdapter {
     shared_environment: SharedMut<Environment>,
+    event_reader: EventReader<EnvironmentEvent>,
 }
 
 impl EnvironmentAdapter {
-    pub fn from_context(context: &Context) -> Self {
-        Self {
-            shared_environment: SharedMut::from_inner(Environment::new(context)),
-        }
-    }
-
     pub fn share_environment(&self) -> SharedMut<Environment> {
         self.shared_environment.clone()
     }
@@ -85,7 +86,38 @@ impl FrameHandle<(), (Rc<RefCell<UiState>>, UiResult)> for EnvironmentAdapter {
     }
 }
 
-impl Adapter<(), (Rc<RefCell<UiState>>, UiResult)> for EnvironmentAdapter {}
+impl Adapter<(), (Rc<RefCell<UiState>>, UiResult), EnvironmentEvent> for EnvironmentAdapter {
+    fn from_context(context: &Context) -> (crate::event::EventWriter<EnvironmentEvent>, Self) {
+        let (reader, writer) = crate::event::create_event_bundle::<EnvironmentEvent>();
+
+        (
+            writer,
+            Self {
+                shared_environment: SharedMut::from_inner(Environment::new(context)),
+                event_reader: reader,
+            },
+        )
+    }
+
+    fn get_reader(&self) -> &EventReader<EnvironmentEvent> {
+        &self.event_reader
+    }
+
+    fn handle_event(&mut self, event: EnvironmentEvent) {
+        match event {
+            EnvironmentEvent::SendOrientation(orientation) => {
+                self.shared_environment
+                    .lock_expect()
+                    .camera
+                    .handle_orientation(orientation);
+            }
+        }
+    }
+
+    fn get_adapter_description(&self) -> String {
+        "EnvironmentAdapter".to_string()
+    }
+}
 
 pub struct Environment {
     camera: Camera,
@@ -128,5 +160,18 @@ impl Environment {
 
     pub fn handle_camera_events(&mut self, events: &mut [Event]) -> bool {
         self.camera_control.handle_events(&mut self.camera, events)
+    }
+
+    pub fn camera(&self) -> &Camera {
+        &self.camera
+    }
+
+    pub fn lights(&self) -> Vec<&dyn Light> {
+        let lights: Vec<&dyn Light> = self.owned_lights.iter().map(Box::as_ref).collect();
+        lights
+    }
+
+    pub fn camera_mut(&mut self) -> &mut Camera {
+        &mut self.camera
     }
 }

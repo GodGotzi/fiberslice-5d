@@ -19,7 +19,10 @@ impl Component for Taskbar {
                 egui::menu::bar(ui, |ui| {
                     ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
                         ui.add_space(10.0);
-                        //ui.label(format!("{:.2} fps", data.context.fps().unwrap_or(0.0)));
+                        ui.label(format!(
+                            "{:.2} fps",
+                            data.borrow_shared_state().fps().unwrap_or(0.0)
+                        ));
                     });
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         theme_button(ui, data);

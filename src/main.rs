@@ -8,7 +8,7 @@
 use model::gcode::GCode;
 use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
 
-use prelude::{SharedSettings, SharedState};
+use prelude::{Adapter, SharedState};
 use three_d::*;
 
 mod actions;
@@ -38,18 +38,26 @@ pub fn main() {
 
     let mut window_handler = window::WindowHandler::from_event_loop(&event_loop);
 
-    let mut render_adapter = render::RenderAdapter::from_context(window_handler.borrow_context());
-    let mut environment_adapter =
+    let toolpath = create_toolpath(window_handler.borrow_context());
+
+    let (writer_render_event, mut render_adapter) =
+        render::RenderAdapter::from_context(window_handler.borrow_context());
+
+    render_adapter.set_toolpath(toolpath);
+
+    let (writer_environment_event, mut environment_adapter) =
         environment::EnvironmentAdapter::from_context(window_handler.borrow_context());
-    let mut ui_adapter = ui::UiAdapter::from_context(window_handler.borrow_context());
-    let mut picking_adapter =
+    let (writer_ui_event, mut ui_adapter) =
+        ui::UiAdapter::from_context(window_handler.borrow_context());
+    let (writer_picking_event, mut picking_adapter) =
         picking::PickingAdapter::from_context(window_handler.borrow_context());
 
-    let shared_state = SharedState {
-        settings: SharedSettings::default(),
-        render_state: render_adapter.share_state(),
-        environment: environment_adapter.share_environment(),
-    };
+    let mut shared_state = SharedState::new(
+        writer_render_event,
+        writer_environment_event,
+        writer_ui_event,
+        writer_picking_event,
+    );
 
     //let cpu_model = create_toolpath(&context);
     window_handler.init();
@@ -60,6 +68,10 @@ pub fn main() {
         }
         winit::event::Event::RedrawRequested(_) => {
             let frame_input = window_handler.next_frame_input();
+
+            shared_state
+                .handle_frame(&frame_input, ())
+                .expect("Failed to handle frame");
 
             let ui_result = ui_adapter
                 .handle_frame(&frame_input, &shared_state)
@@ -82,6 +94,11 @@ pub fn main() {
             picking_adapter
                 .handle_frame(&frame_input, render_adapter.share_state())
                 .expect("Failed to handle frame");
+
+            ui_adapter.handle_events();
+            environment_adapter.handle_events();
+            render_adapter.handle_events();
+            picking_adapter.handle_events();
 
             window_handler.borrow_context().swap_buffers().unwrap();
             control_flow.set_poll();

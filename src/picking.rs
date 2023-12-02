@@ -1,16 +1,16 @@
 use three_d::Context;
 
 use crate::{
+    event::EventReader,
     prelude::{Adapter, Error, FrameHandle, SharedMut},
     render::RenderState,
 };
 
-pub struct PickingAdapter {}
+#[derive(Debug)]
+pub enum PickingEvent {}
 
-impl PickingAdapter {
-    pub fn from_context(_context: &Context) -> Self {
-        Self {}
-    }
+pub struct PickingAdapter {
+    event_reader: EventReader<PickingEvent>,
 }
 
 impl FrameHandle<(), SharedMut<RenderState>> for PickingAdapter {
@@ -23,4 +23,25 @@ impl FrameHandle<(), SharedMut<RenderState>> for PickingAdapter {
     }
 }
 
-impl Adapter<(), SharedMut<RenderState>> for PickingAdapter {}
+impl Adapter<(), SharedMut<RenderState>, PickingEvent> for PickingAdapter {
+    fn from_context(context: &Context) -> (crate::event::EventWriter<PickingEvent>, Self) {
+        let (reader, writer) = crate::event::create_event_bundle::<PickingEvent>();
+
+        (
+            writer,
+            Self {
+                event_reader: reader,
+            },
+        )
+    }
+
+    fn get_reader(&self) -> &EventReader<PickingEvent> {
+        &self.event_reader
+    }
+
+    fn handle_event(&mut self, event: PickingEvent) {}
+
+    fn get_adapter_description(&self) -> String {
+        "PickingAdapter".to_string()
+    }
+}
