@@ -404,7 +404,7 @@ pub struct Layers<'a>(pub &'a HashMap<usize, Layer>);
 impl<'a> From<Layers<'a>> for three_d::CpuMesh {
     fn from(layers: Layers) -> Self {
         let mut positions = Vec::new();
-        let mut colors: Vec<[f32; 4]> = Vec::new();
+        let mut colors = Vec::new();
 
         for entry in layers.0.iter() {
             let layer_mesh = entry.1;
@@ -416,9 +416,9 @@ impl<'a> From<Layers<'a>> for three_d::CpuMesh {
             colors.reserve_exact(layer_mesh.cpu_mesh.colors.len());
 
             for color in layer_mesh.cpu_mesh.colors.iter() {
-                colors.push(color.into());
-                colors.push(color.into());
-                colors.push(color.into());
+                colors.push(*color);
+                colors.push(*color);
+                colors.push(*color);
             }
         }
 
