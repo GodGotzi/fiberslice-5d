@@ -5,16 +5,9 @@
     Please refer to the terms and conditions stated therein.
 */
 
-use bevy_egui::egui;
-use bevy_egui::egui::Button;
-use bevy_egui::egui::CollapsingHeader;
+use egui::*;
+use three_d::egui;
 
-use bevy_egui::egui::widget_text;
-use bevy_egui::egui::Color32;
-use bevy_egui::egui::FontId;
-use bevy_egui::egui::Layout;
-use bevy_egui::egui::RichText;
-use bevy_egui::egui::Vec2;
 use egui_extras::Size;
 use egui_grid::GridBuilder;
 
@@ -40,7 +33,7 @@ impl TabbedSettings {
         &mut self,
         ctx: &egui::Context,
         ui: &mut egui::Ui,
-        data: UiData,
+        data: &mut UiData,
         side_view: &mut Settingsbar,
     ) {
         ui.horizontal(|ui| {
@@ -125,7 +118,11 @@ impl TabbedSettings {
 
         match side_view.open_panel {
             SettingsPanel::Fiber => {
-                let mut printer_settings = data.settings.printer.borrow_mut();
+                let mut printer_settings = data
+                    .borrow_shared_state()
+                    .settings
+                    .printer_settings
+                    .lock_expect();
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
@@ -152,7 +149,11 @@ impl TabbedSettings {
                 });
             }
             SettingsPanel::TopologyOptimization => {
-                let mut filament_settings = data.settings.filament.borrow_mut();
+                let filament_settings = &mut data
+                    .borrow_shared_state()
+                    .settings
+                    .filament_settings
+                    .lock_expect();
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
@@ -185,7 +186,11 @@ impl TabbedSettings {
                 });
             }
             SettingsPanel::View => {
-                let mut printer_settings = data.settings.printer.borrow_mut();
+                let printer_settings = &mut data
+                    .borrow_shared_state()
+                    .settings
+                    .printer_settings
+                    .lock_expect();
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
@@ -230,7 +235,7 @@ impl Settingsbar {
 }
 
 impl Component for Settingsbar {
-    fn show(&mut self, ctx: &egui::Context, data: UiData) {
+    fn show(&mut self, ctx: &egui::Context, data: &mut UiData) {
         let mut tabbed_view = TabbedSettings::init();
 
         let boundary = Boundary::from(
@@ -271,9 +276,8 @@ impl Component for Settingsbar {
                 .response,
         );
 
-        data.raw
-            .borrow_mut()
-            .holder
+        data.borrow_mut_ui_state()
+            .components
             .settingsbar
             .set_boundary(boundary);
     }

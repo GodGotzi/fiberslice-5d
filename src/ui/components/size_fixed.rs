@@ -1,4 +1,4 @@
-use bevy_egui::egui::{Ui, WidgetText};
+use three_d::egui::{Ui, WidgetText};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct StaticSizedLabel {

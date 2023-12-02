@@ -1,24 +1,8 @@
-use std::f32::consts::PI;
-
-use bevy::{
-    app::AppExit,
-    math::vec3,
-    prelude::*,
-    render::render_resource::Face,
-    tasks::{AsyncComputeTaskPool, Task},
-};
-
-use futures_lite::future::{self, block_on};
-use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
-
-use crate::{
-    model::{gcode::toolpath::ToolpathModel, gcode::GCode},
-    ui::data::UiData,
-};
+use crate::model::gcode::toolpath::ToolpathModel;
 
 #[derive(Debug)]
 pub enum FileActionResult {
-    LoadGCode((Mesh, ToolpathModel)),
+    LoadGCode(ToolpathModel),
     ImportIntersectionObject,
     SaveAs,
     Save,
@@ -31,6 +15,7 @@ pub enum FileActionError {
     Error(String),
 }
 
+/*
 #[derive(Component)]
 pub struct ComputeFileAction(Task<Result<FileActionResult, FileActionError>>);
 
@@ -156,3 +141,4 @@ pub fn exit(data: UiData) {
 
     data.commands.borrow_mut().spawn(ComputeFileAction(task));
 }
+*/

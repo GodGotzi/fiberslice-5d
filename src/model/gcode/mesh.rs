@@ -1,16 +1,10 @@
 use std::{cell::Cell, collections::HashMap};
-
-use bevy::{
-    math::vec3,
-    prelude::Vec3,
-    render::{mesh::Mesh, render_resource::PrimitiveTopology},
-};
+use three_d::{vec3, InnerSpace, Positions, Srgba, Vector3};
 
 use crate::{
-    api::{Flip, U8Color},
-    math::FSVec3,
+    api::{math::DirectMul, FlipYZ, Reverse},
     model::{
-        mesh::{CpuMesh, MeshRef},
+        mesh::{MeshRef, SimpleMesh},
         shapes::Rect3d,
     },
 };
@@ -27,27 +21,35 @@ pub enum PathOrientation {
 
 #[derive(Debug)]
 pub struct Cross {
-    pub up: Vec3,
-    pub down: Vec3,
-    pub left: Vec3,
-    pub right: Vec3,
+    pub up: Vector3<f32>,
+    pub down: Vector3<f32>,
+    pub left: Vector3<f32>,
+    pub right: Vector3<f32>,
 }
 
-pub fn get_cross(direction: Vec3, radius: f32) -> Cross {
+pub fn get_cross(direction: Vector3<f32>, radius: f32) -> Cross {
     let horizontal = direction.cross(vec3(0.0, 0.0, direction.z + 1.0));
     let vertical = direction.cross(vec3(direction.x + 1.0, direction.y + 1.0, 0.0));
 
     Cross {
-        up: vertical.normalize() * vec3(radius, radius, radius),
-        down: vertical.normalize() * vec3(-radius, -radius, -radius),
-        left: horizontal.normalize() * vec3(radius, radius, radius),
-        right: horizontal.normalize() * vec3(-radius, -radius, -radius),
+        up: vertical
+            .normalize()
+            .direct_mul(&vec3(radius, radius, radius)),
+        down: vertical
+            .normalize()
+            .direct_mul(&vec3(-radius, -radius, -radius)),
+        left: horizontal
+            .normalize()
+            .direct_mul(&vec3(radius, radius, radius)),
+        right: horizontal
+            .normalize()
+            .direct_mul(&vec3(-radius, -radius, -radius)),
     }
 }
 
 #[derive(Debug)]
 pub struct Layer {
-    pub cpu_mesh: CpuMesh,
+    pub cpu_mesh: SimpleMesh,
     pub line_range: Option<(usize, usize)>,
     child_models: Vec<LayerPart>,
 }
@@ -55,7 +57,7 @@ pub struct Layer {
 impl Layer {
     pub fn empty() -> Self {
         Self {
-            cpu_mesh: CpuMesh {
+            cpu_mesh: SimpleMesh {
                 positions: Vec::new(),
                 colors: Vec::new(),
             },
@@ -100,7 +102,7 @@ impl LayerPart {
     }
 }
 
-fn adjust_faces(direction: Vec3) -> bool {
+fn adjust_faces(direction: Vector3<f32>) -> bool {
     adjust_pane(direction.x, direction.y)
 }
 
@@ -133,11 +135,17 @@ impl<'a> PartCoordinator<'a> {
         }
     }
 
-    pub fn add_triangle(&mut self, triangle: (Vec3, Vec3, Vec3), color: &U8Color) {
+    pub fn add_triangle(
+        &mut self,
+        mut triangle: (Vector3<f32>, Vector3<f32>, Vector3<f32>),
+        color: &Srgba,
+    ) {
+        triangle.flip();
+
         let mesh = &mut self.mesh.cpu_mesh;
-        mesh.push_position(FSVec3(triangle.0).into());
-        mesh.push_position(FSVec3(triangle.1).into());
-        mesh.push_position(FSVec3(triangle.2).into());
+        mesh.push_position(triangle.0);
+        mesh.push_position(triangle.1);
+        mesh.push_position(triangle.2);
 
         mesh.push_color(*color);
 
@@ -224,7 +232,13 @@ impl<'a> PartCoordinator<'a> {
         }
     }
 
-    pub fn draw_path(&mut self, path: (Vec3, Vec3), color: &U8Color, flip: bool, cross: &Cross) {
+    pub fn draw_path(
+        &mut self,
+        path: (Vector3<f32>, Vector3<f32>),
+        color: &Srgba,
+        flip: bool,
+        cross: &Cross,
+    ) {
         self.draw_rect_path(
             Rect3d {
                 left_0: cross.up + path.0,
@@ -276,10 +290,10 @@ impl<'a> PartCoordinator<'a> {
 
     pub fn draw_cross_connection(
         &mut self,
-        center: &Vec3,
+        center: &Vector3<f32>,
         start_cross: &Cross,
         end_cross: &Cross,
-        color: &U8Color,
+        color: &Srgba,
     ) {
         self.add_triangle(
             (
@@ -321,8 +335,8 @@ impl<'a> PartCoordinator<'a> {
     fn draw_rect_path(
         &mut self,
         rect: Rect3d,
-        color: &U8Color,
-        flip: bool,
+        color: &Srgba,
+        face_flip: bool,
         orienation: PathOrientation,
     ) {
         let (mut triangle1, mut triangle2) = match orienation {
@@ -352,9 +366,9 @@ impl<'a> PartCoordinator<'a> {
             }
         };
 
-        if flip {
-            triangle1.flip();
-            triangle2.flip();
+        if face_flip {
+            triangle1.reverse();
+            triangle2.reverse();
         }
 
         self.add_triangle(triangle1, color);
@@ -363,18 +377,18 @@ impl<'a> PartCoordinator<'a> {
 
     pub fn draw_rect(
         &mut self,
-        point_left_0: Vec3,
-        point_left_1: Vec3,
-        point_right_0: Vec3,
-        point_right_1: Vec3,
-        color: &U8Color,
+        point_left_0: Vector3<f32>,
+        point_left_1: Vector3<f32>,
+        point_right_0: Vector3<f32>,
+        point_right_1: Vector3<f32>,
+        color: &Srgba,
     ) {
         self.add_triangle((point_left_0, point_left_1, point_right_0), color);
 
         self.add_triangle((point_left_1, point_right_1, point_right_0), color);
     }
 
-    pub fn draw_rect_with_cross(&mut self, center: &Vec3, cross: &Cross, color: &U8Color) {
+    pub fn draw_rect_with_cross(&mut self, center: &Vector3<f32>, cross: &Cross, color: &Srgba) {
         self.draw_rect(
             cross.up + *center,
             cross.right + *center,
@@ -387,7 +401,7 @@ impl<'a> PartCoordinator<'a> {
 
 pub struct Layers<'a>(pub &'a HashMap<usize, Layer>);
 
-impl<'a> From<Layers<'a>> for Mesh {
+impl<'a> From<Layers<'a>> for three_d::CpuMesh {
     fn from(layers: Layers) -> Self {
         let mut positions = Vec::new();
         let mut colors: Vec<[f32; 4]> = Vec::new();
@@ -395,7 +409,10 @@ impl<'a> From<Layers<'a>> for Mesh {
         for entry in layers.0.iter() {
             let layer_mesh = entry.1;
 
-            positions.append(&mut layer_mesh.cpu_mesh.positions.clone());
+            for position in layer_mesh.cpu_mesh.positions.iter() {
+                positions.push(*position);
+            }
+
             colors.reserve_exact(layer_mesh.cpu_mesh.colors.len());
 
             for color in layer_mesh.cpu_mesh.colors.iter() {
@@ -405,12 +422,14 @@ impl<'a> From<Layers<'a>> for Mesh {
             }
         }
 
-        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
+        let mut cpu_mesh = three_d::CpuMesh {
+            positions: Positions::F32(positions),
+            colors: Some(colors),
+            ..Default::default()
+        };
 
-        mesh.compute_flat_normals();
+        cpu_mesh.compute_normals();
 
-        mesh
+        cpu_mesh
     }
 }
