@@ -170,8 +170,4 @@ impl Environment {
         let lights: Vec<&dyn Light> = self.owned_lights.iter().map(Box::as_ref).collect();
         lights
     }
-
-    pub fn camera_mut(&mut self) -> &mut Camera {
-        &mut self.camera
-    }
 }
