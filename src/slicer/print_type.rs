@@ -1,6 +1,6 @@
 use strum_macros::EnumString;
 
-use crate::api::U8Color;
+use three_d::Srgba;
 
 #[derive(Debug, Clone, EnumString, PartialEq, Eq)]
 pub enum PrintType {
@@ -20,22 +20,22 @@ pub enum PrintType {
 }
 
 impl PrintType {
-    pub fn get_color(&self) -> U8Color {
+    pub fn get_color(&self) -> Srgba {
         //set hard coded colors for now unique to each print type
         match &self {
-            Self::InternalInfill => U8Color([0, 0, 255, 255]),
-            Self::SolidInfill => U8Color([0, 255, 0, 255]),
-            Self::BridgeInfill => U8Color([255, 0, 0, 255]),
-            Self::TopSolidInfill => U8Color([130, 130, 0, 255]),
-            Self::Skirt => U8Color([255, 0, 255, 255]),
-            Self::Brim => U8Color([0, 255, 255, 255]),
-            Self::Support => U8Color([255, 255, 255, 255]),
-            Self::Perimeter => U8Color([255, 0, 255, 255]),
-            Self::WallOuter => U8Color([255, 0, 0, 255]),
-            Self::WallInner => U8Color([255, 0, 0, 255]),
-            Self::ExternalPerimeter => U8Color([255, 255, 0, 255]),
-            Self::OverhangPerimeter => U8Color([0, 255, 255, 255]),
-            Self::Unknown => U8Color([0, 0, 0, 255]),
+            Self::InternalInfill => Srgba::new(0, 0, 255, 255),
+            Self::SolidInfill => Srgba::new(0, 255, 0, 255),
+            Self::BridgeInfill => Srgba::new(255, 0, 0, 255),
+            Self::TopSolidInfill => Srgba::new(130, 130, 0, 255),
+            Self::Skirt => Srgba::new(255, 0, 255, 255),
+            Self::Brim => Srgba::new(0, 255, 255, 255),
+            Self::Support => Srgba::new(255, 255, 255, 255),
+            Self::Perimeter => Srgba::new(255, 0, 255, 255),
+            Self::WallOuter => Srgba::new(255, 0, 0, 255),
+            Self::WallInner => Srgba::new(255, 0, 0, 255),
+            Self::ExternalPerimeter => Srgba::new(255, 255, 0, 255),
+            Self::OverhangPerimeter => Srgba::new(0, 255, 255, 255),
+            Self::Unknown => Srgba::new(0, 0, 0, 255),
         }
     }
 }

@@ -5,105 +5,226 @@
     Please refer to the terms and conditions stated therein.
 */
 
+pub mod boundary;
 pub mod components;
-pub mod data;
+pub mod screen;
 
 mod icon;
 mod response;
 mod visual;
 
-use bevy::prelude::{Commands, EventWriter, Plugin, Res, ResMut, Update};
-use bevy_egui::{egui, EguiContexts, EguiPlugin};
-pub use components::size_fixed;
-use egui::Visuals;
-
-use crate::{
-    prelude::Context,
-    settings::{FilamentSettings, PrinterSettings, SliceSettings},
-    view::{Mode, Orientation},
+use std::{
+    cell::{Ref, RefCell, RefMut},
+    rc::Rc,
 };
 
-use visual::customize_look_and_feel;
+pub use components::size_fixed;
+use three_d::{egui, Context, FrameInput, GUI};
 
-use data::*;
-use response::Responses;
+use crate::{
+    event::EventReader,
+    prelude::{Adapter, Error, FrameHandle, SharedState},
+    view::Mode,
+};
 
+use self::{boundary::Boundary, response::Responses};
+
+#[derive(Debug)]
+pub enum UiEvent {}
+
+pub struct UiAdapter {
+    gui: GUI,
+    screen: screen::Screen,
+    state: Rc<RefCell<UiState>>,
+    event_reader: EventReader<UiEvent>,
+}
+
+impl UiAdapter {
+    pub fn borrow_gui(&self) -> &GUI {
+        &self.gui
+    }
+
+    pub fn share_state(&self) -> Rc<RefCell<UiState>> {
+        self.state.clone()
+    }
+}
+
+impl FrameHandle<UiResult, &SharedState> for UiAdapter {
+    fn handle_frame(
+        &mut self,
+        frame_input: &FrameInput,
+        shared_state: &SharedState,
+    ) -> Result<UiResult, Error> {
+        let mut result = UiResult::empty();
+
+        self.gui.update(
+            &mut frame_input.events.clone(),
+            frame_input.accumulated_time,
+            frame_input.viewport,
+            frame_input.device_pixel_ratio,
+            |ctx| {
+                result.pointer_use = Some(ctx.is_using_pointer());
+                self.screen.show(
+                    ctx,
+                    &mut UiData {
+                        state: self.state.clone(),
+                        shared_state,
+                    },
+                );
+            },
+        );
+
+        Ok(result)
+    }
+}
+
+impl Adapter<UiResult, &SharedState, UiEvent> for UiAdapter {
+    fn from_context(context: &Context) -> (crate::event::EventWriter<UiEvent>, Self) {
+        let (reader, writer) = crate::event::create_event_bundle::<UiEvent>();
+
+        (
+            writer,
+            Self {
+                gui: GUI::new(context),
+                screen: screen::Screen::new(),
+                state: Rc::new(RefCell::new(UiState::new())),
+                event_reader: reader,
+            },
+        )
+    }
+
+    fn get_reader(&self) -> &EventReader<UiEvent> {
+        &self.event_reader
+    }
+
+    fn handle_event(&mut self, event: UiEvent) {}
+
+    fn get_adapter_description(&self) -> String {
+        "UiAdapter".to_string()
+    }
+}
+
+pub struct UiState {
+    pub theme: Theme,
+    pub mode: Mode,
+
+    pub responses: Responses,
+    pub components: Components,
+}
+
+impl UiState {
+    pub fn new() -> Self {
+        Self {
+            theme: Theme::Light,
+            mode: Mode::Preview,
+            responses: Responses::new(),
+            components: Components::default(),
+        }
+    }
+}
+
+impl UiState {
+    pub fn toggle_theme(&mut self) {
+        self.theme = match self.theme {
+            Theme::Light => Theme::Dark,
+            Theme::Dark => Theme::Light,
+        };
+    }
+}
+
+#[derive(Default)]
+pub struct Components {
+    pub menubar: ComponentData,
+    pub taskbar: ComponentData,
+    pub modebar: ComponentData,
+    pub toolbar: ComponentData,
+    pub settingsbar: ComponentData,
+    pub addons: ComponentData,
+}
+
+impl Components {
+    pub fn delete_cache(&mut self) {
+        self.menubar.delete_cache();
+        self.taskbar.delete_cache();
+        self.modebar.delete_cache();
+        self.toolbar.delete_cache();
+        self.settingsbar.delete_cache();
+    }
+}
+
+pub struct ComponentData {
+    pub boundary: Option<Boundary>,
+    pub enabled: bool,
+}
+
+impl ComponentData {
+    fn delete_cache(&mut self) {
+        self.boundary = None;
+    }
+
+    pub fn boundary(&self) -> Boundary {
+        self.boundary.unwrap_or(Boundary::zero())
+    }
+
+    pub fn set_boundary(&mut self, boundary: Boundary) {
+        self.boundary = Some(boundary);
+    }
+}
+
+impl Default for ComponentData {
+    fn default() -> Self {
+        Self {
+            boundary: None,
+            enabled: true,
+        }
+    }
+}
+
+pub struct UiResult {
+    pub pointer_use: Option<bool>,
+}
+
+impl UiResult {
+    fn empty() -> Self {
+        Self { pointer_use: None }
+    }
+}
+
+#[derive(Clone)]
 pub enum Theme {
     Light,
     Dark,
 }
 
-pub struct UiPlugin;
+pub struct UiData<'a> {
+    state: Rc<RefCell<UiState>>,
+    shared_state: &'a SharedState,
+}
 
-impl Plugin for UiPlugin {
-    fn build(&self, app: &mut bevy::prelude::App) {
-        app.insert_resource(screen::Screen::new())
-            .insert_resource(Responses::new())
-            .insert_resource(RawUiData::new(Theme::Dark, Mode::Prepare))
-            .add_plugins(EguiPlugin)
-            .add_systems(Update, ui_frame);
+impl<'a> UiData<'a> {
+    pub fn borrow_ui_state(&mut self) -> Ref<UiState> {
+        self.state.borrow()
+    }
+
+    pub fn borrow_mut_ui_state(&mut self) -> RefMut<UiState> {
+        self.state.borrow_mut()
+    }
+
+    pub fn borrow_shared_state(&self) -> &'a SharedState {
+        self.shared_state
     }
 }
 
-type UiContext<'a, 'b> = (
-    EguiContexts<'a, 'b>,
-    ResMut<'a, screen::Screen>,
-    ResMut<'a, RawUiData>,
-    ResMut<'a, Responses>,
-);
-
-type Settings<'a> = (
-    ResMut<'a, SliceSettings>,
-    ResMut<'a, FilamentSettings>,
-    ResMut<'a, PrinterSettings>,
-);
-
-type Writers<'a> = EventWriter<'a, Orientation>;
-
-pub fn ui_frame(
-    context: Res<'_, Context>,
-    (mut ui_ctx, mut screen, mut data, buttons_responses): UiContext,
-    (slice_settinsg, filament_settings, printer_settings): Settings,
-    orientation_writer: Writers,
-    commands: Commands,
-) {
-    data.holder.delete_cache();
-
-    let ctx = ui_ctx.ctx_mut();
-
-    let settings = SettingBundle::wrap((slice_settinsg, filament_settings, printer_settings));
-
-    let writers = EventWriterBundle::wrap(orientation_writer);
-
-    let data = UiDataBundle::wrap((
-        data,
-        buttons_responses,
-        context,
-        settings,
-        writers,
-        commands,
-    ));
-
-    match data.raw.borrow_mut().theme {
-        Theme::Light => ctx.set_visuals(Visuals::light()),
-        Theme::Dark => ctx.set_visuals(Visuals::dark()),
-    };
-
-    ctx.set_visuals(customize_look_and_feel(ctx.style().visuals.clone()));
-
-    screen.show(ctx, &data);
-}
-
 pub trait SuperComponent {
-    fn show<'a>(&'a mut self, ctx: &egui::Context, data: &'a UiDataBundle<'a>);
+    fn show(&mut self, ctx: &egui::Context, state: &mut UiData);
 }
 
 pub trait Component {
-    fn show(&mut self, ctx: &egui::Context, data: UiData);
+    fn show(&mut self, ctx: &egui::Context, state: &mut UiData);
 }
 
 pub trait InnerComponent {
-    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, data: UiData);
+    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, state: &mut UiData);
 }
 
 pub trait TextComponent {
@@ -112,121 +233,4 @@ pub trait TextComponent {
 
 pub trait InnerTextComponent<P> {
     fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, prefix: P, suffix: P);
-}
-
-pub mod boundary {
-    use bevy_egui::egui::{self, Response};
-
-    #[derive(Default, Clone, Copy)]
-    pub struct Boundary {
-        pub location: egui::Pos2,
-        pub size: egui::Vec2,
-    }
-
-    impl Boundary {
-        pub fn zero() -> Self {
-            Self {
-                location: egui::Pos2::ZERO,
-                size: egui::Vec2::ZERO,
-            }
-        }
-
-        #[allow(dead_code)]
-        pub fn offset_x(&self) -> f32 {
-            self.location.x
-        }
-
-        #[allow(dead_code)]
-        pub fn offset_y(&self) -> f32 {
-            self.location.y
-        }
-
-        pub fn width(&self) -> f32 {
-            self.size.x
-        }
-
-        pub fn height(&self) -> f32 {
-            self.size.y
-        }
-    }
-
-    impl From<Response> for Boundary {
-        fn from(response: Response) -> Self {
-            Self {
-                location: response.rect.min,
-                size: response.rect.size(),
-            }
-        }
-    }
-}
-
-pub mod screen {
-    use bevy::prelude::Resource;
-    use bevy_egui::egui;
-
-    use super::*;
-    use components::{addons, menubar, modebar, settingsbar, taskbar, toolbar};
-
-    #[derive(Resource)]
-    pub struct Screen {
-        settings: settingsbar::Settingsbar,
-        addons: addons::Addons,
-        menubar: menubar::Menubar,
-        taskbar: taskbar::Taskbar,
-        modebar: modebar::Modebar,
-        toolbar: toolbar::Toolbar,
-    }
-
-    impl Screen {
-        pub fn new() -> Self {
-            Self {
-                settings: settingsbar::Settingsbar::new(),
-                addons: addons::Addons::new(),
-                menubar: menubar::Menubar::new(),
-                taskbar: taskbar::Taskbar::new(),
-                modebar: modebar::Modebar::new(),
-                toolbar: toolbar::Toolbar::new(),
-            }
-        }
-    }
-
-    impl SuperComponent for Screen {
-        fn show<'a>(&'a mut self, ctx: &egui::Context, data: &'a UiDataBundle<'a>) {
-            let frame = egui::containers::Frame {
-                fill: egui::Color32::TRANSPARENT,
-                ..Default::default()
-            };
-
-            self.menubar.show(ctx, data);
-
-            if data.raw.borrow_mut().holder.taskbar.enabled {
-                self.taskbar.show(ctx, data);
-            }
-
-            //self.addons.show(ctx, None, app);
-            if data.raw.borrow_mut().holder.settingsbar.enabled {
-                self.settings.show(ctx, data);
-            }
-
-            if data.raw.borrow_mut().holder.toolbar.enabled {
-                self.toolbar.show(ctx, data);
-            }
-
-            if data.raw.borrow_mut().holder.modebar.enabled {
-                self.modebar.show(ctx, data);
-            }
-
-            egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
-                /*
-                self.icontable
-                    .get_orientation_icon(crate::view::Orientation::Default)
-                    .show(ui);
-                */
-
-                if data.raw.borrow_mut().holder.addons.enabled {
-                    self.addons.show(ctx, ui, data);
-                }
-            });
-        }
-    }
 }

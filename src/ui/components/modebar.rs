@@ -1,6 +1,6 @@
-use bevy_egui::egui;
 use egui_extras::Size;
 use egui_grid::GridBuilder;
+use three_d::egui;
 
 use crate::config;
 use crate::ui::{Component, UiData};
@@ -15,7 +15,7 @@ impl Modebar {
 }
 
 impl Component for Modebar {
-    fn show(&mut self, ctx: &egui::Context, data: UiData) {
+    fn show(&mut self, ctx: &egui::Context, data: &mut UiData) {
         let boundary = egui::TopBottomPanel::bottom("modebar")
             .default_height(config::gui::MODEBAR_H)
             .show(ctx, |ui: &mut egui::Ui| {
@@ -44,7 +44,7 @@ impl Component for Modebar {
                             // Cells are represented as they were allocated
                             grid.cell(|ui| {
                                 ui.selectable_value(
-                                    &mut data.raw.borrow_mut().mode,
+                                    &mut data.borrow_mut_ui_state().mode,
                                     Mode::Prepare,
                                     "Prepare",
                                 );
@@ -52,7 +52,7 @@ impl Component for Modebar {
                             grid.empty();
                             grid.cell(|ui| {
                                 ui.selectable_value(
-                                    &mut data.raw.borrow_mut().mode,
+                                    &mut data.borrow_mut_ui_state().mode,
                                     Mode::ForceAnalytics,
                                     "Force - Analytics",
                                 );
@@ -60,7 +60,7 @@ impl Component for Modebar {
                             grid.empty();
                             grid.cell(|ui| {
                                 ui.selectable_value(
-                                    &mut data.raw.borrow_mut().mode,
+                                    &mut data.borrow_mut_ui_state().mode,
                                     Mode::Preview,
                                     "Preview",
                                 );
@@ -71,6 +71,9 @@ impl Component for Modebar {
             .response
             .into();
 
-        data.raw.borrow_mut().holder.menubar.set_boundary(boundary);
+        data.borrow_mut_ui_state()
+            .components
+            .menubar
+            .set_boundary(boundary);
     }
 }

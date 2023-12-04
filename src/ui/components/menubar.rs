@@ -1,11 +1,9 @@
-use bevy_egui::egui;
 use egui::Ui;
+use three_d::egui;
 
-use crate::actions::file::{
-    exit, import_intersection_object, load_gcode, save_as_gcode, save_gcode,
-};
 use crate::config;
-use crate::ui::{Component, UiData};
+use crate::ui::Component;
+use crate::ui::UiData;
 
 pub struct Menubar;
 
@@ -16,7 +14,7 @@ impl Menubar {
 }
 
 impl Component for Menubar {
-    fn show(&mut self, ctx: &egui::Context, data: UiData) {
+    fn show(&mut self, ctx: &egui::Context, data: &mut UiData) {
         let boundary = egui::TopBottomPanel::top("menubar")
             .default_height(config::gui::MENUBAR_H)
             .show(ctx, |ui: &mut Ui| {
@@ -32,17 +30,22 @@ impl Component for Menubar {
             .response
             .into();
 
-        data.raw.borrow_mut().holder.menubar.set_boundary(boundary);
+        data.borrow_mut_ui_state()
+            .components
+            .menubar
+            .set_boundary(boundary);
     }
 }
 
-fn file_button(ui: &mut Ui, data: UiData) {
+fn file_button(ui: &mut Ui, data: &mut UiData) {
     ui.menu_button("File", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
 
         //let manipulator = gui_context.manipulator.clone();
         //let context = gui_context.context.clone();
+
+        /*
 
         build_sub_menu(ui, "Load GCode", || load_gcode(data));
         build_sub_menu(ui, "Import Intersection Object", || {
@@ -58,42 +61,55 @@ fn file_button(ui: &mut Ui, data: UiData) {
         ui.separator();
 
         build_sub_menu(ui, "Exit", || exit(data));
+        */
     });
 }
 
-fn edit_button(ui: &mut Ui, _data: UiData) {
+fn edit_button(ui: &mut Ui, _data: &mut UiData) {
     ui.menu_button("Edit", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
     });
 }
 
-fn window_button(ui: &mut Ui, data: UiData) {
+fn window_button(ui: &mut Ui, data: &mut UiData) {
     ui.menu_button("Window", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
 
-        ui.checkbox(&mut data.raw.borrow_mut().holder.addons.enabled, "Addons");
+        ui.checkbox(
+            &mut data.borrow_mut_ui_state().components.addons.enabled,
+            "Addons",
+        );
         ui.separator();
 
-        ui.checkbox(&mut data.raw.borrow_mut().holder.modebar.enabled, "ModeBar");
-        ui.checkbox(&mut data.raw.borrow_mut().holder.toolbar.enabled, "ToolBar");
-        ui.checkbox(&mut data.raw.borrow_mut().holder.taskbar.enabled, "TaskBar");
         ui.checkbox(
-            &mut data.raw.borrow_mut().holder.settingsbar.enabled,
+            &mut data.borrow_mut_ui_state().components.modebar.enabled,
+            "ModeBar",
+        );
+        ui.checkbox(
+            &mut data.borrow_mut_ui_state().components.toolbar.enabled,
+            "ToolBar",
+        );
+        ui.checkbox(
+            &mut data.borrow_mut_ui_state().components.taskbar.enabled,
+            "TaskBar",
+        );
+        ui.checkbox(
+            &mut data.borrow_mut_ui_state().components.settingsbar.enabled,
             "Settings",
         );
     });
 }
 
-fn view_button(ui: &mut Ui, _data: UiData) {
+fn view_button(ui: &mut Ui, _data: &mut UiData) {
     ui.menu_button("View", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
     });
 }
 
-fn help_button(ui: &mut Ui, _data: UiData) {
+fn help_button(ui: &mut Ui, _data: &mut UiData) {
     ui.menu_button("Help", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);

@@ -1,8 +1,9 @@
-use bevy::prelude::Resource;
-use bevy_egui::egui::Response;
+use three_d::egui::Response;
 
 use crate::view::Orientation;
 use strum::EnumCount;
+
+use super::UiState;
 
 pub trait Responsive {
     fn empty() -> Self;
@@ -39,7 +40,6 @@ impl Responsive for ButtonResponse {
     }
 }
 
-#[derive(Resource)]
 pub struct Responses {
     pub orientation: [ButtonResponse; Orientation::COUNT],
 }
@@ -58,3 +58,31 @@ impl Responses {
         }
     }
 }
+
+impl UiState {
+    pub fn get_orientation_response(&self, orientation: &Orientation) -> ButtonResponse {
+        self.responses.orientation[*orientation as usize]
+    }
+
+    pub fn update_orientation_response(&mut self, orientation: &Orientation, response: Response) {
+        let button_response = &mut self.responses.orientation[*orientation as usize];
+
+        button_response.clicked = response.clicked();
+        button_response.hovered = response.hovered();
+    }
+}
+
+/*
+Notes ETE
+
+
+
+
+
+
+
+
+
+
+
+*/
