@@ -19,7 +19,10 @@ use std::{
 };
 
 pub use components::size_fixed;
-use three_d::{egui, Context, FrameInput, GUI};
+use three_d::{
+    egui::{self, Visuals},
+    Context, FrameInput, GUI,
+};
 
 use crate::{
     event::EventReader,
@@ -27,7 +30,7 @@ use crate::{
     view::Mode,
 };
 
-use self::{boundary::Boundary, response::Responses};
+use self::{boundary::Boundary, response::Responses, visual::customize_look_and_feel};
 
 #[derive(Debug)]
 pub enum UiEvent {}
@@ -64,6 +67,10 @@ impl FrameHandle<UiResult, &SharedState> for UiAdapter {
             frame_input.device_pixel_ratio,
             |ctx| {
                 result.pointer_use = Some(ctx.is_using_pointer());
+
+                let visuals = customize_look_and_feel((&self.state.borrow().theme).into());
+                ctx.set_visuals(visuals);
+
                 self.screen.show(
                     ctx,
                     &mut UiData {
@@ -101,6 +108,15 @@ impl Adapter<UiResult, &SharedState, UiEvent> for UiAdapter {
 
     fn get_adapter_description(&self) -> String {
         "UiAdapter".to_string()
+    }
+}
+
+impl From<&Theme> for Visuals {
+    fn from(theme: &Theme) -> Self {
+        match theme {
+            &Theme::Light => Visuals::light(),
+            &Theme::Dark => Visuals::dark(),
+        }
     }
 }
 
