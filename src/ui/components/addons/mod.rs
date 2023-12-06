@@ -5,10 +5,15 @@
     Please refer to the terms and conditions stated therein.
 */
 
+use crate::{ui::icon, view::Orientation};
 use egui_extras::{Size, StripBuilder};
+use strum::EnumCount;
 use three_d::egui::{self, *};
 
+use std::rc::Rc;
+
 use crate::{
+    api::ui::ResponsiveButton,
     ui::{boundary::Boundary, InnerComponent, UiData},
     view::Mode,
 };
@@ -17,14 +22,15 @@ mod force_analytics;
 mod prepare;
 mod preview;
 
-type AddonStripBuilderClosure = dyn Fn(StripBuilder, &mut UiData, Color32);
+type AddonStripBuilderClosure = dyn Fn(Addons, StripBuilder, &mut UiData, Color32);
 
 pub fn create_addon_strip_builder(
+    addons: Addons,
     ui: &mut Ui,
     data: &mut UiData,
     boundary: Boundary,
     shaded_color: Color32,
-    build: Box<AddonStripBuilderClosure>,
+    build: &AddonStripBuilderClosure,
 ) -> Response {
     StripBuilder::new(ui)
         .size(Size::exact(boundary.location.x))
@@ -40,7 +46,7 @@ pub fn create_addon_strip_builder(
                     .vertical(|mut strip| {
                         strip.empty();
                         strip.strip(|builder| {
-                            build(builder, data, shaded_color);
+                            build(addons, builder, data, shaded_color);
                         });
                         strip.empty();
                     });
@@ -59,7 +65,7 @@ pub mod orientation {
         view::Orientation,
     };
 
-    pub fn show(ui: &mut egui::Ui, data: &mut UiData) {
+    pub fn show(addons: super::Addons, ui: &mut egui::Ui, data: &mut UiData) {
         let layout = egui::Layout {
             main_dir: egui::Direction::RightToLeft,
             main_wrap: true,
@@ -85,75 +91,91 @@ pub mod orientation {
             .show(ui, |mut grid| {
                 grid.empty();
                 grid.cell(|ui| {
-                    add_button_icon(ui, data, Orientation::Diagonal);
+                    add_button_icon(addons.clone(), ui, data, Orientation::Diagonal);
                 });
 
                 grid.cell(|ui| {
-                    add_button_icon(ui, data, Orientation::Front);
+                    add_button_icon(addons.clone(), ui, data, Orientation::Front);
                 });
 
                 grid.cell(|ui| {
-                    add_button_icon(ui, data, Orientation::Top);
+                    add_button_icon(addons.clone(), ui, data, Orientation::Top);
                 });
 
                 grid.cell(|ui| {
-                    add_button_icon(ui, data, Orientation::Left);
+                    add_button_icon(addons.clone(), ui, data, Orientation::Left);
                 });
 
                 grid.cell(|ui| {
-                    add_button_icon(ui, data, Orientation::Right);
+                    add_button_icon(addons, ui, data, Orientation::Right);
                 });
 
                 grid.empty();
             });
     }
 
-    fn add_button_icon(ui: &mut egui::Ui, data: &mut UiData, orientation: Orientation) {
-        let icon = icon::ICONTABLE.get_orientation_icon(orientation);
+    fn add_button_icon(
+        addons: super::Addons,
+        ui: &mut egui::Ui,
+        data: &mut UiData,
+        orientation: Orientation,
+    ) {
+        if let Some(responsive_button) = addons.orientation {
+            ui.allocate_ui([35., 35.].into(), move |ui| {
+                ui.with_layout(
+                    egui::Layout::centered_and_justified(egui::Direction::TopDown),
+                    |ui| {
+                        let mut ui_state = data.state.borrow_mut();
+                        let prev_response =
+                            ui_state.responses.get_button_response(orientation).unwrap();
 
-        let image_button =
-            ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
+                        let response = responsive_button[orientation as usize]
+                            .show(prev_response.hovered(), ui);
 
-        ui.allocate_ui([35., 35.].into(), move |ui| {
-            ui.with_layout(
-                egui::Layout::centered_and_justified(egui::Direction::TopDown),
-                |ui| {
-                    let mut ui_state = data.state.borrow_mut();
-                    let prev_response =
-                        ui_state.responses.get_button_response(orientation).unwrap();
+                        ui_state
+                            .responses
+                            .update_button_response(orientation, &response);
 
-                    if prev_response.hovered() {
-                        ui.painter().rect_filled(
-                            ui.available_rect_before_wrap(),
-                            0.0,
-                            egui::Color32::from_rgba_premultiplied(75, 255, 0, 100),
-                        );
-                    }
+                        if response.clicked() {
+                            println!("Clicked: {:?}", orientation);
 
-                    let response = ui.add_sized([30., 30.], image_button);
-
-                    ui_state
-                        .responses
-                        .update_button_response(orientation, &response);
-
-                    if response.clicked() {
-                        println!("Clicked: {:?}", orientation);
-
-                        data.borrow_shared_state().writer_environment_event.send(
-                            crate::environment::EnvironmentEvent::SendOrientation(orientation),
-                        )
-                    }
-                },
-            );
-        });
+                            data.borrow_shared_state().writer_environment_event.send(
+                                crate::environment::EnvironmentEvent::SendOrientation(orientation),
+                            )
+                        }
+                    },
+                );
+            });
+        }
     }
 }
 
-pub struct Addons {}
+pub struct Addons {
+    orientation: Option<[Rc<ResponsiveButton>; Orientation::COUNT]>,
+}
+
+impl Clone for Addons {
+    fn clone(&self) -> Self {
+        if let Some(orientation) = &self.orientation {
+            Self {
+                orientation: Some([
+                    orientation[0].clone(),
+                    orientation[1].clone(),
+                    orientation[2].clone(),
+                    orientation[3].clone(),
+                    orientation[4].clone(),
+                    orientation[5].clone(),
+                ]),
+            }
+        } else {
+            Self { orientation: None }
+        }
+    }
+}
 
 impl Addons {
     pub fn new() -> Self {
-        Self {}
+        Self { orientation: None }
     }
 }
 
@@ -169,9 +191,64 @@ impl InnerComponent for Addons {
         let mode = state.borrow_ui_state().mode;
 
         match mode {
-            Mode::Prepare => prepare::show(ctx, ui, state, boundary),
-            Mode::Preview => preview::show(ctx, ui, state, boundary),
-            Mode::ForceAnalytics => force_analytics::show(ctx, ui, state, boundary),
+            Mode::Prepare => prepare::show(self.clone(), ctx, ui, state, boundary),
+            Mode::Preview => preview::show(self.clone(), ctx, ui, state, boundary),
+            Mode::ForceAnalytics => force_analytics::show(self.clone(), ctx, ui, state, boundary),
         }
+    }
+
+    fn init_with_ctx(&mut self, ctx: &egui::Context) {
+        if self.orientation.is_some() {
+            return;
+        }
+
+        let color = egui::Color32::from_rgba_premultiplied(75, 255, 0, 100);
+        let icon_default = icon::ICONTABLE.get_orientation_icon(Orientation::Default);
+        let icon_diagonal = icon::ICONTABLE.get_orientation_icon(Orientation::Diagonal);
+        let icon_front = icon::ICONTABLE.get_orientation_icon(Orientation::Front);
+        let icon_top = icon::ICONTABLE.get_orientation_icon(Orientation::Top);
+        let icon_left = icon::ICONTABLE.get_orientation_icon(Orientation::Left);
+        let icon_right = icon::ICONTABLE.get_orientation_icon(Orientation::Right);
+
+        let orientation = [
+            Rc::new(ResponsiveButton::new(
+                icon_default,
+                icon_default.texture_id(ctx),
+                (30.0, 30.0),
+                color,
+            )),
+            Rc::new(ResponsiveButton::new(
+                icon_diagonal,
+                icon_diagonal.texture_id(ctx),
+                (30.0, 30.0),
+                color,
+            )),
+            Rc::new(ResponsiveButton::new(
+                icon_front,
+                icon_front.texture_id(ctx),
+                (30.0, 30.0),
+                color,
+            )),
+            Rc::new(ResponsiveButton::new(
+                icon_top,
+                icon_top.texture_id(ctx),
+                (30.0, 30.0),
+                color,
+            )),
+            Rc::new(ResponsiveButton::new(
+                icon_left,
+                icon_left.texture_id(ctx),
+                (30.0, 30.0),
+                color,
+            )),
+            Rc::new(ResponsiveButton::new(
+                icon_right,
+                icon_right.texture_id(ctx),
+                (30.0, 30.0),
+                color,
+            )),
+        ];
+
+        self.orientation = Some(orientation);
     }
 }

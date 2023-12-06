@@ -6,15 +6,22 @@ use crate::{
     ui::{boundary::Boundary, UiData},
 };
 
-pub fn show(_ctx: &egui::Context, ui: &mut egui::Ui, data: &mut UiData, boundary: Boundary) {
+pub fn show(
+    addons: super::Addons,
+    _ctx: &egui::Context,
+    ui: &mut egui::Ui,
+    data: &mut UiData,
+    boundary: Boundary,
+) {
     let shaded_color = shaded_color(ui.visuals().dark_mode);
 
     let _response = super::create_addon_strip_builder(
+        addons,
         ui,
         data,
         boundary,
         shaded_color,
-        Box::new(|builder, data, shaded_color| {
+        &|addons, builder, data, shaded_color| {
             builder
                 .size(Size::remainder())
                 .size(Size::relative(0.6))
@@ -38,7 +45,7 @@ pub fn show(_ctx: &egui::Context, ui: &mut egui::Ui, data: &mut UiData, boundary
                                                     shaded_color,
                                                 );
 
-                                                super::orientation::show(ui, data);
+                                                super::orientation::show(addons, ui, data);
                                             });
                                         });
                                 });
@@ -63,7 +70,7 @@ pub fn show(_ctx: &egui::Context, ui: &mut egui::Ui, data: &mut UiData, boundary
                     });
                     strip.empty();
                 });
-        }),
+        },
     );
 
     /*

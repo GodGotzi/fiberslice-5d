@@ -3,19 +3,26 @@ use egui_extras::Size;
 use three_d::egui;
 
 use crate::{
-    config::gui::shaded_color,
+    config::gui::{addons, shaded_color},
     ui::{boundary::Boundary, UiData},
 };
 
-pub fn show(_ctx: &egui::Context, ui: &mut Ui, data: &mut UiData, boundary: Boundary) {
+pub fn show(
+    addons: super::Addons,
+    _ctx: &egui::Context,
+    ui: &mut Ui,
+    data: &mut UiData,
+    boundary: Boundary,
+) {
     let shaded_color = shaded_color(ui.visuals().dark_mode);
 
     let _response = super::create_addon_strip_builder(
+        addons,
         ui,
         data,
         boundary,
         shaded_color,
-        Box::new(|builder, data, shaded_color| {
+        &|addons, builder, data, shaded_color| {
             builder
                 .size(Size::remainder())
                 .size(Size::relative(0.6))
@@ -39,7 +46,7 @@ pub fn show(_ctx: &egui::Context, ui: &mut Ui, data: &mut UiData, boundary: Boun
                                                     shaded_color,
                                                 );
 
-                                                super::orientation::show(ui, data);
+                                                super::orientation::show(addons, ui, data);
                                             });
                                         });
                                 });
@@ -49,12 +56,6 @@ pub fn show(_ctx: &egui::Context, ui: &mut Ui, data: &mut UiData, boundary: Boun
                     strip.empty();
                     strip.empty();
                 });
-        }),
+        },
     );
-
-    /*
-    gui_interface.register_boundary(
-        gui::Boundary::new(rect.min.x, rect.min.y, rect.width(), rect.height())
-    );
-    */
 }

@@ -254,6 +254,7 @@ pub trait Component {
 }
 
 pub trait InnerComponent {
+    fn init_with_ctx(&mut self, ctx: &egui::Context);
     fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, state: &mut UiData);
 }
 
