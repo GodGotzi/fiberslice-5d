@@ -25,6 +25,7 @@ mod settings;
 mod shortcut;
 mod slicer;
 mod tests;
+mod tools;
 mod ui;
 mod view;
 mod window;

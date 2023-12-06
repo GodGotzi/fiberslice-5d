@@ -5,6 +5,7 @@
     Please refer to the terms and conditions stated therein.
 */
 
+use macros::NumEnum;
 use strum_macros::{EnumCount, EnumIter};
 use three_d::{LogicalPoint, Viewport};
 
@@ -13,7 +14,7 @@ use three_d::{vec3, Camera, Deg, Vec3};
 use crate::api::Contains;
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Copy, EnumCount, EnumIter)] //maybe performance bit worse
+#[derive(Debug, Clone, Copy, NumEnum, EnumCount, EnumIter)] //maybe performance bit worse
 pub enum Orientation {
     Default,
     Diagonal,
@@ -23,10 +24,12 @@ pub enum Orientation {
     Front,
 }
 
+#[derive(Debug, Clone, Copy, EnumCount, EnumIter)]
 pub enum TransformationMode {
     Translate,
     Rotate,
     Scale,
+    PlaceOnFace,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]

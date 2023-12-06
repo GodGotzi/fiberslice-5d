@@ -30,3 +30,37 @@ pub fn type_eq_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream
     // Return the generated implementation as a TokenStream
     proc_macro::TokenStream::from(expanded)
 }
+
+#[proc_macro_derive(NumEnum)]
+pub fn num_to_enum_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let derive_input: DeriveInput = parse(input).unwrap();
+    // Get the name of the enum
+    let enum_name = &derive_input.ident;
+
+    let variants: Vec<Ident> = match derive_input.data {
+        syn::Data::Struct(_) => panic!("Structs are not supported with TypeEq"),
+        syn::Data::Enum(data) => data.variants.into_iter().map(|f| f.ident).collect(),
+        syn::Data::Union(_) => panic!("Union are not supported with TypeEq"),
+    };
+
+    // Generate the implementation for `TypeEq` trait
+    let expanded = quote! {
+        impl From<usize> for #enum_name {
+            fn from(n: usize) -> Self {
+                match n {
+                    #(num if num == (#enum_name::#variants as usize) => #enum_name::#variants,) *
+                    _ => panic!("Invalid index"),
+                }
+            }
+        }
+
+        impl Into<usize> for #enum_name {
+            fn into(self) -> usize {
+                self as usize
+            }
+        }
+    };
+
+    // Return the generated implementation as a TokenStream
+    proc_macro::TokenStream::from(expanded)
+}

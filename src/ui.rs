@@ -27,8 +27,11 @@ use three_d::{
 use crate::{
     event::EventReader,
     prelude::{Adapter, Error, FrameHandle, SharedState},
-    view::Mode,
+    tools::Tool,
+    view::{Mode, Orientation},
 };
+
+use strum::EnumCount;
 
 use self::{boundary::Boundary, response::Responses, visual::customize_look_and_feel};
 
@@ -60,6 +63,8 @@ impl FrameHandle<UiResult, &SharedState> for UiAdapter {
     ) -> Result<UiResult, Error> {
         let mut result = UiResult::empty();
 
+        self.state.borrow_mut().components.delete_cache();
+
         self.gui.update(
             &mut frame_input.events.clone(),
             frame_input.accumulated_time,
@@ -88,13 +93,19 @@ impl FrameHandle<UiResult, &SharedState> for UiAdapter {
 impl Adapter<UiResult, &SharedState, UiEvent> for UiAdapter {
     fn from_context(context: &Context) -> (crate::event::EventWriter<UiEvent>, Self) {
         let (reader, writer) = crate::event::create_event_bundle::<UiEvent>();
+        let state = Rc::new(RefCell::new(UiState::new()));
+
+        state
+            .borrow_mut()
+            .responses
+            .add_button_response::<Orientation>();
 
         (
             writer,
             Self {
                 gui: GUI::new(context),
                 screen: screen::Screen::new(),
-                state: Rc::new(RefCell::new(UiState::new())),
+                state,
                 event_reader: reader,
             },
         )
@@ -113,9 +124,9 @@ impl Adapter<UiResult, &SharedState, UiEvent> for UiAdapter {
 
 impl From<&Theme> for Visuals {
     fn from(theme: &Theme) -> Self {
-        match theme {
-            &Theme::Light => Visuals::light(),
-            &Theme::Dark => Visuals::dark(),
+        match *theme {
+            Theme::Light => Visuals::light(),
+            Theme::Dark => Visuals::dark(),
         }
     }
 }
@@ -123,6 +134,7 @@ impl From<&Theme> for Visuals {
 pub struct UiState {
     pub theme: Theme,
     pub mode: Mode,
+    tools_enabled: [bool; Tool::COUNT],
 
     pub responses: Responses,
     pub components: Components,
@@ -133,6 +145,8 @@ impl UiState {
         Self {
             theme: Theme::Light,
             mode: Mode::Preview,
+            tools_enabled: [false; Tool::COUNT],
+
             responses: Responses::new(),
             components: Components::default(),
         }

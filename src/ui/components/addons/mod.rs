@@ -118,9 +118,9 @@ pub mod orientation {
             ui.with_layout(
                 egui::Layout::centered_and_justified(egui::Direction::TopDown),
                 |ui| {
-                    let prev_response = data
-                        .borrow_ui_state()
-                        .get_orientation_response(&orientation);
+                    let mut ui_state = data.state.borrow_mut();
+                    let prev_response =
+                        ui_state.responses.get_button_response(orientation).unwrap();
 
                     if prev_response.hovered() {
                         ui.painter().rect_filled(
@@ -132,10 +132,13 @@ pub mod orientation {
 
                     let response = ui.add_sized([30., 30.], image_button);
 
-                    data.borrow_mut_ui_state()
-                        .update_orientation_response(&orientation, response.clone());
+                    ui_state
+                        .responses
+                        .update_button_response(orientation, &response);
 
                     if response.clicked() {
+                        println!("Clicked: {:?}", orientation);
+
                         data.borrow_shared_state().writer_environment_event.send(
                             crate::environment::EnvironmentEvent::SendOrientation(orientation),
                         )

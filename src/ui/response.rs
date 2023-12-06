@@ -1,9 +1,8 @@
+use std::{any::TypeId, collections::HashMap};
+
 use three_d::egui::Response;
 
-use crate::view::Orientation;
 use strum::EnumCount;
-
-use super::UiState;
 
 pub trait Responsive {
     fn empty() -> Self;
@@ -41,48 +40,32 @@ impl Responsive for ButtonResponse {
 }
 
 pub struct Responses {
-    pub orientation: [ButtonResponse; Orientation::COUNT],
+    pub button_responses: HashMap<TypeId, Vec<ButtonResponse>>,
 }
 
 impl Responses {
     pub fn new() -> Self {
         Self {
-            orientation: [
-                ButtonResponse::empty(),
-                ButtonResponse::empty(),
-                ButtonResponse::empty(),
-                ButtonResponse::empty(),
-                ButtonResponse::empty(),
-                ButtonResponse::empty(),
-            ],
+            button_responses: HashMap::new(),
+        }
+    }
+
+    pub fn add_button_response<T: 'static + EnumCount>(&mut self) {
+        self.button_responses
+            .insert(TypeId::of::<T>(), vec![ButtonResponse::empty(); T::COUNT]);
+    }
+
+    pub fn get_button_response<T: 'static + Into<usize>>(&self, t: T) -> Option<&ButtonResponse> {
+        if let Some(responses) = self.button_responses.get(&TypeId::of::<T>()) {
+            Some(&responses[t.into()])
+        } else {
+            None
+        }
+    }
+
+    pub fn update_button_response<T: 'static + Into<usize>>(&mut self, t: T, response: &Response) {
+        if let Some(responses) = self.button_responses.get_mut(&TypeId::of::<T>()) {
+            responses[t.into()].update(response);
         }
     }
 }
-
-impl UiState {
-    pub fn get_orientation_response(&self, orientation: &Orientation) -> ButtonResponse {
-        self.responses.orientation[*orientation as usize]
-    }
-
-    pub fn update_orientation_response(&mut self, orientation: &Orientation, response: Response) {
-        let button_response = &mut self.responses.orientation[*orientation as usize];
-
-        button_response.clicked = response.clicked();
-        button_response.hovered = response.hovered();
-    }
-}
-
-/*
-Notes ETE
-
-
-
-
-
-
-
-
-
-
-
-*/
