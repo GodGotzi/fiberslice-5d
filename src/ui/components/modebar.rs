@@ -45,8 +45,8 @@ impl Component for Modebar {
                             grid.cell(|ui| {
                                 ui.selectable_value(
                                     &mut data.borrow_mut_ui_state().mode,
-                                    Mode::Prepare,
-                                    "Prepare",
+                                    Mode::Preview,
+                                    "Preview",
                                 );
                             });
                             grid.empty();
@@ -61,8 +61,8 @@ impl Component for Modebar {
                             grid.cell(|ui| {
                                 ui.selectable_value(
                                     &mut data.borrow_mut_ui_state().mode,
-                                    Mode::Preview,
-                                    "Preview",
+                                    Mode::Prepare,
+                                    "Prepare",
                                 );
                             });
                         });

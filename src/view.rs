@@ -23,6 +23,12 @@ pub enum Orientation {
     Front,
 }
 
+pub enum TransformationMode {
+    Translate,
+    Rotate,
+    Scale,
+}
+
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum Mode {
     Preview,
