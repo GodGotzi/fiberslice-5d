@@ -5,6 +5,7 @@
     Please refer to the terms and conditions stated therein.
 */
 
+pub mod api;
 pub mod boundary;
 pub mod components;
 pub mod screen;
@@ -18,7 +19,6 @@ use std::{
     rc::Rc,
 };
 
-pub use components::size_fixed;
 use three_d::{
     egui::{self, Visuals},
     Context, FrameInput, GUI,

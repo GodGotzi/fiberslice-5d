@@ -1,5 +1,4 @@
 pub mod math;
-pub mod ui;
 
 pub trait FlipYZ {
     fn flip(&mut self);

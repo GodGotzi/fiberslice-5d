@@ -52,10 +52,11 @@ pub fn create_addon_strip_builder(
 pub mod orientation {
     use egui_extras::Size;
     use egui_grid::GridBuilder;
-    use three_d::egui::{self, ImageButton};
+    use three_d::egui;
 
     use crate::{
-        ui::{icon, response::Responsive, UiData},
+        config,
+        ui::{api::buttons::DecoradedButtons, UiData},
         view::Orientation,
     };
 
@@ -85,67 +86,82 @@ pub mod orientation {
             .show(ui, |mut grid| {
                 grid.empty();
                 grid.cell(|ui| {
-                    add_button_icon(ui, data, Orientation::Diagonal);
+                    ui.add_responsive_button(
+                        data,
+                        &config::gui::ORIENATION_BUTTON,
+                        Orientation::Diagonal,
+                        Box::new(|data| {
+                            data.borrow_shared_state().writer_environment_event.send(
+                                crate::environment::EnvironmentEvent::SendOrientation(
+                                    Orientation::Diagonal,
+                                ),
+                            )
+                        }),
+                    )
                 });
 
                 grid.cell(|ui| {
-                    add_button_icon(ui, data, Orientation::Front);
+                    ui.add_responsive_button(
+                        data,
+                        &config::gui::ORIENATION_BUTTON,
+                        Orientation::Front,
+                        Box::new(|data| {
+                            data.borrow_shared_state().writer_environment_event.send(
+                                crate::environment::EnvironmentEvent::SendOrientation(
+                                    Orientation::Front,
+                                ),
+                            )
+                        }),
+                    )
                 });
 
                 grid.cell(|ui| {
-                    add_button_icon(ui, data, Orientation::Top);
+                    ui.add_responsive_button(
+                        data,
+                        &config::gui::ORIENATION_BUTTON,
+                        Orientation::Top,
+                        Box::new(|data| {
+                            data.borrow_shared_state().writer_environment_event.send(
+                                crate::environment::EnvironmentEvent::SendOrientation(
+                                    Orientation::Top,
+                                ),
+                            )
+                        }),
+                    )
                 });
 
                 grid.cell(|ui| {
-                    add_button_icon(ui, data, Orientation::Left);
+                    ui.add_responsive_button(
+                        data,
+                        &config::gui::ORIENATION_BUTTON,
+                        Orientation::Left,
+                        Box::new(|data| {
+                            data.borrow_shared_state().writer_environment_event.send(
+                                crate::environment::EnvironmentEvent::SendOrientation(
+                                    Orientation::Left,
+                                ),
+                            )
+                        }),
+                    )
                 });
 
                 grid.cell(|ui| {
-                    add_button_icon(ui, data, Orientation::Right);
+                    ui.add_responsive_button(
+                        data,
+                        &config::gui::ORIENATION_BUTTON,
+                        Orientation::Right,
+                        Box::new(|data| {
+                            data.borrow_shared_state().writer_environment_event.send(
+                                crate::environment::EnvironmentEvent::SendOrientation(
+                                    Orientation::Right,
+                                ),
+                            )
+                        }),
+                    )
                 });
 
                 grid.empty();
             });
-    }
-
-    fn add_button_icon(ui: &mut egui::Ui, data: &mut UiData, orientation: Orientation) {
-        let icon = icon::ICONTABLE.get_orientation_icon(orientation);
-
-        let image_button =
-            ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(false);
-
-        ui.allocate_ui([35., 35.].into(), move |ui| {
-            ui.with_layout(
-                egui::Layout::centered_and_justified(egui::Direction::TopDown),
-                |ui| {
-                    let mut ui_state = data.state.borrow_mut();
-                    let prev_response =
-                        ui_state.responses.get_button_response(orientation).unwrap();
-
-                    if prev_response.hovered() {
-                        ui.painter().rect_filled(
-                            ui.available_rect_before_wrap(),
-                            0.0,
-                            egui::Color32::from_rgba_premultiplied(75, 255, 0, 100),
-                        );
-                    }
-
-                    let response = ui.add_sized([30., 30.], image_button);
-
-                    ui_state
-                        .responses
-                        .update_button_response(orientation, &response);
-
-                    if response.clicked() {
-                        println!("Clicked: {:?}", orientation);
-
-                        data.borrow_shared_state().writer_environment_event.send(
-                            crate::environment::EnvironmentEvent::SendOrientation(orientation),
-                        )
-                    }
-                },
-            );
-        });
     }
 }
 

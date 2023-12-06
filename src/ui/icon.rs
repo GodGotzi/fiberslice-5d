@@ -1,8 +1,9 @@
+use std::{any::TypeId, collections::HashMap};
+
 use egui_extras::RetainedImage;
 use three_d::egui;
 
 use lazy_static::lazy_static;
-use strum::EnumCount;
 
 use crate::view::Orientation;
 
@@ -11,13 +12,16 @@ lazy_static! {
 }
 
 pub struct IconTable {
-    orientation: [RetainedImage; Orientation::COUNT],
+    icons: HashMap<TypeId, Vec<RetainedImage>>,
 }
 
 impl IconTable {
     pub fn new() -> Self {
-        Self {
-            orientation: [
+        let mut icons = HashMap::new();
+
+        icons.insert(
+            TypeId::of::<Orientation>(),
+            vec![
                 Self::load_icon("orientation_default_30x30.png").unwrap(),
                 Self::load_icon("orientation_default_30x30.png").unwrap(),
                 Self::load_icon("orientation_top_30x30.png").unwrap(),
@@ -25,11 +29,17 @@ impl IconTable {
                 Self::load_icon("orientation_right_30x30.png").unwrap(),
                 Self::load_icon("orientation_front_30x30.png").unwrap(),
             ],
-        }
+        );
+
+        Self { icons }
     }
 
-    pub fn get_orientation_icon(&self, orientation: Orientation) -> &RetainedImage {
-        &self.orientation[orientation as usize]
+    pub fn get_icon<T: 'static + Into<usize>>(&self, t: T) -> Option<&RetainedImage> {
+        if let Some(icons) = self.icons.get(&TypeId::of::<T>()) {
+            Some(&icons[t.into()])
+        } else {
+            None
+        }
     }
 
     fn load_icon(path: &str) -> Option<RetainedImage> {

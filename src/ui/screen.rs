@@ -56,9 +56,13 @@ impl SuperComponent for Screen {
                 .show(ui);
             */
 
+            let now = std::time::Instant::now();
+
             if ui_ctx.borrow_ui_state().components.addons.enabled {
                 self.addons.show(ctx, ui, ui_ctx);
             }
+
+            println!("addons: {:?}", now.elapsed());
         });
     }
 }
