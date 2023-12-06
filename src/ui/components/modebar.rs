@@ -53,16 +53,16 @@ impl Component for Modebar {
                             grid.cell(|ui| {
                                 ui.selectable_value(
                                     &mut data.borrow_mut_ui_state().mode,
-                                    Mode::ForceAnalytics,
-                                    "Force - Analytics",
+                                    Mode::Prepare,
+                                    "Prepare",
                                 );
                             });
                             grid.empty();
                             grid.cell(|ui| {
                                 ui.selectable_value(
                                     &mut data.borrow_mut_ui_state().mode,
-                                    Mode::Prepare,
-                                    "Prepare",
+                                    Mode::ForceAnalytics,
+                                    "Force - Analytics",
                                 );
                             });
                         });
