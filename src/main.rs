@@ -14,6 +14,7 @@ use three_d::*;
 mod actions;
 mod api;
 mod config;
+mod control;
 mod environment;
 mod error;
 mod event;

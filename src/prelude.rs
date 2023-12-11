@@ -57,6 +57,10 @@ impl<T> Shared<T> {
             inner: Arc::new(inner),
         }
     }
+
+    pub fn inner(&self) -> &T {
+        &self.inner
+    }
 }
 
 pub trait FrameHandle<T, C> {
@@ -95,10 +99,28 @@ pub struct SharedSettings {
     pub filament_settings: SharedMut<FilamentSettings>,
 }
 
+#[derive(Default)]
+pub struct ToolpathBuffer {}
+
+#[derive(Default)]
+pub struct IntersectionBuffer {}
+
+#[derive(Default)]
+pub struct ControlBuffer {}
+
+#[derive(Default)]
+pub struct SharedBuffer {
+    toolpath: SharedMut<ToolpathBuffer>,
+    intersections: SharedMut<IntersectionBuffer>,
+    controls: SharedMut<ControlBuffer>,
+}
+
 pub struct SharedState {
     frame_input: Option<FrameInput>,
 
     pub settings: SharedSettings,
+    pub shared_buffer: SharedBuffer,
+
     pub writer_ui_event: EventWriter<UiEvent>,
     pub writer_environment_event: EventWriter<EnvironmentEvent>,
     pub writer_render_event: EventWriter<RenderEvent>,
@@ -115,6 +137,7 @@ impl SharedState {
         Self {
             frame_input: None,
             settings: SharedSettings::default(),
+            shared_buffer: SharedBuffer::default(),
             writer_ui_event,
             writer_environment_event,
             writer_render_event,
