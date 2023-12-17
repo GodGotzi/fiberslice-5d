@@ -7,7 +7,13 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub enum PickingEvent {}
+pub enum PickingEvent {
+    Select,
+    
+
+
+
+}
 
 pub struct PickingAdapter {
     event_reader: EventReader<PickingEvent>,

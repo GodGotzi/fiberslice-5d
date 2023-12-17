@@ -68,4 +68,10 @@ impl Responses {
             responses[t.into()].update(response);
         }
     }
+
+    pub fn toogle_button_response<T: 'static + Into<usize>>(&mut self, t: T) {
+        if let Some(responses) = self.button_responses.get_mut(&TypeId::of::<T>()) {
+            responses[t.into()].clicked = !responses[t.into()].clicked;
+        }
+    }
 }

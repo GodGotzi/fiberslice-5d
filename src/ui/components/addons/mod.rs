@@ -90,13 +90,13 @@ pub mod orientation {
                         data,
                         &config::gui::ORIENATION_BUTTON,
                         Orientation::Diagonal,
-                        Box::new(|data| {
+                        &|data| {
                             data.borrow_shared_state().writer_environment_event.send(
                                 crate::environment::EnvironmentEvent::SendOrientation(
                                     Orientation::Diagonal,
                                 ),
                             )
-                        }),
+                        },
                     )
                 });
 
@@ -105,13 +105,13 @@ pub mod orientation {
                         data,
                         &config::gui::ORIENATION_BUTTON,
                         Orientation::Front,
-                        Box::new(|data| {
+                        &|data| {
                             data.borrow_shared_state().writer_environment_event.send(
                                 crate::environment::EnvironmentEvent::SendOrientation(
                                     Orientation::Front,
                                 ),
                             )
-                        }),
+                        },
                     )
                 });
 
@@ -120,13 +120,13 @@ pub mod orientation {
                         data,
                         &config::gui::ORIENATION_BUTTON,
                         Orientation::Top,
-                        Box::new(|data| {
+                        &|data| {
                             data.borrow_shared_state().writer_environment_event.send(
                                 crate::environment::EnvironmentEvent::SendOrientation(
                                     Orientation::Top,
                                 ),
                             )
-                        }),
+                        },
                     )
                 });
 
@@ -135,13 +135,13 @@ pub mod orientation {
                         data,
                         &config::gui::ORIENATION_BUTTON,
                         Orientation::Left,
-                        Box::new(|data| {
+                        &|data| {
                             data.borrow_shared_state().writer_environment_event.send(
                                 crate::environment::EnvironmentEvent::SendOrientation(
                                     Orientation::Left,
                                 ),
                             )
-                        }),
+                        },
                     )
                 });
 
@@ -150,13 +150,13 @@ pub mod orientation {
                         data,
                         &config::gui::ORIENATION_BUTTON,
                         Orientation::Right,
-                        Box::new(|data| {
+                        &|data| {
                             data.borrow_shared_state().writer_environment_event.send(
                                 crate::environment::EnvironmentEvent::SendOrientation(
                                     Orientation::Right,
                                 ),
                             )
-                        }),
+                        },
                     )
                 });
 

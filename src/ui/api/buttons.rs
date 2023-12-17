@@ -14,7 +14,7 @@ pub trait DecoradedButtons {
         data: &mut UiData,
         button: &DecoradedButton,
         t: T,
-        callback: Box<dyn FnOnce(&mut UiData)>,
+        callback: &dyn Fn(&mut UiData),
     );
 
     fn add_responsive_button<T: 'static + Into<usize> + std::clone::Clone + Copy>(
@@ -22,7 +22,7 @@ pub trait DecoradedButtons {
         data: &mut UiData,
         button: &DecoradedButton,
         t: T,
-        callback: Box<dyn FnOnce(&mut UiData)>,
+        callback: &dyn Fn(&mut UiData),
     );
 }
 
@@ -32,7 +32,7 @@ impl DecoradedButtons for Ui {
         data: &mut UiData,
         button: &DecoradedButton,
         t: T,
-        callback: Box<dyn FnOnce(&mut UiData)>,
+        callback: &dyn Fn(&mut UiData),
     ) {
         let icon = icon::ICONTABLE.get_icon(t).unwrap();
 
@@ -81,7 +81,7 @@ impl DecoradedButtons for Ui {
         data: &mut UiData,
         button: &DecoradedButton,
         t: T,
-        callback: Box<dyn FnOnce(&mut UiData)>,
+        callback: &dyn Fn(&mut UiData),
     ) {
         let icon = icon::ICONTABLE.get_icon(t).unwrap();
 
