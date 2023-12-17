@@ -9,10 +9,6 @@ use crate::{
 #[derive(Debug)]
 pub enum PickingEvent {
     Select,
-    
-
-
-
 }
 
 pub struct PickingAdapter {
