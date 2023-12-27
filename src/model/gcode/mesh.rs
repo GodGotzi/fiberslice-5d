@@ -9,7 +9,7 @@ use crate::{
     },
 };
 
-use super::{state::State, toolpath::PathModul};
+use super::{path::PathModul, state::State};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PathOrientation {
@@ -116,7 +116,7 @@ fn adjust_pane(x: f32, y: f32) -> bool {
     }
 }
 
-pub struct PartCoordinator<'a> {
+pub struct MeshCoordinator<'a> {
     mesh: &'a mut Layer,
     offset_start: Cell<usize>,
     offset_end: Cell<usize>,
@@ -124,7 +124,7 @@ pub struct PartCoordinator<'a> {
     offset_part_end: Cell<usize>,
 }
 
-impl<'a> PartCoordinator<'a> {
+impl<'a> MeshCoordinator<'a> {
     pub fn new(mesh: &'a mut Layer) -> Self {
         Self {
             mesh,

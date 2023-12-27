@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::prelude::Error;
 
+pub struct Settings {}
+
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct MovementSettings<T> {
     pub x: T,

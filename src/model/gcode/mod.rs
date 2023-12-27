@@ -7,8 +7,8 @@ pub mod instruction;
 pub mod mesh;
 pub mod movement;
 pub mod parser;
+pub mod path;
 pub mod state;
-pub mod toolpath;
 
 pub struct SourceBuilder {
     first: bool,

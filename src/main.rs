@@ -5,10 +5,13 @@
     Please refer to the terms and conditions stated therein.
 */
 
+use std::sync::{Arc, MutexGuard};
+
 use model::gcode::GCode;
 use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
 
-use prelude::{Adapter, SharedState};
+use prelude::{Adapter, SharedMut, SharedState};
+use settings::Settings;
 use three_d::*;
 
 mod actions;
@@ -40,7 +43,8 @@ pub fn main() {
 
     let mut window_handler = window::WindowHandler::from_event_loop(&event_loop);
 
-    let toolpath = create_toolpath(window_handler.borrow_context());
+    let settings = SharedMut::from_inner(settings::Settings {});
+    let toolpath = create_toolpath(window_handler.borrow_context(), settings.lock_expect());
 
     let (writer_render_event, mut render_adapter) =
         render::RenderAdapter::from_context(window_handler.borrow_context());
@@ -113,7 +117,10 @@ pub fn main() {
     });
 }
 
-pub fn create_toolpath(context: &Context) -> Gm<Mesh, PhysicalMaterial> {
+pub fn create_toolpath(
+    context: &Context,
+    settings: MutexGuard<Settings>,
+) -> Gm<Mesh, PhysicalMaterial> {
     let nfd = Nfd::new().unwrap();
     let result = nfd.open_file().add_filter("Gcode", "gcode").unwrap().show();
 
@@ -122,7 +129,7 @@ pub fn create_toolpath(context: &Context) -> Gm<Mesh, PhysicalMaterial> {
             let content = std::fs::read_to_string(path).unwrap();
             let gcode: GCode = content.try_into().unwrap();
 
-            let toolpath = gcode.into_mesh();
+            let toolpath = gcode.into_mesh(settings);
 
             (toolpath.0, toolpath.1.center)
         }
