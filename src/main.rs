@@ -44,12 +44,12 @@ pub fn main() {
     let mut window_handler = window::WindowHandler::from_event_loop(&event_loop);
 
     let settings = SharedMut::from_inner(settings::Settings {});
-    let toolpath = create_toolpath(window_handler.borrow_context(), settings.lock_expect());
+    //let toolpath = create_toolpath(window_handler.borrow_context(), settings.lock_expect());
 
     let (writer_render_event, mut render_adapter) =
         render::RenderAdapter::from_context(window_handler.borrow_context());
 
-    render_adapter.set_toolpath(toolpath);
+    //render_adapter.set_toolpath(toolpath);
 
     let (writer_environment_event, mut environment_adapter) =
         environment::EnvironmentAdapter::from_context(window_handler.borrow_context());
@@ -117,21 +117,31 @@ pub fn main() {
     });
 }
 
+/*
 pub fn create_toolpath(
     context: &Context,
     settings: MutexGuard<Settings>,
-) -> Gm<Mesh, PhysicalMaterial> {
+) -> Option<Gm<Mesh, PhysicalMaterial>> {
     let nfd = Nfd::new().unwrap();
     let result = nfd.open_file().add_filter("Gcode", "gcode").unwrap().show();
 
-    let cpu_mesh = match result {
+    match result {
         DialogResult::Ok(path) => {
             let content = std::fs::read_to_string(path).unwrap();
             let gcode: GCode = content.try_into().unwrap();
 
-            let toolpath = gcode.into_mesh(settings);
+            let (mesh, path_model) = gcode.into_mesh(settings);
 
-            (toolpath.0, toolpath.1.center)
+            let mut cpu_model = Gm::new(
+                Mesh::new(context, &mesh.0),
+                PhysicalMaterial::new(context, &CpuMaterial::default()),
+            );
+
+            if let Some(vec) = path_model.raw_path. {
+                cpu_model.set_transformation(Mat4::from_translation(Vector3::new(
+                    -vec.x, -vec.y, -vec.z,
+                )));
+            }
         }
         _ => (CpuMesh::cube(), None),
     };
@@ -147,3 +157,4 @@ pub fn create_toolpath(
 
     cpu_model
 }
+*/

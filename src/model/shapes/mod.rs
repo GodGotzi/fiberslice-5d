@@ -7,6 +7,7 @@ pub struct Rect3d {
     pub right_1: Vector3<f32>,
 }
 
+#[derive(Debug, Clone)]
 pub struct VirtualBox {
     max: Vector3<f32>,
     min: Vector3<f32>,

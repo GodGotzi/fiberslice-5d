@@ -1,7 +1,15 @@
+use std::{collections::HashMap, fmt::Debug};
+
+use three_d::{CpuMesh, Gm, Mesh, PhysicalMaterial};
+
 use self::{
     instruction::{InstructionModul, InstructionType},
     movement::Movements,
+    path::PathModul,
+    state::State,
 };
+
+use super::{mesh::SimpleMesh, Model};
 
 pub mod instruction;
 pub mod mesh;
@@ -69,6 +77,30 @@ impl SourceBuilder {
 
     pub fn finish(self) -> String {
         self.source
+    }
+}
+
+#[derive(Debug)]
+pub struct ModulModel {
+    mesh: SimpleMesh,
+    line_range: (usize, usize),
+    state: State,
+}
+
+pub type LayerModel = Vec<ModulModel>;
+
+#[derive(Default)]
+pub struct Path {
+    layers: HashMap<usize, LayerModel>,
+    gpu_model: Option<Gm<Mesh, PhysicalMaterial>>,
+}
+
+impl Debug for Path {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        //only debug layers
+        f.debug_struct("Path")
+            .field("layers", &self.layers)
+            .finish()
     }
 }
 

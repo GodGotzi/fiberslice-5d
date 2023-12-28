@@ -12,7 +12,7 @@ use super::{
     mesh::{Layer, Layers, MeshCoordinator},
     movement,
     state::State,
-    GCode,
+    GCode, LayerModel,
 };
 
 #[derive(Debug, Clone)]
@@ -28,6 +28,7 @@ impl PathLine {
     }
 }
 
+#[derive(Debug)]
 pub struct PathModul {
     pub paths: Vec<PathLine>,
     pub line_range: (usize, usize),
@@ -48,10 +49,11 @@ impl PathModul {
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct RawPath {
-    moduls: Vec<PathModul>,
-    center: Option<Vector3<f32>>,
+    pub moduls: Vec<PathModul>,
+    virtual_box: VirtualBox,
+    center_mass: Option<Vector3<f32>>,
 }
 
 impl RawPath {
@@ -74,7 +76,7 @@ impl From<GCode> for RawPath {
 
             //split instuctions into chunks of 5000 for performance
             let (modul_average, modul_box) =
-                compute_modul(instruction_modul, &mut current_movements, &mut strokes);
+                sum_modul_points(instruction_modul, &mut current_movements, &mut strokes);
 
             moduls.push(PathModul {
                 paths: strokes.clone(),
@@ -87,18 +89,22 @@ impl From<GCode> for RawPath {
             virtual_box.expand(modul_box);
         }
 
-        let center = if let Some(mut center) = toolpath_average.divide_average() {
+        let center_mass = if let Some(mut center) = toolpath_average.divide_average() {
             std::mem::swap(&mut center.y, &mut center.z);
             Some(center)
         } else {
             None
         };
 
-        RawPath { moduls, center }
+        RawPath {
+            moduls,
+            virtual_box,
+            center_mass,
+        }
     }
 }
 
-fn compute_modul(
+fn sum_modul_points(
     instruction_modul: &super::instruction::InstructionModul,
     current_movements: &mut movement::Movements,
     points: &mut Vec<PathLine>,
@@ -189,7 +195,7 @@ impl From<RawPath> for WirePath {
     fn from(value: RawPath) -> Self {
         let mut strokes = Vec::new();
 
-        for path in value.path().iter() {
+        for path in value.moduls {
             for line in path.paths {
                 strokes.push(line);
             }
@@ -200,27 +206,30 @@ impl From<RawPath> for WirePath {
 }
 
 #[derive(Debug)]
-pub struct ToolpathModel {
+pub struct Path {}
+
+#[derive(Debug)]
+pub struct PathContext {
     //pub layers: HashMap<usize, Layer>,
     pub gcode: GCode,
-    pub center: Option<Vector3<f32>>,
+    pub raw_path: RawPath,
 }
 
 impl GCode {
-    pub fn into_mesh(self, settings: MutexGuard<Settings>) -> (three_d::CpuMesh, ToolpathModel) {
-        let toolpath = RawPath::from(self.clone());
-        let center = toolpath.center;
+    pub fn into_mesh(self, settings: MutexGuard<Settings>) -> Path {
+        let raw_path = RawPath::from(self.clone());
+        let center = raw_path.center_mass;
 
-        let mut layers: HashMap<usize, Layer> = HashMap::new();
+        let mut layers: HashMap<usize, LayerModel> = HashMap::new();
 
         {
-            let modul_map: HashMap<usize, Vec<PathModul>> = toolpath.into();
+            let modul_map: HashMap<usize, Vec<PathModul>> = raw_path.into();
 
-            for entry in modul_map.into_iter() {
+            for (layer_id, moduls) in modul_map.into_iter() {
                 let mut layer = Layer::empty();
                 let mut coordinator = MeshCoordinator::new(&mut layer);
 
-                for modul in entry.1 {
+                for modul in moduls {
                     coordinator.compute_model(&modul);
                     coordinator.finish();
                 }
@@ -233,10 +242,9 @@ impl GCode {
 
         (
             mesh,
-            ToolpathModel {
+            PathContext {
                 gcode: self,
-                //layers,
-                center,
+                raw_path,
             },
         )
     }
