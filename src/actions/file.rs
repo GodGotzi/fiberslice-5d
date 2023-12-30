@@ -1,8 +1,8 @@
-use crate::model::gcode::path::PathContext;
+use crate::model::gcode::WorkpiecePath;
 
 #[derive(Debug)]
 pub enum FileActionResult {
-    LoadGCode(PathContext),
+    LoadGCode(WorkpiecePath),
     ImportIntersectionObject,
     SaveAs,
     Save,

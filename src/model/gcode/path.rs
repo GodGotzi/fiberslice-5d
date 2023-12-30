@@ -1,19 +1,10 @@
-use std::{collections::HashMap, sync::MutexGuard};
+use std::collections::HashMap;
 
 use three_d::{vec3, Vector3};
 
-use crate::{
-    api::math::Average, model::shapes::VirtualBox, settings::Settings,
-    slicer::print_type::PrintType,
-};
+use crate::{api::math::Average, model::shapes::VirtualBox, slicer::print_type::PrintType};
 
-use super::{
-    instruction::InstructionType,
-    mesh::{Layer, Layers, MeshCoordinator},
-    movement,
-    state::State,
-    GCode, LayerModel,
-};
+use super::{instruction::InstructionType, movement, state::State, GCode, WirePath};
 
 #[derive(Debug, Clone)]
 pub struct PathLine {
@@ -51,14 +42,28 @@ impl PathModul {
 
 #[derive(Debug, Default)]
 pub struct RawPath {
-    pub moduls: Vec<PathModul>,
+    moduls: Vec<PathModul>,
     virtual_box: VirtualBox,
     center_mass: Option<Vector3<f32>>,
 }
 
 impl RawPath {
-    pub fn path(&self) -> &Vec<PathModul> {
+    pub fn moduls(&self) -> &Vec<PathModul> {
         &self.moduls
+    }
+}
+
+impl From<&RawPath> for WirePath {
+    fn from(raw: &RawPath) -> WirePath {
+        let mut strokes = Vec::new();
+
+        for path in raw.moduls {
+            for line in path.paths {
+                strokes.push(line);
+            }
+        }
+
+        WirePath::new(strokes)
     }
 }
 
@@ -71,12 +76,12 @@ impl From<GCode> for RawPath {
         let mut toolpath_average = Average::<Vector3<f32>>::default();
         let mut virtual_box = VirtualBox::default();
 
-        for instruction_modul in value.instruction_moduls.iter() {
+        for instruction_modul in value.iter() {
             let mut strokes = Vec::new();
 
             //split instuctions into chunks of 5000 for performance
             let (modul_average, modul_box) =
-                sum_modul_points(instruction_modul, &mut current_movements, &mut strokes);
+                compute_modul(&mut strokes, &mut current_movements, instruction_modul);
 
             moduls.push(PathModul {
                 paths: strokes.clone(),
@@ -104,10 +109,10 @@ impl From<GCode> for RawPath {
     }
 }
 
-fn sum_modul_points(
-    instruction_modul: &super::instruction::InstructionModul,
-    current_movements: &mut movement::Movements,
+fn compute_modul(
     points: &mut Vec<PathLine>,
+    current_movements: &mut movement::Movements,
+    instruction_modul: &super::instruction::InstructionModul,
 ) -> (Average<Vector3<f32>>, VirtualBox) {
     let mut modul_average = Average::<Vector3<f32>>::default();
     let mut virtual_box = VirtualBox::default();
@@ -118,11 +123,11 @@ fn sum_modul_points(
 
         for instruction in instructions {
             let movements = instruction.movements();
-            let last_point = current_movements.to_vec3(vec3(0.0, 0.0, 0.0));
+            let last_point = current_movements.to_flipped_vec3(vec3(0.0, 0.0, 0.0));
 
             current_movements.add_movements(movements);
 
-            let current_point = current_movements.to_vec3(vec3(0.0, 0.0, 0.0));
+            let current_point = current_movements.to_flipped_vec3(vec3(0.0, 0.0, 0.0));
 
             if current_point == last_point {
                 continue;
@@ -184,68 +189,5 @@ impl From<RawPath> for HashMap<usize, Vec<PathModul>> {
         }
 
         layers
-    }
-}
-
-pub struct WirePath {
-    pub strokes: Vec<PathLine>,
-}
-
-impl From<RawPath> for WirePath {
-    fn from(value: RawPath) -> Self {
-        let mut strokes = Vec::new();
-
-        for path in value.moduls {
-            for line in path.paths {
-                strokes.push(line);
-            }
-        }
-
-        Self { strokes }
-    }
-}
-
-#[derive(Debug)]
-pub struct Path {}
-
-#[derive(Debug)]
-pub struct PathContext {
-    //pub layers: HashMap<usize, Layer>,
-    pub gcode: GCode,
-    pub raw_path: RawPath,
-}
-
-impl GCode {
-    pub fn into_mesh(self, settings: MutexGuard<Settings>) -> Path {
-        let raw_path = RawPath::from(self.clone());
-        let center = raw_path.center_mass;
-
-        let mut layers: HashMap<usize, LayerModel> = HashMap::new();
-
-        {
-            let modul_map: HashMap<usize, Vec<PathModul>> = raw_path.into();
-
-            for (layer_id, moduls) in modul_map.into_iter() {
-                let mut layer = Layer::empty();
-                let mut coordinator = MeshCoordinator::new(&mut layer);
-
-                for modul in moduls {
-                    coordinator.compute_model(&modul);
-                    coordinator.finish();
-                }
-
-                layers.insert(entry.0, layer);
-            }
-        }
-
-        let mesh: three_d::CpuMesh = Layers(&layers).into();
-
-        (
-            mesh,
-            PathContext {
-                gcode: self,
-                raw_path,
-            },
-        )
     }
 }

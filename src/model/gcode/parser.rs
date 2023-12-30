@@ -7,16 +7,6 @@ use super::{
     GCode,
 };
 
-impl TryFrom<String> for GCode {
-    type Error = crate::error::Error;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        let code = parse_content(value.as_str())?;
-
-        Ok(code)
-    }
-}
-
 pub fn parse_content(content: &str) -> Result<GCode, crate::error::Error> {
     let mut lines: Vec<&str> = content.lines().collect();
 
@@ -40,11 +30,7 @@ pub fn parse_content(content: &str) -> Result<GCode, crate::error::Error> {
         }
     }
 
-    let lines = lines.iter().map(|str| str.to_string()).collect();
-
-    let code = GCode::new(lines, moduls);
-
-    Ok(code)
+    Ok(moduls)
 }
 
 fn compute_comment_with_prefix(
@@ -152,14 +138,4 @@ pub fn compute_parameters(
     }
 
     Ok(())
-}
-
-impl TryFrom<&str> for GCode {
-    type Error = crate::error::Error;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let code = parse_content(value)?;
-
-        Ok(code)
-    }
 }

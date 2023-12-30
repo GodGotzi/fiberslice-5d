@@ -84,6 +84,24 @@ impl Movements {
         vec
     }
 
+    pub fn to_flipped_vec3(&self, zero: Vector3<f32>) -> Vector3<f32> {
+        let mut vec = zero;
+
+        if let Some(x) = self.X.as_ref() {
+            vec.x = *x;
+        }
+
+        if let Some(y) = self.Y.as_ref() {
+            vec.z = *y;
+        }
+
+        if let Some(z) = self.Z.as_ref() {
+            vec.y = *z;
+        }
+
+        vec
+    }
+
     pub fn to_gcode(&self) -> String {
         let mut builder = SourceBuilder::new();
 
