@@ -97,7 +97,7 @@ impl Instruction {
 
 #[derive(Debug, Clone)]
 pub struct InstructionModul {
-    pub instructions: Vec<Instruction>,
+    instructions: Vec<Instruction>,
     start: usize,
     end: Option<usize>,
     pub state: State,
@@ -122,10 +122,6 @@ impl InstructionModul {
         }
     }
 
-    pub fn instructions(&self) -> &Vec<Instruction> {
-        &self.instructions
-    }
-
     pub fn is_empty(&self) -> bool {
         self.instructions.is_empty()
     }
@@ -140,5 +136,9 @@ impl InstructionModul {
 
     pub fn range(&self) -> (usize, usize) {
         (self.start, self.end.unwrap_or(self.start))
+    }
+
+    pub fn borrow_inner(&self) -> &Vec<Instruction> {
+        &self.instructions
     }
 }

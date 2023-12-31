@@ -43,7 +43,7 @@ pub fn main() {
 
     let mut window_handler = window::WindowHandler::from_event_loop(&event_loop);
 
-    let settings = SharedMut::from_inner(settings::Settings {});
+    //let settings = SharedMut::from_inner(settings::Settings {});
     //let toolpath = create_toolpath(window_handler.borrow_context(), settings.lock_expect());
 
     let (writer_render_event, mut render_adapter) =

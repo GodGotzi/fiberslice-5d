@@ -1,20 +1,7 @@
-use three_d::{Srgba, Vector3};
+use three_d::Vector3;
 
-#[derive(Debug)]
-pub struct SimpleMesh {
-    pub positions: Vec<Vector3<f32>>,
-    pub colors: Vec<Srgba>,
-}
-
-impl SimpleMesh {
-    pub fn push_position(&mut self, position: Vector3<f32>) {
-        self.positions.push(position);
-    }
-
-    pub fn push_color(&mut self, color: Srgba) {
-        self.colors.push(color);
-    }
-}
+pub type Traingle = (Vector3<f32>, Vector3<f32>, Vector3<f32>);
+pub type Vertices = Vec<Vector3<f32>>;
 
 #[derive(Debug)]
 pub struct MeshRef {

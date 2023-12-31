@@ -1,15 +1,17 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use three_d::{Gm, Mesh, PhysicalMaterial};
+use three_d::{Gm, Mesh, PhysicalMaterial, Vector3};
+
+use crate::settings::Settings;
 
 use self::{
     instruction::{InstructionModul, InstructionType},
     movement::Movements,
-    path::{PathLine, PathModul, RawPath},
+    path::{PathStroke, RawPath},
     state::State,
 };
 
-use super::mesh::SimpleMesh;
+use super::{mesh::Vertices, shapes::VirtualBox};
 
 pub mod instruction;
 pub mod mesh;
@@ -23,42 +25,61 @@ pub type GCode = Vec<InstructionModul>;
 
 #[derive(Debug)]
 pub struct ModulModel {
-    mesh: SimpleMesh,
-    line_range: (usize, usize),
+    mesh: Vertices,
+    child_offsets: Vec<usize>,
     state: State,
+    range: (usize, usize),
 }
 
 pub type LayerModel = Vec<ModulModel>;
 
-#[derive(Default)]
 pub struct WorkpiecePath {
+    raw: GCodeRaw,
+    wire_model: WirePath,
     layers: HashMap<usize, LayerModel>,
+    virtual_box: VirtualBox,
+    center_mass: Vector3<f32>,
+
     gpu_model: Option<Gm<Mesh, PhysicalMaterial>>,
 }
 
 impl WorkpiecePath {
-    pub fn from_gcode(gcode: &GCode) -> Self {
+    pub fn from_gcode((raw, gcode): (GCodeRaw, GCode), settings: &Settings) -> Self {
         let raw_path = RawPath::from(&gcode);
+
+        let mut strokes = Vec::new();
 
         let mut layers: HashMap<usize, LayerModel> = HashMap::new();
 
-        {
-            let modul_map: HashMap<usize, Vec<PathModul>> = raw_path.into();
+        for modul in raw_path.moduls {
+            let layer = modul.state.layer.unwrap_or(0);
+            let state = modul.state.clone();
+            let range = modul.line_range;
 
-            for (layer_id, moduls) in modul_map.into_iter() {
-                let mut layer = Layer::empty();
-                let mut coordinator = MeshCoordinator::new(&mut layer);
+            strokes.extend(modul.paths.clone());
 
-                for modul in moduls {
-                    coordinator.compute_model(&modul);
-                    coordinator.finish();
-                }
+            let (vertices, child_offsets) = modul.to_vertices(settings);
 
-                layers.insert(entry.0, layer);
-            }
+            let model = ModulModel {
+                mesh: vertices,
+                child_offsets,
+                state,
+                range,
+            };
+
+            layers.entry(layer).or_default().push(model);
         }
 
-        let mesh: three_d::CpuMesh = Layers(&layers).into();
+        let wire_model = WirePath::new(strokes);
+
+        Self {
+            raw,
+            wire_model,
+            layers,
+            virtual_box: raw_path.virtual_box,
+            center_mass: raw_path.center_mass,
+            gpu_model: None,
+        }
     }
 }
 
@@ -72,11 +93,11 @@ impl Debug for WorkpiecePath {
 }
 
 pub struct WirePath {
-    strokes: Vec<PathLine>,
+    strokes: Vec<PathStroke>,
 }
 
 impl WirePath {
-    pub fn new(strokes: Vec<PathLine>) -> Self {
+    pub fn new(strokes: Vec<PathStroke>) -> Self {
         Self { strokes }
     }
 }

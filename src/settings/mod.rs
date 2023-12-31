@@ -6,7 +6,17 @@ use serde::{Deserialize, Serialize};
 
 use crate::prelude::Error;
 
-pub struct Settings {}
+pub struct DisplaySettings {}
+
+pub struct Settings {
+    pub diameter: f32,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self { diameter: 0.45 }
+    }
+}
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct MovementSettings<T> {

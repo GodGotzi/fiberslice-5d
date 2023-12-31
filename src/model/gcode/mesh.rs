@@ -1,15 +1,12 @@
-use std::{cell::Cell, collections::HashMap};
-use three_d::{vec3, InnerSpace, Positions, Vector3};
+use three_d::{vec3, InnerSpace, Vector3};
 
 use crate::{
     api::{math::DirectMul, Reverse},
-    model::{
-        mesh::{MeshRef, SimpleMesh},
-        shapes::Rect3d,
-    },
+    model::{mesh::Vertices, shapes::Rect3d},
+    settings::Settings,
 };
 
-use super::{path::PathModul, state::State};
+use super::path::PathModul;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PathOrientation {
@@ -49,55 +46,7 @@ impl ProfileCross {
     }
 }
 
-impl Layer {
-    pub fn empty() -> Self {
-        Self {
-            cpu_mesh: SimpleMesh {
-                positions: Vec::new(),
-                colors: Vec::new(),
-            },
-            line_range: None,
-            child_models: Vec::new(),
-        }
-    }
-
-    pub fn iter_children(&self) -> impl Iterator<Item = &LayerPart> {
-        self.child_models.iter()
-    }
-}
-
-#[derive(Debug)]
-pub struct LayerPart {
-    pub state: State,
-    pub line_range: (usize, usize),
-    main: Option<MeshRef>,
-    child_meshes: Vec<MeshRef>,
-}
-
-impl LayerPart {
-    pub fn new(state: State, line_range: (usize, usize)) -> Self {
-        Self {
-            main: None,
-            state,
-            line_range,
-            child_meshes: Vec::new(),
-        }
-    }
-
-    pub fn push_child(&mut self, child: MeshRef) {
-        self.child_meshes.push(child);
-    }
-
-    pub fn get_main(&self) -> Option<&MeshRef> {
-        self.main.as_ref()
-    }
-
-    pub fn iter_children(&self) -> impl Iterator<Item = &MeshRef> {
-        self.child_meshes.iter()
-    }
-}
-
-fn adjust_faces(direction: Vector3<f32>) -> bool {
+fn has_flipped_faces(direction: Vector3<f32>) -> bool {
     adjust_pane(direction.x, direction.y)
 }
 
@@ -111,286 +60,199 @@ fn adjust_pane(x: f32, y: f32) -> bool {
     }
 }
 
-pub struct MeshCoordinator<'a> {
-    mesh: &'a mut Layer,
-    offset_start: Cell<usize>,
-    offset_end: Cell<usize>,
-    offset_part_start: Cell<usize>,
-    offset_part_end: Cell<usize>,
-}
+impl PathModul {
+    pub(super) fn to_vertices(self, settings: &Settings) -> (Vertices, Vec<usize>) {
+        let mut vertices = Vec::new();
+        let mut offsets: Vec<usize> = Vec::new();
 
-impl<'a> MeshCoordinator<'a> {
-    pub fn new(mesh: &'a mut Layer) -> Self {
-        Self {
-            mesh,
-            offset_start: Cell::new(0),
-            offset_end: Cell::new(0),
-            offset_part_start: Cell::new(0),
-            offset_part_end: Cell::new(0),
-        }
-    }
-
-    pub fn add_triangle(&mut self, mut triangle: (Vector3<f32>, Vector3<f32>, Vector3<f32>)) {
-        let mesh = &mut self.mesh.cpu_mesh;
-        mesh.push_position(triangle.0);
-        mesh.push_position(triangle.1);
-        mesh.push_position(triangle.2);
-
-        self.offset_end.replace(self.offset_end.get() + 3);
-        self.offset_part_end.replace(self.offset_part_end.get() + 3);
-    }
-
-    pub fn finished_child(&mut self, state: State, line_range: (usize, usize)) {
-        let start = self.offset_part_start.get();
-        let end = self.offset_part_end.get();
-
-        self.offset_part_start.replace(end);
-
-        let meshref = MeshRef::new(start, end);
-
-        if self.mesh.child_models.last().is_none() {
-            self.mesh
-                .child_models
-                .push(LayerPart::new(state, line_range));
-        }
-
-        self.mesh
-            .child_models
-            .last_mut()
-            .unwrap()
-            .push_child(meshref);
-    }
-
-    pub fn finish(&mut self) {
-        let start = self.offset_start.get();
-        let end = self.offset_end.get();
-
-        self.offset_start.replace(end);
-
-        let meshref = MeshRef::new(start, end);
-
-        if let Some(last) = self.mesh.child_models.last_mut() {
-            last.main = Some(meshref);
-        }
-    }
-
-    pub fn compute_model(mut self, path_modul: &PathModul) {
-        let diameter = 0.45;
         let mut last_cross: Option<ProfileCross> = None;
 
-        let color = path_modul
-            .state
-            .print_type
-            .as_ref()
-            .unwrap_or(&crate::slicer::print_type::PrintType::Unknown)
-            .get_color();
-
-        for element in path_modul.paths.iter().enumerate() {
+        for element in self.paths.iter().enumerate() {
             let path = element.1;
 
-            if element.0 == path_modul.paths.len() - 1 {
+            if element.0 == self.paths.len() - 1 {
                 if let Some(last) = last_cross.take() {
-                    self.draw_rect_with_cross(&path.end, &last);
-
-                    self.finished_child(path_modul.state.clone(), path_modul.line_range);
+                    draw_rect_with_cross(&mut vertices, &path.end, &last);
+                    offsets.push(vertices.len());
                 }
             }
 
             if path.print {
                 let direction = path.direction();
 
-                let cross = ProfileCross::from_direction(direction, diameter / 2.0);
+                let cross = ProfileCross::from_direction(direction, settings.diameter / 2.0);
 
                 if let Some(last) = last_cross.take() {
-                    self.draw_cross_connection(&path.start, &cross, &last);
+                    draw_cross_connection(&mut vertices, &path.start, &cross, &last);
                 } else {
-                    self.draw_rect_with_cross(&path.start, &cross);
+                    draw_rect_with_cross(&mut vertices, &path.start, &cross);
                 }
 
-                let flip_faces = !adjust_faces(direction);
+                let flip_faces = !has_flipped_faces(direction);
 
-                self.draw_path((path.start, path.end), !flip_faces, &cross);
+                draw_path(&mut vertices, (path.start, path.end), !flip_faces, &cross);
                 last_cross = Some(cross);
             } else if let Some(last) = last_cross.take() {
-                self.draw_rect_with_cross(&path.end, &last);
-
-                self.finished_child(path_modul.state.clone(), path_modul.line_range);
+                draw_rect_with_cross(&mut vertices, &path.end, &last);
+                offsets.push(vertices.len());
             }
         }
-    }
 
-    pub fn draw_path(
-        &mut self,
-        path: (Vector3<f32>, Vector3<f32>),
-        flip: bool,
-        cross: &ProfileCross,
-    ) {
-        self.draw_rect_path(
-            Rect3d {
-                left_0: cross.up + path.0,
-                left_1: cross.right + path.0,
-                right_0: cross.up + path.1,
-                right_1: cross.right + path.1,
-            },
-            flip,
-            PathOrientation::SouthWest,
-        );
-
-        self.draw_rect_path(
-            Rect3d {
-                left_0: cross.down + path.0,
-                left_1: cross.right + path.0,
-                right_0: cross.down + path.1,
-                right_1: cross.right + path.1,
-            },
-            flip,
-            PathOrientation::NorthWest,
-        );
-
-        self.draw_rect_path(
-            Rect3d {
-                left_0: cross.down + path.0,
-                left_1: cross.left + path.0,
-                right_0: cross.down + path.1,
-                right_1: cross.left + path.1,
-            },
-            flip,
-            PathOrientation::NorthEast,
-        );
-
-        self.draw_rect_path(
-            Rect3d {
-                left_0: cross.up + path.0,
-                left_1: cross.left + path.0,
-                right_0: cross.up + path.1,
-                right_1: cross.left + path.1,
-            },
-            flip,
-            PathOrientation::SouthEast,
-        );
-    }
-
-    pub fn draw_cross_connection(
-        &mut self,
-        center: &Vector3<f32>,
-        start_cross: &ProfileCross,
-        end_cross: &ProfileCross,
-    ) {
-        self.add_triangle((
-            end_cross.up + *center,
-            end_cross.right + *center,
-            start_cross.right + *center,
-        ));
-
-        self.add_triangle((
-            end_cross.up + *center,
-            end_cross.left + *center,
-            start_cross.left + *center,
-        ));
-
-        self.add_triangle((
-            end_cross.down + *center,
-            end_cross.right + *center,
-            start_cross.right + *center,
-        ));
-
-        self.add_triangle((
-            end_cross.down + *center,
-            end_cross.left + *center,
-            start_cross.left + *center,
-        ));
-    }
-
-    fn draw_rect_path(&mut self, rect: Rect3d, face_flip: bool, orienation: PathOrientation) {
-        let (mut triangle1, mut triangle2) = match orienation {
-            PathOrientation::SouthEast => {
-                let triangle1 = (rect.right_0, rect.left_1, rect.left_0);
-                let triangle2 = (rect.right_0, rect.right_1, rect.left_1);
-
-                (triangle1, triangle2)
-            }
-            PathOrientation::SouthWest => {
-                let triangle1 = (rect.left_0, rect.left_1, rect.right_1);
-                let triangle2 = (rect.right_1, rect.right_0, rect.left_0);
-
-                (triangle1, triangle2)
-            }
-            PathOrientation::NorthEast => {
-                let triangle1 = (rect.left_0, rect.left_1, rect.right_0);
-                let triangle2 = (rect.left_1, rect.right_1, rect.right_0);
-
-                (triangle1, triangle2)
-            }
-            PathOrientation::NorthWest => {
-                let triangle1 = (rect.left_0, rect.right_0, rect.right_1);
-                let triangle2 = (rect.right_1, rect.left_1, rect.left_0);
-
-                (triangle1, triangle2)
-            }
-        };
-
-        if face_flip {
-            triangle1.reverse();
-            triangle2.reverse();
-        }
-
-        self.add_triangle(triangle1);
-        self.add_triangle(triangle2);
-    }
-
-    pub fn draw_rect(
-        &mut self,
-        point_left_0: Vector3<f32>,
-        point_left_1: Vector3<f32>,
-        point_right_0: Vector3<f32>,
-        point_right_1: Vector3<f32>,
-    ) {
-        self.add_triangle((point_left_0, point_left_1, point_right_0));
-
-        self.add_triangle((point_left_1, point_right_1, point_right_0));
-    }
-
-    pub fn draw_rect_with_cross(&mut self, center: &Vector3<f32>, cross: &ProfileCross) {
-        self.draw_rect(
-            cross.up + *center,
-            cross.right + *center,
-            cross.down + *center,
-            cross.left + *center,
-        );
+        (vertices, offsets)
     }
 }
 
-pub struct Layers<'a>(pub &'a HashMap<usize, Layer>);
+pub(super) fn draw_path(
+    vertices: &mut Vertices,
+    path: (Vector3<f32>, Vector3<f32>),
+    flip: bool,
+    cross: &ProfileCross,
+) {
+    draw_rect_path(
+        vertices,
+        Rect3d {
+            left_0: cross.up + path.0,
+            left_1: cross.right + path.0,
+            right_0: cross.up + path.1,
+            right_1: cross.right + path.1,
+        },
+        flip,
+        PathOrientation::SouthWest,
+    );
 
-impl<'a> From<Layers<'a>> for three_d::CpuMesh {
-    fn from(layers: Layers) -> Self {
-        let mut positions = Vec::new();
-        let mut colors = Vec::new();
+    draw_rect_path(
+        vertices,
+        Rect3d {
+            left_0: cross.down + path.0,
+            left_1: cross.right + path.0,
+            right_0: cross.down + path.1,
+            right_1: cross.right + path.1,
+        },
+        flip,
+        PathOrientation::NorthWest,
+    );
 
-        for entry in layers.0.iter() {
-            let layer_mesh = entry.1;
+    draw_rect_path(
+        vertices,
+        Rect3d {
+            left_0: cross.down + path.0,
+            left_1: cross.left + path.0,
+            right_0: cross.down + path.1,
+            right_1: cross.left + path.1,
+        },
+        flip,
+        PathOrientation::NorthEast,
+    );
 
-            for position in layer_mesh.cpu_mesh.positions.iter() {
-                positions.push(*position);
-            }
+    draw_rect_path(
+        vertices,
+        Rect3d {
+            left_0: cross.up + path.0,
+            left_1: cross.left + path.0,
+            right_0: cross.up + path.1,
+            right_1: cross.left + path.1,
+        },
+        flip,
+        PathOrientation::SouthEast,
+    );
+}
 
-            colors.reserve_exact(layer_mesh.cpu_mesh.colors.len());
+pub(super) fn draw_cross_connection(
+    vertices: &mut Vertices,
+    center: &Vector3<f32>,
+    start_cross: &ProfileCross,
+    end_cross: &ProfileCross,
+) {
+    vertices.push(end_cross.up + *center);
+    vertices.push(end_cross.right + *center);
+    vertices.push(start_cross.right + *center);
 
-            for color in layer_mesh.cpu_mesh.colors.iter() {
-                colors.push(*color);
-                colors.push(*color);
-                colors.push(*color);
-            }
+    vertices.push(end_cross.up + *center);
+    vertices.push(end_cross.left + *center);
+    vertices.push(start_cross.left + *center);
+
+    vertices.push(end_cross.down + *center);
+    vertices.push(end_cross.right + *center);
+    vertices.push(start_cross.right + *center);
+
+    vertices.push(end_cross.down + *center);
+    vertices.push(end_cross.left + *center);
+    vertices.push(start_cross.left + *center);
+}
+
+pub(super) fn draw_rect_path(
+    vertices: &mut Vertices,
+    rect: Rect3d,
+    face_flip: bool,
+    orienation: PathOrientation,
+) {
+    let (mut triangle1, mut triangle2) = match orienation {
+        PathOrientation::SouthEast => {
+            let triangle1 = (rect.right_0, rect.left_1, rect.left_0);
+            let triangle2 = (rect.right_0, rect.right_1, rect.left_1);
+
+            (triangle1, triangle2)
         }
+        PathOrientation::SouthWest => {
+            let triangle1 = (rect.left_0, rect.left_1, rect.right_1);
+            let triangle2 = (rect.right_1, rect.right_0, rect.left_0);
 
-        let mut cpu_mesh = three_d::CpuMesh {
-            positions: Positions::F32(positions),
-            colors: Some(colors),
-            ..Default::default()
-        };
+            (triangle1, triangle2)
+        }
+        PathOrientation::NorthEast => {
+            let triangle1 = (rect.left_0, rect.left_1, rect.right_0);
+            let triangle2 = (rect.left_1, rect.right_1, rect.right_0);
 
-        cpu_mesh.compute_normals();
+            (triangle1, triangle2)
+        }
+        PathOrientation::NorthWest => {
+            let triangle1 = (rect.left_0, rect.right_0, rect.right_1);
+            let triangle2 = (rect.right_1, rect.left_1, rect.left_0);
 
-        cpu_mesh
+            (triangle1, triangle2)
+        }
+    };
+
+    if face_flip {
+        triangle1.reverse();
+        triangle2.reverse();
     }
+
+    vertices.push(triangle1.0);
+    vertices.push(triangle1.1);
+    vertices.push(triangle1.2);
+
+    vertices.push(triangle2.0);
+    vertices.push(triangle2.1);
+    vertices.push(triangle2.2);
+}
+
+pub(super) fn draw_rect(
+    vertices: &mut Vertices,
+    point_left_0: Vector3<f32>,
+    point_left_1: Vector3<f32>,
+    point_right_0: Vector3<f32>,
+    point_right_1: Vector3<f32>,
+) {
+    vertices.push(point_left_0);
+    vertices.push(point_left_1);
+    vertices.push(point_right_0);
+
+    vertices.push(point_left_1);
+    vertices.push(point_right_1);
+    vertices.push(point_right_0);
+}
+
+pub(super) fn draw_rect_with_cross(
+    vertices: &mut Vertices,
+    center: &Vector3<f32>,
+    cross: &ProfileCross,
+) {
+    draw_rect(
+        vertices,
+        cross.up + *center,
+        cross.right + *center,
+        cross.down + *center,
+        cross.left + *center,
+    );
 }

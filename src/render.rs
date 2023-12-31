@@ -31,11 +31,14 @@ impl RenderAdapter {
 
     pub fn render(&mut self, environment: &Environment) {
         let mut state = self.shared_state.lock_expect();
-        state
-            .toolpath
-            .as_mut()
-            .unwrap()
-            .render(environment.camera(), environment.lights().as_slice());
+
+        /*
+               state
+           .toolpath
+           .as_mut()
+           .unwrap()
+           .render(environment.camera(), environment.lights().as_slice());
+        */
     }
 }
 

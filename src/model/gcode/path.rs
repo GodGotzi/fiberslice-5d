@@ -7,13 +7,13 @@ use crate::{api::math::Average, model::shapes::VirtualBox, slicer::print_type::P
 use super::{instruction::InstructionType, movement, state::State, GCode, WirePath};
 
 #[derive(Debug, Clone)]
-pub struct PathLine {
+pub struct PathStroke {
     pub start: Vector3<f32>,
     pub end: Vector3<f32>,
     pub print: bool,
 }
 
-impl PathLine {
+impl PathStroke {
     pub fn direction(&self) -> Vector3<f32> {
         self.end - self.start
     }
@@ -21,14 +21,14 @@ impl PathLine {
 
 #[derive(Debug)]
 pub struct PathModul {
-    pub paths: Vec<PathLine>,
+    pub paths: Vec<PathStroke>,
     pub line_range: (usize, usize),
     pub state: State,
 }
 
 impl PathModul {
     pub fn new(
-        points: Vec<PathLine>,
+        points: Vec<PathStroke>,
         line_range: (usize, usize),
         state: super::state::State,
     ) -> Self {
@@ -40,35 +40,15 @@ impl PathModul {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct RawPath {
-    moduls: Vec<PathModul>,
-    virtual_box: VirtualBox,
-    center_mass: Option<Vector3<f32>>,
+    pub(super) moduls: Vec<PathModul>,
+    pub(super) virtual_box: VirtualBox,
+    pub(super) center_mass: Vector3<f32>,
 }
 
-impl RawPath {
-    pub fn moduls(&self) -> &Vec<PathModul> {
-        &self.moduls
-    }
-}
-
-impl From<&RawPath> for WirePath {
-    fn from(raw: &RawPath) -> WirePath {
-        let mut strokes = Vec::new();
-
-        for path in raw.moduls {
-            for line in path.paths {
-                strokes.push(line);
-            }
-        }
-
-        WirePath::new(strokes)
-    }
-}
-
-impl From<GCode> for RawPath {
-    fn from(value: GCode) -> Self {
+impl From<&GCode> for RawPath {
+    fn from(gcode: &GCode) -> Self {
         let mut moduls = Vec::new();
 
         let mut current_movements = movement::Movements::new();
@@ -76,7 +56,7 @@ impl From<GCode> for RawPath {
         let mut toolpath_average = Average::<Vector3<f32>>::default();
         let mut virtual_box = VirtualBox::default();
 
-        for instruction_modul in value.iter() {
+        for instruction_modul in gcode.iter() {
             let mut strokes = Vec::new();
 
             //split instuctions into chunks of 5000 for performance
@@ -104,20 +84,20 @@ impl From<GCode> for RawPath {
         RawPath {
             moduls,
             virtual_box,
-            center_mass,
+            center_mass: center_mass.unwrap_or(vec3(0.0, 0.0, 0.0)),
         }
     }
 }
 
 fn compute_modul(
-    points: &mut Vec<PathLine>,
+    points: &mut Vec<PathStroke>,
     current_movements: &mut movement::Movements,
     instruction_modul: &super::instruction::InstructionModul,
 ) -> (Average<Vector3<f32>>, VirtualBox) {
     let mut modul_average = Average::<Vector3<f32>>::default();
     let mut virtual_box = VirtualBox::default();
 
-    for instructions in instruction_modul.instructions().chunks(500) {
+    for instructions in instruction_modul.borrow_inner().chunks(500) {
         let mut instruction_average = Average::<Vector3<f32>>::default();
         let mut instruction_box = VirtualBox::default();
 
@@ -160,7 +140,7 @@ fn compute_modul(
                 }
             }
 
-            points.push(PathLine {
+            points.push(PathStroke {
                 start: last_point,
                 end: current_point,
                 print,
