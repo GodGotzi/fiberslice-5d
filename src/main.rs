@@ -5,9 +5,7 @@
     Please refer to the terms and conditions stated therein.
 */
 
-use std::sync::{Arc, MutexGuard};
-
-use model::gcode::GCode;
+use model::gcode;
 use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
 
 use prelude::{Adapter, SharedMut, SharedState};
@@ -43,7 +41,7 @@ pub fn main() {
 
     let mut window_handler = window::WindowHandler::from_event_loop(&event_loop);
 
-    //let settings = SharedMut::from_inner(settings::Settings {});
+    let settings = SharedMut::from_inner(settings::Settings { diameter: 0.45 });
     //let toolpath = create_toolpath(window_handler.borrow_context(), settings.lock_expect());
 
     let (writer_render_event, mut render_adapter) =
@@ -117,44 +115,35 @@ pub fn main() {
     });
 }
 
-/*
-pub fn create_toolpath(
-    context: &Context,
-    settings: MutexGuard<Settings>,
-) -> Option<Gm<Mesh, PhysicalMaterial>> {
+pub fn create_toolpath(context: &Context, settings: Settings) -> Option<gcode::WorkpiecePath> {
     let nfd = Nfd::new().unwrap();
     let result = nfd.open_file().add_filter("Gcode", "gcode").unwrap().show();
 
     match result {
         DialogResult::Ok(path) => {
             let content = std::fs::read_to_string(path).unwrap();
-            let gcode: GCode = content.try_into().unwrap();
+            let gcode: gcode::GCode = gcode::parser::parse_content(&content).unwrap();
 
-            let (mesh, path_model) = gcode.into_mesh(settings);
+            let workpiece = gcode::WorkpiecePath::from_gcode((content.lines(), gcode), &settings);
 
-            let mut cpu_model = Gm::new(
-                Mesh::new(context, &mesh.0),
+            /*
+                        let mut cpu_model = Gm::new(
+                Mesh::new(context, &cpu_mesh.0),
                 PhysicalMaterial::new(context, &CpuMaterial::default()),
             );
 
-            if let Some(vec) = path_model.raw_path. {
+            if let Some(vec) = cpu_mesh.1 {
                 cpu_model.set_transformation(Mat4::from_translation(Vector3::new(
                     -vec.x, -vec.y, -vec.z,
                 )));
             }
+
+            cpu_model
+
+             */
+
+            Some(workpiece)
         }
-        _ => (CpuMesh::cube(), None),
-    };
-
-    let mut cpu_model = Gm::new(
-        Mesh::new(context, &cpu_mesh.0),
-        PhysicalMaterial::new(context, &CpuMaterial::default()),
-    );
-
-    if let Some(vec) = cpu_mesh.1 {
-        cpu_model.set_transformation(Mat4::from_translation(Vector3::new(-vec.x, -vec.y, -vec.z)));
+        _ => None,
     }
-
-    cpu_model
 }
-*/

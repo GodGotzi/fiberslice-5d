@@ -1,8 +1,8 @@
-use std::{collections::HashMap, fmt::Debug};
+use std::{collections::HashMap, fmt::Debug, str::Lines};
 
 use three_d::{Gm, Mesh, PhysicalMaterial, Vector3};
 
-use crate::settings::Settings;
+use crate::settings::{DisplaySettings, Settings};
 
 use self::{
     instruction::{InstructionModul, InstructionType},
@@ -39,12 +39,10 @@ pub struct WorkpiecePath {
     layers: HashMap<usize, LayerModel>,
     virtual_box: VirtualBox,
     center_mass: Vector3<f32>,
-
-    gpu_model: Option<Gm<Mesh, PhysicalMaterial>>,
 }
 
 impl WorkpiecePath {
-    pub fn from_gcode((raw, gcode): (GCodeRaw, GCode), settings: &Settings) -> Self {
+    pub fn from_gcode((raw, gcode): (Lines, GCode), settings: &Settings) -> Self {
         let raw_path = RawPath::from(&gcode);
 
         let mut strokes = Vec::new();
@@ -73,12 +71,11 @@ impl WorkpiecePath {
         let wire_model = WirePath::new(strokes);
 
         Self {
-            raw,
+            raw: raw.map(|s| s.to_string()).collect(),
             wire_model,
             layers,
             virtual_box: raw_path.virtual_box,
             center_mass: raw_path.center_mass,
-            gpu_model: None,
         }
     }
 }

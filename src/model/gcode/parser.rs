@@ -86,23 +86,17 @@ fn compute_instruction(
     Ok(())
 }
 
-pub fn parse_comment_to_state(
-    line: &str,
-    mut last_state: State,
-) -> Result<State, crate::error::Error> {
+fn parse_comment_to_state(line: &str, mut last_state: State) -> Result<State, crate::error::Error> {
     parse_comment_into_state(line, &mut last_state)?;
 
     Ok(last_state)
 }
 
-pub fn parse_comment_into_state(
-    line: &str,
-    last_state: &mut State,
-) -> Result<(), crate::error::Error> {
+fn parse_comment_into_state(line: &str, last_state: &mut State) -> Result<(), crate::error::Error> {
     last_state.parse(line.to_string())
 }
 
-pub fn compute_parameters(
+fn compute_parameters(
     parameters: SplitWhitespace<'_>,
     child_instructions: &mut Vec<InstructionType>,
     movements: &mut Movements,
