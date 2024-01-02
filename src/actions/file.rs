@@ -1,8 +1,8 @@
-use crate::model::gcode::WorkpiecePath;
+use crate::model::gcode::PrintPart;
 
 #[derive(Debug)]
 pub enum FileActionResult {
-    LoadGCode(WorkpiecePath),
+    LoadGCode(PrintPart),
     ImportIntersectionObject,
     SaveAs,
     Save,

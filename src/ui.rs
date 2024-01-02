@@ -17,6 +17,7 @@ mod visual;
 use std::{
     cell::{Ref, RefCell, RefMut},
     rc::Rc,
+    sync::RwLockReadGuard,
 };
 
 use three_d::{
@@ -35,7 +36,7 @@ use strum::EnumCount;
 
 use self::{boundary::Boundary, response::Responses, visual::customize_look_and_feel};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum UiEvent {}
 
 pub struct UiAdapter {
@@ -160,6 +161,10 @@ impl UiState {
             Theme::Dark => Theme::Light,
         };
     }
+}
+
+pub trait MutableDualDataComponent<T> {
+    fn read_data(&self) -> RwLockReadGuard<T>;
 }
 
 #[derive(Default)]

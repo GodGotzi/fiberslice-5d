@@ -12,17 +12,16 @@ impl<E> Clone for EventReader<E> {
     }
 }
 
-impl<E> EventReader<E> {
+impl<E: Clone> EventReader<E> {
     pub fn read(&self) -> Vec<E> {
-        let mut events = self.events.lock().unwrap();
-        let mut result = Vec::new();
-        std::mem::swap(&mut result, &mut events);
+        let mut result = self.events.read().clone();
+        self.events.write().clear();
+
         result
     }
 
     pub fn has_active_events(&self) -> bool {
-        let events = self.events.lock().unwrap();
-        !events.is_empty()
+        !self.events.read().is_empty()
     }
 }
 
@@ -40,8 +39,7 @@ impl<E> Clone for EventWriter<E> {
 
 impl<E> EventWriter<E> {
     pub fn send(&self, event: E) {
-        let mut events = self.events.lock().unwrap();
-        events.push(event);
+        self.events.write().push(event);
     }
 }
 

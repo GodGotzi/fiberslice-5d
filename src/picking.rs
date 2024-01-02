@@ -6,7 +6,7 @@ use crate::{
     render::RenderState,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum PickingEvent {
     Select,
 }
@@ -15,17 +15,17 @@ pub struct PickingAdapter {
     event_reader: EventReader<PickingEvent>,
 }
 
-impl FrameHandle<(), SharedMut<RenderState>> for PickingAdapter {
+impl FrameHandle<(), RenderState> for PickingAdapter {
     fn handle_frame(
         &mut self,
         _frame_input: &three_d::FrameInput,
-        _state: SharedMut<RenderState>,
+        _state: RenderState,
     ) -> Result<(), Error> {
         Ok(())
     }
 }
 
-impl Adapter<(), SharedMut<RenderState>, PickingEvent> for PickingAdapter {
+impl Adapter<(), RenderState, PickingEvent> for PickingAdapter {
     fn from_context(context: &Context) -> (crate::event::EventWriter<PickingEvent>, Self) {
         let (reader, writer) = crate::event::create_event_bundle::<PickingEvent>();
 

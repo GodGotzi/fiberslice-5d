@@ -1,6 +1,6 @@
 use std::{
     fmt::Debug,
-    sync::{Arc, Mutex, MutexGuard, PoisonError},
+    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
 use three_d::{Context, FrameInput};
@@ -11,15 +11,15 @@ use crate::{
     event::{EventReader, EventWriter},
     picking::PickingEvent,
     render::RenderEvent,
-    settings::FilamentSettings,
     settings::PrinterSettings,
     settings::SliceSettings,
+    settings::{tree::SettingTree, FilamentSettings},
     ui::UiEvent,
 };
 
 #[derive(Default)]
 pub struct SharedMut<T> {
-    inner: Arc<Mutex<T>>,
+    inner: Arc<RwLock<T>>,
 }
 
 impl<T> Clone for SharedMut<T> {
@@ -33,16 +33,16 @@ impl<T> Clone for SharedMut<T> {
 impl<T> SharedMut<T> {
     pub fn from_inner(inner: T) -> Self {
         Self {
-            inner: Arc::new(Mutex::new(inner)),
+            inner: Arc::new(RwLock::new(inner)),
         }
     }
 
-    pub fn lock(&self) -> Result<MutexGuard<T>, PoisonError<MutexGuard<T>>> {
-        self.inner.lock()
+    pub fn read(&self) -> RwLockReadGuard<T> {
+        self.inner.read().unwrap()
     }
 
-    pub fn lock_expect(&self) -> MutexGuard<T> {
-        self.inner.lock().expect("Failed to lock shared mut")
+    pub fn write(&self) -> RwLockWriteGuard<T> {
+        self.inner.write().unwrap()
     }
 }
 
@@ -67,7 +67,7 @@ pub trait FrameHandle<T, C> {
     fn handle_frame(&mut self, frame_input: &three_d::FrameInput, context: C) -> Result<T, Error>;
 }
 
-pub trait Adapter<T, C, E: Debug>: FrameHandle<T, C> {
+pub trait Adapter<T, C, E: Debug + Clone>: FrameHandle<T, C> {
     fn from_context(context: &Context) -> (EventWriter<E>, Self);
 
     fn get_reader(&self) -> &EventReader<E>;
@@ -94,7 +94,7 @@ pub trait Adapter<T, C, E: Debug>: FrameHandle<T, C> {
 
 #[derive(Default)]
 pub struct SharedSettings {
-    pub slice_settings: SharedMut<SliceSettings>,
+    pub tree_settings: SharedMut<SettingTree>,
     pub printer_settings: SharedMut<PrinterSettings>,
     pub filament_settings: SharedMut<FilamentSettings>,
 }

@@ -4,7 +4,7 @@ use three_d::{vec3, Vector3};
 
 use crate::{api::math::Average, model::shapes::VirtualBox, slicer::print_type::PrintType};
 
-use super::{instruction::InstructionType, movement, state::State, GCode, WirePath};
+use super::{instruction::InstructionType, movement, state::State, GCode};
 
 #[derive(Debug, Clone)]
 pub struct PathStroke {
@@ -43,7 +43,6 @@ impl PathModul {
 #[derive(Debug)]
 pub struct RawPath {
     pub(super) moduls: Vec<PathModul>,
-    pub(super) virtual_box: VirtualBox,
     pub(super) center_mass: Vector3<f32>,
 }
 
@@ -54,13 +53,12 @@ impl From<&GCode> for RawPath {
         let mut current_movements = movement::Movements::new();
 
         let mut toolpath_average = Average::<Vector3<f32>>::default();
-        let mut virtual_box = VirtualBox::default();
 
         for instruction_modul in gcode.iter() {
             let mut strokes = Vec::new();
 
             //split instuctions into chunks of 5000 for performance
-            let (modul_average, modul_box) =
+            let modul_average =
                 compute_modul(&mut strokes, &mut current_movements, instruction_modul);
 
             moduls.push(PathModul {
@@ -70,8 +68,6 @@ impl From<&GCode> for RawPath {
             });
 
             toolpath_average += modul_average;
-
-            virtual_box.expand(modul_box);
         }
 
         let center_mass = if let Some(mut center) = toolpath_average.divide_average() {
@@ -83,7 +79,6 @@ impl From<&GCode> for RawPath {
 
         RawPath {
             moduls,
-            virtual_box,
             center_mass: center_mass.unwrap_or(vec3(0.0, 0.0, 0.0)),
         }
     }
@@ -93,13 +88,11 @@ fn compute_modul(
     points: &mut Vec<PathStroke>,
     current_movements: &mut movement::Movements,
     instruction_modul: &super::instruction::InstructionModul,
-) -> (Average<Vector3<f32>>, VirtualBox) {
+) -> Average<Vector3<f32>> {
     let mut modul_average = Average::<Vector3<f32>>::default();
-    let mut virtual_box = VirtualBox::default();
 
     for instructions in instruction_modul.borrow_inner().chunks(500) {
         let mut instruction_average = Average::<Vector3<f32>>::default();
-        let mut instruction_box = VirtualBox::default();
 
         for instruction in instructions {
             let movements = instruction.movements();
@@ -121,21 +114,7 @@ fn compute_modul(
                     if print_type == &PrintType::WallOuter
                         || print_type == &PrintType::ExternalPerimeter
                     {
-                        let max = vec3(
-                            current_point.x.max(last_point.x),
-                            current_point.y.max(last_point.y),
-                            current_point.z.max(last_point.z),
-                        );
-                        let min = vec3(
-                            current_point.x.min(last_point.x),
-                            current_point.y.min(last_point.y),
-                            current_point.z.min(last_point.z),
-                        );
-
-                        let stroke_box = VirtualBox::new(max, min);
-
                         instruction_average.add((current_point + last_point) / 2.0);
-                        instruction_box.expand(stroke_box);
                     }
                 }
             }
@@ -148,10 +127,9 @@ fn compute_modul(
         }
 
         modul_average += instruction_average;
-        virtual_box.expand(instruction_box);
     }
 
-    (modul_average, virtual_box)
+    modul_average
 }
 
 impl From<RawPath> for HashMap<usize, Vec<PathModul>> {

@@ -11,7 +11,7 @@ use crate::{
     view::{HandleOrientation, Orientation},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum EnvironmentEvent {
     SendOrientation(Orientation),
 }
@@ -33,8 +33,6 @@ impl FrameHandle<(), (Rc<RefCell<UiState>>, UiResult)> for EnvironmentAdapter {
         frame_input: &FrameInput,
         (state, result): (Rc<RefCell<UiState>>, UiResult),
     ) -> Result<(), Error> {
-        let mut environment = self.shared_environment.lock_expect();
-
         if !result.pointer_use.unwrap_or(false) {
             let mut events = frame_input
                 .events
@@ -49,11 +47,17 @@ impl FrameHandle<(), (Rc<RefCell<UiState>>, UiResult)> for EnvironmentAdapter {
                         _ => return true,
                     };
 
-                    environment.camera.viewport().contains(position)
+                    self.shared_environment
+                        .read()
+                        .camera
+                        .viewport()
+                        .contains(position)
                 })
                 .collect::<Vec<Event>>();
 
-            environment.handle_camera_events(&mut events);
+            self.shared_environment
+                .write()
+                .handle_camera_events(&mut events);
         }
 
         let components = &state.borrow().components;
@@ -79,7 +83,10 @@ impl FrameHandle<(), (Rc<RefCell<UiState>>, UiResult)> for EnvironmentAdapter {
                 height,
             };
 
-            environment.camera.set_viewport(viewport);
+            self.shared_environment
+                .write()
+                .camera
+                .set_viewport(viewport);
         }
 
         Ok(())
@@ -107,7 +114,7 @@ impl Adapter<(), (Rc<RefCell<UiState>>, UiResult), EnvironmentEvent> for Environ
         match event {
             EnvironmentEvent::SendOrientation(orientation) => {
                 self.shared_environment
-                    .lock_expect()
+                    .write()
                     .camera
                     .handle_orientation(orientation);
             }

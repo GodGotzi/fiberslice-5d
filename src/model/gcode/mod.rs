@@ -1,8 +1,6 @@
 use std::{collections::HashMap, fmt::Debug, str::Lines};
 
-use three_d::{Gm, Mesh, PhysicalMaterial, Vector3};
-
-use crate::settings::{DisplaySettings, Settings};
+use three_d::Vector3;
 
 use self::{
     instruction::{InstructionModul, InstructionType},
@@ -33,16 +31,25 @@ pub struct ModulModel {
 
 pub type LayerModel = Vec<ModulModel>;
 
-pub struct WorkpiecePath {
+pub struct DisplaySettings {
+    diameter: f32,
+}
+
+pub struct MeshSettings {}
+
+pub struct PrintPart {
     raw: GCodeRaw,
     wire_model: WirePath,
     layers: HashMap<usize, LayerModel>,
-    virtual_box: VirtualBox,
     center_mass: Vector3<f32>,
 }
 
-impl WorkpiecePath {
-    pub fn from_gcode((raw, gcode): (Lines, GCode), settings: &Settings) -> Self {
+impl PrintPart {
+    pub fn from_gcode(
+        (raw, gcode): (Lines, GCode),
+        mesh_settings: &MeshSettings,
+        display_settings: &DisplaySettings,
+    ) -> Self {
         let raw_path = RawPath::from(&gcode);
 
         let mut strokes = Vec::new();
@@ -56,7 +63,7 @@ impl WorkpiecePath {
 
             strokes.extend(modul.paths.clone());
 
-            let (vertices, child_offsets) = modul.to_vertices(settings);
+            let (vertices, child_offsets) = modul.to_vertices(display_settings);
 
             let model = ModulModel {
                 mesh: vertices,
@@ -74,13 +81,12 @@ impl WorkpiecePath {
             raw: raw.map(|s| s.to_string()).collect(),
             wire_model,
             layers,
-            virtual_box: raw_path.virtual_box,
             center_mass: raw_path.center_mass,
         }
     }
 }
 
-impl Debug for WorkpiecePath {
+impl Debug for PrintPart {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         //only debug layers
         f.debug_struct("Path")

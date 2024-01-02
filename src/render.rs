@@ -1,34 +1,51 @@
-use three_d::{ClearState, Context, FrameInput, Gm, Mesh, PhysicalMaterial, RenderTarget, GUI};
+use three_d::{ClearState, Context, FrameInput, Object, RenderTarget, GUI};
 
 use crate::{
     environment::Environment,
     event::{create_event_bundle, EventReader, EventWriter},
+    model::gcode::{DisplaySettings, MeshSettings, PrintPart},
     prelude::*,
 };
 
-#[derive(Debug)]
-pub enum RenderEvent {}
+pub trait MeshCreationContent<T: Object> {
+    fn update_mesh(&self, mesh_settings: MeshSettings) -> T;
+    fn update_look(&self, display_settings: DisplaySettings) -> T;
+}
+
+pub struct RenderCreationPair<C: MeshCreationContent<T>, T: Object> {
+    content: C,
+    gpu_model: Option<T>,
+}
+
+#[derive(Debug, Clone)]
+pub enum RenderEvent {
+    UpdatePathMesh,
+    UpdatePathDisplay,
+}
 
 pub struct RenderState {
-    toolpath: Option<Gm<Mesh, PhysicalMaterial>>,
+    workpiece: SharedMut<Option<PrintPart>>,
+}
+
+impl Clone for RenderState {
+    fn clone(&self) -> Self {
+        Self {
+            workpiece: self.workpiece.clone(),
+        }
+    }
 }
 
 pub struct RenderAdapter {
-    shared_state: SharedMut<RenderState>,
+    shared_state: RenderState,
     event_reader: EventReader<RenderEvent>,
 }
 
 impl RenderAdapter {
-    pub fn share_state(&self) -> SharedMut<RenderState> {
+    pub fn share_state(&self) -> RenderState {
         self.shared_state.clone()
     }
 
-    pub fn set_toolpath(&mut self, toolpath: Gm<Mesh, PhysicalMaterial>) {
-        self.shared_state.lock_expect().toolpath = Some(toolpath);
-    }
-
     pub fn render(&mut self, environment: &Environment) {
-        let mut state = self.shared_state.lock_expect();
 
         /*
                state
@@ -46,7 +63,7 @@ impl FrameHandle<(), (SharedMut<Environment>, &GUI)> for RenderAdapter {
         frame_input: &FrameInput,
         (shared_environment, gui): (SharedMut<Environment>, &GUI),
     ) -> Result<(), Error> {
-        let environment = shared_environment.lock_expect();
+        let environment = shared_environment.read();
 
         let screen: RenderTarget<'_> = frame_input.screen();
         screen.clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0));
@@ -67,7 +84,9 @@ impl Adapter<(), (SharedMut<Environment>, &GUI), RenderEvent> for RenderAdapter 
         (
             writer,
             Self {
-                shared_state: SharedMut::from_inner(RenderState { toolpath: None }),
+                shared_state: RenderState {
+                    workpiece: SharedMut::default(),
+                },
                 event_reader: reader,
             },
         )

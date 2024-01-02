@@ -5,11 +5,10 @@
     Please refer to the terms and conditions stated therein.
 */
 
-use model::gcode;
+use model::gcode::{self, DisplaySettings, MeshSettings};
 use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
 
-use prelude::{Adapter, SharedMut, SharedState};
-use settings::Settings;
+use prelude::{Adapter, SharedState};
 use three_d::*;
 
 mod actions;
@@ -41,7 +40,7 @@ pub fn main() {
 
     let mut window_handler = window::WindowHandler::from_event_loop(&event_loop);
 
-    let settings = SharedMut::from_inner(settings::Settings { diameter: 0.45 });
+    //let settings = SharedMut::from_inner(settings::Settings { diameter: 0.45 });
     //let toolpath = create_toolpath(window_handler.borrow_context(), settings.lock_expect());
 
     let (writer_render_event, mut render_adapter) =
@@ -115,7 +114,11 @@ pub fn main() {
     });
 }
 
-pub fn create_toolpath(context: &Context, settings: Settings) -> Option<gcode::WorkpiecePath> {
+pub fn create_toolpath(
+    context: &Context,
+    mesh_settings: MeshSettings,
+    display_settings: DisplaySettings,
+) -> Option<gcode::PrintPart> {
     let nfd = Nfd::new().unwrap();
     let result = nfd.open_file().add_filter("Gcode", "gcode").unwrap().show();
 
@@ -124,7 +127,11 @@ pub fn create_toolpath(context: &Context, settings: Settings) -> Option<gcode::W
             let content = std::fs::read_to_string(path).unwrap();
             let gcode: gcode::GCode = gcode::parser::parse_content(&content).unwrap();
 
-            let workpiece = gcode::WorkpiecePath::from_gcode((content.lines(), gcode), &settings);
+            let workpiece = gcode::PrintPart::from_gcode(
+                (content.lines(), gcode),
+                &mesh_settings,
+                &display_settings,
+            );
 
             /*
                         let mut cpu_model = Gm::new(

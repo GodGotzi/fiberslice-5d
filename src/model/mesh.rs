@@ -1,6 +1,5 @@
 use three_d::Vector3;
 
-pub type Traingle = (Vector3<f32>, Vector3<f32>, Vector3<f32>);
 pub type Vertices = Vec<Vector3<f32>>;
 
 #[derive(Debug)]

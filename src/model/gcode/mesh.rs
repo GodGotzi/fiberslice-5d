@@ -3,10 +3,9 @@ use three_d::{vec3, InnerSpace, Vector3};
 use crate::{
     api::{math::DirectMul, Reverse},
     model::{mesh::Vertices, shapes::Rect3d},
-    settings::Settings,
 };
 
-use super::path::PathModul;
+use super::{path::PathModul, DisplaySettings};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PathOrientation {
@@ -61,7 +60,7 @@ fn adjust_pane(x: f32, y: f32) -> bool {
 }
 
 impl PathModul {
-    pub(super) fn to_vertices(self, settings: &Settings) -> (Vertices, Vec<usize>) {
+    pub(super) fn to_vertices(self, settings: &DisplaySettings) -> (Vertices, Vec<usize>) {
         let mut vertices = Vec::new();
         let mut offsets: Vec<usize> = Vec::new();
 

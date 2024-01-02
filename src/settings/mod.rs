@@ -1,22 +1,11 @@
 pub mod filament;
 pub mod printer;
 pub mod structure;
+pub mod tree;
 
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::Error;
-
-pub struct DisplaySettings {}
-
-pub struct Settings {
-    pub diameter: f32,
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Self { diameter: 0.45 }
-    }
-}
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct MovementSettings<T> {

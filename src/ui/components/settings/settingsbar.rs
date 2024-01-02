@@ -5,6 +5,8 @@
     Please refer to the terms and conditions stated therein.
 */
 
+use std::time::Instant;
+
 use egui::*;
 use three_d::egui;
 
@@ -118,15 +120,14 @@ impl TabbedSettings {
 
         match side_view.open_panel {
             SettingsPanel::Fiber => {
-                let mut printer_settings = data
-                    .borrow_shared_state()
-                    .settings
-                    .printer_settings
-                    .lock_expect();
+                let mut printer_settings =
+                    data.borrow_shared_state().settings.printer_settings.write();
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
+                            let now = Instant::now();
+
                             CollapsingHeader::new("General")
                                 .default_open(true)
                                 .show(ui, |ui| {
@@ -144,6 +145,8 @@ impl TabbedSettings {
                                 .show(ui, |ui| {
                                     printer_settings.extruder.show(ctx, ui);
                                 });
+
+                            println!("No Tree Time: {:?}", now.elapsed());
                         });
                     });
                 });
@@ -153,7 +156,7 @@ impl TabbedSettings {
                     .borrow_shared_state()
                     .settings
                     .filament_settings
-                    .lock_expect();
+                    .write();
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
@@ -186,32 +189,16 @@ impl TabbedSettings {
                 });
             }
             SettingsPanel::View => {
-                let printer_settings = &mut data
-                    .borrow_shared_state()
-                    .settings
-                    .printer_settings
-                    .lock_expect();
+                let tree_settings = &mut data.borrow_shared_state().settings.tree_settings.write();
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
-                            CollapsingHeader::new("General")
-                                .default_open(true)
-                                .show(ui, |ui| {
-                                    printer_settings.general.show(ctx, ui);
-                                });
+                            let now = Instant::now();
 
-                            CollapsingHeader::new("Machine Limits")
-                                .default_open(true)
-                                .show(ui, |ui| {
-                                    printer_settings.machine_limits.show(ctx, ui);
-                                });
+                            tree_settings.show(ui);
 
-                            CollapsingHeader::new("Extruder")
-                                .default_open(true)
-                                .show(ui, |ui| {
-                                    printer_settings.extruder.show(ctx, ui);
-                                });
+                            println!("Tree Time: {:?}", now.elapsed());
                         });
                     });
                 });
