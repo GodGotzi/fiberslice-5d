@@ -1,10 +1,12 @@
+use std::fmt::Debug;
+
 use crate::prelude::SharedMut;
 
-pub struct EventReader<E> {
+pub struct EventReader<E: Debug> {
     events: SharedMut<Vec<E>>,
 }
 
-impl<E> Clone for EventReader<E> {
+impl<E: Debug> Clone for EventReader<E> {
     fn clone(&self) -> Self {
         Self {
             events: self.events.clone(),
@@ -12,7 +14,7 @@ impl<E> Clone for EventReader<E> {
     }
 }
 
-impl<E: Clone> EventReader<E> {
+impl<E: Debug + Clone> EventReader<E> {
     pub fn read(&self) -> Vec<E> {
         let mut result = self.events.read().clone();
         self.events.write().clear();
@@ -25,11 +27,11 @@ impl<E: Clone> EventReader<E> {
     }
 }
 
-pub struct EventWriter<E> {
+pub struct EventWriter<E: Debug> {
     events: SharedMut<Vec<E>>,
 }
 
-impl<E> Clone for EventWriter<E> {
+impl<E: Debug> Clone for EventWriter<E> {
     fn clone(&self) -> Self {
         Self {
             events: self.events.clone(),
@@ -37,13 +39,13 @@ impl<E> Clone for EventWriter<E> {
     }
 }
 
-impl<E> EventWriter<E> {
+impl<E: Debug> EventWriter<E> {
     pub fn send(&self, event: E) {
         self.events.write().push(event);
     }
 }
 
-pub fn create_event_bundle<T>() -> (EventReader<T>, EventWriter<T>) {
+pub fn create_event_bundle<T: Debug>() -> (EventReader<T>, EventWriter<T>) {
     let events = SharedMut::from_inner(Vec::new());
     let reader = EventReader {
         events: events.clone(),

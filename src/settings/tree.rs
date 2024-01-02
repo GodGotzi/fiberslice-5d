@@ -17,7 +17,7 @@ impl Default for SettingTree {
                 description: "root".to_string(),
                 children: std::collections::HashMap::new(),
             },
-            ..Default::default()
+            changed: false,
         };
 
         let mut general = TreeNode::Branch {
@@ -93,8 +93,8 @@ impl SettingTree {
         self.changed = false;
 
         if let TreeNode::Branch { children, .. } = &mut self.root {
-            for (child_path, child) in children.iter_mut() {
-                if child.show(ui, child_path) {
+            for (_, child) in children.iter_mut() {
+                if child.show(ui) {
                     self.changed = true;
                 }
             }
@@ -154,7 +154,7 @@ enum TreeNode {
 }
 
 impl TreeNode {
-    fn show(&mut self, ui: &mut three_d::egui::Ui, path: &str) -> bool {
+    fn show(&mut self, ui: &mut three_d::egui::Ui) -> bool {
         match self {
             TreeNode::Branch {
                 children,
@@ -166,8 +166,8 @@ impl TreeNode {
                 CollapsingHeader::new(description.as_str())
                     .default_open(true)
                     .show(ui, |ui| {
-                        for (child_path, child) in children.iter_mut() {
-                            if child.show(ui, format!("{}.{}", path, child_path).as_str()) {
+                        for (_, child) in children.iter_mut() {
+                            if child.show(ui) {
                                 has_changed = true;
                             }
                         }
@@ -182,7 +182,7 @@ impl TreeNode {
                 changed,
             } => {
                 ui.horizontal(|ui| {
-                    *changed = value.show(path, description, unit.as_ref(), ui).changed();
+                    *changed = value.show(description, unit.as_ref(), ui).changed();
                 });
 
                 *changed
@@ -212,7 +212,6 @@ enum NodeValue {
 impl NodeValue {
     fn show(
         &mut self,
-        path: &str,
         description: &str,
         unit: Option<&String>,
         ui: &mut three_d::egui::Ui,
@@ -243,6 +242,7 @@ mod test {
                 description: "root".to_string(),
                 children: std::collections::HashMap::new(),
             },
+            changed: false,
         };
 
         let mut general = super::TreeNode::Branch {

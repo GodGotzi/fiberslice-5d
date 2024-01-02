@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, fmt::Debug, rc::Rc};
 
 use three_d::*;
 
@@ -130,6 +130,14 @@ pub struct Environment {
     camera: Camera,
     camera_control: OrbitControl,
     owned_lights: Vec<Box<dyn Light>>,
+}
+
+impl Debug for Environment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Environment")
+            .field("camera", &self.camera)
+            .finish()
+    }
 }
 
 impl Environment {

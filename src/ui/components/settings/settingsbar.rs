@@ -126,7 +126,7 @@ impl TabbedSettings {
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
-                            let now = Instant::now();
+                            //let now = Instant::now();
 
                             CollapsingHeader::new("General")
                                 .default_open(true)
@@ -146,7 +146,7 @@ impl TabbedSettings {
                                     printer_settings.extruder.show(ctx, ui);
                                 });
 
-                            println!("No Tree Time: {:?}", now.elapsed());
+                            //println!("No Tree Time: {:?}", now.elapsed());
                         });
                     });
                 });
@@ -194,11 +194,11 @@ impl TabbedSettings {
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
-                            let now = Instant::now();
+                            //let now = Instant::now();
 
                             tree_settings.show(ui);
 
-                            println!("Tree Time: {:?}", now.elapsed());
+                            //println!("Tree Time: {:?}", now.elapsed());
                         });
                     });
                 });
@@ -248,7 +248,14 @@ impl Component for Settingsbar {
                                 .fill(ui.style().visuals.selection.bg_fill)
                                 .min_size(Vec2::new(ui.available_width() * 0.8, 50.0));
 
-                            ui.add(slice_button);
+                            /*
+                            if ui.add(slice_button).clicked() {
+                                println!(
+                                    "{:#?}",
+                                    data.borrow_shared_state().settings.tree_settings
+                                );
+                            };
+                            */
                         });
 
                         ui.add_space(20.0);

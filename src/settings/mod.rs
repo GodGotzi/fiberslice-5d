@@ -21,7 +21,7 @@ pub struct MovementSettings<T> {
 #[derive(Serialize, Deserialize)]
 pub struct SliceSettings {}
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FilamentSettings {
     pub general: filament::General,
     pub temperature: filament::Temperature,
@@ -29,7 +29,7 @@ pub struct FilamentSettings {
     pub advanced: filament::advanced::AdvancedSettings,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PrinterSettings {
     pub general: printer::General,
     pub machine_limits: printer::limits::Limits,

@@ -12,17 +12,16 @@ use crate::{
     picking::PickingEvent,
     render::RenderEvent,
     settings::PrinterSettings,
-    settings::SliceSettings,
     settings::{tree::SettingTree, FilamentSettings},
     ui::UiEvent,
 };
 
-#[derive(Default)]
-pub struct SharedMut<T> {
+#[derive(Default, Debug)]
+pub struct SharedMut<T: Debug> {
     inner: Arc<RwLock<T>>,
 }
 
-impl<T> Clone for SharedMut<T> {
+impl<T: Debug> Clone for SharedMut<T> {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
@@ -30,7 +29,7 @@ impl<T> Clone for SharedMut<T> {
     }
 }
 
-impl<T> SharedMut<T> {
+impl<T: Debug> SharedMut<T> {
     pub fn from_inner(inner: T) -> Self {
         Self {
             inner: Arc::new(RwLock::new(inner)),
@@ -99,16 +98,16 @@ pub struct SharedSettings {
     pub filament_settings: SharedMut<FilamentSettings>,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct ToolpathBuffer {}
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct IntersectionBuffer {}
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct ControlBuffer {}
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct SharedBuffer {
     toolpath: SharedMut<ToolpathBuffer>,
     intersections: SharedMut<IntersectionBuffer>,
