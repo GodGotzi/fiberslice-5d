@@ -22,13 +22,13 @@ pub fn show(_ctx: &egui::Context, ui: &mut egui::Ui, data: &mut UiData, boundary
                 .vertical(|mut strip| {
                     strip.strip(|builder| {
                         builder
-                            .size(Size::exact(40.0))
+                            .size(Size::exact(50.0))
                             .size(Size::remainder())
                             .vertical(|mut strip| {
                                 strip.strip(|builder| {
                                     builder
                                         .size(Size::remainder())
-                                        .size(Size::exact(220.0))
+                                        .size(Size::exact(240.0))
                                         .horizontal(|mut strip| {
                                             strip.empty();
                                             strip.cell(|ui| {

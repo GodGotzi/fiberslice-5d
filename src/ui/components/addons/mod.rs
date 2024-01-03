@@ -52,6 +52,7 @@ pub fn create_addon_strip_builder(
 pub mod orientation {
     use egui_extras::Size;
     use egui_grid::GridBuilder;
+    use strum::{EnumCount, IntoEnumIterator};
     use three_d::egui;
 
     use crate::{
@@ -67,101 +68,39 @@ pub mod orientation {
             main_align: egui::Align::Center,
             main_justify: false,
             cross_align: egui::Align::Center,
-            cross_justify: false,
+            cross_justify: true,
         };
 
-        GridBuilder::new()
-            // Allocate a new row
-            .new_row_align(Size::remainder(), egui::Align::Center)
-            // Give this row a couple cells
-            .layout_standard(layout)
-            .clip(true)
-            .cell(Size::remainder())
-            .cell(Size::initial(35.0))
-            .cell(Size::initial(35.0))
-            .cell(Size::initial(35.0))
-            .cell(Size::initial(35.0))
-            .cell(Size::initial(35.0))
-            .cell(Size::remainder())
-            .show(ui, |mut grid| {
-                grid.empty();
+        //skip first because first is Orientation::Default we don't want that
+        let builder = (1..Orientation::COUNT).fold(
+            GridBuilder::new()
+                .new_row_align(Size::remainder(), egui::Align::Center)
+                .layout_standard(layout)
+                .clip(true)
+                .cell(Size::remainder()),
+            |builder, _| builder.cell(Size::initial(40.0)),
+        );
+
+        builder.cell(Size::remainder()).show(ui, |mut grid| {
+            grid.empty();
+
+            //skip first because first is Orientation::Default we don't want that
+            Orientation::iter().skip(1).for_each(|orientation| {
                 grid.cell(|ui| {
                     ui.add_responsive_button(
                         data,
                         &config::gui::ORIENATION_BUTTON,
-                        Orientation::Diagonal,
+                        orientation,
                         &|data| {
                             data.borrow_shared_state().writer_environment_event.send(
-                                crate::environment::EnvironmentEvent::SendOrientation(
-                                    Orientation::Diagonal,
-                                ),
+                                crate::environment::EnvironmentEvent::SendOrientation(orientation),
                             )
                         },
                     )
                 });
-
-                grid.cell(|ui| {
-                    ui.add_responsive_button(
-                        data,
-                        &config::gui::ORIENATION_BUTTON,
-                        Orientation::Front,
-                        &|data| {
-                            data.borrow_shared_state().writer_environment_event.send(
-                                crate::environment::EnvironmentEvent::SendOrientation(
-                                    Orientation::Front,
-                                ),
-                            )
-                        },
-                    )
-                });
-
-                grid.cell(|ui| {
-                    ui.add_responsive_button(
-                        data,
-                        &config::gui::ORIENATION_BUTTON,
-                        Orientation::Top,
-                        &|data| {
-                            data.borrow_shared_state().writer_environment_event.send(
-                                crate::environment::EnvironmentEvent::SendOrientation(
-                                    Orientation::Top,
-                                ),
-                            )
-                        },
-                    )
-                });
-
-                grid.cell(|ui| {
-                    ui.add_responsive_button(
-                        data,
-                        &config::gui::ORIENATION_BUTTON,
-                        Orientation::Left,
-                        &|data| {
-                            data.borrow_shared_state().writer_environment_event.send(
-                                crate::environment::EnvironmentEvent::SendOrientation(
-                                    Orientation::Left,
-                                ),
-                            )
-                        },
-                    )
-                });
-
-                grid.cell(|ui| {
-                    ui.add_responsive_button(
-                        data,
-                        &config::gui::ORIENATION_BUTTON,
-                        Orientation::Right,
-                        &|data| {
-                            data.borrow_shared_state().writer_environment_event.send(
-                                crate::environment::EnvironmentEvent::SendOrientation(
-                                    Orientation::Right,
-                                ),
-                            )
-                        },
-                    )
-                });
-
-                grid.empty();
             });
+            grid.empty();
+        });
     }
 }
 

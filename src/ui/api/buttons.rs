@@ -1,4 +1,4 @@
-use three_d::egui::{self, ImageButton, Ui};
+use three_d::egui::{self, ImageButton, Painter, Sense, Ui};
 
 use crate::ui::{icon, response::Responsive, UiData};
 
@@ -86,7 +86,7 @@ impl DecoradedButtons for Ui {
         let icon = icon::ICONTABLE.get_icon(t).unwrap();
 
         let image_button =
-            ImageButton::new(icon.texture_id(self.ctx()), icon.size_vec2()).frame(false);
+            ImageButton::new(icon.texture_id(self.ctx()), icon.size_vec2()).frame(true);
 
         self.allocate_ui(
             [button.size.0 + button.border, button.size.1 + button.border].into(),
@@ -98,7 +98,8 @@ impl DecoradedButtons for Ui {
                     let prev_response = ui_state.responses.get_button_response(t).unwrap();
 
                     if prev_response.hovered() {
-                        ui.painter().rect_filled(
+                        let painter = Painter::new(ui.ctx().clone(), ui.layer_id(), ui.clip_rect());
+                        painter.rect_filled(
                             ui.available_rect_before_wrap(),
                             0.0,
                             button.hover_color,

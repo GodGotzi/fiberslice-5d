@@ -2,7 +2,7 @@ use three_d::Context;
 
 use crate::{
     event::EventReader,
-    prelude::{Adapter, Error, FrameHandle, SharedMut},
+    prelude::{Adapter, Error, FrameHandle},
     render::RenderState,
 };
 

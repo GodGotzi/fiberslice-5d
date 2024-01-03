@@ -5,8 +5,6 @@
     Please refer to the terms and conditions stated therein.
 */
 
-use std::time::Instant;
-
 use egui::*;
 use three_d::egui;
 
@@ -31,13 +29,7 @@ impl TabbedSettings {
         Self {}
     }
 
-    pub fn show(
-        &mut self,
-        ctx: &egui::Context,
-        ui: &mut egui::Ui,
-        data: &mut UiData,
-        side_view: &mut Settingsbar,
-    ) {
+    pub fn show(&mut self, ui: &mut egui::Ui, data: &mut UiData, side_view: &mut Settingsbar) {
         ui.horizontal(|ui| {
             let layout = egui::Layout {
                 main_dir: egui::Direction::TopDown,
@@ -120,84 +112,29 @@ impl TabbedSettings {
 
         match side_view.open_panel {
             SettingsPanel::Fiber => {
-                let mut printer_settings =
-                    data.borrow_shared_state().settings.printer_settings.write();
-
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
-                            //let now = Instant::now();
-
-                            CollapsingHeader::new("General")
-                                .default_open(true)
-                                .show(ui, |ui| {
-                                    printer_settings.general.show(ctx, ui);
-                                });
-
-                            CollapsingHeader::new("Machine Limits")
-                                .default_open(true)
-                                .show(ui, |ui| {
-                                    printer_settings.machine_limits.show(ctx, ui);
-                                });
-
-                            CollapsingHeader::new("Extruder")
-                                .default_open(true)
-                                .show(ui, |ui| {
-                                    printer_settings.extruder.show(ctx, ui);
-                                });
-
-                            //println!("No Tree Time: {:?}", now.elapsed());
+                            data.borrow_shared_state().settings.tree_settings.show(ui);
                         });
                     });
                 });
             }
             SettingsPanel::TopologyOptimization => {
-                let filament_settings = &mut data
-                    .borrow_shared_state()
-                    .settings
-                    .filament_settings
-                    .write();
-
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
-                            CollapsingHeader::new("General")
-                                .default_open(true)
-                                .show(ui, |ui| {
-                                    filament_settings.general.show(ctx, ui);
-                                });
-
-                            CollapsingHeader::new("Temperature")
-                                .default_open(true)
-                                .show(ui, |ui| {
-                                    filament_settings.temperature.show(ctx, ui);
-                                });
-
-                            CollapsingHeader::new("Cooling")
-                                .default_open(true)
-                                .show(ui, |ui| {
-                                    filament_settings.cooling.show(ctx, ui);
-                                });
-
-                            CollapsingHeader::new("Advanced")
-                                .default_open(true)
-                                .show(ui, |ui| {
-                                    filament_settings.advanced.show(ctx, ui);
-                                });
+                            data.borrow_shared_state().settings.tree_settings.show(ui);
                         });
                     });
                 });
             }
             SettingsPanel::View => {
-                let tree_settings = &mut data.borrow_shared_state().settings.tree_settings.write();
-
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
                             //let now = Instant::now();
-
-                            tree_settings.show(ui);
-
+                            data.borrow_shared_state().settings.tree_settings.show(ui);
                             //println!("Tree Time: {:?}", now.elapsed());
                         });
                     });
@@ -248,14 +185,9 @@ impl Component for Settingsbar {
                                 .fill(ui.style().visuals.selection.bg_fill)
                                 .min_size(Vec2::new(ui.available_width() * 0.8, 50.0));
 
-                            /*
                             if ui.add(slice_button).clicked() {
-                                println!(
-                                    "{:#?}",
-                                    data.borrow_shared_state().settings.tree_settings
-                                );
+                                println!("{:?}", data.borrow_shared_state().settings.tree_settings);
                             };
-                            */
                         });
 
                         ui.add_space(20.0);
@@ -263,7 +195,7 @@ impl Component for Settingsbar {
                         ui.separator();
 
                         ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
-                            tabbed_view.show(ctx, ui, data, self);
+                            tabbed_view.show(ui, data, self);
                         });
                     });
                 })

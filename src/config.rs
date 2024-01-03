@@ -33,7 +33,7 @@ pub mod gui {
 
     pub const ORIENATION_BUTTON: DecoradedButton = DecoradedButton {
         border: 5.,
-        size: (30., 30.),
+        size: (35., 35.),
         hover_color: egui::Color32::from_rgba_premultiplied(75, 255, 0, 100),
     };
 

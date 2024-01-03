@@ -1,8 +1,6 @@
-use std::{
-    fmt::Debug,
-    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
-};
+use std::{fmt::Debug, sync::Arc};
 
+use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use three_d::{Context, FrameInput};
 
 pub use crate::error::Error;
@@ -12,9 +10,52 @@ use crate::{
     picking::PickingEvent,
     render::RenderEvent,
     settings::PrinterSettings,
-    settings::{tree::SettingTree, FilamentSettings},
+    settings::{tree::Setting, FilamentSettings},
     ui::UiEvent,
 };
+
+#[derive(Default, Debug)]
+pub struct Wrapper<T> {
+    pub inner: T,
+}
+
+#[derive(Default, Debug)]
+pub struct WrappedSharedMut<T: Debug> {
+    inner: Arc<RwLock<Wrapper<T>>>,
+}
+
+impl<T: Debug> WrappedSharedMut<T> {
+    pub fn from_inner(inner: T) -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(Wrapper { inner })),
+        }
+    }
+
+    pub fn read(&self) -> RwLockReadGuard<Wrapper<T>> {
+        self.inner.read()
+    }
+
+    pub fn write(&self) -> RwLockWriteGuard<Wrapper<T>> {
+        self.inner.write()
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct WrappedShared<T: Debug> {
+    inner: Arc<Wrapper<T>>,
+}
+
+impl<T: Debug> WrappedShared<T> {
+    pub fn from_inner(inner: T) -> Self {
+        Self {
+            inner: Arc::new(Wrapper { inner }),
+        }
+    }
+
+    pub fn inner(&self) -> &T {
+        &self.inner.inner
+    }
+}
 
 #[derive(Default, Debug)]
 pub struct SharedMut<T: Debug> {
@@ -37,11 +78,11 @@ impl<T: Debug> SharedMut<T> {
     }
 
     pub fn read(&self) -> RwLockReadGuard<T> {
-        self.inner.read().unwrap()
+        self.inner.read()
     }
 
     pub fn write(&self) -> RwLockWriteGuard<T> {
-        self.inner.write().unwrap()
+        self.inner.write()
     }
 }
 
@@ -91,11 +132,24 @@ pub trait Adapter<T, C, E: Debug + Clone>: FrameHandle<T, C> {
     }
 }
 
-#[derive(Default)]
 pub struct SharedSettings {
-    pub tree_settings: SharedMut<SettingTree>,
+    pub tree_settings: Setting,
     pub printer_settings: SharedMut<PrinterSettings>,
     pub filament_settings: SharedMut<FilamentSettings>,
+}
+
+impl Default for SharedSettings {
+    fn default() -> Self {
+        let tree_settings = Setting::new("settings/main.yaml");
+        let printer_settings = SharedMut::from_inner(PrinterSettings::default());
+        let filament_settings = SharedMut::from_inner(FilamentSettings::default());
+
+        Self {
+            tree_settings,
+            printer_settings,
+            filament_settings,
+        }
+    }
 }
 
 #[derive(Debug, Default)]

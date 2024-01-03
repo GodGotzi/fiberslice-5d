@@ -4,7 +4,6 @@
     Note: The complete copyright description for this software thesis can be found at the beginning of each file.
     Please refer to the terms and conditions stated therein.
 */
-
 use model::gcode::{self, DisplaySettings, MeshSettings};
 use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
 

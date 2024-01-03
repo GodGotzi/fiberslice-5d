@@ -1,27 +1,14 @@
-use three_d::{ClearState, Context, FrameInput, Object, RenderTarget, GUI};
+use three_d::{ClearState, Context, FrameInput, RenderTarget, GUI};
 
 use crate::{
     environment::Environment,
     event::{create_event_bundle, EventReader, EventWriter},
-    model::gcode::{DisplaySettings, MeshSettings, PrintPart},
+    model::gcode::PrintPart,
     prelude::*,
 };
 
-pub trait MeshCreationContent<T: Object> {
-    fn update_mesh(&self, mesh_settings: MeshSettings) -> T;
-    fn update_look(&self, display_settings: DisplaySettings) -> T;
-}
-
-pub struct RenderCreationPair<C: MeshCreationContent<T>, T: Object> {
-    content: C,
-    gpu_model: Option<T>,
-}
-
 #[derive(Debug, Clone)]
-pub enum RenderEvent {
-    UpdatePathMesh,
-    UpdatePathDisplay,
-}
+pub enum RenderEvent {}
 
 pub struct RenderState {
     workpiece: SharedMut<Option<PrintPart>>,
