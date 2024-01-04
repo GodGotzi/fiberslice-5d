@@ -32,7 +32,7 @@ pub struct ModulModel {
 pub type LayerModel = Vec<ModulModel>;
 
 pub struct DisplaySettings {
-    diameter: f32,
+    pub diameter: f32,
 }
 
 pub struct MeshSettings {}

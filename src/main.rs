@@ -40,7 +40,10 @@ pub fn main() {
     let mut window_handler = window::WindowHandler::from_event_loop(&event_loop);
 
     //let settings = SharedMut::from_inner(settings::Settings { diameter: 0.45 });
-    //let toolpath = create_toolpath(window_handler.borrow_context(), settings.lock_expect());
+    let mesh_settings = MeshSettings {};
+    let display_settings = DisplaySettings { diameter: 0.45 };
+
+    let toolpath = create_toolpath(&mesh_settings, &display_settings);
 
     let (writer_render_event, mut render_adapter) =
         render::RenderAdapter::from_context(window_handler.borrow_context());
@@ -114,9 +117,8 @@ pub fn main() {
 }
 
 pub fn create_toolpath(
-    context: &Context,
-    mesh_settings: MeshSettings,
-    display_settings: DisplaySettings,
+    mesh_settings: &MeshSettings,
+    display_settings: &DisplaySettings,
 ) -> Option<gcode::PrintPart> {
     let nfd = Nfd::new().unwrap();
     let result = nfd.open_file().add_filter("Gcode", "gcode").unwrap().show();
@@ -128,8 +130,8 @@ pub fn create_toolpath(
 
             let workpiece = gcode::PrintPart::from_gcode(
                 (content.lines(), gcode),
-                &mesh_settings,
-                &display_settings,
+                mesh_settings,
+                display_settings,
             );
 
             /*
