@@ -486,6 +486,7 @@ name = "fiberslice-5d"
 version = "0.1.0"
 dependencies = [
  "egui_extras",
+ "egui_glow",
  "egui_grid",
  "image",
  "lazy_static",

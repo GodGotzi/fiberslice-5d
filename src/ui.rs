@@ -17,7 +17,7 @@ mod visual;
 use std::{
     cell::{Ref, RefCell, RefMut},
     rc::Rc,
-    sync::RwLockReadGuard,
+    sync::{atomic::AtomicBool, RwLockReadGuard},
 };
 
 use three_d::{
@@ -27,7 +27,7 @@ use three_d::{
 
 use crate::{
     event::EventReader,
-    prelude::{Adapter, Error, FrameHandle, SharedState},
+    prelude::{Adapter, Error, FrameHandle, SharedMut, SharedState, Shared},
     tools::Tool,
     view::{Mode, Orientation},
 };
@@ -36,23 +36,41 @@ use strum::EnumCount;
 
 use self::{boundary::Boundary, response::Responses, visual::customize_look_and_feel};
 
+struct AsyncGuiContext {
+    gui: GUI,
+    screen: screen::Screen,
+    state: Rc<RefCell<UiState>>,
+    shared_state: SharedState,
+}
+
 #[derive(Debug, Clone)]
 pub enum UiEvent {}
 
 pub struct UiAdapter {
-    gui: GUI,
     screen: screen::Screen,
-    state: Rc<RefCell<UiState>>,
+    state: SharedMut<UiState>,
     event_reader: EventReader<UiEvent>,
+
+
+    rendering_enabled: Shared<AtomicBool>,
 }
 
 impl UiAdapter {
-    pub fn borrow_gui(&self) -> &GUI {
-        &self.gui
+    pub fn share_state(&self) -> SharedMut<UiState> {
+        self.state.clone()
     }
 
-    pub fn share_state(&self) -> Rc<RefCell<UiState>> {
-        self.state.clone()
+    pub fn init(&mut self, context: Context, shared_state: &SharedState) {
+        
+    }
+
+    async fn renderer(enabled: AtomicBool, mut gui: GUI) {
+        while !enabled.load(std::sync::atomic::Ordering::Acquire) {
+            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+            println!("waiting for rendering to be enabled");
+        }
+
+        while enabled.load(std::sync::atomic::Ordering::Acquire) {}
     }
 }
 
@@ -62,9 +80,12 @@ impl FrameHandle<UiResult, &SharedState> for UiAdapter {
         frame_input: &FrameInput,
         shared_state: &SharedState,
     ) -> Result<UiResult, Error> {
+        self.rendering_enabled
+            .inner().store(true, std::sync::atomic::Ordering::AcqRel);
+
         let mut result = UiResult::empty();
 
-        self.state.borrow_mut().components.delete_cache();
+        self.state.write().components.delete_cache();
 
         self.gui.update(
             &mut frame_input.events.clone(),
@@ -94,12 +115,28 @@ impl FrameHandle<UiResult, &SharedState> for UiAdapter {
 impl Adapter<UiResult, &SharedState, UiEvent> for UiAdapter {
     fn from_context(context: &Context) -> (crate::event::EventWriter<UiEvent>, Self) {
         let (reader, writer) = crate::event::create_event_bundle::<UiEvent>();
-        let state = Rc::new(RefCell::new(UiState::new()));
+        let state = SharedMut::from_inner(UiState::new());
 
-        state
-            .borrow_mut()
-            .responses
-            .add_button_response::<Orientation>();
+        state.write().responses.add_button_response::<Orientation>();
+
+        let mut instance = Self {
+            screen: screen::Screen::new(),
+            state,
+            event_reader: reader,
+
+            rendering_enabled: AtomicBool::new(false),
+        };
+
+        let async_gui = AsyncGuiContext {
+            gui: GUI::new(context),
+            screen: screen::Screen::new(),
+            state: instance.share_state(),
+            shared_state: ,
+        };
+
+        tokio::task::spawn(async move {
+            Self::render().await;
+        });
 
         (
             writer,
@@ -108,6 +145,8 @@ impl Adapter<UiResult, &SharedState, UiEvent> for UiAdapter {
                 screen: screen::Screen::new(),
                 state,
                 event_reader: reader,
+
+                rendering_enabled: false,
             },
         )
     }
@@ -132,6 +171,7 @@ impl From<&Theme> for Visuals {
     }
 }
 
+#[derive(Debug)]
 pub struct UiState {
     pub theme: Theme,
     pub mode: Mode,
@@ -167,7 +207,7 @@ pub trait MutableDualDataComponent<T> {
     fn read_data(&self) -> RwLockReadGuard<T>;
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Components {
     pub menubar: ComponentData,
     pub taskbar: ComponentData,
@@ -187,6 +227,7 @@ impl Components {
     }
 }
 
+#[derive(Debug)]
 pub struct ComponentData {
     pub boundary: Option<Boundary>,
     pub enabled: bool,
@@ -225,7 +266,7 @@ impl UiResult {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Theme {
     Light,
     Dark,
