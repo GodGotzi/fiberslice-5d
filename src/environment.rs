@@ -1,4 +1,4 @@
-use std::{cell::RefCell, fmt::Debug, rc::Rc};
+use std::fmt::Debug;
 
 use three_d::*;
 
@@ -27,11 +27,11 @@ impl EnvironmentAdapter {
     }
 }
 
-impl FrameHandle<(), (Rc<RefCell<UiState>>, UiResult)> for EnvironmentAdapter {
+impl FrameHandle<(), (SharedMut<UiState>, UiResult)> for EnvironmentAdapter {
     fn handle_frame(
         &mut self,
         frame_input: &FrameInput,
-        (state, result): (Rc<RefCell<UiState>>, UiResult),
+        (state, result): (SharedMut<UiState>, UiResult),
     ) -> Result<(), Error> {
         if !result.pointer_use.unwrap_or(false) {
             let mut events = frame_input
@@ -60,7 +60,7 @@ impl FrameHandle<(), (Rc<RefCell<UiState>>, UiResult)> for EnvironmentAdapter {
                 .handle_camera_events(&mut events);
         }
 
-        let components = &state.borrow().components;
+        let components = &state.read().components;
 
         if frame_input.viewport.height != 0 && frame_input.viewport.width != 0 {
             let height = frame_input.viewport.height
@@ -93,7 +93,7 @@ impl FrameHandle<(), (Rc<RefCell<UiState>>, UiResult)> for EnvironmentAdapter {
     }
 }
 
-impl Adapter<(), (Rc<RefCell<UiState>>, UiResult), EnvironmentEvent> for EnvironmentAdapter {
+impl Adapter<(), (SharedMut<UiState>, UiResult), EnvironmentEvent> for EnvironmentAdapter {
     fn from_context(context: &Context) -> (crate::event::EventWriter<EnvironmentEvent>, Self) {
         let (reader, writer) = crate::event::create_event_bundle::<EnvironmentEvent>();
 

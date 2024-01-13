@@ -41,18 +41,25 @@ struct AsyncGuiContext {
     screen: screen::Screen,
     state: Rc<RefCell<UiState>>,
     shared_state: SharedState,
+
+    
+}
+
+struct UiRenderState {
+    rendering_enabled: Shared<AtomicBool>,
+    tx_frame_input: tokio::sync::watch::Sender<Option<FrameInput>>,
+    rx_result: tokio::sync::watch::Receiver<Option<UiResult>>,
 }
 
 #[derive(Debug, Clone)]
 pub enum UiEvent {}
 
 pub struct UiAdapter {
-    screen: screen::Screen,
     state: SharedMut<UiState>,
     event_reader: EventReader<UiEvent>,
 
-
-    rendering_enabled: Shared<AtomicBool>,
+    tx_frame_input: tokio::sync::watch::Sender<Option<FrameInput>>,
+    rx_result: tokio::sync::watch::Receiver<Option<UiResult>>,
 }
 
 impl UiAdapter {
@@ -61,16 +68,53 @@ impl UiAdapter {
     }
 
     pub fn init(&mut self, context: Context, shared_state: &SharedState) {
+        let (tx_frame_input, rx_frame_input) = tokio::sync::watch::channel(None);
+        let (tx_result, rx_result) = tokio::sync::watch::channel(None);
+
+        self.tx_frame_input = tx_frame_input;
+        self.rx_result = rx_result;
+
         
+
+
+
     }
 
-    async fn renderer(enabled: AtomicBool, mut gui: GUI) {
-        while !enabled.load(std::sync::atomic::Ordering::Acquire) {
+    async fn renderer(
+        screen: screen::Screen,
+        state: SharedMut<UiState>,
+        mut gui: GUI,
+        rx_frame_input: tokio::sync::watch::Receiver<Option<FrameInput>>, 
+        mut tx_result: tokio::sync::watch::Receiver<Option<UiResult>>
+    ) {
+        while rx_frame_input.borrow_and_update().is_none() {
             tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
             println!("waiting for rendering to be enabled");
         }
 
-        while enabled.load(std::sync::atomic::Ordering::Acquire) {}
+        while if let Some(frame_input) = rx_frame_input.borrow_and_update().as_ref() {
+            gui.update(
+                &mut frame_input.events.clone(),
+                frame_input.accumulated_time,
+                frame_input.viewport,
+                frame_input.device_pixel_ratio,
+                |ctx| {
+                    let mut result = UiResult::empty();
+                    result.pointer_use = Some(ctx.is_using_pointer());
+    
+                    let visuals = customize_look_and_feel((&self.state.borrow().theme).into());
+                    ctx.set_visuals(visuals);
+    
+                    self.screen.show(
+                        ctx,
+                        &mut UiData {
+                            state: self.state.clone(),
+                            shared_state,
+                        },
+                    );
+                },
+            );
+        }
     }
 }
 
@@ -79,36 +123,14 @@ impl FrameHandle<UiResult, &SharedState> for UiAdapter {
         &mut self,
         frame_input: &FrameInput,
         shared_state: &SharedState,
-    ) -> Result<UiResult, Error> {
-        self.rendering_enabled
-            .inner().store(true, std::sync::atomic::Ordering::AcqRel);
+    ) -> Result<UiResult, Error> {        
+        self.tx_frame_input.send(Some(frame_input.clone())).unwrap();
 
-        let mut result = UiResult::empty();
+        if let Some(result) = self.rx_result.borrow_and_update().as_ref() {
+            return Ok(result.clone());
+        }
 
-        self.state.write().components.delete_cache();
-
-        self.gui.update(
-            &mut frame_input.events.clone(),
-            frame_input.accumulated_time,
-            frame_input.viewport,
-            frame_input.device_pixel_ratio,
-            |ctx| {
-                result.pointer_use = Some(ctx.is_using_pointer());
-
-                let visuals = customize_look_and_feel((&self.state.borrow().theme).into());
-                ctx.set_visuals(visuals);
-
-                self.screen.show(
-                    ctx,
-                    &mut UiData {
-                        state: self.state.clone(),
-                        shared_state,
-                    },
-                );
-            },
-        );
-
-        Ok(result)
+        Ok(UiResult::empty())
     }
 }
 
@@ -124,7 +146,7 @@ impl Adapter<UiResult, &SharedState, UiEvent> for UiAdapter {
             state,
             event_reader: reader,
 
-            rendering_enabled: AtomicBool::new(false),
+            rendering_enabled: Shared::from_inner(AtomicBool::new(false)),
         };
 
         let async_gui = AsyncGuiContext {
@@ -171,7 +193,7 @@ impl From<&Theme> for Visuals {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UiState {
     pub theme: Theme,
     pub mode: Mode,
@@ -207,7 +229,7 @@ pub trait MutableDualDataComponent<T> {
     fn read_data(&self) -> RwLockReadGuard<T>;
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Components {
     pub menubar: ComponentData,
     pub taskbar: ComponentData,
@@ -227,7 +249,7 @@ impl Components {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ComponentData {
     pub boundary: Option<Boundary>,
     pub enabled: bool,
@@ -256,6 +278,7 @@ impl Default for ComponentData {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct UiResult {
     pub pointer_use: Option<bool>,
 }

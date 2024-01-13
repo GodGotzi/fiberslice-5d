@@ -91,7 +91,7 @@ pub fn main() {
                     &frame_input,
                     (
                         environment_adapter.share_environment(),
-                        ui_adapter.borrow_gui(),
+                        ui_adapter.share_state(),
                     ),
                 )
                 .expect("Failed to handle frame");

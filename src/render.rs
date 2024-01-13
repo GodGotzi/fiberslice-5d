@@ -5,6 +5,7 @@ use crate::{
     event::{create_event_bundle, EventReader, EventWriter},
     model::gcode::PrintPart,
     prelude::*,
+    ui::{UiAdapter, UiResult},
 };
 
 #[derive(Debug, Clone)]
@@ -44,27 +45,26 @@ impl RenderAdapter {
     }
 }
 
-impl FrameHandle<(), (SharedMut<Environment>, &GUI)> for RenderAdapter {
+impl FrameHandle<(), (SharedMut<Environment>, &UiResult)> for RenderAdapter {
     fn handle_frame(
         &mut self,
         frame_input: &FrameInput,
-        (shared_environment, gui): (SharedMut<Environment>, &GUI),
+        (shared_environment, ui_result): (SharedMut<Environment>, &UiResult),
     ) -> Result<(), Error> {
         let environment = shared_environment.read();
-
         let screen: RenderTarget<'_> = frame_input.screen();
-        screen.clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0));
 
+        screen.clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0));
         screen.write(|| {
             self.render(&environment);
-            gui.render();
+            ui_result.render();
         });
 
         Ok(())
     }
 }
 
-impl Adapter<(), (SharedMut<Environment>, &GUI), RenderEvent> for RenderAdapter {
+impl Adapter<(), (SharedMut<Environment>, &UiAdapter), RenderEvent> for RenderAdapter {
     fn from_context(context: &Context) -> (EventWriter<RenderEvent>, Self) {
         let (reader, writer) = create_event_bundle::<RenderEvent>();
 
