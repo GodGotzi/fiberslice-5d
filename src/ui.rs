@@ -10,13 +10,13 @@ pub mod boundary;
 pub mod components;
 pub mod screen;
 
+mod parallel;
 mod icon;
 mod response;
 mod visual;
 
 use std::{
-    cell::{Ref, RefCell, RefMut},
-    rc::Rc,
+    cell::{Ref, RefMut},
     sync::{atomic::AtomicBool, RwLockReadGuard},
 };
 
@@ -35,15 +35,6 @@ use crate::{
 use strum::EnumCount;
 
 use self::{boundary::Boundary, response::Responses, visual::customize_look_and_feel};
-
-struct AsyncGuiContext {
-    gui: GUI,
-    screen: screen::Screen,
-    state: Rc<RefCell<UiState>>,
-    shared_state: SharedState,
-
-    
-}
 
 struct UiRenderState {
     rendering_enabled: Shared<AtomicBool>,
@@ -81,18 +72,19 @@ impl UiAdapter {
     }
 
     async fn renderer(
-        screen: screen::Screen,
-        state: SharedMut<UiState>,
+        mut screen: screen::Screen,
         mut gui: GUI,
-        rx_frame_input: tokio::sync::watch::Receiver<Option<FrameInput>>, 
-        mut tx_result: tokio::sync::watch::Receiver<Option<UiResult>>
+        mut rx_frame_input: tokio::sync::watch::Receiver<Option<FrameInput>>, 
+        mut tx_result: tokio::sync::watch::Receiver<Option<UiResult>>,
+        state: SharedMut<UiState>,
+        shared_state: &SharedState,
     ) {
         while rx_frame_input.borrow_and_update().is_none() {
             tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
             println!("waiting for rendering to be enabled");
         }
 
-        while if let Some(frame_input) = rx_frame_input.borrow_and_update().as_ref() {
+        while let Some(frame_input) = rx_frame_input.borrow_and_update().as_ref() {
             gui.update(
                 &mut frame_input.events.clone(),
                 frame_input.accumulated_time,
@@ -102,18 +94,20 @@ impl UiAdapter {
                     let mut result = UiResult::empty();
                     result.pointer_use = Some(ctx.is_using_pointer());
     
-                    let visuals = customize_look_and_feel((&self.state.borrow().theme).into());
+                    let visuals = customize_look_and_feel((&state.read().theme).into());
                     ctx.set_visuals(visuals);
     
-                    self.screen.show(
+                    screen.show(
                         ctx,
                         &mut UiData {
-                            state: self.state.clone(),
-                            shared_state,
+                            state: state.clone(),
+                            shared_state: shared_state.clone(),
                         },
                     );
                 },
             );
+
+            
         }
     }
 }
@@ -287,6 +281,10 @@ impl UiResult {
     fn empty() -> Self {
         Self { pointer_use: None }
     }
+
+    fn render(&self) {
+        
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -296,17 +294,17 @@ pub enum Theme {
 }
 
 pub struct UiData<'a> {
-    state: Rc<RefCell<UiState>>,
+    state: SharedMut<UiState>,
     shared_state: &'a SharedState,
 }
 
 impl<'a> UiData<'a> {
     pub fn borrow_ui_state(&mut self) -> Ref<UiState> {
-        self.state.borrow()
+        self.state.read()
     }
 
     pub fn borrow_mut_ui_state(&mut self) -> RefMut<UiState> {
-        self.state.borrow_mut()
+        self.state.write()
     }
 
     pub fn borrow_shared_state(&self) -> &'a SharedState {

@@ -8,7 +8,6 @@ use model::gcode::{self, DisplaySettings, MeshSettings};
 use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
 
 use prelude::{Adapter, SharedState};
-use three_d::*;
 
 mod actions;
 mod api;

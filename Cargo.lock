@@ -488,6 +488,7 @@ dependencies = [
  "egui_extras",
  "egui_glow",
  "egui_grid",
+ "glow",
  "image",
  "lazy_static",
  "macros",

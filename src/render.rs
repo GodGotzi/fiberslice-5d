@@ -1,4 +1,4 @@
-use three_d::{ClearState, Context, FrameInput, RenderTarget, GUI};
+use three_d::{ClearState, Context, FrameInput, RenderTarget};
 
 use crate::{
     environment::Environment,
