@@ -10,31 +10,32 @@ pub mod boundary;
 pub mod components;
 pub mod screen;
 
-mod parallel;
 mod icon;
+pub mod parallel;
 mod response;
 mod visual;
 
-use std::{
-    cell::{Ref, RefMut},
-    sync::{atomic::AtomicBool, RwLockReadGuard},
-};
+use std::sync::atomic::AtomicBool;
 
+use parking_lot::{RwLockReadGuard, RwLockWriteGuard};
 use three_d::{
     egui::{self, Visuals},
-    Context, FrameInput, GUI,
+    Context, FrameInput,
 };
 
 use crate::{
     event::EventReader,
-    prelude::{Adapter, Error, FrameHandle, SharedMut, SharedState, Shared},
+    prelude::{Adapter, Error, FrameHandle, Shared, SharedMut, SharedState},
     tools::Tool,
     view::{Mode, Orientation},
 };
 
 use strum::EnumCount;
 
-use self::{boundary::Boundary, response::Responses, visual::customize_look_and_feel};
+use self::{
+    boundary::Boundary, parallel::ParallelUiOutput, response::Responses,
+    visual::customize_look_and_feel,
+};
 
 struct UiRenderState {
     rendering_enabled: Shared<AtomicBool>,
@@ -49,8 +50,8 @@ pub struct UiAdapter {
     state: SharedMut<UiState>,
     event_reader: EventReader<UiEvent>,
 
-    tx_frame_input: tokio::sync::watch::Sender<Option<FrameInput>>,
-    rx_result: tokio::sync::watch::Receiver<Option<UiResult>>,
+    tx_frame_input: Option<tokio::sync::watch::Sender<Option<FrameInput>>>,
+    rx_result: Option<tokio::sync::watch::Receiver<Option<ParallelUiOutput>>>,
 }
 
 impl UiAdapter {
@@ -58,34 +59,37 @@ impl UiAdapter {
         self.state.clone()
     }
 
-    pub fn init(&mut self, context: Context, shared_state: &SharedState) {
+    pub fn init(&mut self, shared_state: &SharedState) {
         let (tx_frame_input, rx_frame_input) = tokio::sync::watch::channel(None);
         let (tx_result, rx_result) = tokio::sync::watch::channel(None);
 
-        self.tx_frame_input = tx_frame_input;
-        self.rx_result = rx_result;
+        self.tx_frame_input = Some(tx_frame_input);
+        self.rx_result = Some(rx_result);
 
-        
-
-
-
+        tokio::spawn(Self::renderer(
+            screen::Screen::new(),
+            rx_frame_input,
+            tx_result,
+            self.state.clone(),
+            shared_state.clone(),
+        ));
     }
 
     async fn renderer(
         mut screen: screen::Screen,
-        mut gui: GUI,
-        mut rx_frame_input: tokio::sync::watch::Receiver<Option<FrameInput>>, 
-        mut tx_result: tokio::sync::watch::Receiver<Option<UiResult>>,
+        mut rx_frame_input: tokio::sync::watch::Receiver<Option<FrameInput>>,
+        tx_result: tokio::sync::watch::Sender<Option<ParallelUiOutput>>,
         state: SharedMut<UiState>,
-        shared_state: &SharedState,
+        shared_state: SharedState,
     ) {
-        while rx_frame_input.borrow_and_update().is_none() {
-            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-            println!("waiting for rendering to be enabled");
-        }
+        let mut parallel_ui = parallel::ParallelUi::new();
 
-        while let Some(frame_input) = rx_frame_input.borrow_and_update().as_ref() {
-            gui.update(
+        println!("Ui renderer started, waiting...");
+        while rx_frame_input.changed().await.is_ok() {
+            println!("Ui renderer got new frame input");
+            let frame_input = rx_frame_input.borrow().as_ref().unwrap().clone();
+
+            parallel_ui.update(
                 &mut frame_input.events.clone(),
                 frame_input.accumulated_time,
                 frame_input.viewport,
@@ -93,78 +97,64 @@ impl UiAdapter {
                 |ctx| {
                     let mut result = UiResult::empty();
                     result.pointer_use = Some(ctx.is_using_pointer());
-    
+
                     let visuals = customize_look_and_feel((&state.read().theme).into());
                     ctx.set_visuals(visuals);
-    
+
                     screen.show(
                         ctx,
                         &mut UiData {
                             state: state.clone(),
-                            shared_state: shared_state.clone(),
+                            shared_state: &shared_state,
                         },
                     );
                 },
             );
 
-            
+            let output = parallel_ui.construct_output();
+            tx_result.send(Some(output)).unwrap();
+
+            println!("Ui renderer finished");
         }
     }
 }
 
-impl FrameHandle<UiResult, &SharedState> for UiAdapter {
+impl FrameHandle<ParallelUiOutput, &SharedState> for UiAdapter {
     fn handle_frame(
         &mut self,
-        frame_input: &FrameInput,
-        shared_state: &SharedState,
-    ) -> Result<UiResult, Error> {        
-        self.tx_frame_input.send(Some(frame_input.clone())).unwrap();
-
-        if let Some(result) = self.rx_result.borrow_and_update().as_ref() {
-            return Ok(result.clone());
+        frame_input: &three_d::FrameInput,
+        context: &SharedState,
+    ) -> Result<ParallelUiOutput, Error> {
+        if let Some(tx_frame_input) = self.tx_frame_input.as_ref() {
+            tx_frame_input.send(Some(frame_input.clone())).unwrap();
         }
 
-        Ok(UiResult::empty())
+        if let Some(rx) = self.rx_result.as_mut() {
+            if let Some(result) = rx.borrow().as_ref() {
+                return Ok(result.clone());
+            }
+        }
+
+        Err(Error::UiNotRendered)
     }
 }
 
-impl Adapter<UiResult, &SharedState, UiEvent> for UiAdapter {
+impl Adapter<ParallelUiOutput, &SharedState, UiEvent> for UiAdapter {
     fn from_context(context: &Context) -> (crate::event::EventWriter<UiEvent>, Self) {
         let (reader, writer) = crate::event::create_event_bundle::<UiEvent>();
         let state = SharedMut::from_inner(UiState::new());
 
         state.write().responses.add_button_response::<Orientation>();
 
-        let mut instance = Self {
-            screen: screen::Screen::new(),
+        let instance = Self {
             state,
             event_reader: reader,
 
-            rendering_enabled: Shared::from_inner(AtomicBool::new(false)),
+            tx_frame_input: None,
+            rx_result: None,
         };
 
-        let async_gui = AsyncGuiContext {
-            gui: GUI::new(context),
-            screen: screen::Screen::new(),
-            state: instance.share_state(),
-            shared_state: ,
-        };
-
-        tokio::task::spawn(async move {
-            Self::render().await;
-        });
-
-        (
-            writer,
-            Self {
-                gui: GUI::new(context),
-                screen: screen::Screen::new(),
-                state,
-                event_reader: reader,
-
-                rendering_enabled: false,
-            },
-        )
+        (writer, instance)
     }
 
     fn get_reader(&self) -> &EventReader<UiEvent> {
@@ -282,9 +272,7 @@ impl UiResult {
         Self { pointer_use: None }
     }
 
-    fn render(&self) {
-        
-    }
+    fn render(&self) {}
 }
 
 #[derive(Debug, Clone)]
@@ -299,11 +287,11 @@ pub struct UiData<'a> {
 }
 
 impl<'a> UiData<'a> {
-    pub fn borrow_ui_state(&mut self) -> Ref<UiState> {
+    pub fn borrow_ui_state(&mut self) -> RwLockReadGuard<UiState> {
         self.state.read()
     }
 
-    pub fn borrow_mut_ui_state(&mut self) -> RefMut<UiState> {
+    pub fn borrow_mut_ui_state(&mut self) -> RwLockWriteGuard<UiState> {
         self.state.write()
     }
 

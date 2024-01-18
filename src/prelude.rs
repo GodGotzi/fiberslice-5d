@@ -19,7 +19,7 @@ pub struct Wrapper<T> {
     pub inner: T,
 }
 
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct WrappedSharedMut<T: Debug> {
     inner: Arc<RwLock<Wrapper<T>>>,
 }
@@ -132,6 +132,7 @@ pub trait Adapter<T, C, E: Debug + Clone>: FrameHandle<T, C> {
     }
 }
 
+#[derive(Clone)]
 pub struct SharedSettings {
     pub tree_settings: Setting,
     pub printer_settings: SharedMut<PrinterSettings>,
@@ -161,13 +162,14 @@ pub struct IntersectionBuffer {}
 #[derive(Debug, Default)]
 pub struct ControlBuffer {}
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct SharedBuffer {
     toolpath: SharedMut<ToolpathBuffer>,
     intersections: SharedMut<IntersectionBuffer>,
     controls: SharedMut<ControlBuffer>,
 }
 
+#[derive(Clone)]
 pub struct SharedState {
     frame_input: Option<FrameInput>,
 

@@ -48,7 +48,7 @@ impl DecoradedButtons for Ui {
                         let clicked;
 
                         {
-                            let mut ui_state = data.state.borrow_mut();
+                            let mut ui_state = data.state.write();
                             let prev_response = ui_state.responses.get_button_response(t).unwrap();
 
                             if prev_response.hovered() {
@@ -94,7 +94,7 @@ impl DecoradedButtons for Ui {
                 let clicked;
 
                 {
-                    let mut ui_state = data.state.borrow_mut();
+                    let mut ui_state = data.state.write();
                     let prev_response = ui_state.responses.get_button_response(t).unwrap();
 
                     if prev_response.hovered() {

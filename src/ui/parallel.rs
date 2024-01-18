@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 
+use egui_glow::Painter;
 use three_d::{
     egui::{self, ClippedPrimitive, TexturesDelta},
     Event, Modifiers, Viewport,
@@ -232,14 +233,39 @@ impl ParallelUi {
             clipped_meshes,
             scale,
             viewport: self.viewport,
-            textures_delta: output.textures,
+            textures_delta: output.textures_delta,
+            pointer_use: self.egui_context.is_using_pointer(),
         }
     }
 }
 
+#[derive(Clone)]
 pub struct ParallelUiOutput {
     clipped_meshes: Vec<ClippedPrimitive>,
     scale: f32,
     viewport: Viewport,
     textures_delta: TexturesDelta,
+    pointer_use: bool,
+}
+
+impl ParallelUiOutput {
+    pub fn render(&self, painter: &RefCell<Painter>) {
+        painter.borrow_mut().paint_and_update_textures(
+            [self.viewport.width, self.viewport.height],
+            self.scale,
+            &self.clipped_meshes,
+            &self.textures_delta,
+        );
+
+        #[cfg(not(target_arch = "wasm32"))]
+        #[allow(unsafe_code)]
+        unsafe {
+            use glow::HasContext as _;
+            painter.borrow().gl().disable(glow::FRAMEBUFFER_SRGB);
+        }
+    }
+
+    pub fn pointer_use(&self) -> bool {
+        self.pointer_use
+    }
 }

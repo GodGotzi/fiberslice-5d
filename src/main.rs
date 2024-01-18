@@ -33,7 +33,8 @@ use winit::event_loop::EventLoop;
 
 use crate::prelude::FrameHandle;
 
-pub fn main() {
+#[tokio::main]
+async fn main() {
     let event_loop = EventLoop::new();
 
     let mut window_handler = window::WindowHandler::from_event_loop(&event_loop);
@@ -47,12 +48,11 @@ pub fn main() {
     let (writer_render_event, mut render_adapter) =
         render::RenderAdapter::from_context(window_handler.borrow_context());
 
-    //render_adapter.set_toolpath(toolpath);
-
     let (writer_environment_event, mut environment_adapter) =
         environment::EnvironmentAdapter::from_context(window_handler.borrow_context());
     let (writer_ui_event, mut ui_adapter) =
         ui::UiAdapter::from_context(window_handler.borrow_context());
+
     let (writer_picking_event, mut picking_adapter) =
         picking::PickingAdapter::from_context(window_handler.borrow_context());
 
@@ -62,6 +62,8 @@ pub fn main() {
         writer_ui_event,
         writer_picking_event,
     );
+
+    ui_adapter.init(&shared_state);
 
     //let cpu_model = create_toolpath(&context);
     window_handler.init();
@@ -77,21 +79,16 @@ pub fn main() {
                 .handle_frame(&frame_input, ())
                 .expect("Failed to handle frame");
 
-            let ui_result = ui_adapter
-                .handle_frame(&frame_input, &shared_state)
-                .expect("Failed to handle frame");
+            let ui_output = ui_adapter.handle_frame(&frame_input, &shared_state);
 
             environment_adapter
-                .handle_frame(&frame_input, (ui_adapter.share_state(), ui_result))
+                .handle_frame(&frame_input, (ui_adapter.share_state(), &ui_output))
                 .expect("Failed to handle frame");
 
             render_adapter
                 .handle_frame(
                     &frame_input,
-                    (
-                        environment_adapter.share_environment(),
-                        ui_adapter.share_state(),
-                    ),
+                    (environment_adapter.share_environment(), &ui_output),
                 )
                 .expect("Failed to handle frame");
 

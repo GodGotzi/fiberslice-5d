@@ -1,100 +1,100 @@
-machine_limits.max_feedrates.e:
-  value: !Float 25.0
-  description: Extruder
+machine_limits.max_feedrates.x:
+  value: !Float 200.0
+  description: Movement X
   unit: mm/s
-extruder.retraction.retract_restart_extra:
-  value: !Float 0.0
-  description: Retract Restart Extra
-  unit: mm
-extruder.retraction.length:
-  value: !Float 0.8
-  description: Length
-  unit: mm
-machine_limits.jerk_limits.e:
-  value: !Float 10.0
-  description: Extruder
+machine_limits.jerk_limits.y:
+  value: !Float 8.0
+  description: Movement Y
   unit: mm/s
-extruder.retraction.minimum_travel:
-  value: !Float 1.5
-  description: Minimum Travel
+machine_limits.max_acceleration.z:
+  value: !Float 200.0
+  description: Movement Z
+  unit: mm/s^2
+machine_limits.max_acceleration.x:
+  value: !Float 2500.0
+  description: Movement X
+  unit: mm/s^2
+machine_limits.max_feedrates.y:
+  value: !Float 200.0
+  description: Movement Y
+  unit: mm/s
+extruder.layer_height_limits.max:
+  value: !Float 0.3
+  description: Max
   unit: mm
 extruder.layer_height_limits.min:
   value: !Float 0.07
   description: Min
   unit: mm
-extruder.retraction.lift_z:
+extruder.retraction.retract_speed:
+  value: !Float 35.0
+  description: Retract Speed
+  unit: mm/s
+machine_limits.jerk_limits.x:
+  value: !Float 8.0
+  description: Movement X
+  unit: mm/s
+general.z_offset:
   value: !Float 0.2
-  description: Lift Z
-  unit: mm
-machine_limits.max_acceleration.z:
-  value: !Float 200.0
-  description: Movement Z
-  unit: mm/s^2
-machine_limits.jerk_limits.z:
-  value: !Float 2.0
-  description: Movement Z
-  unit: mm/s
-machine_limits.max_feedrates.z:
-  value: !Float 45.0
-  description: Movement Z
-  unit: mm/s
-extruder.size.nozzle_diameter:
-  value: !Float 0.4
-  description: Nozzle Diameter
+  description: Z Offset
   unit: mm
 machine_limits.max_acceleration.y:
   value: !Float 2500.0
   description: Movement Y
   unit: mm/s^2
-machine_limits.jerk_limits.x:
-  value: !Float 8.0
-  description: Movement X
-  unit: mm/s
-machine_limits.max_feedrates.y:
-  value: !Float 200.0
-  description: Movement Y
-  unit: mm/s
-machine_limits.max_acceleration.e:
-  value: !Float 10000.0
-  description: Extruder
-  unit: mm/s^2
-machine_limits.max_feedrates.x:
-  value: !Float 200.0
-  description: Movement X
-  unit: mm/s
-extruder.retraction.deretract_speed:
+extruder.retraction.retract_restart_extra:
+  value: !Float 0.0
+  description: Retract Restart Extra
+  unit: mm
+machine_limits.max_feedrates.e:
   value: !Float 25.0
-  description: Deretract Speed
+  description: Extruder
   unit: mm/s
 extruder.retraction.retract_amount_before_wipe:
   value: !Float 80.0
   description: Retract Amount Before Wipe
   unit: mm
-machine_limits.max_acceleration.x:
-  value: !Float 2500.0
-  description: Movement X
-  unit: mm/s^2
-general.z_offset:
+extruder.retraction.lift_z:
   value: !Float 0.2
-  description: Z Offset
+  description: Lift Z
   unit: mm
-extruder.layer_height_limits.max:
-  value: !Float 0.3
-  description: Max
+machine_limits.jerk_limits.e:
+  value: !Float 10.0
+  description: Extruder
+  unit: mm/s
+extruder.size.nozzle_diameter:
+  value: !Float 0.4
+  description: Nozzle Diameter
   unit: mm
+extruder.retraction.deretract_speed:
+  value: !Float 25.0
+  description: Deretract Speed
+  unit: mm/s
 extruder.retraction.retract_on_layer_change:
   value: !Bool true
   description: Retract on Layer Change
   unit: null
-machine_limits.jerk_limits.y:
-  value: !Float 8.0
-  description: Movement Y
+machine_limits.jerk_limits.z:
+  value: !Float 2.0
+  description: Movement Z
   unit: mm/s
+extruder.retraction.minimum_travel:
+  value: !Float 1.5
+  description: Minimum Travel
+  unit: mm
 extruder.retraction.wipe_while_retracting:
   value: !Bool true
   description: Wipe While Retracting
   unit: null
-extruder.retraction.retract_speed:
-  value: !Float 35.0
-  description: Retract Speed
+extruder.retraction.length:
+  value: !Float 0.8
+  description: Length
+  unit: mm
+machine_limits.max_acceleration.e:
+  value: !Float 10000.0
+  description: Extruder
+  unit: mm/s^2
+machine_limits.max_feedrates.z:
+  value: !Float 45.0
+  description: Movement Z
   unit: mm/s
