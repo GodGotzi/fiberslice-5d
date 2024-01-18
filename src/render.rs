@@ -61,6 +61,8 @@ impl FrameHandle<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>)>
                 //render ui
                 println!("rendering ui");
                 output.render(&self.ui_painter);
+            } else {
+                println!("not rendering ui");
             }
         });
 

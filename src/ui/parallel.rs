@@ -37,17 +37,17 @@ impl ParallelUi {
         let egui_input = egui::RawInput {
             screen_rect: Some(egui::Rect {
                 min: egui::Pos2 {
-                    x: viewport.x as f32 / device_pixel_ratio as f32,
-                    y: viewport.y as f32 / device_pixel_ratio as f32,
+                    x: viewport.x as f32 / device_pixel_ratio,
+                    y: viewport.y as f32 / device_pixel_ratio,
                 },
                 max: egui::Pos2 {
-                    x: viewport.x as f32 / device_pixel_ratio as f32
-                        + viewport.width as f32 / device_pixel_ratio as f32,
-                    y: viewport.y as f32 / device_pixel_ratio as f32
-                        + viewport.height as f32 / device_pixel_ratio as f32,
+                    x: viewport.x as f32 / device_pixel_ratio
+                        + viewport.width as f32 / device_pixel_ratio,
+                    y: viewport.y as f32 / device_pixel_ratio
+                        + viewport.height as f32 / device_pixel_ratio,
                 },
             }),
-            pixels_per_point: Some(device_pixel_ratio as f32),
+            pixels_per_point: Some(device_pixel_ratio),
             time: Some(accumulated_time_in_ms * 0.001),
             modifiers: (&self.modifiers).into(),
             events: events
@@ -147,10 +147,10 @@ impl ParallelUi {
                     } => {
                         if !handled {
                             Some(match modifiers.ctrl {
-                                true => egui::Event::Zoom((delta.1 as f32 / 200.0).exp()),
+                                true => egui::Event::Zoom((delta.1 / 200.0).exp()),
                                 false => egui::Event::Scroll(match modifiers.shift {
-                                    true => egui::Vec2::new(delta.1 as f32, delta.0 as f32),
-                                    false => egui::Vec2::new(delta.0 as f32, delta.1 as f32),
+                                    true => egui::Vec2::new(delta.1, delta.0),
+                                    false => egui::Vec2::new(delta.0, delta.1),
                                 }),
                             })
                         } else {
