@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use three_d::{
     egui::{self, ClippedPrimitive, TexturesDelta},
-    Event, Modifiers, Viewport,
+    Event, Modifiers, Viewport, GUI,
 };
 
 pub struct ParallelUi {
@@ -232,7 +232,7 @@ impl ParallelUi {
             clipped_meshes,
             scale,
             viewport: self.viewport,
-            textures_delta: output.textures,
+            textures_delta: output.textures_delta,
         }
     }
 }

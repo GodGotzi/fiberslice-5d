@@ -10,7 +10,7 @@ pub mod boundary;
 pub mod components;
 pub mod screen;
 
-mod parallel;
+pub mod parallel;
 mod icon;
 mod response;
 mod visual;

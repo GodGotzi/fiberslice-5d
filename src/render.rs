@@ -5,7 +5,7 @@ use crate::{
     event::{create_event_bundle, EventReader, EventWriter},
     model::gcode::PrintPart,
     prelude::*,
-    ui::{UiAdapter, UiResult},
+    ui::{parallel::ParallelUiOutput, UiAdapter, UiResult},
 };
 
 #[derive(Debug, Clone)]
@@ -45,11 +45,11 @@ impl RenderAdapter {
     }
 }
 
-impl FrameHandle<(), (SharedMut<Environment>, &UiResult)> for RenderAdapter {
+impl FrameHandle<(), (SharedMut<Environment>, &ParallelUiOutput)> for RenderAdapter {
     fn handle_frame(
         &mut self,
         frame_input: &FrameInput,
-        (shared_environment, ui_result): (SharedMut<Environment>, &UiResult),
+        (shared_environment, ui_result): (SharedMut<Environment>, &ParallelUiOutput),
     ) -> Result<(), Error> {
         let environment = shared_environment.read();
         let screen: RenderTarget<'_> = frame_input.screen();
@@ -64,7 +64,7 @@ impl FrameHandle<(), (SharedMut<Environment>, &UiResult)> for RenderAdapter {
     }
 }
 
-impl Adapter<(), (SharedMut<Environment>, &UiAdapter), RenderEvent> for RenderAdapter {
+impl Adapter<(), (SharedMut<Environment>, &ParallelUiOutput), RenderEvent> for RenderAdapter {
     fn from_context(context: &Context) -> (EventWriter<RenderEvent>, Self) {
         let (reader, writer) = create_event_bundle::<RenderEvent>();
 
