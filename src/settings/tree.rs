@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::{cell::RefCell, collections::HashMap, usize};
 
 use serde::{Deserialize, Serialize};
 use three_d::egui::{CollapsingHeader, DragValue, Response, TextEdit};
@@ -162,6 +162,8 @@ impl From<HashMap<String, RawSetting>> for SettingTree {
                         .entry(key.to_string())
                         .or_insert(TreeNode::Branch {
                             changed: false,
+
+                            weight: raw_setting.weight,
                             description: raw_setting.description.clone(),
                             children: HashMap::new(),
                         })
@@ -171,6 +173,8 @@ impl From<HashMap<String, RawSetting>> for SettingTree {
                         key.to_string(),
                         TreeNode::Value {
                             changed: false,
+
+                            weight: raw_setting.weight,
                             description: raw_setting.description.clone(),
                             unit: raw_setting.unit.clone(),
                             value: raw_setting.value.clone(),
@@ -192,6 +196,7 @@ impl From<&SettingTree> for HashMap<String, RawSetting> {
 
         tree.collect_values_into(&map, &|_| true, &|map, path, node| {
             if let TreeNode::Value {
+                weight,
                 value,
                 description,
                 unit,
@@ -201,6 +206,7 @@ impl From<&SettingTree> for HashMap<String, RawSetting> {
                 map.borrow_mut().insert(
                     path.to_string(),
                     RawSetting {
+                        weight: *weight,
                         value: value.clone(),
                         description: description.clone(),
                         unit: unit.clone(),
@@ -219,6 +225,7 @@ enum TreeNode {
         #[serde(skip)]
         changed: bool,
 
+        weight: usize,
         children: HashMap<String, TreeNode>,
         description: String,
     },
@@ -226,6 +233,7 @@ enum TreeNode {
         #[serde(skip)]
         changed: bool,
 
+        weight: usize,
         value: NodeValue,
         description: String,
         unit: Option<String>,
@@ -239,6 +247,7 @@ impl TreeNode {
                 children,
                 description,
                 changed,
+                ..
             } => {
                 let mut has_changed = false;
 
@@ -260,6 +269,7 @@ impl TreeNode {
                 description,
                 unit,
                 changed,
+                ..
             } => {
                 ui.horizontal(|ui| {
                     *changed = value.show(description, unit.as_ref(), ui).changed();
@@ -291,6 +301,7 @@ impl TreeNode {
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 struct RawSetting {
+    weight: usize,
     value: NodeValue,
     description: String,
     unit: Option<String>,
@@ -364,6 +375,7 @@ mod test {
 
         let mut general = super::TreeNode::Branch {
             changed: false,
+            weight: 0,
             description: "General".to_string(),
             children: std::collections::HashMap::new(),
         };
@@ -372,6 +384,7 @@ mod test {
             "z_offset",
             super::TreeNode::Value {
                 changed: false,
+                weight: 0,
                 description: "Z Offset".to_string(),
                 unit: Some("mm".to_string()),
                 value: NodeValue::Float(0.0),
@@ -382,12 +395,16 @@ mod test {
 
         let mut limits = super::TreeNode::Branch {
             changed: false,
+
+            weight: 1,
             description: "Limits".to_string(),
             children: std::collections::HashMap::new(),
         };
 
         let mut max_feedrates = super::TreeNode::Branch {
             changed: false,
+
+            weight: 0,
             description: "Max Feedrates".to_string(),
             children: std::collections::HashMap::new(),
         };
@@ -396,6 +413,8 @@ mod test {
             "movements_x",
             super::TreeNode::Value {
                 changed: false,
+
+                weight: 0,
                 description: "X".to_string(),
                 unit: Some("mm/s".to_string()),
                 value: NodeValue::Float(0.0),
@@ -406,6 +425,8 @@ mod test {
             "movements_y",
             super::TreeNode::Value {
                 changed: false,
+
+                weight: 1,
                 description: "Y".to_string(),
                 unit: Some("mm/s".to_string()),
                 value: NodeValue::Float(0.0),
@@ -416,6 +437,8 @@ mod test {
             "movements_z",
             super::TreeNode::Value {
                 changed: false,
+
+                weight: 2,
                 description: "Z".to_string(),
                 unit: Some("mm/s".to_string()),
                 value: NodeValue::Float(0.0),
@@ -435,6 +458,7 @@ mod test {
         raw.insert(
             "general.nice.huhu".to_string(),
             super::RawSetting {
+                weight: 0,
                 value: NodeValue::Float(0.0),
                 description: "Z Huhu".to_string(),
                 unit: Some("mm".to_string()),
@@ -444,6 +468,7 @@ mod test {
         raw.insert(
             "general.nice2.dir.nextval".to_string(),
             super::RawSetting {
+                weight: 0,
                 value: NodeValue::Float(0.0),
                 description: "Z Haha".to_string(),
                 unit: Some("mm".to_string()),
@@ -453,6 +478,7 @@ mod test {
         raw.insert(
             "general1.nice2.haha4".to_string(),
             super::RawSetting {
+                weight: 0,
                 value: NodeValue::Float(0.0),
                 description: "Z Haha4".to_string(),
                 unit: Some("mm".to_string()),
