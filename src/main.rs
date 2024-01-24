@@ -12,6 +12,7 @@ use three_d::*;
 
 mod actions;
 mod api;
+mod app;
 mod config;
 mod control;
 mod environment;

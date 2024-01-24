@@ -1,0 +1,23 @@
+general:
+  extrusion_multiplier: 0.0
+  density: 0.0
+  cost: 0.0
+  filament:
+    diameter: 0.0
+    filament_type: PLA
+temperature:
+  nozzle: 0.0
+  enclosure: 0.0
+  bed: 0.0
+cooling:
+  enable:
+    fan_always_on: false
+    enable_auto_cooling: false
+  fan:
+    fan_speed: 0.0
+    bridge_fan_speed: 0.0
+    disable_fan_first_layers: 0
+    full_fan_at_height: 0.0
+advanced:
+  print_speed_override:
+    max_volumetric_speed: 0.0
