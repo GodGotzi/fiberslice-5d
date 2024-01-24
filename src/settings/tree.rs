@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap, usize};
 
 use serde::{Deserialize, Serialize};
-use three_d::egui::{CollapsingHeader, Color32, DragValue, Response, TextEdit};
+use three_d::egui::{CollapsingHeader, DragValue, Response, TextEdit};
 
 use crate::prelude::{SharedMut, WrappedSharedMut};
 
