@@ -1,4 +1,8 @@
-use three_d::{ClearState, Context, FrameInput, RenderTarget, GUI};
+use std::collections::HashMap;
+
+use three_d::{
+    ClearState, Context, FrameInput, Gm, Mesh, Object, PhysicalMaterial, RenderTarget, GUI,
+};
 
 use crate::{
     environment::Environment,
@@ -24,6 +28,8 @@ impl Clone for RenderState {
 
 pub struct RenderAdapter {
     shared_state: RenderState,
+
+    components: HashMap<String, Gm<Mesh, PhysicalMaterial>>,
     event_reader: EventReader<RenderEvent>,
 }
 
@@ -32,7 +38,12 @@ impl RenderAdapter {
         self.shared_state.clone()
     }
 
+    pub fn update_from_state(&mut self) {}
+
     pub fn render(&mut self, environment: &Environment) {
+        for component in self.components.values() {
+            component.render(environment.camera(), &environment.lights())
+        }
 
         /*
                state
@@ -74,6 +85,8 @@ impl Adapter<(), (SharedMut<Environment>, &GUI), RenderEvent> for RenderAdapter 
                 shared_state: RenderState {
                     workpiece: SharedMut::default(),
                 },
+
+                components: HashMap::new(),
                 event_reader: reader,
             },
         )
