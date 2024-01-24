@@ -60,9 +60,7 @@ impl Setting {
     }
 
     fn save(&self) {
-        let value_map: HashMap<String, RawSetting> = (&self.tree.read().inner).into();
-
-        let content = serde_yaml::to_string(&value_map).unwrap();
+        let content = serde_yaml::to_string(&self.tree.read().inner.root_children).unwrap();
         std::fs::write(self.file_path.as_str(), content).unwrap();
     }
 }
