@@ -38,20 +38,31 @@ impl RenderAdapter {
         self.shared_state.clone()
     }
 
-    pub fn update_from_state(&mut self) {}
+    pub fn set_workpiece(&mut self, workpiece: PrintPart) {
+        self.shared_state.workpiece.write().replace(workpiece);
+    }
+
+    pub fn update_from_state(&mut self) {
+        let read = self.shared_state.workpiece.read();
+        let workpiece = read.as_ref().unwrap();
+
+        let mut vertices = Vec::new();
+
+        for (_, layer) in workpiece.layers.iter() {
+            for modul in layer.iter() {
+                vertices.extend(modul.mesh.clone());
+            }
+        }
+
+        let cpu_mesh = TriMesh {
+            
+        }
+    }
 
     pub fn render(&mut self, environment: &Environment) {
         for component in self.components.values() {
             component.render(environment.camera(), &environment.lights())
         }
-
-        /*
-               state
-           .toolpath
-           .as_mut()
-           .unwrap()
-           .render(environment.camera(), environment.lights().as_slice());
-        */
     }
 }
 

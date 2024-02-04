@@ -43,10 +43,12 @@ pub fn main() {
     let mesh_settings = MeshSettings {};
     let display_settings = DisplaySettings { diameter: 0.45 };
 
-    let toolpath = create_toolpath(&mesh_settings, &display_settings);
+    let workpiece = create_toolpath(&mesh_settings, &display_settings);
 
     let (writer_render_event, mut render_adapter) =
         render::RenderAdapter::from_context(window_handler.borrow_context());
+
+    render_adapter.set_workpiece(workpiece.unwrap());
 
     //render_adapter.set_toolpath(toolpath);
 

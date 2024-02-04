@@ -52,9 +52,6 @@ impl Setting {
                         raw.write().insert(path.to_string(), value.clone());
                     }
                 });
-
-            println!("changed");
-            println!("{:#?}", self.raw);
         }
     }
 
@@ -92,7 +89,7 @@ impl SettingTree {
 
         let child_len = child_vec.len();
 
-        child_vec.sort_by(|node1: &&mut TreeNode, node2| node1.weight().cmp(&node2.weight()));
+        child_vec.sort_by_key(|node| std::cmp::Reverse(node.weight()));
 
         for (index, child) in child_vec.iter_mut().enumerate() {
             if child.show(ui) {
@@ -247,7 +244,6 @@ impl TreeNode {
 
                 if !*is_not_default {
                     ui.style_mut().visuals.extreme_bg_color = Color32::RED;
-                    println!("default");
                 }
 
                 ui.horizontal(|ui| {
