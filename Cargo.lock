@@ -501,6 +501,7 @@ dependencies = [
  "strum_macros",
  "thiserror",
  "three-d",
+ "three-d-asset",
  "tokio",
  "traits",
  "uni-path",
