@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use three_d::{
     ClearState, Context, FrameInput, Gm, Mesh, Object, PhysicalMaterial, RenderTarget, GUI,
 };
-use three_d_asset::{vec3, Mat4, Positions, Srgba, TriMesh};
+use three_d_asset::{vec3, Mat4, Positions, TriMesh};
 
 use crate::{
     environment::Environment,
