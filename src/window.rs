@@ -77,6 +77,7 @@ pub fn build_window(event_loop: &EventLoop<()>) -> Result<Window, Error> {
                 window_settings.min_size.1,
             ))
             .with_visible(false)
+            .with_resizable(true)
             .with_window_icon(Some(window_icon))
             .with_decorations(!window_settings.borderless);
 
