@@ -60,7 +60,7 @@ fn adjust_pane(x: f32, y: f32) -> bool {
 }
 
 impl PathModul {
-    pub(super) fn to_vertices(self, settings: &DisplaySettings) -> (Vertices, Vec<usize>) {
+    pub(super) fn to_vertices(&self, settings: &DisplaySettings) -> (Vertices, Vec<usize>) {
         let mut vertices = Vec::new();
         let mut offsets: Vec<usize> = Vec::new();
 

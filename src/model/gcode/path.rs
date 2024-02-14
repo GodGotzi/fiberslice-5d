@@ -91,11 +91,11 @@ fn compute_modul(
 
         for instruction in instructions {
             let movements = instruction.movements();
-            let last_point = current_movements.to_flipped_vec3(vec3(0.0, 0.0, 0.0));
+            let last_point = current_movements.to_vec3(vec3(0.0, 0.0, 0.0));
 
             current_movements.add_movements(movements);
 
-            let current_point = current_movements.to_flipped_vec3(vec3(0.0, 0.0, 0.0));
+            let current_point = current_movements.to_vec3(vec3(0.0, 0.0, 0.0));
 
             if current_point == last_point {
                 continue;

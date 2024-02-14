@@ -8,7 +8,7 @@ use three_d_asset::{vec3, Mat4, Positions, TriMesh};
 use crate::{
     environment::Environment,
     event::{create_event_bundle, EventReader, EventWriter},
-    model::gcode::PrintPart,
+    model::{gcode::PrintPart, mesh::ToFlipYZ},
     prelude::*,
 };
 
@@ -48,7 +48,7 @@ impl RenderAdapter {
         let read = self.shared_state.workpiece.read();
         let workpiece = read.as_ref().unwrap();
 
-        let center_mass = workpiece.center_mass;
+        let mut center_mass = workpiece.center_mass;
 
         println!("Center mass: {:?}", center_mass);
         let mut vertices = Vec::new();
@@ -56,7 +56,7 @@ impl RenderAdapter {
 
         for (_, layer) in workpiece.layers.iter() {
             for modul in layer.iter() {
-                vertices.extend(modul.mesh.clone());
+                vertices.extend(modul.mesh.flip_yz());
                 colors.extend(vec![
                     modul
                         .state
@@ -82,6 +82,8 @@ impl RenderAdapter {
         let mesh = Mesh::new(&self.context, &cpu_mesh);
 
         let mut model = Gm::new(mesh, PhysicalMaterial::default());
+
+        std::mem::swap(&mut center_mass.y, &mut center_mass.z);
 
         model.set_transformation(Mat4::from_translation(vec3(
             -center_mass.x,
