@@ -82,9 +82,7 @@ pub fn build_window(event_loop: &EventLoop<()>) -> Result<Window, Error> {
             .with_decorations(!window_settings.borderless);
 
         if let Some((width, height)) = window_settings.max_size {
-            window_builder
-                .with_inner_size(dpi::LogicalSize::new(width as f64, height as f64))
-                .with_max_inner_size(dpi::LogicalSize::new(width as f64, height as f64))
+            window_builder.with_inner_size(dpi::LogicalSize::new(width as f64, height as f64))
         } else {
             window_builder.with_maximized(true)
         }
