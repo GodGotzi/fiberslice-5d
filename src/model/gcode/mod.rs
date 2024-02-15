@@ -33,6 +33,9 @@ pub type LayerModel = Vec<ModulModel>;
 
 pub struct DisplaySettings {
     pub diameter: f32,
+
+    pub horizontal: f32,
+    pub vertical: f32,
 }
 
 pub struct MeshSettings {}

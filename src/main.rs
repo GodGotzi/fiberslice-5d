@@ -41,7 +41,11 @@ pub fn main() {
 
     //let settings = SharedMut::from_inner(settings::Settings { diameter: 0.45 });
     let mesh_settings = MeshSettings {};
-    let display_settings = DisplaySettings { diameter: 0.45 };
+    let display_settings = DisplaySettings {
+        diameter: 0.45,
+        horizontal: 0.425,
+        vertical: 0.325,
+    };
 
     let workpiece = create_toolpath(&mesh_settings, &display_settings);
 
