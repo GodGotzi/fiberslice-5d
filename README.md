@@ -43,13 +43,6 @@ The project is a 3D application with a GUI interface for rendering and interacti
 
 ---
 
-## ⚙️ Features
-
-HTTPStatus Exception: 400
-
----
-
-
 ## 📂 Project Structure
 
 
