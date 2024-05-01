@@ -201,10 +201,10 @@ impl SharedState {
     }
 
     pub fn fps(&self) -> Option<f32> {
-        self.frame_input.read().as_ref().map(|frame_input| {
-            println!("Elapsed time: {:?}", frame_input.elapsed_time);
-            1000.0 / frame_input.elapsed_time as f32
-        })
+        self.frame_input
+            .read()
+            .as_ref()
+            .map(|frame_input| 1000.0 / frame_input.elapsed_time as f32)
     }
 }
 
