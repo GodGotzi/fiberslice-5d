@@ -24,23 +24,34 @@ pub struct ProfileCross {
 }
 
 impl ProfileCross {
-    pub fn from_direction(direction: Vector3<f32>, radius: f32) -> Self {
+    pub fn from_direction(
+        direction: Vector3<f32>,
+        (horizontal_radius, vertical_radius): (f32, f32),
+    ) -> Self {
         let horizontal = direction.cross(vec3(0.0, 0.0, direction.z + 1.0));
         let vertical = direction.cross(vec3(direction.x + 1.0, direction.y + 1.0, 0.0));
 
         Self {
-            up: vertical
-                .normalize()
-                .direct_mul(&vec3(radius, radius, radius)),
-            down: vertical
-                .normalize()
-                .direct_mul(&vec3(-radius, -radius, -radius)),
-            left: horizontal
-                .normalize()
-                .direct_mul(&vec3(radius, radius, radius)),
-            right: horizontal
-                .normalize()
-                .direct_mul(&vec3(-radius, -radius, -radius)),
+            up: vertical.normalize().direct_mul(&vec3(
+                vertical_radius,
+                vertical_radius,
+                vertical_radius,
+            )),
+            down: vertical.normalize().direct_mul(&vec3(
+                -vertical_radius,
+                -vertical_radius,
+                -vertical_radius,
+            )),
+            left: horizontal.normalize().direct_mul(&vec3(
+                horizontal_radius,
+                horizontal_radius,
+                horizontal_radius,
+            )),
+            right: horizontal.normalize().direct_mul(&vec3(
+                -horizontal_radius,
+                -horizontal_radius,
+                -horizontal_radius,
+            )),
         }
     }
 }
@@ -60,7 +71,7 @@ fn adjust_pane(x: f32, y: f32) -> bool {
 }
 
 impl PathModul {
-    pub(super) fn to_vertices(self, settings: &DisplaySettings) -> (Vertices, Vec<usize>) {
+    pub(super) fn to_vertices(&self, settings: &DisplaySettings) -> (Vertices, Vec<usize>) {
         let mut vertices = Vec::new();
         let mut offsets: Vec<usize> = Vec::new();
 
@@ -79,7 +90,10 @@ impl PathModul {
             if path.print {
                 let direction = path.direction();
 
-                let cross = ProfileCross::from_direction(direction, settings.diameter / 2.0);
+                let cross = ProfileCross::from_direction(
+                    direction,
+                    (settings.horizontal / 2.0, settings.vertical / 2.0),
+                );
 
                 if let Some(last) = last_cross.take() {
                     draw_cross_connection(&mut vertices, &path.start, &cross, &last);

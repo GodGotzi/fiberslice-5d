@@ -2,6 +2,22 @@ use three_d::Vector3;
 
 pub type Vertices = Vec<Vector3<f32>>;
 
+pub trait ToFlipYZ {
+    fn flip_yz(&self) -> Self;
+}
+
+impl ToFlipYZ for Vertices {
+    fn flip_yz(&self) -> Self {
+        let mut vertices = self.clone();
+
+        for vertex in vertices.iter_mut() {
+            std::mem::swap(&mut vertex.y, &mut vertex.z);
+        }
+
+        vertices
+    }
+}
+
 #[derive(Debug)]
 pub struct MeshRef {
     start: usize,

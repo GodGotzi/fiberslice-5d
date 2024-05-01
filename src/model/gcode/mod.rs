@@ -23,9 +23,9 @@ pub type GCode = Vec<InstructionModul>;
 
 #[derive(Debug)]
 pub struct ModulModel {
-    mesh: Vertices,
-    child_offsets: Vec<usize>,
-    state: State,
+    pub mesh: Vertices,
+    pub child_offsets: Vec<usize>,
+    pub state: State,
     range: (usize, usize),
 }
 
@@ -33,6 +33,9 @@ pub type LayerModel = Vec<ModulModel>;
 
 pub struct DisplaySettings {
     pub diameter: f32,
+
+    pub horizontal: f32,
+    pub vertical: f32,
 }
 
 pub struct MeshSettings {}
@@ -40,8 +43,8 @@ pub struct MeshSettings {}
 pub struct PrintPart {
     raw: GCodeRaw,
     wire_model: WirePath,
-    layers: HashMap<usize, LayerModel>,
-    center_mass: Vector3<f32>,
+    pub layers: HashMap<usize, LayerModel>,
+    pub center_mass: Vector3<f32>,
 }
 
 impl PrintPart {

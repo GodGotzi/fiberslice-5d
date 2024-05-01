@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use three_d::{vec3, Vector3};
 
-use crate::{api::math::Average, model::shapes::VirtualBox, slicer::print_type::PrintType};
+use crate::{api::math::Average, slicer::print_type::PrintType};
 
 use super::{instruction::InstructionType, movement, state::State, GCode};
 
@@ -70,12 +70,7 @@ impl From<&GCode> for RawPath {
             toolpath_average += modul_average;
         }
 
-        let center_mass = if let Some(mut center) = toolpath_average.divide_average() {
-            std::mem::swap(&mut center.y, &mut center.z);
-            Some(center)
-        } else {
-            None
-        };
+        let center_mass = toolpath_average.divide_average();
 
         RawPath {
             moduls,
@@ -96,11 +91,11 @@ fn compute_modul(
 
         for instruction in instructions {
             let movements = instruction.movements();
-            let last_point = current_movements.to_flipped_vec3(vec3(0.0, 0.0, 0.0));
+            let last_point = current_movements.to_vec3(vec3(0.0, 0.0, 0.0));
 
             current_movements.add_movements(movements);
 
-            let current_point = current_movements.to_flipped_vec3(vec3(0.0, 0.0, 0.0));
+            let current_point = current_movements.to_vec3(vec3(0.0, 0.0, 0.0));
 
             if current_point == last_point {
                 continue;

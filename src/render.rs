@@ -1,12 +1,13 @@
-use std::{cell::RefCell, ops::Deref};
-
-use egui_glow::Painter;
-use three_d::{ClearState, Context, FrameInput, RenderTarget};
+use std::collections::HashMap;
+use three_d::{
+    ClearState, Context, FrameInput, Gm, Mesh, Object, PhysicalMaterial, RenderTarget, GUI,
+};
+use three_d_asset::{vec3, Mat4, Positions, TriMesh};
 
 use crate::{
     environment::Environment,
     event::{create_event_bundle, EventReader, EventWriter},
-    model::gcode::PrintPart,
+    model::{gcode::PrintPart, mesh::ToFlipYZ},
     prelude::*,
     ui::parallel::ParallelUiOutput,
 };
@@ -27,9 +28,10 @@ impl Clone for RenderState {
 }
 
 pub struct RenderAdapter {
+    context: Context,
     shared_state: RenderState,
+    components: HashMap<String, Gm<Mesh, PhysicalMaterial>>,
 
-    ui_painter: RefCell<Painter>,
     event_reader: EventReader<RenderEvent>,
 }
 
@@ -38,9 +40,64 @@ impl RenderAdapter {
         self.shared_state.clone()
     }
 
-    pub fn render(&mut self, environment: &Environment) {
+    pub fn set_workpiece(&mut self, workpiece: PrintPart) {
+        self.shared_state.workpiece.write().replace(workpiece);
+    }
 
-        //.render(environment.camera(), environment.lights().as_slice());
+    pub fn update_from_state(&mut self) {
+        let read = self.shared_state.workpiece.read();
+        let workpiece = read.as_ref().unwrap();
+
+        let mut center_mass = workpiece.center_mass;
+
+        println!("Center mass: {:?}", center_mass);
+        let mut vertices = Vec::new();
+        let mut colors = Vec::new();
+
+        for (_, layer) in workpiece.layers.iter() {
+            for modul in layer.iter() {
+                vertices.extend(modul.mesh.flip_yz());
+                colors.extend(vec![
+                    modul
+                        .state
+                        .print_type
+                        .as_ref()
+                        .unwrap_or(&crate::slicer::print_type::PrintType::Unknown)
+                        .get_color();
+                    modul.mesh.len()
+                ]);
+            }
+        }
+
+        drop(read);
+
+        let mut cpu_mesh = TriMesh {
+            positions: Positions::F32(vertices),
+            colors: Some(colors),
+            ..Default::default()
+        };
+
+        cpu_mesh.compute_normals();
+
+        let mesh = Mesh::new(&self.context, &cpu_mesh);
+
+        let mut model = Gm::new(mesh, PhysicalMaterial::default());
+
+        std::mem::swap(&mut center_mass.y, &mut center_mass.z);
+
+        model.set_transformation(Mat4::from_translation(vec3(
+            -center_mass.x,
+            -center_mass.y,
+            -center_mass.z,
+        )));
+
+        self.components.insert("WORKPIECE".to_string(), model);
+    }
+
+    pub fn render(&mut self, environment: &Environment) {
+        for component in self.components.values() {
+            component.render(environment.camera(), &environment.lights())
+        }
     }
 }
 
@@ -79,10 +136,11 @@ impl Adapter<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>), Ren
         (
             writer,
             Self {
+                context: context.clone(),
                 shared_state: RenderState {
                     workpiece: SharedMut::default(),
                 },
-                ui_painter: RefCell::new(Painter::new(context.deref().clone(), "", None).unwrap()),
+                components: HashMap::new(),
                 event_reader: reader,
             },
         )

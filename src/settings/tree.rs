@@ -1,7 +1,7 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::{cell::RefCell, collections::HashMap, usize};
 
 use serde::{Deserialize, Serialize};
-use three_d::egui::{CollapsingHeader, DragValue, Response, TextEdit};
+use three_d::egui::{CollapsingHeader, Color32, DragValue, Response, TextEdit};
 
 use crate::prelude::{SharedMut, WrappedSharedMut};
 
@@ -16,22 +16,21 @@ pub struct Setting {
 
 impl Setting {
     pub fn new(file_path: &str) -> Self {
-        let raw = SharedMut::from_inner(RawSettings::new());
-
-        let map: HashMap<String, RawSetting> =
+        let map: HashMap<String, TreeNode> =
             serde_yaml::from_str(std::fs::read_to_string(file_path).unwrap().as_str()).unwrap();
 
-        let tree = SettingTree::from(map);
+        let tree = SettingTree { root_children: map };
 
-        tree.collect_values_into(&raw, &|_| true, &|raw, path, node| {
-            if let TreeNode::Value { value, .. } = node {
-                raw.write().insert(path.to_string(), value.clone());
-            }
-        });
+        let raw: HashMap<String, RawSetting> = (&tree).into();
+
+        let raw_settings = raw
+            .into_iter()
+            .map(|(key, value)| (key, value.value))
+            .collect();
 
         Self {
             file_path: file_path.to_string(),
-            raw,
+            raw: SharedMut::from_inner(raw_settings),
             tree: WrappedSharedMut::from_inner(tree),
         }
     }
@@ -53,16 +52,11 @@ impl Setting {
                         raw.write().insert(path.to_string(), value.clone());
                     }
                 });
-
-            println!("changed");
-            println!("{:#?}", self.raw);
         }
     }
 
     fn save(&self) {
-        let value_map: HashMap<String, RawSetting> = (&self.tree.read().inner).into();
-
-        let content = serde_yaml::to_string(&value_map).unwrap();
+        let content = serde_yaml::to_string(&self.tree.read().inner.root_children).unwrap();
         std::fs::write(self.file_path.as_str(), content).unwrap();
     }
 }
@@ -88,9 +82,22 @@ impl SettingTree {
     pub fn show(&mut self, ui: &mut three_d::egui::Ui) -> bool {
         let mut has_changed = false;
 
-        for (_, child) in self.root_children.iter_mut() {
+        let mut child_vec = self
+            .root_children
+            .values_mut()
+            .collect::<Vec<&mut TreeNode>>();
+
+        let child_len = child_vec.len();
+
+        child_vec.sort_by_key(|node| std::cmp::Reverse(node.weight()));
+
+        for (index, child) in child_vec.iter_mut().enumerate() {
             if child.show(ui) {
                 has_changed = true;
+            }
+
+            if index < child_len - 1 {
+                ui.separator();
             }
         }
 
@@ -142,56 +149,13 @@ fn collect_values_into<T: Copy>(
     }
 }
 
-impl From<HashMap<String, RawSetting>> for SettingTree {
-    fn from(map: HashMap<String, RawSetting>) -> Self {
-        let mut root_children: HashMap<String, TreeNode> = HashMap::new();
-
-        for (key, raw_setting) in map.iter() {
-            let mut children = &mut root_children;
-            let mut path = key.split('.').peekable();
-
-            while let Some(key) = path.next() {
-                if children.contains_key(key) {
-                    if path.peek().is_some() {
-                        children = children.get_mut(key).unwrap().children();
-                    } else {
-                        panic!("Key {} already exists", key);
-                    }
-                } else if path.peek().is_some() {
-                    children = children
-                        .entry(key.to_string())
-                        .or_insert(TreeNode::Branch {
-                            changed: false,
-                            description: raw_setting.description.clone(),
-                            children: HashMap::new(),
-                        })
-                        .children();
-                } else {
-                    children.insert(
-                        key.to_string(),
-                        TreeNode::Value {
-                            changed: false,
-                            description: raw_setting.description.clone(),
-                            unit: raw_setting.unit.clone(),
-                            value: raw_setting.value.clone(),
-                        },
-                    );
-
-                    break;
-                }
-            }
-        }
-
-        Self { root_children }
-    }
-}
-
 impl From<&SettingTree> for HashMap<String, RawSetting> {
     fn from(tree: &SettingTree) -> Self {
         let map = RefCell::new(HashMap::new());
 
         tree.collect_values_into(&map, &|_| true, &|map, path, node| {
             if let TreeNode::Value {
+                weight,
                 value,
                 description,
                 unit,
@@ -201,6 +165,7 @@ impl From<&SettingTree> for HashMap<String, RawSetting> {
                 map.borrow_mut().insert(
                     path.to_string(),
                     RawSetting {
+                        weight: *weight,
                         value: value.clone(),
                         description: description.clone(),
                         unit: unit.clone(),
@@ -219,6 +184,7 @@ enum TreeNode {
         #[serde(skip)]
         changed: bool,
 
+        weight: usize,
         children: HashMap<String, TreeNode>,
         description: String,
     },
@@ -226,6 +192,10 @@ enum TreeNode {
         #[serde(skip)]
         changed: bool,
 
+        #[serde(skip)]
+        is_not_default: bool,
+
+        weight: usize,
         value: NodeValue,
         description: String,
         unit: Option<String>,
@@ -239,12 +209,19 @@ impl TreeNode {
                 children,
                 description,
                 changed,
+                ..
             } => {
                 let mut has_changed = false;
 
                 CollapsingHeader::new(description.as_str())
                     .default_open(true)
                     .show(ui, |ui| {
+                        let mut child_vec = children.values_mut().collect::<Vec<&mut TreeNode>>();
+
+                        child_vec.sort_by(|node1: &&mut TreeNode, node2| {
+                            node1.weight().cmp(&node2.weight())
+                        });
+
                         for (_, child) in children.iter_mut() {
                             if child.show(ui) {
                                 has_changed = true;
@@ -260,13 +237,30 @@ impl TreeNode {
                 description,
                 unit,
                 changed,
+                is_not_default,
+                ..
             } => {
+                let last = ui.style_mut().visuals.extreme_bg_color;
+
+                if !*is_not_default {
+                    ui.style_mut().visuals.extreme_bg_color = Color32::RED;
+                }
+
                 ui.horizontal(|ui| {
                     *changed = value.show(description, unit.as_ref(), ui).changed();
                 });
 
+                ui.style_mut().visuals.extreme_bg_color = last;
+
                 *changed
             }
+        }
+    }
+
+    fn weight(&self) -> usize {
+        match self {
+            TreeNode::Branch { weight, .. } => *weight,
+            TreeNode::Value { weight, .. } => *weight,
         }
     }
 
@@ -291,6 +285,7 @@ impl TreeNode {
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 struct RawSetting {
+    weight: usize,
     value: NodeValue,
     description: String,
     unit: Option<String>,
@@ -348,13 +343,7 @@ mod test {
         let map2: std::collections::HashMap<String, super::RawSetting> =
             serde_yaml::from_str(content.as_str()).unwrap();
 
-        let tree2 = SettingTree::from(map2.clone());
-
-        let map3: std::collections::HashMap<String, super::RawSetting> =
-            std::collections::HashMap::from(&tree2);
-
         assert_eq!(map, map2);
-        assert_eq!(map, map3);
     }
 
     pub(super) fn create_test_tree() -> SettingTree {
@@ -364,6 +353,7 @@ mod test {
 
         let mut general = super::TreeNode::Branch {
             changed: false,
+            weight: 0,
             description: "General".to_string(),
             children: std::collections::HashMap::new(),
         };
@@ -372,6 +362,8 @@ mod test {
             "z_offset",
             super::TreeNode::Value {
                 changed: false,
+                is_not_default: false,
+                weight: 0,
                 description: "Z Offset".to_string(),
                 unit: Some("mm".to_string()),
                 value: NodeValue::Float(0.0),
@@ -382,12 +374,16 @@ mod test {
 
         let mut limits = super::TreeNode::Branch {
             changed: false,
+
+            weight: 1,
             description: "Limits".to_string(),
             children: std::collections::HashMap::new(),
         };
 
         let mut max_feedrates = super::TreeNode::Branch {
             changed: false,
+
+            weight: 0,
             description: "Max Feedrates".to_string(),
             children: std::collections::HashMap::new(),
         };
@@ -396,6 +392,9 @@ mod test {
             "movements_x",
             super::TreeNode::Value {
                 changed: false,
+                is_not_default: true,
+
+                weight: 0,
                 description: "X".to_string(),
                 unit: Some("mm/s".to_string()),
                 value: NodeValue::Float(0.0),
@@ -406,6 +405,9 @@ mod test {
             "movements_y",
             super::TreeNode::Value {
                 changed: false,
+                is_not_default: true,
+
+                weight: 1,
                 description: "Y".to_string(),
                 unit: Some("mm/s".to_string()),
                 value: NodeValue::Float(0.0),
@@ -416,12 +418,14 @@ mod test {
             "movements_z",
             super::TreeNode::Value {
                 changed: false,
+                is_not_default: true,
+
+                weight: 2,
                 description: "Z".to_string(),
                 unit: Some("mm/s".to_string()),
                 value: NodeValue::Float(0.0),
             },
         );
-
         limits.add("max_feedrates", max_feedrates);
 
         tree.add("limits", limits);
@@ -430,11 +434,20 @@ mod test {
     }
 
     #[test]
+    fn setup() {
+        //let setting = Setting::new("settings/main.yaml");
+
+        //let content = serde_yaml::to_string(&setting.tree.read().inner.root_children).unwrap();
+        //std::fs::write(self.file_path.as_str(), content).unwrap();
+    }
+
+    #[test]
     fn test_from_into_raw() {
         let mut raw = std::collections::HashMap::new();
         raw.insert(
             "general.nice.huhu".to_string(),
             super::RawSetting {
+                weight: 0,
                 value: NodeValue::Float(0.0),
                 description: "Z Huhu".to_string(),
                 unit: Some("mm".to_string()),
@@ -444,6 +457,7 @@ mod test {
         raw.insert(
             "general.nice2.dir.nextval".to_string(),
             super::RawSetting {
+                weight: 0,
                 value: NodeValue::Float(0.0),
                 description: "Z Haha".to_string(),
                 unit: Some("mm".to_string()),
@@ -453,31 +467,13 @@ mod test {
         raw.insert(
             "general1.nice2.haha4".to_string(),
             super::RawSetting {
+                weight: 0,
                 value: NodeValue::Float(0.0),
                 description: "Z Haha4".to_string(),
                 unit: Some("mm".to_string()),
             },
         );
-
-        let tree = super::SettingTree::from(raw);
-
-        let raw = std::collections::HashMap::from(&tree);
-
-        let new_tree = super::SettingTree::from(raw.clone());
-
-        let new_raw = std::collections::HashMap::from(&new_tree);
-
-        assert_eq!(raw, new_raw);
-
-        let tree = create_test_tree();
-
-        let raw = std::collections::HashMap::from(&tree);
-
-        let new_tree = super::SettingTree::from(raw.clone());
-
-        let new_raw = std::collections::HashMap::from(&new_tree);
-
-        assert_eq!(raw, new_raw);
+        //assert_eq!(raw, new_raw);
 
         //assert_eq!(serde_json::to_string(&tree).unwrap(), None);
     }
