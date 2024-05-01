@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-
 use three_d::{
     ClearState, Context, FrameInput, Gm, Mesh, Object, PhysicalMaterial, RenderTarget, GUI,
 };
@@ -10,6 +9,7 @@ use crate::{
     event::{create_event_bundle, EventReader, EventWriter},
     model::{gcode::PrintPart, mesh::ToFlipYZ},
     prelude::*,
+    ui::parallel::ParallelUiOutput,
 };
 
 #[derive(Debug, Clone)]
@@ -30,8 +30,8 @@ impl Clone for RenderState {
 pub struct RenderAdapter {
     context: Context,
     shared_state: RenderState,
-
     components: HashMap<String, Gm<Mesh, PhysicalMaterial>>,
+
     event_reader: EventReader<RenderEvent>,
 }
 
@@ -101,27 +101,35 @@ impl RenderAdapter {
     }
 }
 
-impl FrameHandle<(), (SharedMut<Environment>, &GUI)> for RenderAdapter {
+impl FrameHandle<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>)> for RenderAdapter {
     fn handle_frame(
         &mut self,
         frame_input: &FrameInput,
-        (shared_environment, gui): (SharedMut<Environment>, &GUI),
+        (shared_environment, output): (SharedMut<Environment>, &Result<ParallelUiOutput, Error>),
     ) -> Result<(), Error> {
         let environment = shared_environment.read();
-
         let screen: RenderTarget<'_> = frame_input.screen();
-        screen.clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0));
 
+        screen.clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0));
         screen.write(|| {
             self.render(&environment);
-            gui.render();
+
+            if let Ok(output) = output {
+                //render ui
+                println!("rendering ui");
+                output.render(&self.ui_painter);
+            } else {
+                println!("not rendering ui");
+            }
         });
 
         Ok(())
     }
 }
 
-impl Adapter<(), (SharedMut<Environment>, &GUI), RenderEvent> for RenderAdapter {
+impl Adapter<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>), RenderEvent>
+    for RenderAdapter
+{
     fn from_context(context: &Context) -> (EventWriter<RenderEvent>, Self) {
         let (reader, writer) = create_event_bundle::<RenderEvent>();
 
@@ -132,7 +140,6 @@ impl Adapter<(), (SharedMut<Environment>, &GUI), RenderEvent> for RenderAdapter 
                 shared_state: RenderState {
                     workpiece: SharedMut::default(),
                 },
-
                 components: HashMap::new(),
                 event_reader: reader,
             },

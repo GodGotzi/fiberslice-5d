@@ -1,4 +1,4 @@
-use std::{cell::RefCell, fmt::Debug, rc::Rc};
+use std::fmt::Debug;
 
 use three_d::*;
 
@@ -7,7 +7,7 @@ use crate::{
     config,
     event::EventReader,
     prelude::*,
-    ui::{UiResult, UiState},
+    ui::{parallel::ParallelUiOutput, UiResult, UiState},
     view::{HandleOrientation, Orientation},
 };
 
@@ -27,13 +27,21 @@ impl EnvironmentAdapter {
     }
 }
 
-impl FrameHandle<(), (Rc<RefCell<UiState>>, UiResult)> for EnvironmentAdapter {
+impl FrameHandle<(), (SharedMut<UiState>, &Result<ParallelUiOutput, Error>)>
+    for EnvironmentAdapter
+{
     fn handle_frame(
         &mut self,
         frame_input: &FrameInput,
-        (state, result): (Rc<RefCell<UiState>>, UiResult),
+        (state, result): (SharedMut<UiState>, &Result<ParallelUiOutput, Error>),
     ) -> Result<(), Error> {
-        if !result.pointer_use.unwrap_or(false) {
+        let pointer_use = if let Ok(result) = result {
+            result.pointer_use()
+        } else {
+            false
+        };
+
+        if !pointer_use {
             let mut events = frame_input
                 .events
                 .clone()
@@ -60,7 +68,7 @@ impl FrameHandle<(), (Rc<RefCell<UiState>>, UiResult)> for EnvironmentAdapter {
                 .handle_camera_events(&mut events);
         }
 
-        let components = &state.borrow().components;
+        let components = &state.read().components;
 
         if frame_input.viewport.height != 0 && frame_input.viewport.width != 0 {
             let height = frame_input.viewport.height
@@ -93,7 +101,9 @@ impl FrameHandle<(), (Rc<RefCell<UiState>>, UiResult)> for EnvironmentAdapter {
     }
 }
 
-impl Adapter<(), (Rc<RefCell<UiState>>, UiResult), EnvironmentEvent> for EnvironmentAdapter {
+impl Adapter<(), (SharedMut<UiState>, &Result<ParallelUiOutput, Error>), EnvironmentEvent>
+    for EnvironmentAdapter
+{
     fn from_context(context: &Context) -> (crate::event::EventWriter<EnvironmentEvent>, Self) {
         let (reader, writer) = crate::event::create_event_bundle::<EnvironmentEvent>();
 

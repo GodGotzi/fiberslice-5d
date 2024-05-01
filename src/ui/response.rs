@@ -39,6 +39,7 @@ impl Responsive for ButtonResponse {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Responses {
     pub button_responses: HashMap<TypeId, Vec<ButtonResponse>>,
 }

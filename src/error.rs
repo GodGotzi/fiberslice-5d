@@ -21,4 +21,6 @@ pub enum Error {
     SettingsLoadError(String),
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    #[error("Ui Not Rendered")]
+    UiNotRendered,
 }

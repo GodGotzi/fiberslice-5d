@@ -1,7 +1,7 @@
 use egui::Response;
 use three_d::egui;
 
-#[derive(Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Boundary {
     pub location: egui::Pos2,
     size: egui::Vec2,

@@ -7,7 +7,7 @@ use crate::prelude::{SharedMut, WrappedSharedMut};
 
 type RawSettings = HashMap<String, NodeValue>;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Setting {
     file_path: String,
     raw: SharedMut<RawSettings>,
