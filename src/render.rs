@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use egui_glow::Painter;
+use std::{cell::RefCell, collections::HashMap, ops::Deref};
 use three_d::{
     ClearState, Context, FrameInput, Gm, Mesh, Object, PhysicalMaterial, RenderTarget, GUI,
 };
@@ -32,6 +33,7 @@ pub struct RenderAdapter {
     shared_state: RenderState,
     components: HashMap<String, Gm<Mesh, PhysicalMaterial>>,
 
+    ui_painter: RefCell<Painter>,
     event_reader: EventReader<RenderEvent>,
 }
 
@@ -116,10 +118,10 @@ impl FrameHandle<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>)>
 
             if let Ok(output) = output {
                 //render ui
-                println!("rendering ui");
+                //println!("rendering ui");
                 output.render(&self.ui_painter);
             } else {
-                println!("not rendering ui");
+                //println!("not rendering ui");
             }
         });
 
@@ -140,6 +142,7 @@ impl Adapter<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>), Ren
                 shared_state: RenderState {
                     workpiece: SharedMut::default(),
                 },
+                ui_painter: RefCell::new(Painter::new(context.deref().clone(), "", None).unwrap()),
                 components: HashMap::new(),
                 event_reader: reader,
             },

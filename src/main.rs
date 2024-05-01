@@ -56,7 +56,7 @@ async fn main() {
     render_adapter.update_from_state();
 
     //render_adapter.set_toolpath(toolpath);
-  
+
     let (writer_environment_event, mut environment_adapter) =
         environment::EnvironmentAdapter::from_context(window_handler.borrow_context());
     let (writer_ui_event, mut ui_adapter) =

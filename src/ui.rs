@@ -84,9 +84,9 @@ impl UiAdapter {
     ) {
         let mut parallel_ui = parallel::ParallelUi::new();
 
-        println!("Ui renderer started, waiting...");
+        // println!("Ui renderer started, waiting...");
         while rx_frame_input.changed().await.is_ok() {
-            println!("Ui renderer got new frame input");
+            // println!("Ui renderer got new frame input");
             let frame_input = rx_frame_input.borrow().as_ref().unwrap().clone();
 
             parallel_ui.update(
@@ -113,8 +113,6 @@ impl UiAdapter {
 
             let output = parallel_ui.construct_output();
             tx_result.send(Some(output)).unwrap();
-
-            println!("Ui renderer finished");
         }
     }
 }
@@ -123,7 +121,7 @@ impl FrameHandle<ParallelUiOutput, &SharedState> for UiAdapter {
     fn handle_frame(
         &mut self,
         frame_input: &three_d::FrameInput,
-        context: &SharedState,
+        _context: &SharedState,
     ) -> Result<ParallelUiOutput, Error> {
         if let Some(tx_frame_input) = self.tx_frame_input.as_ref() {
             tx_frame_input.send(Some(frame_input.clone())).unwrap();
