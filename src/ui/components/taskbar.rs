@@ -12,7 +12,7 @@ impl Taskbar {
 }
 
 impl Component for Taskbar {
-    fn show(&mut self, ctx: &egui::Context, mut data: &mut UiData) {
+    fn show(&mut self, ctx: &egui::Context, data: &mut UiData) {
         let boundary = egui::TopBottomPanel::bottom("taskbar")
             .default_height(config::gui::TASKBAR_H)
             .show(ctx, |ui: &mut egui::Ui| {

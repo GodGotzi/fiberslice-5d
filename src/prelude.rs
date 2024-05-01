@@ -1,4 +1,4 @@
-use std::{fmt::Debug, sync::Arc};
+use std::{borrow::Borrow, fmt::Debug, sync::Arc};
 
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use three_d::{Context, FrameInput};
@@ -171,7 +171,7 @@ pub struct SharedBuffer {
 
 #[derive(Clone)]
 pub struct SharedState {
-    frame_input: Option<FrameInput>,
+    frame_input: SharedMut<Option<FrameInput>>,
 
     pub settings: SharedSettings,
     pub shared_buffer: SharedBuffer,
@@ -190,7 +190,7 @@ impl SharedState {
         writer_picking_event: EventWriter<PickingEvent>,
     ) -> Self {
         Self {
-            frame_input: None,
+            frame_input: SharedMut::from_inner(None),
             settings: SharedSettings::default(),
             shared_buffer: SharedBuffer::default(),
             writer_ui_event,
@@ -201,15 +201,19 @@ impl SharedState {
     }
 
     pub fn fps(&self) -> Option<f32> {
-        self.frame_input
-            .as_ref()
-            .map(|frame_input| 1000.0 / frame_input.elapsed_time as f32)
+        self.frame_input.read().as_ref().map(|frame_input| {
+            println!("Elapsed time: {:?}", frame_input.elapsed_time);
+            1000.0 / frame_input.elapsed_time as f32
+        })
     }
 }
 
 impl FrameHandle<(), ()> for SharedState {
     fn handle_frame(&mut self, frame_input: &FrameInput, _context: ()) -> Result<(), Error> {
-        self.frame_input = Some(frame_input.clone());
+        self.frame_input.write().replace(frame_input.clone());
+
+        println!("Frame: {:?}", frame_input);
+        println!("Elapsed time: {:?}", frame_input.elapsed_time);
 
         Ok(())
     }
