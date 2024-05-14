@@ -42,10 +42,6 @@ impl RenderAdapter {
         self.shared_state.clone()
     }
 
-    pub fn set_workpiece(&mut self, workpiece: PrintPart) {
-        self.shared_state.workpiece.write().replace(workpiece);
-    }
-
     pub fn update_from_state(&mut self) {
         let read = self.shared_state.workpiece.read();
         let workpiece = read.as_ref().unwrap();
@@ -119,10 +115,10 @@ impl FrameHandle<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>)>
 
             if let Ok(output) = output {
                 //render ui
-                //println!("rendering ui");
+                println!("rendering ui");
                 output.render(&self.ui_painter);
             } else {
-                //println!("not rendering ui");
+                println!("not rendering ui");
             }
         });
 

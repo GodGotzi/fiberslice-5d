@@ -37,21 +37,10 @@ async fn main() {
 
     let mut window_handler = window::WindowHandler::from_event_loop(&event_loop);
 
-    //let settings = SharedMut::from_inner(settings::Settings { diameter: 0.45 });
-    let mesh_settings = MeshSettings {};
-    let display_settings = DisplaySettings {
-        diameter: 0.45,
-        horizontal: 0.425,
-        vertical: 0.325,
-    };
-
-    let workpiece = create_toolpath(&mesh_settings, &display_settings);
+    //let settings = SharedMut::from_inner(settings::Settings { diameter: 0.45 });;
 
     let (writer_render_event, mut render_adapter) =
         render::RenderAdapter::from_context(window_handler.borrow_context());
-
-    render_adapter.set_workpiece(workpiece.unwrap());
-    render_adapter.update_from_state();
 
     //render_adapter.set_toolpath(toolpath);
 

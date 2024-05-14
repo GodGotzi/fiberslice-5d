@@ -30,7 +30,9 @@ use crate::{
 };
 
 use self::{
-    boundary::Boundary, parallel::ParallelUiOutput, response::Responses,
+    boundary::Boundary,
+    parallel::{ParallelUi, ParallelUiOutput},
+    response::Responses,
     visual::customize_look_and_feel,
 };
 
@@ -38,6 +40,8 @@ use self::{
 pub enum UiEvent {}
 
 pub struct UiAdapter {
+    ui: ParallelUi,
+    screen: screen::Screen,
     state: SharedMut<UiState>,
     event_reader: EventReader<UiEvent>,
 
@@ -116,19 +120,34 @@ impl FrameHandle<ParallelUiOutput, &SharedState> for UiAdapter {
     fn handle_frame(
         &mut self,
         frame_input: &three_d::FrameInput,
-        _context: &SharedState,
+        state: &SharedState,
     ) -> Result<ParallelUiOutput, Error> {
-        if let Some(tx_frame_input) = self.tx_frame_input.as_ref() {
-            tx_frame_input.send(Some(frame_input.clone())).unwrap();
-        }
+        self.ui.update(
+            &mut frame_input.events.clone(),
+            frame_input.accumulated_time,
+            frame_input.viewport,
+            frame_input.device_pixel_ratio,
+            |ctx| {
+                let mut result = UiResult::empty();
+                result.pointer_use = Some(ctx.is_using_pointer());
 
-        if let Some(rx) = self.rx_result.as_mut() {
-            if let Some(result) = rx.borrow_and_update().as_ref() {
-                return Ok(result.clone());
-            }
-        }
+                let visuals = customize_look_and_feel((&self.state.read().theme).into());
+                ctx.set_visuals(visuals);
 
-        Err(Error::UiNotRendered)
+                self.screen.show(
+                    ctx,
+                    &mut UiData {
+                        state: self.state.clone(),
+                        shared_state: state,
+                    },
+                );
+            },
+        );
+
+        let camera_viewport = self.screen.construct_viewport(frame_input);
+        let output = self.ui.construct_output(camera_viewport);
+
+        Ok(output)
     }
 }
 
@@ -140,6 +159,8 @@ impl Adapter<ParallelUiOutput, &SharedState, UiEvent> for UiAdapter {
         state.write().responses.add_button_response::<Orientation>();
 
         let instance = Self {
+            ui: ParallelUi::new(),
+            screen: screen::Screen::new(),
             state,
             event_reader: reader,
 
