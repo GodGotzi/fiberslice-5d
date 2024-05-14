@@ -2,14 +2,17 @@ use std::fmt::Debug;
 
 use three_d::*;
 
+pub mod view;
+
 use crate::{
     api::Contains,
     config,
     event::EventReader,
     prelude::*,
     ui::{parallel::ParallelUiOutput, UiState},
-    view::{HandleOrientation, Orientation},
 };
+
+use view::Orientation;
 
 #[derive(Debug, Clone)]
 pub enum EnvironmentEvent {
@@ -27,73 +30,57 @@ impl EnvironmentAdapter {
     }
 }
 
-impl FrameHandle<(), (SharedMut<UiState>, &ParallelUiOutput)> for EnvironmentAdapter {
+impl FrameHandle<(), (SharedMut<UiState>, &Result<ParallelUiOutput, Error>)>
+    for EnvironmentAdapter
+{
     fn handle_frame(
         &mut self,
         frame_input: &FrameInput,
-        (state, result): (SharedMut<UiState>, &ParallelUiOutput),
+        (state, result): (SharedMut<UiState>, &Result<ParallelUiOutput, Error>),
     ) -> Result<(), Error> {
-        if !result.pointer_use() {
-            let mut events = frame_input
-                .events
-                .clone()
-                .into_iter()
-                .filter(|event| {
-                    let position = match event {
-                        Event::MousePress { position, .. } => position,
-                        Event::MouseRelease { position, .. } => position,
-                        Event::MouseMotion { position, .. } => position,
-                        Event::MouseWheel { position, .. } => position,
-                        _ => return true,
-                    };
+        if let Ok(result) = result {
+            if !result.pointer_use {
+                let mut events = frame_input
+                    .events
+                    .clone()
+                    .into_iter()
+                    .filter(|event| {
+                        let position = match event {
+                            Event::MousePress { position, .. } => position,
+                            Event::MouseRelease { position, .. } => position,
+                            Event::MouseMotion { position, .. } => position,
+                            Event::MouseWheel { position, .. } => position,
+                            _ => return true,
+                        };
 
-                    self.shared_environment
-                        .read()
-                        .camera
-                        .viewport()
-                        .contains(position)
-                })
-                .collect::<Vec<Event>>();
+                        self.shared_environment
+                            .read()
+                            .camera
+                            .viewport()
+                            .contains(position)
+                    })
+                    .collect::<Vec<Event>>();
 
-            self.shared_environment
-                .write()
-                .handle_camera_events(&mut events);
-        }
+                self.shared_environment
+                    .write()
+                    .handle_camera_events(&mut events);
+            }
 
-        let components = &state.read().components;
-
-        if frame_input.viewport.height != 0 && frame_input.viewport.width != 0 {
-            let height = frame_input.viewport.height
-                - ((components.taskbar.boundary().get_height()
-                    + components.modebar.boundary().get_height()
-                    + components.menubar.boundary().get_height())
-                    * frame_input.device_pixel_ratio) as u32;
-            //let extra = (height as f32 * 0.3) as u32;
-
-            let viewport = Viewport {
-                x: (components.toolbar.boundary().get_width() * frame_input.device_pixel_ratio)
-                    as i32,
-                y: (((components.taskbar.boundary().get_height()
-                    + components.modebar.boundary().get_height())
-                    * frame_input.device_pixel_ratio) as i32),
-                width: frame_input.viewport.width
-                    - ((components.toolbar.boundary().get_width()
-                        + components.settingsbar.boundary().get_width())
-                        * frame_input.device_pixel_ratio) as u32,
-                height,
-            };
-
-            self.shared_environment
-                .write()
-                .camera
-                .set_viewport(viewport);
+            if result.camera_viewport.height > 0 && result.camera_viewport.width > 0 {
+                self.shared_environment
+                    .write()
+                    .camera
+                    .set_viewport(result.camera_viewport);
+            }
         }
 
         Ok(())
     }
 }
 
-impl Adapter<(), (SharedMut<UiState>, &ParallelUiOutput), EnvironmentEvent> for EnvironmentAdapter {
+impl Adapter<(), (SharedMut<UiState>, &Result<ParallelUiOutput, Error>), EnvironmentEvent>
+    for EnvironmentAdapter
+{
     fn from_context(context: &Context) -> (crate::event::EventWriter<EnvironmentEvent>, Self) {
         let (reader, writer) = crate::event::create_event_bundle::<EnvironmentEvent>();
 
@@ -142,7 +129,7 @@ impl Debug for Environment {
 
 impl Environment {
     pub fn new(context: &Context) -> Self {
-        let mut camera = crate::view::CameraBuilder::new()
+        let mut camera = view::CameraBuilder::new()
             .viewport(Viewport::new_at_origo(
                 config::default::WINDOW_S.0,
                 config::default::WINDOW_S.1,
@@ -184,5 +171,24 @@ impl Environment {
     pub fn lights(&self) -> Vec<&dyn Light> {
         let lights: Vec<&dyn Light> = self.owned_lights.iter().map(Box::as_ref).collect();
         lights
+    }
+}
+
+pub trait HandleOrientation {
+    fn handle_orientation(&mut self, orientation: Orientation);
+}
+
+impl HandleOrientation for Camera {
+    fn handle_orientation(&mut self, orientation: Orientation) {
+        let position = match orientation {
+            Orientation::Default => vec3(0.00, 250.0, 500.0),
+            Orientation::Diagonal => vec3(500.0, 500.0, 500.0),
+            Orientation::Top => vec3(0.0, 900.0, 0.1), // FIXME 0.1 is a hack to avoid the camera being inside the model, maybe there is a better way to do this
+            Orientation::Left => vec3(-500.0, 0.0, 0.0),
+            Orientation::Right => vec3(500.0, 0.0, 0.0),
+            Orientation::Front => vec3(0.0, 0.0, 500.0),
+        };
+
+        self.set_view(position, vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0))
     }
 }

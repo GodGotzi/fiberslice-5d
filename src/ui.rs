@@ -15,7 +15,7 @@ pub mod parallel;
 mod response;
 mod visual;
 
-use std::sync::atomic::AtomicBool;
+use std::borrow::Borrow;
 
 use parking_lot::{RwLockReadGuard, RwLockWriteGuard};
 use three_d::{
@@ -24,24 +24,15 @@ use three_d::{
 };
 
 use crate::{
+    environment::view::{Mode, Orientation},
     event::EventReader,
-    prelude::{Adapter, Error, FrameHandle, Shared, SharedMut, SharedState},
-    tools::Tool,
-    view::{Mode, Orientation},
+    prelude::{Adapter, Error, FrameHandle, SharedMut, SharedState},
 };
-
-use strum::EnumCount;
 
 use self::{
     boundary::Boundary, parallel::ParallelUiOutput, response::Responses,
     visual::customize_look_and_feel,
 };
-
-struct UiRenderState {
-    rendering_enabled: Shared<AtomicBool>,
-    tx_frame_input: tokio::sync::watch::Sender<Option<FrameInput>>,
-    rx_result: tokio::sync::watch::Receiver<Option<UiResult>>,
-}
 
 #[derive(Debug, Clone)]
 pub enum UiEvent {}
@@ -67,7 +58,6 @@ impl UiAdapter {
         self.rx_result = Some(rx_result);
 
         tokio::spawn(Self::renderer(
-            screen::Screen::new(),
             rx_frame_input,
             tx_result,
             self.state.clone(),
@@ -76,16 +66,18 @@ impl UiAdapter {
     }
 
     async fn renderer(
-        mut screen: screen::Screen,
         mut rx_frame_input: tokio::sync::watch::Receiver<Option<FrameInput>>,
         tx_result: tokio::sync::watch::Sender<Option<ParallelUiOutput>>,
         state: SharedMut<UiState>,
         shared_state: SharedState,
     ) {
+        let mut screen = screen::Screen::new();
+
         let mut parallel_ui = parallel::ParallelUi::new();
 
         // println!("Ui renderer started, waiting...");
         while rx_frame_input.changed().await.is_ok() {
+            let now = std::time::Instant::now();
             // println!("Ui renderer got new frame input");
             let frame_input = rx_frame_input.borrow().as_ref().unwrap().clone();
 
@@ -111,8 +103,11 @@ impl UiAdapter {
                 },
             );
 
-            let output = parallel_ui.construct_output();
+            let camera_viewport = screen.construct_viewport(&frame_input);
+            let output = parallel_ui.construct_output(camera_viewport);
             tx_result.send(Some(output)).unwrap();
+
+            println!("Ui updating took {:?}", now.elapsed());
         }
     }
 }
@@ -128,7 +123,7 @@ impl FrameHandle<ParallelUiOutput, &SharedState> for UiAdapter {
         }
 
         if let Some(rx) = self.rx_result.as_mut() {
-            if let Some(result) = rx.borrow().as_ref() {
+            if let Some(result) = rx.borrow_and_update().as_ref() {
                 return Ok(result.clone());
             }
         }
@@ -138,7 +133,7 @@ impl FrameHandle<ParallelUiOutput, &SharedState> for UiAdapter {
 }
 
 impl Adapter<ParallelUiOutput, &SharedState, UiEvent> for UiAdapter {
-    fn from_context(context: &Context) -> (crate::event::EventWriter<UiEvent>, Self) {
+    fn from_context(_context: &Context) -> (crate::event::EventWriter<UiEvent>, Self) {
         let (reader, writer) = crate::event::create_event_bundle::<UiEvent>();
         let state = SharedMut::from_inner(UiState::new());
 
@@ -179,10 +174,8 @@ impl From<&Theme> for Visuals {
 pub struct UiState {
     pub theme: Theme,
     pub mode: Mode,
-    tools_enabled: [bool; Tool::COUNT],
 
     pub responses: Responses,
-    pub components: Components,
 }
 
 impl UiState {
@@ -190,10 +183,8 @@ impl UiState {
         Self {
             theme: Theme::Light,
             mode: Mode::Preview,
-            tools_enabled: [false; Tool::COUNT],
 
             responses: Responses::new(),
-            components: Components::default(),
         }
     }
 }
@@ -207,59 +198,6 @@ impl UiState {
     }
 }
 
-pub trait MutableDualDataComponent<T> {
-    fn read_data(&self) -> RwLockReadGuard<T>;
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct Components {
-    pub menubar: ComponentData,
-    pub taskbar: ComponentData,
-    pub modebar: ComponentData,
-    pub toolbar: ComponentData,
-    pub settingsbar: ComponentData,
-    pub addons: ComponentData,
-}
-
-impl Components {
-    pub fn delete_cache(&mut self) {
-        self.menubar.delete_cache();
-        self.taskbar.delete_cache();
-        self.modebar.delete_cache();
-        self.toolbar.delete_cache();
-        self.settingsbar.delete_cache();
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ComponentData {
-    pub boundary: Option<Boundary>,
-    pub enabled: bool,
-}
-
-impl ComponentData {
-    fn delete_cache(&mut self) {
-        self.boundary = None;
-    }
-
-    pub fn boundary(&self) -> Boundary {
-        self.boundary.unwrap_or(Boundary::zero())
-    }
-
-    pub fn set_boundary(&mut self, boundary: Boundary) {
-        self.boundary = Some(boundary);
-    }
-}
-
-impl Default for ComponentData {
-    fn default() -> Self {
-        Self {
-            boundary: None,
-            enabled: true,
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct UiResult {
     pub pointer_use: Option<bool>,
@@ -269,8 +207,6 @@ impl UiResult {
     fn empty() -> Self {
         Self { pointer_use: None }
     }
-
-    fn render(&self) {}
 }
 
 #[derive(Debug, Clone)]
@@ -298,22 +234,18 @@ impl<'a> UiData<'a> {
     }
 }
 
-pub trait SuperComponent {
+pub trait Component: Send + Sync {
     fn show(&mut self, ctx: &egui::Context, state: &mut UiData);
+
+    fn get_enabled_mut(&mut self) -> &mut bool;
+
+    fn get_boundary(&self) -> &Boundary;
 }
 
-pub trait Component {
-    fn show(&mut self, ctx: &egui::Context, state: &mut UiData);
-}
-
-pub trait InnerComponent {
+pub trait InnerComponent: Send + Sync {
     fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, state: &mut UiData);
-}
 
-pub trait TextComponent {
-    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui);
-}
+    fn get_enabled_mut(&mut self) -> &mut bool;
 
-pub trait InnerTextComponent<P> {
-    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, prefix: P, suffix: P);
+    fn get_boundary(&self) -> &Boundary;
 }

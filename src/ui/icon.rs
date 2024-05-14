@@ -5,7 +5,7 @@ use three_d::egui;
 
 use lazy_static::lazy_static;
 
-use crate::view::Orientation;
+use crate::environment::view::Orientation;
 
 lazy_static! {
     pub static ref ICONTABLE: IconTable = IconTable::new();

@@ -9,8 +9,7 @@ use crate::{
     event::{EventReader, EventWriter},
     picking::PickingEvent,
     render::RenderEvent,
-    settings::PrinterSettings,
-    settings::{tree::Setting, FilamentSettings},
+    settings::tree::QuickSettings,
     ui::UiEvent,
 };
 
@@ -134,39 +133,15 @@ pub trait Adapter<T, C, E: Debug + Clone>: FrameHandle<T, C> {
 
 #[derive(Clone)]
 pub struct SharedSettings {
-    pub tree_settings: Setting,
-    pub printer_settings: SharedMut<PrinterSettings>,
-    pub filament_settings: SharedMut<FilamentSettings>,
+    pub main: QuickSettings,
 }
 
 impl Default for SharedSettings {
     fn default() -> Self {
-        let tree_settings = Setting::new("settings/main.yaml");
-        let printer_settings = SharedMut::from_inner(PrinterSettings::default());
-        let filament_settings = SharedMut::from_inner(FilamentSettings::default());
+        let main = QuickSettings::new("settings/main.yaml");
 
-        Self {
-            tree_settings,
-            printer_settings,
-            filament_settings,
-        }
+        Self { main }
     }
-}
-
-#[derive(Debug, Default)]
-pub struct ToolpathBuffer {}
-
-#[derive(Debug, Default)]
-pub struct IntersectionBuffer {}
-
-#[derive(Debug, Default)]
-pub struct ControlBuffer {}
-
-#[derive(Clone, Debug, Default)]
-pub struct SharedBuffer {
-    toolpath: SharedMut<ToolpathBuffer>,
-    intersections: SharedMut<IntersectionBuffer>,
-    controls: SharedMut<ControlBuffer>,
 }
 
 #[derive(Clone)]
@@ -174,7 +149,6 @@ pub struct SharedState {
     frame_input: SharedMut<Option<FrameInput>>,
 
     pub settings: SharedSettings,
-    pub shared_buffer: SharedBuffer,
 
     pub writer_ui_event: EventWriter<UiEvent>,
     pub writer_environment_event: EventWriter<EnvironmentEvent>,
@@ -192,7 +166,6 @@ impl SharedState {
         Self {
             frame_input: SharedMut::from_inner(None),
             settings: SharedSettings::default(),
-            shared_buffer: SharedBuffer::default(),
             writer_ui_event,
             writer_environment_event,
             writer_render_event,

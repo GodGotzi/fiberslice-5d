@@ -3,20 +3,27 @@ use egui_grid::GridBuilder;
 use three_d::egui;
 
 use crate::config;
+use crate::environment::view::Mode;
+use crate::ui::boundary::Boundary;
 use crate::ui::{Component, UiData};
-use crate::view::Mode;
 
-pub struct Modebar;
+pub struct Modebar {
+    boundary: Boundary,
+    enabled: bool,
+}
 
 impl Modebar {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            boundary: Boundary::zero(),
+            enabled: true,
+        }
     }
 }
 
 impl Component for Modebar {
     fn show(&mut self, ctx: &egui::Context, data: &mut UiData) {
-        let boundary = egui::TopBottomPanel::bottom("modebar")
+        self.boundary = egui::TopBottomPanel::bottom("modebar")
             .default_height(config::gui::MODEBAR_H)
             .show(ctx, |ui: &mut egui::Ui| {
                 egui::menu::bar(ui, |ui| {
@@ -70,10 +77,13 @@ impl Component for Modebar {
             })
             .response
             .into();
+    }
 
-        data.borrow_mut_ui_state()
-            .components
-            .menubar
-            .set_boundary(boundary);
+    fn get_enabled_mut(&mut self) -> &mut bool {
+        &mut self.enabled
+    }
+
+    fn get_boundary(&self) -> &Boundary {
+        &self.boundary
     }
 }

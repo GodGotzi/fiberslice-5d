@@ -8,13 +8,13 @@ use crate::prelude::{SharedMut, WrappedSharedMut};
 type RawSettings = HashMap<String, NodeValue>;
 
 #[derive(Clone, Debug)]
-pub struct Setting {
+pub struct QuickSettings {
     file_path: String,
     raw: SharedMut<RawSettings>,
     tree: WrappedSharedMut<SettingTree>,
 }
 
-impl Setting {
+impl QuickSettings {
     pub fn new(file_path: &str) -> Self {
         let map: HashMap<String, TreeNode> =
             serde_yaml::from_str(std::fs::read_to_string(file_path).unwrap().as_str()).unwrap();
@@ -61,7 +61,7 @@ impl Setting {
     }
 }
 
-impl Drop for Setting {
+impl Drop for QuickSettings {
     fn drop(&mut self) {
         self.save();
     }

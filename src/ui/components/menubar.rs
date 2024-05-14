@@ -2,20 +2,28 @@ use egui::Ui;
 use three_d::egui;
 
 use crate::config;
+use crate::ui::boundary::Boundary;
 use crate::ui::Component;
 use crate::ui::UiData;
 
-pub struct Menubar;
+pub struct Menubar {
+    //enabled: bool,
+    boundary: Boundary,
+    enabled: bool,
+}
 
 impl Menubar {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            boundary: Boundary::zero(),
+            enabled: true,
+        }
     }
 }
 
 impl Component for Menubar {
     fn show(&mut self, ctx: &egui::Context, data: &mut UiData) {
-        let boundary = egui::TopBottomPanel::top("menubar")
+        self.boundary = egui::TopBottomPanel::top("menubar")
             .default_height(config::gui::MENUBAR_H)
             .show(ctx, |ui: &mut Ui| {
                 egui::menu::bar(ui, |ui| {
@@ -29,11 +37,14 @@ impl Component for Menubar {
             })
             .response
             .into();
+    }
 
-        data.borrow_mut_ui_state()
-            .components
-            .menubar
-            .set_boundary(boundary);
+    fn get_enabled_mut(&mut self) -> &mut bool {
+        &mut self.enabled
+    }
+
+    fn get_boundary(&self) -> &Boundary {
+        &self.boundary
     }
 }
 
@@ -77,6 +88,7 @@ fn window_button(ui: &mut Ui, data: &mut UiData) {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
 
+        /*
         ui.checkbox(
             &mut data.borrow_mut_ui_state().components.addons.enabled,
             "Addons",
@@ -99,6 +111,7 @@ fn window_button(ui: &mut Ui, data: &mut UiData) {
             &mut data.borrow_mut_ui_state().components.settingsbar.enabled,
             "Settings",
         );
+        */
     });
 }
 

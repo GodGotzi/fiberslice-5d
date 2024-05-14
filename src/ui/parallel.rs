@@ -220,7 +220,7 @@ impl ParallelUi {
     /// Render the GUI defined in the [update](Self::update) function.
     /// Must be called in the callback given as input to a [RenderTarget], [ColorTarget] or [DepthTarget] write method.
     ///
-    pub fn construct_output(&self) -> ParallelUiOutput {
+    pub fn construct_output(&self, camera_viewport: Viewport) -> ParallelUiOutput {
         let output = self
             .output
             .borrow_mut()
@@ -235,6 +235,7 @@ impl ParallelUi {
             viewport: self.viewport,
             textures_delta: output.textures_delta,
             pointer_use: self.egui_context.is_using_pointer(),
+            camera_viewport,
         }
     }
 }
@@ -245,7 +246,9 @@ pub struct ParallelUiOutput {
     scale: f32,
     viewport: Viewport,
     textures_delta: TexturesDelta,
-    pointer_use: bool,
+
+    pub pointer_use: bool,
+    pub camera_viewport: Viewport,
 }
 
 impl ParallelUiOutput {
@@ -263,9 +266,5 @@ impl ParallelUiOutput {
             use glow::HasContext as _;
             painter.borrow().gl().disable(glow::FRAMEBUFFER_SRGB);
         }
-    }
-
-    pub fn pointer_use(&self) -> bool {
-        self.pointer_use
     }
 }

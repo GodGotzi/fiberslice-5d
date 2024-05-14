@@ -9,7 +9,6 @@ use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
 
 use prelude::{Adapter, SharedState};
 
-mod actions;
 mod api;
 mod config;
 mod control;
@@ -23,10 +22,9 @@ mod render;
 mod settings;
 mod shortcut;
 mod slicer;
-mod tests;
 mod tools;
 mod ui;
-mod view;
+
 mod window;
 
 use winit::event_loop::EventLoop;
@@ -88,12 +86,14 @@ async fn main() {
                 .handle_frame(&frame_input, ())
                 .expect("Failed to handle frame");
 
-            let ui_output = ui_adapter
-                .handle_frame(&frame_input, &shared_state)
-                .expect("Failed to handle frame");
+            let ui_output = ui_adapter.handle_frame(&frame_input, &shared_state);
 
             environment_adapter
                 .handle_frame(&frame_input, (ui_adapter.share_state(), &ui_output))
+                .expect("Failed to handle frame");
+
+            picking_adapter
+                .handle_frame(&frame_input, render_adapter.share_state())
                 .expect("Failed to handle frame");
 
             render_adapter
@@ -101,10 +101,6 @@ async fn main() {
                     &frame_input,
                     (environment_adapter.share_environment(), &ui_output),
                 )
-                .expect("Failed to handle frame");
-
-            picking_adapter
-                .handle_frame(&frame_input, render_adapter.share_state())
                 .expect("Failed to handle frame");
 
             ui_adapter.handle_events();

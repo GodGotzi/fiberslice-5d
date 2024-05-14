@@ -15,7 +15,7 @@ use crate::config;
 use crate::ui::boundary::Boundary;
 use crate::ui::*;
 
-#[derive(PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SettingsPanel {
     Fiber,
     TopologyOptimization,
@@ -115,7 +115,7 @@ impl TabbedSettings {
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
-                            data.borrow_shared_state().settings.tree_settings.show(ui);
+                            data.borrow_shared_state().settings.main.show(ui);
                         });
                     });
                 });
@@ -124,7 +124,7 @@ impl TabbedSettings {
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
-                            data.borrow_shared_state().settings.tree_settings.show(ui);
+                            data.borrow_shared_state().settings.main.show(ui);
                         });
                     });
                 });
@@ -134,7 +134,7 @@ impl TabbedSettings {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
                             //let now = Instant::now();
-                            data.borrow_shared_state().settings.tree_settings.show(ui);
+                            data.borrow_shared_state().settings.main.show(ui);
                             //println!("Tree Time: {:?}", now.elapsed());
                         });
                     });
@@ -146,14 +146,21 @@ impl TabbedSettings {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Settingsbar {
     open_panel: SettingsPanel,
+
+    boundary: Boundary,
+    enabled: bool,
 }
 
 impl Settingsbar {
     pub fn new() -> Self {
         Self {
             open_panel: SettingsPanel::Fiber,
+
+            boundary: Boundary::zero(),
+            enabled: true,
         }
     }
 }
@@ -162,7 +169,7 @@ impl Component for Settingsbar {
     fn show(&mut self, ctx: &egui::Context, data: &mut UiData) {
         let mut tabbed_view = TabbedSettings::init();
 
-        let boundary = Boundary::from(
+        self.boundary = Boundary::from(
             egui::SidePanel::right("settingsbar")
                 .resizable(true)
                 .default_width(config::gui::default::SETTINGSBAR_W)
@@ -186,7 +193,7 @@ impl Component for Settingsbar {
                                 .min_size(Vec2::new(ui.available_width() * 0.8, 50.0));
 
                             if ui.add(slice_button).clicked() {
-                                println!("{:?}", data.borrow_shared_state().settings.tree_settings);
+                                println!("{:?}", data.borrow_shared_state().settings.main);
                             };
                         });
 
@@ -201,10 +208,13 @@ impl Component for Settingsbar {
                 })
                 .response,
         );
+    }
 
-        data.borrow_mut_ui_state()
-            .components
-            .settingsbar
-            .set_boundary(boundary);
+    fn get_enabled_mut(&mut self) -> &mut bool {
+        &mut self.enabled
+    }
+
+    fn get_boundary(&self) -> &Boundary {
+        &self.boundary
     }
 }

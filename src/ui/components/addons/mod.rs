@@ -8,10 +8,9 @@
 use egui_extras::{Size, StripBuilder};
 use three_d::egui::{self, *};
 
-use crate::{
-    ui::{boundary::Boundary, InnerComponent, UiData},
-    view::Mode,
-};
+use crate::ui::{boundary::Boundary, InnerComponent, UiData};
+
+use crate::environment::view::Mode;
 
 mod force_analytics;
 mod prepare;
@@ -58,8 +57,9 @@ pub mod orientation {
     use crate::{
         config,
         ui::{api::buttons::DecoradedButtons, UiData},
-        view::Orientation,
     };
+
+    use crate::environment::view::Orientation;
 
     pub fn show(ui: &mut egui::Ui, data: &mut UiData) {
         let layout = egui::Layout {
@@ -104,11 +104,17 @@ pub mod orientation {
     }
 }
 
-pub struct Addons {}
+pub struct Addons {
+    boundary: Boundary,
+    enabled: bool,
+}
 
 impl Addons {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            boundary: Boundary::zero(),
+            enabled: true,
+        }
     }
 }
 
@@ -128,5 +134,15 @@ impl InnerComponent for Addons {
             Mode::Preview => preview::show(ctx, ui, state, boundary),
             Mode::ForceAnalytics => force_analytics::show(ctx, ui, state, boundary),
         }
+
+        self.boundary = boundary;
+    }
+
+    fn get_enabled_mut(&mut self) -> &mut bool {
+        &mut self.enabled
+    }
+
+    fn get_boundary(&self) -> &Boundary {
+        &self.boundary
     }
 }

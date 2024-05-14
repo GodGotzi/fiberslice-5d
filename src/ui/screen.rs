@@ -1,9 +1,13 @@
+use std::collections::HashMap;
+
 use super::*;
 use components::{addons, menubar, modebar, settingsbar, taskbar, toolbar};
+use three_d::Viewport;
 
 pub struct Screen {
-    settings: settingsbar::Settingsbar,
-    addons: addons::Addons,
+    inner_components: Vec<Box<dyn InnerComponent>>,
+
+    quick_settings: settingsbar::Settingsbar,
     menubar: menubar::Menubar,
     taskbar: taskbar::Taskbar,
     modebar: modebar::Modebar,
@@ -12,41 +16,55 @@ pub struct Screen {
 
 impl Screen {
     pub fn new() -> Self {
+        let inner_components: Vec<Box<dyn InnerComponent>> = vec![Box::new(addons::Addons::new())];
+
+        /*
+        let mut components: HashMap<String, Box<dyn Component>> = HashMap::new();
+
+        components.insert(
+            "QuickSettings".to_string(),
+            Box::new(settingsbar::Settingsbar::new()),
+        );
+        components.insert("MenuBar".to_string(), Box::new(menubar::Menubar::new()));
+        components.insert("TaskBar".to_string(), Box::new(taskbar::Taskbar::new()));
+        components.insert("ModeBar".to_string(), Box::new(modebar::Modebar::new()));
+        components.insert("ToolBar".to_string(), Box::new(toolbar::Toolbar::new()));
+        */
+
         Self {
-            settings: settingsbar::Settingsbar::new(),
-            addons: addons::Addons::new(),
+            inner_components,
+            quick_settings: settingsbar::Settingsbar::new(),
             menubar: menubar::Menubar::new(),
             taskbar: taskbar::Taskbar::new(),
             modebar: modebar::Modebar::new(),
             toolbar: toolbar::Toolbar::new(),
         }
     }
-}
 
-impl SuperComponent for Screen {
-    fn show(&mut self, ctx: &egui::Context, ui_ctx: &mut UiData) {
+    pub fn show(&mut self, ctx: &egui::Context, ui_ctx: &mut UiData) {
         let frame = egui::containers::Frame {
             fill: egui::Color32::TRANSPARENT,
             ..Default::default()
         };
 
-        self.menubar.show(ctx, ui_ctx);
+        if *self.quick_settings.get_enabled_mut() {
+            self.quick_settings.show(ctx, ui_ctx);
+        }
 
-        if ui_ctx.borrow_ui_state().components.taskbar.enabled {
+        if *self.menubar.get_enabled_mut() {
+            self.menubar.show(ctx, ui_ctx);
+        }
+
+        if *self.taskbar.get_enabled_mut() {
             self.taskbar.show(ctx, ui_ctx);
         }
 
-        //self.addons.show(ctx, None, app);
-        if ui_ctx.borrow_ui_state().components.settingsbar.enabled {
-            self.settings.show(ctx, ui_ctx);
-        }
-
-        if ui_ctx.borrow_ui_state().components.toolbar.enabled {
-            self.toolbar.show(ctx, ui_ctx);
-        }
-
-        if ui_ctx.borrow_ui_state().components.modebar.enabled {
+        if *self.modebar.get_enabled_mut() {
             self.modebar.show(ctx, ui_ctx);
+        }
+
+        if *self.toolbar.get_enabled_mut() {
+            self.toolbar.show(ctx, ui_ctx);
         }
 
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
@@ -56,9 +74,34 @@ impl SuperComponent for Screen {
                 .show(ui);
             */
 
-            if ui_ctx.borrow_ui_state().components.addons.enabled {
-                self.addons.show(ctx, ui, ui_ctx);
+            for component in self.inner_components.iter_mut() {
+                if *component.get_enabled_mut() {
+                    component.show(ctx, ui, ui_ctx);
+                }
             }
         });
+    }
+
+    pub fn construct_viewport(&self, frame_input: &FrameInput) -> Viewport {
+        let height = frame_input.viewport.height
+            - ((self.taskbar.get_boundary().get_height()
+                + self.modebar.get_boundary().get_height()
+                + self.menubar.get_boundary().get_height())
+                * frame_input.device_pixel_ratio) as u32;
+        //let extra = (height as f32 * 0.3) as u32;
+
+        let viewport = Viewport {
+            x: (self.toolbar.get_boundary().get_width() * frame_input.device_pixel_ratio) as i32,
+            y: (((self.taskbar.get_boundary().get_height()
+                + self.modebar.get_boundary().get_height())
+                * frame_input.device_pixel_ratio) as i32),
+            width: frame_input.viewport.width
+                - ((self.toolbar.get_boundary().get_width()
+                    + self.quick_settings.get_boundary().get_width())
+                    * frame_input.device_pixel_ratio) as u32,
+            height,
+        };
+
+        viewport
     }
 }
