@@ -1,6 +1,6 @@
 use egui::Ui;
 use egui_extras::Size;
-use three_d::egui;
+use three_d::egui::{self, Layout};
 
 use crate::{
     config::gui::shaded_color,
@@ -20,6 +20,7 @@ pub fn show(_ctx: &egui::Context, ui: &mut Ui, data: &mut UiData, boundary: Boun
                 .size(Size::remainder())
                 .size(Size::relative(0.6))
                 .size(Size::remainder())
+                .size(Size::exact(25.0))
                 .vertical(|mut strip| {
                     strip.strip(|builder| {
                         builder
@@ -46,8 +47,48 @@ pub fn show(_ctx: &egui::Context, ui: &mut Ui, data: &mut UiData, boundary: Boun
                                 strip.empty();
                             });
                     });
+                    strip.strip(|builder| {
+                        builder
+                            .size(Size::remainder())
+                            .size(Size::exact(25.0))
+                            .horizontal(|mut strip| {
+                                strip.empty();
+                                strip.cell(|ui| {
+                                    ui.with_layout(
+                                        Layout::top_down_justified(egui::Align::Center),
+                                        |ui| {
+                                            let mut num = 0;
+
+                                            ui.spacing_mut().slider_width = ui.available_height();
+
+                                            let slider = egui::Slider::new(&mut num, 0..=120)
+                                                .orientation(egui::SliderOrientation::Vertical);
+                                            ui.add_sized(ui.available_size(), slider);
+                                        },
+                                    );
+                                });
+                            });
+                    });
                     strip.empty();
-                    strip.empty();
+                    strip.strip(|builder| {
+                        builder
+                            .size(Size::remainder())
+                            .size(Size::relative(0.6))
+                            .size(Size::remainder())
+                            .horizontal(|mut strip| {
+                                strip.empty();
+                                strip.cell(|ui| {
+                                    let mut num = 0;
+
+                                    ui.spacing_mut().slider_width = ui.available_width();
+
+                                    let slider = egui::Slider::new(&mut num, 0..=120)
+                                        .orientation(egui::SliderOrientation::Horizontal);
+                                    ui.add(slider);
+                                });
+                                strip.empty();
+                            });
+                    });
                 });
         }),
     );

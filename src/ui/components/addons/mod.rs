@@ -52,11 +52,11 @@ pub mod orientation {
     use egui_extras::Size;
     use egui_grid::GridBuilder;
     use strum::{EnumCount, IntoEnumIterator};
-    use three_d::egui;
+    use three_d::egui::{self, Color32, ImageButton};
 
     use crate::{
         config,
-        ui::{api::buttons::DecoradedButtons, UiData},
+        ui::{icon, UiData},
     };
 
     use crate::environment::view::Orientation;
@@ -81,26 +81,43 @@ pub mod orientation {
             |builder, _| builder.cell(Size::initial(40.0)),
         );
 
+        let before = ui.visuals_mut().widgets.inactive.weak_bg_fill;
+        ui.visuals_mut().widgets.inactive.weak_bg_fill = Color32::TRANSPARENT;
+
         builder.cell(Size::remainder()).show(ui, |mut grid| {
             grid.empty();
 
             //skip first because first is Orientation::Default we don't want that
             Orientation::iter().skip(1).for_each(|orientation| {
                 grid.cell(|ui| {
-                    ui.add_responsive_button(
-                        data,
-                        &config::gui::ORIENATION_BUTTON,
-                        orientation,
-                        &|data| {
-                            data.borrow_shared_state().writer_environment_event.send(
-                                crate::environment::EnvironmentEvent::SendOrientation(orientation),
-                            )
+                    let button = config::gui::ORIENATION_BUTTON;
+
+                    let icon = icon::ICONTABLE.get_icon(orientation).unwrap();
+
+                    let image_button =
+                        ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(true);
+
+                    ui.allocate_ui(
+                        [button.size.0 + button.border, button.size.1 + button.border].into(),
+                        |ui| {
+                            let response =
+                                ui.add_sized([button.size.0, button.size.1], image_button);
+
+                            if response.clicked() {
+                                data.borrow_shared_state().writer_environment_event.send(
+                                    crate::environment::EnvironmentEvent::SendOrientation(
+                                        orientation,
+                                    ),
+                                )
+                            }
                         },
-                    )
+                    );
                 });
             });
             grid.empty();
         });
+
+        ui.visuals_mut().widgets.inactive.weak_bg_fill = before;
     }
 }
 

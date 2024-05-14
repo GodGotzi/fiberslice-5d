@@ -11,7 +11,7 @@ pub mod default {
 pub mod gui {
     use three_d::egui;
 
-    use crate::ui::api::buttons::DecoradedButton;
+    use crate::ui::api::DecoradedButton;
 
     pub const fn shaded_color(darkmode: bool) -> egui::Color32 {
         match darkmode {
@@ -28,13 +28,11 @@ pub mod gui {
     pub const TOOL_TOGGLE_BUTTON: DecoradedButton = DecoradedButton {
         border: 5.,
         size: (30., 30.),
-        hover_color: egui::Color32::from_rgba_premultiplied(75, 255, 0, 100),
     };
 
     pub const ORIENATION_BUTTON: DecoradedButton = DecoradedButton {
         border: 5.,
         size: (35., 35.),
-        hover_color: egui::Color32::from_rgba_premultiplied(75, 255, 0, 100),
     };
 
     pub mod default {

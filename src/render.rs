@@ -1,7 +1,8 @@
 use egui_glow::Painter;
 use std::{cell::RefCell, collections::HashMap, ops::Deref};
 use three_d::{
-    ClearState, Context, FrameInput, Gm, Mesh, Object, PhysicalMaterial, RenderTarget, GUI,
+    ClearState, Context, CpuMaterial, CpuMesh, FrameInput, Gm, Mesh, Object, PhysicalMaterial,
+    RenderTarget, Srgba,
 };
 use three_d_asset::{vec3, Mat4, Positions, TriMesh};
 
@@ -118,11 +119,11 @@ impl FrameHandle<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>)>
             self.render(&environment);
 
             if let Ok(output) = output {
-                //render ui
-                //println!("rendering ui");
+                // render ui
+                // println!("rendering ui");
                 output.render(&self.ui_painter);
             } else {
-                //println!("not rendering ui");
+                println!("not rendering ui");
             }
         });
 
@@ -138,6 +139,26 @@ impl Adapter<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>), Ren
     fn from_context(context: &Context) -> (EventWriter<RenderEvent>, Self) {
         let (reader, writer) = create_event_bundle::<RenderEvent>();
 
+        let mut components = HashMap::new();
+
+        let sphere = Gm::new(
+            Mesh::new(context, &CpuMesh::sphere(16)),
+            PhysicalMaterial::new_transparent(
+                context,
+                &CpuMaterial {
+                    albedo: Srgba {
+                        r: 255,
+                        g: 0,
+                        b: 0,
+                        a: 200,
+                    },
+                    ..Default::default()
+                },
+            ),
+        );
+
+        components.insert("HACK".to_string(), sphere);
+
         (
             writer,
             Self {
@@ -146,7 +167,7 @@ impl Adapter<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>), Ren
                     workpiece: SharedMut::default(),
                 },
                 ui_painter: RefCell::new(Painter::new(context.deref().clone(), "", None).unwrap()),
-                components: HashMap::new(),
+                components,
                 event_reader: reader,
             },
         )

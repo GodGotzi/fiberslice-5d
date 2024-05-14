@@ -50,8 +50,8 @@ async fn main() {
     let (writer_render_event, mut render_adapter) =
         render::RenderAdapter::from_context(window_handler.borrow_context());
 
-    render_adapter.set_workpiece(workpiece.unwrap());
-    render_adapter.update_from_state();
+    // render_adapter.set_workpiece(workpiece.unwrap());
+    // render_adapter.update_from_state();
 
     //render_adapter.set_toolpath(toolpath);
 
@@ -69,8 +69,6 @@ async fn main() {
         writer_ui_event,
         writer_picking_event,
     );
-
-    ui_adapter.init(&shared_state);
 
     //let cpu_model = create_toolpath(&context);
     window_handler.init();

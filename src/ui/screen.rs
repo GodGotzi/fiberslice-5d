@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use super::*;
 use components::{addons, menubar, modebar, settingsbar, taskbar, toolbar};
 use three_d::Viewport;
@@ -17,19 +15,6 @@ pub struct Screen {
 impl Screen {
     pub fn new() -> Self {
         let inner_components: Vec<Box<dyn InnerComponent>> = vec![Box::new(addons::Addons::new())];
-
-        /*
-        let mut components: HashMap<String, Box<dyn Component>> = HashMap::new();
-
-        components.insert(
-            "QuickSettings".to_string(),
-            Box::new(settingsbar::Settingsbar::new()),
-        );
-        components.insert("MenuBar".to_string(), Box::new(menubar::Menubar::new()));
-        components.insert("TaskBar".to_string(), Box::new(taskbar::Taskbar::new()));
-        components.insert("ModeBar".to_string(), Box::new(modebar::Modebar::new()));
-        components.insert("ToolBar".to_string(), Box::new(toolbar::Toolbar::new()));
-        */
 
         Self {
             inner_components,
