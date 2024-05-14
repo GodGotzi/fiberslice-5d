@@ -5,8 +5,8 @@
     Please refer to the terms and conditions stated therein.
 */
 
-use egui::*;
 use three_d::egui;
+use three_d::egui::*;
 
 use egui_extras::Size;
 use egui_grid::GridBuilder;
