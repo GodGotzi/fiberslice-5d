@@ -1,8 +1,6 @@
 use egui_glow::Painter;
 use std::{cell::RefCell, collections::HashMap, ops::Deref};
-use three_d::{
-    ClearState, Context, FrameInput, Gm, Mesh, Object, PhysicalMaterial, RenderTarget, GUI,
-};
+use three_d::{ClearState, Context, FrameInput, Gm, Mesh, Object, PhysicalMaterial, RenderTarget};
 use three_d_asset::{vec3, Mat4, Positions, TriMesh};
 
 use crate::{
@@ -52,7 +50,7 @@ impl RenderAdapter {
 
         let mut center_mass = workpiece.center_mass;
 
-        println!("Center mass: {:?}", center_mass);
+        // println!("Center mass: {:?}", center_mass);
         let mut vertices = Vec::new();
         let mut colors = Vec::new();
 
@@ -103,11 +101,11 @@ impl RenderAdapter {
     }
 }
 
-impl FrameHandle<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>)> for RenderAdapter {
+impl FrameHandle<(), (SharedMut<Environment>, &ParallelUiOutput)> for RenderAdapter {
     fn handle_frame(
         &mut self,
         frame_input: &FrameInput,
-        (shared_environment, output): (SharedMut<Environment>, &Result<ParallelUiOutput, Error>),
+        (shared_environment, output): (SharedMut<Environment>, &ParallelUiOutput),
     ) -> Result<(), Error> {
         let environment = shared_environment.read();
         let screen: RenderTarget<'_> = frame_input.screen();
@@ -116,22 +114,14 @@ impl FrameHandle<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>)>
         screen.write(|| {
             self.render(&environment);
 
-            if let Ok(output) = output {
-                //render ui
-                //println!("rendering ui");
-                output.render(&self.ui_painter);
-            } else {
-                //println!("not rendering ui");
-            }
+            output.render(&self.ui_painter);
         });
 
         Ok(())
     }
 }
 
-impl Adapter<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>), RenderEvent>
-    for RenderAdapter
-{
+impl Adapter<(), (SharedMut<Environment>, &ParallelUiOutput), RenderEvent> for RenderAdapter {
     fn from_context(context: &Context) -> (EventWriter<RenderEvent>, Self) {
         let (reader, writer) = create_event_bundle::<RenderEvent>();
 

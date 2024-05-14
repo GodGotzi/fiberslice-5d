@@ -88,7 +88,9 @@ async fn main() {
                 .handle_frame(&frame_input, ())
                 .expect("Failed to handle frame");
 
-            let ui_output = ui_adapter.handle_frame(&frame_input, &shared_state);
+            let ui_output = ui_adapter
+                .handle_frame(&frame_input, &shared_state)
+                .expect("Failed to handle frame");
 
             environment_adapter
                 .handle_frame(&frame_input, (ui_adapter.share_state(), &ui_output))

@@ -7,7 +7,7 @@ use crate::{
     config,
     event::EventReader,
     prelude::*,
-    ui::{parallel::ParallelUiOutput, UiResult, UiState},
+    ui::{parallel::ParallelUiOutput, UiState},
     view::{HandleOrientation, Orientation},
 };
 
@@ -27,21 +27,13 @@ impl EnvironmentAdapter {
     }
 }
 
-impl FrameHandle<(), (SharedMut<UiState>, &Result<ParallelUiOutput, Error>)>
-    for EnvironmentAdapter
-{
+impl FrameHandle<(), (SharedMut<UiState>, &ParallelUiOutput)> for EnvironmentAdapter {
     fn handle_frame(
         &mut self,
         frame_input: &FrameInput,
-        (state, result): (SharedMut<UiState>, &Result<ParallelUiOutput, Error>),
+        (state, result): (SharedMut<UiState>, &ParallelUiOutput),
     ) -> Result<(), Error> {
-        let pointer_use = if let Ok(result) = result {
-            result.pointer_use()
-        } else {
-            false
-        };
-
-        if !pointer_use {
+        if !result.pointer_use() {
             let mut events = frame_input
                 .events
                 .clone()
@@ -101,9 +93,7 @@ impl FrameHandle<(), (SharedMut<UiState>, &Result<ParallelUiOutput, Error>)>
     }
 }
 
-impl Adapter<(), (SharedMut<UiState>, &Result<ParallelUiOutput, Error>), EnvironmentEvent>
-    for EnvironmentAdapter
-{
+impl Adapter<(), (SharedMut<UiState>, &ParallelUiOutput), EnvironmentEvent> for EnvironmentAdapter {
     fn from_context(context: &Context) -> (crate::event::EventWriter<EnvironmentEvent>, Self) {
         let (reader, writer) = crate::event::create_event_bundle::<EnvironmentEvent>();
 
