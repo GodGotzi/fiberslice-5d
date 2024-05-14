@@ -48,6 +48,8 @@ impl RenderAdapter {
     }
 
     pub fn update_from_state(&mut self) {
+        let now = std::time::Instant::now();
+
         let read = self.shared_state.workpiece.read();
         let workpiece = read.as_ref().unwrap();
 
@@ -72,6 +74,8 @@ impl RenderAdapter {
             }
         }
 
+        println!("Update took {:?}", now.elapsed());
+
         drop(read);
 
         let mut cpu_mesh = TriMesh {
@@ -81,6 +85,8 @@ impl RenderAdapter {
         };
 
         cpu_mesh.compute_normals();
+
+        println!("Update took {:?}", now.elapsed());
 
         let mesh = Mesh::new(&self.context, &cpu_mesh);
 
@@ -95,6 +101,9 @@ impl RenderAdapter {
         )));
 
         self.components.insert("WORKPIECE".to_string(), model);
+
+        println!("Update took {:?}", now.elapsed());
+        std::thread::sleep(std::time::Duration::from_secs(1));
     }
 
     pub fn render(&mut self, environment: &Environment) {
@@ -139,25 +148,7 @@ impl Adapter<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>), Ren
     fn from_context(context: &Context) -> (EventWriter<RenderEvent>, Self) {
         let (reader, writer) = create_event_bundle::<RenderEvent>();
 
-        let mut components = HashMap::new();
-
-        let sphere = Gm::new(
-            Mesh::new(context, &CpuMesh::sphere(16)),
-            PhysicalMaterial::new_transparent(
-                context,
-                &CpuMaterial {
-                    albedo: Srgba {
-                        r: 255,
-                        g: 0,
-                        b: 0,
-                        a: 200,
-                    },
-                    ..Default::default()
-                },
-            ),
-        );
-
-        components.insert("HACK".to_string(), sphere);
+        let components = HashMap::new();
 
         (
             writer,
