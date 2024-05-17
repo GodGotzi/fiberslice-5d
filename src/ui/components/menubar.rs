@@ -1,5 +1,4 @@
 use egui::Ui;
-use three_d::egui;
 
 use crate::config;
 use crate::ui::boundary::Boundary;

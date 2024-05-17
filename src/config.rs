@@ -9,8 +9,6 @@ pub mod default {
 }
 
 pub mod gui {
-    use three_d::egui;
-
     use crate::ui::api::DecoradedButton;
 
     pub const fn shaded_color(darkmode: bool) -> egui::Color32 {

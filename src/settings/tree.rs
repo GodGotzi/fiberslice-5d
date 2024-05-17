@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap, usize};
 
+use egui::{CollapsingHeader, Color32, DragValue, Response, TextEdit, Ui};
 use serde::{Deserialize, Serialize};
-use three_d::egui::{CollapsingHeader, Color32, DragValue, Response, TextEdit};
 
 use crate::prelude::{SharedMut, WrappedSharedMut};
 
@@ -35,7 +35,7 @@ impl QuickSettings {
         }
     }
 
-    pub fn show(&self, ui: &mut three_d::egui::Ui) {
+    pub fn show(&self, ui: &mut Ui) {
         //check if the settingtree has changed
         if self.tree.write().inner.show(ui) {
             //if it has changed, update the raw settings
@@ -79,7 +79,7 @@ impl Default for SettingTree {
 }
 
 impl SettingTree {
-    pub fn show(&mut self, ui: &mut three_d::egui::Ui) -> bool {
+    pub fn show(&mut self, ui: &mut Ui) -> bool {
         let mut has_changed = false;
 
         let mut child_vec = self
@@ -203,7 +203,7 @@ enum TreeNode {
 }
 
 impl TreeNode {
-    fn show(&mut self, ui: &mut three_d::egui::Ui) -> bool {
+    fn show(&mut self, ui: &mut Ui) -> bool {
         match self {
             TreeNode::Branch {
                 children,
@@ -299,12 +299,7 @@ enum NodeValue {
 }
 
 impl NodeValue {
-    fn show(
-        &mut self,
-        description: &str,
-        unit: Option<&String>,
-        ui: &mut three_d::egui::Ui,
-    ) -> Response {
+    fn show(&mut self, description: &str, unit: Option<&String>, ui: &mut Ui) -> Response {
         crate::config::gui::settings::SETTINGS_LABEL.label(ui, description);
 
         let response = match self {

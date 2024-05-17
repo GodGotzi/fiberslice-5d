@@ -1,7 +1,6 @@
 use std::{any::TypeId, collections::HashMap};
 
 use egui_extras::RetainedImage;
-use three_d::egui;
 
 use lazy_static::lazy_static;
 

@@ -1,9 +1,7 @@
 use egui_glow::Painter;
 use std::{cell::RefCell, collections::HashMap, ops::Deref};
-use three_d::{
-    ClearState, Context, CpuMaterial, CpuMesh, FrameInput, Gm, Mesh, Object, PhysicalMaterial,
-    RenderTarget, Srgba,
-};
+use strum_macros::Display;
+use three_d::{ClearState, Context, FrameInput, Gm, Mesh, Object, PhysicalMaterial, RenderTarget};
 use three_d_asset::{vec3, Mat4, Positions, TriMesh};
 
 use crate::{
@@ -113,6 +111,19 @@ impl RenderAdapter {
     }
 }
 
+#[derive(Debug)]
+struct RenderError {
+    message: String,
+}
+
+impl std::fmt::Display for RenderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "RenderError: {}", self.message)
+    }
+}
+
+impl std::error::Error for RenderError {}
+
 impl FrameHandle<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>)> for RenderAdapter {
     fn handle_frame(
         &mut self,
@@ -134,6 +145,8 @@ impl FrameHandle<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>)>
             } else {
                 println!("not rendering ui");
             }
+
+            Result::<(), RenderError>::Ok(())
         });
 
         println!("Render took {:?}", now.elapsed());

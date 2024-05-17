@@ -1,6 +1,5 @@
 use egui_extras::Size;
 use egui_grid::GridBuilder;
-use three_d::egui;
 
 use crate::config;
 use crate::environment::view::Mode;

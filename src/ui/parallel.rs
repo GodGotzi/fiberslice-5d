@@ -1,10 +1,9 @@
 use std::cell::RefCell;
 
 use egui_glow::Painter;
-use three_d::{
-    egui::{self, ClippedPrimitive, TexturesDelta},
-    Event, Modifiers, Viewport,
-};
+use three_d::{Event, Key, Modifiers, MouseButton, Viewport};
+
+use egui::{ClippedPrimitive, TexturesDelta};
 
 pub struct ParallelUi {
     //painter: RefCell<Painter>,
@@ -12,6 +11,93 @@ pub struct ParallelUi {
     output: RefCell<Option<egui::FullOutput>>,
     viewport: Viewport,
     modifiers: Modifiers,
+}
+
+struct WrapKey(egui::Key);
+
+impl From<&Key> for WrapKey {
+    fn from(key: &Key) -> Self {
+        use three_d::Key::*;
+        WrapKey(match key {
+            ArrowDown => egui::Key::ArrowDown,
+            ArrowLeft => egui::Key::ArrowLeft,
+            ArrowRight => egui::Key::ArrowRight,
+            ArrowUp => egui::Key::ArrowUp,
+            Escape => egui::Key::Escape,
+            Tab => egui::Key::Tab,
+            Backspace => egui::Key::Backspace,
+            Enter => egui::Key::Enter,
+            Space => egui::Key::Space,
+            Insert => egui::Key::Insert,
+            Delete => egui::Key::Delete,
+            Home => egui::Key::Home,
+            End => egui::Key::End,
+            PageUp => egui::Key::PageUp,
+            PageDown => egui::Key::PageDown,
+            Num0 => egui::Key::Num0,
+            Num1 => egui::Key::Num1,
+            Num2 => egui::Key::Num2,
+            Num3 => egui::Key::Num3,
+            Num4 => egui::Key::Num4,
+            Num5 => egui::Key::Num5,
+            Num6 => egui::Key::Num6,
+            Num7 => egui::Key::Num7,
+            Num8 => egui::Key::Num8,
+            Num9 => egui::Key::Num9,
+            B => egui::Key::B,
+            A => egui::Key::A,
+            C => egui::Key::C,
+            D => egui::Key::D,
+            E => egui::Key::E,
+            F => egui::Key::F,
+            G => egui::Key::G,
+            H => egui::Key::H,
+            I => egui::Key::I,
+            J => egui::Key::J,
+            K => egui::Key::K,
+            L => egui::Key::L,
+            M => egui::Key::M,
+            N => egui::Key::N,
+            O => egui::Key::O,
+            P => egui::Key::P,
+            Q => egui::Key::Q,
+            R => egui::Key::R,
+            S => egui::Key::S,
+            T => egui::Key::T,
+            U => egui::Key::U,
+            V => egui::Key::V,
+            W => egui::Key::W,
+            X => egui::Key::X,
+            Y => egui::Key::Y,
+            Z => egui::Key::Z,
+        })
+    }
+}
+
+struct WrapModifiers(egui::Modifiers);
+
+impl From<&Modifiers> for WrapModifiers {
+    fn from(modifiers: &Modifiers) -> Self {
+        Self(egui::Modifiers {
+            alt: modifiers.alt,
+            ctrl: modifiers.ctrl,
+            shift: modifiers.shift,
+            command: modifiers.command,
+            mac_cmd: cfg!(target_os = "macos") && modifiers.command,
+        })
+    }
+}
+
+struct WrapPointerButton(egui::PointerButton);
+
+impl From<&MouseButton> for WrapPointerButton {
+    fn from(button: &MouseButton) -> Self {
+        match button {
+            MouseButton::Left => WrapPointerButton(egui::PointerButton::Primary),
+            MouseButton::Right => WrapPointerButton(egui::PointerButton::Secondary),
+            MouseButton::Middle => WrapPointerButton(egui::PointerButton::Middle),
+        }
+    }
 }
 
 impl ParallelUi {
@@ -33,23 +119,24 @@ impl ParallelUi {
         device_pixel_ratio: f32,
         callback: impl FnOnce(&egui::Context),
     ) -> bool {
+        self.egui_context
+            .set_pixels_per_point(device_pixel_ratio as f32);
         self.viewport = viewport;
         let egui_input = egui::RawInput {
             screen_rect: Some(egui::Rect {
                 min: egui::Pos2 {
-                    x: viewport.x as f32 / device_pixel_ratio,
-                    y: viewport.y as f32 / device_pixel_ratio,
+                    x: viewport.x as f32 / device_pixel_ratio as f32,
+                    y: viewport.y as f32 / device_pixel_ratio as f32,
                 },
                 max: egui::Pos2 {
-                    x: viewport.x as f32 / device_pixel_ratio
-                        + viewport.width as f32 / device_pixel_ratio,
-                    y: viewport.y as f32 / device_pixel_ratio
-                        + viewport.height as f32 / device_pixel_ratio,
+                    x: viewport.x as f32 / device_pixel_ratio as f32
+                        + viewport.width as f32 / device_pixel_ratio as f32,
+                    y: viewport.y as f32 / device_pixel_ratio as f32
+                        + viewport.height as f32 / device_pixel_ratio as f32,
                 },
             }),
-            pixels_per_point: Some(device_pixel_ratio),
             time: Some(accumulated_time_in_ms * 0.001),
-            modifiers: (&self.modifiers).into(),
+            modifiers: WrapModifiers::from(&self.modifiers).0,
             events: events
                 .iter()
                 .filter_map(|event| match event {
@@ -60,10 +147,11 @@ impl ParallelUi {
                     } => {
                         if !handled {
                             Some(egui::Event::Key {
-                                key: kind.into(),
+                                key: WrapKey::from(kind).0,
                                 pressed: true,
-                                modifiers: modifiers.into(),
+                                modifiers: WrapModifiers::from(modifiers).0,
                                 repeat: false,
+                                physical_key: None,
                             })
                         } else {
                             None
@@ -76,10 +164,11 @@ impl ParallelUi {
                     } => {
                         if !handled {
                             Some(egui::Event::Key {
-                                key: kind.into(),
+                                key: WrapKey::from(kind).0,
                                 pressed: false,
-                                modifiers: modifiers.into(),
+                                modifiers: WrapModifiers::from(modifiers).0,
                                 repeat: false,
+                                physical_key: None,
                             })
                         } else {
                             None
@@ -94,12 +183,13 @@ impl ParallelUi {
                         if !handled {
                             Some(egui::Event::PointerButton {
                                 pos: egui::Pos2 {
-                                    x: position.x,
-                                    y: position.y,
+                                    x: position.x / device_pixel_ratio as f32,
+                                    y: (viewport.height as f32 - position.y)
+                                        / device_pixel_ratio as f32,
                                 },
-                                button: button.into(),
+                                button: WrapPointerButton::from(button).0,
                                 pressed: true,
-                                modifiers: modifiers.into(),
+                                modifiers: WrapModifiers::from(modifiers).0,
                             })
                         } else {
                             None
@@ -114,12 +204,13 @@ impl ParallelUi {
                         if !handled {
                             Some(egui::Event::PointerButton {
                                 pos: egui::Pos2 {
-                                    x: position.x,
-                                    y: position.y,
+                                    x: position.x / device_pixel_ratio as f32,
+                                    y: (viewport.height as f32 - position.y)
+                                        / device_pixel_ratio as f32,
                                 },
-                                button: button.into(),
+                                button: WrapPointerButton::from(button).0,
                                 pressed: false,
-                                modifiers: modifiers.into(),
+                                modifiers: WrapModifiers::from(modifiers).0,
                             })
                         } else {
                             None
@@ -130,8 +221,9 @@ impl ParallelUi {
                     } => {
                         if !handled {
                             Some(egui::Event::PointerMoved(egui::Pos2 {
-                                x: position.x,
-                                y: position.y,
+                                x: position.x / device_pixel_ratio as f32,
+                                y: (viewport.height as f32 - position.y)
+                                    / device_pixel_ratio as f32,
                             }))
                         } else {
                             None
@@ -147,10 +239,10 @@ impl ParallelUi {
                     } => {
                         if !handled {
                             Some(match modifiers.ctrl {
-                                true => egui::Event::Zoom((delta.1 / 200.0).exp()),
+                                true => egui::Event::Zoom((delta.1 as f32 / 200.0).exp()),
                                 false => egui::Event::Scroll(match modifiers.shift {
-                                    true => egui::Vec2::new(delta.1, delta.0),
-                                    false => egui::Vec2::new(delta.0, delta.1),
+                                    true => egui::Vec2::new(delta.1 as f32, delta.0 as f32),
+                                    false => egui::Vec2::new(delta.0 as f32, delta.1 as f32),
                                 }),
                             })
                         } else {
@@ -226,8 +318,8 @@ impl ParallelUi {
             .borrow_mut()
             .take()
             .expect("need to call GUI::update before GUI::render");
-        let clipped_meshes = self.egui_context.tessellate(output.shapes);
         let scale = self.egui_context.pixels_per_point();
+        let clipped_meshes = self.egui_context.tessellate(output.shapes, scale);
 
         ParallelUiOutput {
             clipped_meshes,

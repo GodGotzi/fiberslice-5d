@@ -7,9 +7,10 @@
 
 use macros::NumEnum;
 use strum_macros::{EnumCount, EnumIter};
-use three_d::{LogicalPoint, Viewport};
+use three_d::Viewport;
+use three_d_asset::PixelPoint;
 
-use three_d::{vec3, Camera, Deg, Vec3};
+use three_d::{Camera, Deg, Vec3};
 
 use crate::api::Contains;
 
@@ -39,8 +40,8 @@ pub enum Mode {
     ForceAnalytics,
 }
 
-impl Contains<LogicalPoint> for Viewport {
-    fn contains(&self, point: &LogicalPoint) -> bool {
+impl Contains<PixelPoint> for Viewport {
+    fn contains(&self, point: &PixelPoint) -> bool {
         point.x > self.x as f32
             && point.x < self.x as f32 + self.width as f32
             && point.y > self.y as f32

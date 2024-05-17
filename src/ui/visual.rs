@@ -1,4 +1,4 @@
-use three_d::egui::{self, Rounding};
+use egui::Rounding;
 
 pub fn customize_look_and_feel(mut visuals: egui::Visuals) -> egui::Visuals {
     visuals.selection.bg_fill = egui::Color32::from_rgb(76, 255, 0);

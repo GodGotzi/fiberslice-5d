@@ -1,5 +1,3 @@
-use three_d::egui;
-
 use crate::config;
 use crate::ui::boundary::Boundary;
 use crate::ui::{Component, Theme, UiData};

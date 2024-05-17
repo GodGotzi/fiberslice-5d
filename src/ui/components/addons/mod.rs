@@ -5,8 +5,8 @@
     Please refer to the terms and conditions stated therein.
 */
 
+use egui::*;
 use egui_extras::{Size, StripBuilder};
-use three_d::egui::{self, *};
 
 use crate::ui::{boundary::Boundary, InnerComponent, UiData};
 
@@ -49,10 +49,10 @@ pub fn create_addon_strip_builder(
 }
 
 pub mod orientation {
+    use egui::{Color32, ImageButton};
     use egui_extras::Size;
     use egui_grid::GridBuilder;
     use strum::{EnumCount, IntoEnumIterator};
-    use three_d::egui::{self, Color32, ImageButton};
 
     use crate::{
         config,

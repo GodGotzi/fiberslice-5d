@@ -1,6 +1,5 @@
-use egui::Ui;
+use egui::{Layout, Ui};
 use egui_extras::Size;
-use three_d::egui::{self, Layout};
 
 use crate::{
     config::gui::shaded_color,

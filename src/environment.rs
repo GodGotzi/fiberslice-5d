@@ -36,7 +36,7 @@ impl FrameHandle<(), (SharedMut<UiState>, &Result<ParallelUiOutput, Error>)>
     fn handle_frame(
         &mut self,
         frame_input: &FrameInput,
-        (state, result): (SharedMut<UiState>, &Result<ParallelUiOutput, Error>),
+        (_state, result): (SharedMut<UiState>, &Result<ParallelUiOutput, Error>),
     ) -> Result<(), Error> {
         if let Ok(result) = result {
             if !result.pointer_use {

@@ -15,13 +15,12 @@ pub mod parallel;
 mod visual;
 
 use parking_lot::{RwLockReadGuard, RwLockWriteGuard};
-use three_d::{
-    egui::{self, Visuals},
-    Context, FrameInput,
-};
+use three_d::{Context, FrameInput};
+
+use egui::Visuals;
 
 use crate::{
-    environment::view::{Mode, Orientation},
+    environment::view::Mode,
     event::EventReader,
     prelude::{Adapter, Error, FrameHandle, SharedMut, SharedState},
 };

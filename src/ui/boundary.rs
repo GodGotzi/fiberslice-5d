@@ -1,5 +1,4 @@
 use egui::Response;
-use three_d::egui;
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Boundary {
