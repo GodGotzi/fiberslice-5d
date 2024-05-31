@@ -1,5 +1,7 @@
 use super::*;
 use components::{addons, menubar, modebar, settingsbar, taskbar, toolbar};
+use egui::{Margin, Rect};
+use egui_xml::load_layout;
 use three_d::Viewport;
 
 pub struct Screen {
@@ -10,6 +12,14 @@ pub struct Screen {
     taskbar: taskbar::Taskbar,
     modebar: modebar::Modebar,
     toolbar: toolbar::Toolbar,
+}
+
+fn color_background(ui: &mut egui::Ui, color: egui::Color32) {
+    ui.painter().rect_filled(
+        ui.available_rect_before_wrap(),
+        egui::Rounding::same(5.0),
+        color,
+    );
 }
 
 impl Screen {
@@ -29,15 +39,16 @@ impl Screen {
     pub fn show(&mut self, ctx: &egui::Context, ui_ctx: &mut UiData) {
         let frame = egui::containers::Frame {
             fill: egui::Color32::TRANSPARENT,
+            outer_margin: Margin::symmetric(10.0, 10.0),
             ..Default::default()
         };
 
-        if *self.quick_settings.get_enabled_mut() {
-            self.quick_settings.show(ctx, ui_ctx);
-        }
-
         if *self.menubar.get_enabled_mut() {
             self.menubar.show(ctx, ui_ctx);
+        }
+
+        if *self.quick_settings.get_enabled_mut() {
+            self.quick_settings.show(ctx, ui_ctx);
         }
 
         if *self.taskbar.get_enabled_mut() {
@@ -59,11 +70,33 @@ impl Screen {
                 .show(ui);
             */
 
+            let vertical_gap_symetric = 1.5;
+
+            load_layout!(
+                <Strip direction="west">
+                    <Panel size="relative" value="0.3">
+                        color_background(ui, egui::Color32::from_rgb(0, 0, 255));
+                    </Panel>
+                    <Panel size="remainder">
+                        <Strip direction="north" gap="@vertical_gap_symetric">
+                            <Panel size="relative" value="0.3">
+                                color_background(ui, egui::Color32::from_rgb(0, 255, 255));
+                            </Panel>
+                            <Panel size="remainder">
+                                color_background(ui, egui::Color32::from_rgb(255, 0, 255));
+                            </Panel>
+                        </Strip>
+                    </Panel>
+                </Strip>
+            );
+
+            /*
             for component in self.inner_components.iter_mut() {
                 if *component.get_enabled_mut() {
                     component.show(ctx, ui, ui_ctx);
                 }
             }
+            */
         });
     }
 
