@@ -135,19 +135,21 @@ impl FrameHandle<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>)>
         let screen: RenderTarget<'_> = frame_input.screen();
 
         screen.clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0));
-        screen.write(|| {
-            self.render(&environment);
+        screen
+            .write(|| {
+                self.render(&environment);
 
-            if let Ok(output) = output {
-                // render ui
-                // println!("rendering ui");
-                output.render(&self.ui_painter);
-            } else {
-                println!("not rendering ui");
-            }
+                if let Ok(output) = output {
+                    // render ui
+                    // println!("rendering ui");
+                    output.render(&self.ui_painter);
+                } else {
+                    println!("not rendering ui");
+                }
 
-            Result::<(), RenderError>::Ok(())
-        });
+                Result::<(), RenderError>::Ok(())
+            })
+            .unwrap();
 
         println!("Render took {:?}", now.elapsed());
 
@@ -185,5 +187,11 @@ impl Adapter<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>), Ren
 
     fn get_adapter_description(&self) -> String {
         "RenderAdapter".to_string()
+    }
+}
+
+impl Drop for RenderAdapter {
+    fn drop(&mut self) {
+        self.ui_painter.borrow_mut().destroy();
     }
 }

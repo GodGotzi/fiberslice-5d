@@ -52,7 +52,7 @@ impl FrameHandle<ParallelUiOutput, &SharedState> for UiAdapter {
     fn handle_frame(
         &mut self,
         frame_input: &three_d::FrameInput,
-        state: &SharedState,
+        shared_state: &SharedState,
     ) -> Result<ParallelUiOutput, Error> {
         self.ui.update(
             &mut frame_input.events.clone(),
@@ -60,6 +60,8 @@ impl FrameHandle<ParallelUiOutput, &SharedState> for UiAdapter {
             frame_input.viewport,
             frame_input.device_pixel_ratio,
             |ctx| {
+                egui_extras::install_image_loaders(ctx);
+
                 let mut result = UiResult::empty();
                 result.pointer_use = Some(ctx.is_using_pointer());
 
@@ -70,7 +72,7 @@ impl FrameHandle<ParallelUiOutput, &SharedState> for UiAdapter {
                     ctx,
                     &mut UiData {
                         state: self.state.clone(),
-                        shared_state: &state,
+                        shared_state,
                     },
                 );
             },

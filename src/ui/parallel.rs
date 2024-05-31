@@ -119,20 +119,19 @@ impl ParallelUi {
         device_pixel_ratio: f32,
         callback: impl FnOnce(&egui::Context),
     ) -> bool {
-        self.egui_context
-            .set_pixels_per_point(device_pixel_ratio as f32);
+        self.egui_context.set_pixels_per_point(device_pixel_ratio);
         self.viewport = viewport;
         let egui_input = egui::RawInput {
             screen_rect: Some(egui::Rect {
                 min: egui::Pos2 {
-                    x: viewport.x as f32 / device_pixel_ratio as f32,
-                    y: viewport.y as f32 / device_pixel_ratio as f32,
+                    x: viewport.x as f32 / device_pixel_ratio,
+                    y: viewport.y as f32 / device_pixel_ratio,
                 },
                 max: egui::Pos2 {
-                    x: viewport.x as f32 / device_pixel_ratio as f32
-                        + viewport.width as f32 / device_pixel_ratio as f32,
-                    y: viewport.y as f32 / device_pixel_ratio as f32
-                        + viewport.height as f32 / device_pixel_ratio as f32,
+                    x: viewport.x as f32 / device_pixel_ratio
+                        + viewport.width as f32 / device_pixel_ratio,
+                    y: viewport.y as f32 / device_pixel_ratio
+                        + viewport.height as f32 / device_pixel_ratio,
                 },
             }),
             time: Some(accumulated_time_in_ms * 0.001),
@@ -183,9 +182,8 @@ impl ParallelUi {
                         if !handled {
                             Some(egui::Event::PointerButton {
                                 pos: egui::Pos2 {
-                                    x: position.x / device_pixel_ratio as f32,
-                                    y: (viewport.height as f32 - position.y)
-                                        / device_pixel_ratio as f32,
+                                    x: position.x / device_pixel_ratio,
+                                    y: (viewport.height as f32 - position.y) / device_pixel_ratio,
                                 },
                                 button: WrapPointerButton::from(button).0,
                                 pressed: true,
@@ -204,9 +202,8 @@ impl ParallelUi {
                         if !handled {
                             Some(egui::Event::PointerButton {
                                 pos: egui::Pos2 {
-                                    x: position.x / device_pixel_ratio as f32,
-                                    y: (viewport.height as f32 - position.y)
-                                        / device_pixel_ratio as f32,
+                                    x: position.x / device_pixel_ratio,
+                                    y: (viewport.height as f32 - position.y) / device_pixel_ratio,
                                 },
                                 button: WrapPointerButton::from(button).0,
                                 pressed: false,
@@ -221,9 +218,8 @@ impl ParallelUi {
                     } => {
                         if !handled {
                             Some(egui::Event::PointerMoved(egui::Pos2 {
-                                x: position.x / device_pixel_ratio as f32,
-                                y: (viewport.height as f32 - position.y)
-                                    / device_pixel_ratio as f32,
+                                x: position.x / device_pixel_ratio,
+                                y: (viewport.height as f32 - position.y) / device_pixel_ratio,
                             }))
                         } else {
                             None
@@ -239,10 +235,10 @@ impl ParallelUi {
                     } => {
                         if !handled {
                             Some(match modifiers.ctrl {
-                                true => egui::Event::Zoom((delta.1 as f32 / 200.0).exp()),
+                                true => egui::Event::Zoom((delta.1 / 200.0).exp()),
                                 false => egui::Event::Scroll(match modifiers.shift {
-                                    true => egui::Vec2::new(delta.1 as f32, delta.0 as f32),
-                                    false => egui::Vec2::new(delta.0 as f32, delta.1 as f32),
+                                    true => egui::Vec2::new(delta.1, delta.0),
+                                    false => egui::Vec2::new(delta.0, delta.1),
                                 }),
                             })
                         } else {

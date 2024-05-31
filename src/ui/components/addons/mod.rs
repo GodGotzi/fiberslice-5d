@@ -92,10 +92,9 @@ pub mod orientation {
                 grid.cell(|ui| {
                     let button = config::gui::ORIENATION_BUTTON;
 
-                    let icon = icon::ICONTABLE.get_icon(orientation).unwrap();
+                    let icon = icon::ICONTABLE.get_orientation_asset(orientation);
 
-                    let image_button =
-                        ImageButton::new(icon.texture_id(ui.ctx()), icon.size_vec2()).frame(true);
+                    let image_button = ImageButton::new(icon).frame(true);
 
                     ui.allocate_ui(
                         [button.size.0 + button.border, button.size.1 + button.border].into(),
