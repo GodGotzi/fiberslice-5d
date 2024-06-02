@@ -21,6 +21,7 @@ impl FrameHandle<(), RenderState> for PickingAdapter {
         _frame_input: &three_d::FrameInput,
         _state: RenderState,
     ) -> Result<(), Error> {
+        puffin::profile_function!();
         Ok(())
     }
 }

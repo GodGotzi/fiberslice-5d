@@ -115,6 +115,7 @@ pub trait Adapter<T, C, E: Debug + Clone>: FrameHandle<T, C> {
     fn handle_event(&mut self, event: E);
 
     fn handle_events(&mut self) {
+        puffin::profile_function!();
         if self.get_reader().has_active_events() {
             let events = self.get_reader().read();
 
@@ -184,9 +185,6 @@ impl SharedState {
 impl FrameHandle<(), ()> for SharedState {
     fn handle_frame(&mut self, frame_input: &FrameInput, _context: ()) -> Result<(), Error> {
         self.frame_input.write().replace(frame_input.clone());
-
-        println!("Frame: {:?}", frame_input);
-        println!("Elapsed time: {:?}", frame_input.elapsed_time);
 
         Ok(())
     }

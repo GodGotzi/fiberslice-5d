@@ -38,6 +38,7 @@ impl FrameHandle<(), (SharedMut<UiState>, &Result<ParallelUiOutput, Error>)>
         frame_input: &FrameInput,
         (_state, result): (SharedMut<UiState>, &Result<ParallelUiOutput, Error>),
     ) -> Result<(), Error> {
+        puffin::profile_function!();
         if let Ok(result) = result {
             if !result.pointer_use {
                 let mut events = frame_input

@@ -27,12 +27,18 @@ mod ui;
 
 mod window;
 
+use window::WindowHandler;
 use winit::event_loop::EventLoop;
 
 use crate::prelude::FrameHandle;
 
 #[tokio::main]
 async fn main() {
+    let server_addr = format!("127.0.0.1:{}", puffin_http::DEFAULT_PORT);
+    let _puffin_server = puffin_http::Server::new(&server_addr).unwrap();
+    eprintln!("Run this to view profiling data:  puffin_viewer {server_addr}");
+    puffin::set_scopes_on(true);
+
     let event_loop = EventLoop::new();
 
     let mut window_handler = window::WindowHandler::from_event_loop(&event_loop);
@@ -75,9 +81,10 @@ async fn main() {
 
     event_loop.run(move |event, _, control_flow| match event {
         winit::event::Event::MainEventsCleared => {
-            window_handler.request_redraw();
+            //window_handler.request_redraw();
         }
         winit::event::Event::RedrawRequested(_) => {
+            puffin::GlobalProfiler::lock().new_frame();
             let frame_input = window_handler.next_frame_input();
 
             shared_state
@@ -106,7 +113,12 @@ async fn main() {
             render_adapter.handle_events();
             picking_adapter.handle_events();
 
-            window_handler.borrow_context().swap_buffers().unwrap();
+            {
+                puffin::profile_scope!("Swap buffers", String::from("Swap Buffers"));
+
+                window_handler.borrow_context().swap_buffers().unwrap();
+            }
+
             control_flow.set_poll();
             window_handler.request_redraw();
         }

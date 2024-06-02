@@ -54,6 +54,8 @@ impl FrameHandle<ParallelUiOutput, &SharedState> for UiAdapter {
         frame_input: &three_d::FrameInput,
         shared_state: &SharedState,
     ) -> Result<ParallelUiOutput, Error> {
+        puffin::profile_function!();
+
         self.ui.update(
             &mut frame_input.events.clone(),
             frame_input.accumulated_time,
@@ -106,7 +108,9 @@ impl Adapter<ParallelUiOutput, &SharedState, UiEvent> for UiAdapter {
         &self.event_reader
     }
 
-    fn handle_event(&mut self, event: UiEvent) {}
+    fn handle_event(&mut self, event: UiEvent) {
+        puffin::profile_function!();
+    }
 
     fn get_adapter_description(&self) -> String {
         "UiAdapter".to_string()

@@ -1,4 +1,4 @@
-use three_d::{FrameInput, FrameInputGenerator, WindowSettings, WindowedContext};
+use three_d::{FrameInput, FrameInputGenerator, SurfaceSettings, WindowSettings, WindowedContext};
 use winit::{
     dpi,
     event::WindowEvent,
@@ -17,7 +17,12 @@ pub struct WindowHandler {
 impl WindowHandler {
     pub fn from_event_loop(event_loop: &EventLoop<()>) -> Self {
         let window = build_window(event_loop).unwrap();
-        let context = WindowedContext::from_winit_window(&window, Default::default()).unwrap();
+
+        let surface_settings = SurfaceSettings {
+            vsync: false,
+            ..Default::default()
+        };
+        let context = WindowedContext::from_winit_window(&window, surface_settings).unwrap();
         let frame_input_generator = FrameInputGenerator::from_winit_window(&window);
 
         Self {
@@ -28,6 +33,8 @@ impl WindowHandler {
     }
 
     pub fn handle_winit_event(&mut self, event: &WindowEvent<'_>, control_flow: &mut ControlFlow) {
+        // puffin::profile_function!();
+
         self.frame_input_generator.handle_winit_window_event(event);
 
         match event {

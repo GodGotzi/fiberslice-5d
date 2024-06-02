@@ -7,6 +7,7 @@
 
 use egui::*;
 use egui_extras::{Size, StripBuilder};
+use egui_xml::load_layout;
 
 use crate::ui::{boundary::Boundary, InnerComponent, UiData};
 
@@ -134,8 +135,37 @@ impl Addons {
     }
 }
 
+fn color_background(ui: &mut egui::Ui, color: egui::Color32) {
+    ui.painter().rect_filled(
+        ui.available_rect_before_wrap(),
+        egui::Rounding::same(5.0),
+        color,
+    );
+}
+
 impl InnerComponent for Addons {
-    fn show(&mut self, ctx: &egui::Context, ui: &mut Ui, state: &mut UiData) {
+    fn show(&mut self, _ctx: &egui::Context, ui: &mut Ui, _state: &mut UiData) {
+        let vertical_gap_symetric = 1.5;
+
+        load_layout!(
+            <Strip direction="west">
+                <Panel size="relative" value="0.3">
+                    color_background(ui, egui::Color32::from_rgb(0, 0, 255));
+                </Panel>
+                <Panel size="remainder">
+                    <Strip direction="north" gap="@vertical_gap_symetric">
+                        <Panel size="relative" value="0.3">
+                            color_background(ui, egui::Color32::from_rgb(0, 255, 255));
+                        </Panel>
+                        <Panel size="remainder">
+                            color_background(ui, egui::Color32::from_rgb(255, 0, 255));
+                        </Panel>
+                    </Strip>
+                </Panel>
+            </Strip>
+        );
+
+        /*
         let window_size = ui.available_size();
 
         let boundary = Boundary::new(
@@ -152,6 +182,7 @@ impl InnerComponent for Addons {
         }
 
         self.boundary = boundary;
+        */
     }
 
     fn get_enabled_mut(&mut self) -> &mut bool {

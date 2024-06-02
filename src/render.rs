@@ -130,7 +130,7 @@ impl FrameHandle<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>)>
         frame_input: &FrameInput,
         (shared_environment, output): (SharedMut<Environment>, &Result<ParallelUiOutput, Error>),
     ) -> Result<(), Error> {
-        let now = std::time::Instant::now();
+        puffin::profile_function!();
         let environment = shared_environment.read();
         let screen: RenderTarget<'_> = frame_input.screen();
 
@@ -140,8 +140,6 @@ impl FrameHandle<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>)>
                 self.render(&environment);
 
                 if let Ok(output) = output {
-                    // render ui
-                    // println!("rendering ui");
                     output.render(&self.ui_painter);
                 } else {
                     println!("not rendering ui");
@@ -150,8 +148,6 @@ impl FrameHandle<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>)>
                 Result::<(), RenderError>::Ok(())
             })
             .unwrap();
-
-        println!("Render took {:?}", now.elapsed());
 
         Ok(())
     }
