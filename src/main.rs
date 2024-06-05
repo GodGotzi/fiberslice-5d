@@ -1,3 +1,6 @@
+use std::{iter, sync::Arc, time::Instant};
+
+use egui::FontDefinitions;
 /*
     Copyright (c) 2023 Elias Gottsbacher, Jan Traussnigg, Nico Huetter (HTBLA Kaindorf)
     All rights reserved.
@@ -8,6 +11,10 @@ use model::gcode::{self, DisplaySettings, MeshSettings};
 use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
 
 use prelude::{Adapter, SharedState};
+
+use egui_wgpu_backend::{RenderPass, ScreenDescriptor};
+use egui_winit_platform::{Platform, PlatformDescriptor};
+use wgpu::InstanceDescriptor;
 
 mod api;
 mod config;
@@ -27,23 +34,21 @@ mod ui;
 
 mod window;
 
-use window::WindowHandler;
-use winit::event_loop::EventLoop;
-
-use crate::prelude::FrameHandle;
+use winit::{error::EventLoopError, event_loop::EventLoop};
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), EventLoopError> {
     let server_addr = format!("127.0.0.1:{}", puffin_http::DEFAULT_PORT);
     let _puffin_server = puffin_http::Server::new(&server_addr).unwrap();
     eprintln!("Run this to view profiling data:  puffin_viewer {server_addr}");
     puffin::set_scopes_on(true);
 
-    let event_loop = EventLoop::new();
+    let event_loop = EventLoop::new().unwrap();
+    let window = Arc::new(window::build_window(&event_loop).unwrap());
 
-    let mut window_handler = window::WindowHandler::from_event_loop(&event_loop);
+    // let mut window_handler = window::WindowHandler::from_event_loop(&event_loop);
 
-    //let settings = SharedMut::from_inner(settings::Settings { diameter: 0.45 });
+    // let settings = SharedMut::from_inner(settings::Settings { diameter: 0.45 });
     let mesh_settings = MeshSettings {};
     let display_settings = DisplaySettings {
         diameter: 0.45,
@@ -51,6 +56,7 @@ async fn main() {
         vertical: 0.325,
     };
 
+    /*
     let workpiece = create_toolpath(&mesh_settings, &display_settings);
 
     let (writer_render_event, mut render_adapter) =
@@ -75,58 +81,166 @@ async fn main() {
         writer_ui_event,
         writer_picking_event,
     );
+    */
 
-    //let cpu_model = create_toolpath(&context);
-    window_handler.init();
-
-    event_loop.run(move |event, _, control_flow| match event {
-        winit::event::Event::MainEventsCleared => {
-            //window_handler.request_redraw();
-        }
-        winit::event::Event::RedrawRequested(_) => {
-            puffin::GlobalProfiler::lock().new_frame();
-            let frame_input = window_handler.next_frame_input();
-
-            shared_state
-                .handle_frame(&frame_input, ())
-                .expect("Failed to handle frame");
-
-            let ui_output = ui_adapter.handle_frame(&frame_input, &shared_state);
-
-            environment_adapter
-                .handle_frame(&frame_input, (ui_adapter.share_state(), &ui_output))
-                .expect("Failed to handle frame");
-
-            picking_adapter
-                .handle_frame(&frame_input, render_adapter.share_state())
-                .expect("Failed to handle frame");
-
-            render_adapter
-                .handle_frame(
-                    &frame_input,
-                    (environment_adapter.share_environment(), &ui_output),
-                )
-                .expect("Failed to handle frame");
-
-            ui_adapter.handle_events();
-            environment_adapter.handle_events();
-            render_adapter.handle_events();
-            picking_adapter.handle_events();
-
-            {
-                puffin::profile_scope!("Swap buffers", String::from("Swap Buffers"));
-
-                window_handler.borrow_context().swap_buffers().unwrap();
-            }
-
-            control_flow.set_poll();
-            window_handler.request_redraw();
-        }
-        winit::event::Event::WindowEvent { ref event, .. } => {
-            window_handler.handle_winit_event(event, control_flow);
-        }
-        _ => {}
+    let instance = wgpu::Instance::new(InstanceDescriptor {
+        backends: wgpu::Backends::PRIMARY,
+        ..Default::default()
     });
+    let surface = instance.create_surface(window.clone()).unwrap();
+
+    // WGPU 0.11+ support force fallback (if HW implementation not supported), set it to true or false (optional).
+    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+        power_preference: wgpu::PowerPreference::HighPerformance,
+        compatible_surface: Some(&surface),
+        force_fallback_adapter: false,
+    }))
+    .unwrap();
+
+    let (device, queue) = pollster::block_on(adapter.request_device(
+        &wgpu::DeviceDescriptor {
+            required_features: wgpu::Features::default(),
+            required_limits: wgpu::Limits::default(),
+            label: None,
+        },
+        None,
+    ))
+    .unwrap();
+
+    let size = window.inner_size();
+    let surface_format = surface.get_capabilities(&adapter).formats[0];
+    let mut surface_config = wgpu::SurfaceConfiguration {
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        format: surface_format,
+        width: size.width,
+        height: size.height,
+        present_mode: wgpu::PresentMode::AutoNoVsync,
+        desired_maximum_frame_latency: 1,
+        alpha_mode: wgpu::CompositeAlphaMode::Auto,
+        view_formats: vec![surface_format],
+    };
+    surface.configure(&device, &surface_config);
+
+    // We use the egui_winit_platform crate as the platform.
+    let mut platform = Platform::new(PlatformDescriptor {
+        physical_width: size.width,
+        physical_height: size.height,
+        scale_factor: window.scale_factor(),
+        font_definitions: FontDefinitions::default(),
+        style: Default::default(),
+    });
+
+    // We use the egui_wgpu_backend crate as the render backend.
+    let mut egui_rpass = RenderPass::new(&device, surface_format, 1);
+
+    let start_time = Instant::now();
+    event_loop.run(move |event, loop_target| {
+        // Pass the winit events to the platform integration.
+        platform.handle_event(&event);
+
+        println!("{:?}", loop_target.control_flow());
+
+        match event {
+            winit::event::Event::WindowEvent { event, .. } => match event {
+                winit::event::WindowEvent::RedrawRequested => {
+                    // sleep_controller.last_time = Some(Instant::now());
+                    let now = Instant::now();
+                    platform.update_time(start_time.elapsed().as_secs_f64());
+
+                    let output_frame = match surface.get_current_texture() {
+                        Ok(frame) => frame,
+                        Err(wgpu::SurfaceError::Outdated) => {
+                            // This error occurs when the app is minimized on Windows.
+                            // Silently return here to prevent spamming the console with:
+                            // "The underlying surface has changed, and therefore the swap chain must be updated"
+                            return;
+                        }
+                        Err(e) => {
+                            eprintln!("Dropped frame with error: {}", e);
+                            return;
+                        }
+                    };
+                    let output_view = output_frame
+                        .texture
+                        .create_view(&wgpu::TextureViewDescriptor::default());
+
+                    // Begin to draw the UI frame.
+                    platform.begin_frame();
+
+                    // Draw the demo application.
+                    demo_app.ui(&platform.context());
+
+                    // End the UI frame. We could now handle the output and draw the UI with the backend.
+                    let full_output = platform.end_frame(Some(&window));
+                    let paint_jobs = platform
+                        .context()
+                        .tessellate(full_output.shapes, full_output.pixels_per_point);
+
+                    let mut encoder =
+                        device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("encoder"),
+                        });
+
+                    // Upload all resources for the GPU.
+                    let screen_descriptor = ScreenDescriptor {
+                        physical_width: surface_config.width,
+                        physical_height: surface_config.height,
+                        scale_factor: window.scale_factor() as f32,
+                    };
+
+                    let tdelta: egui::TexturesDelta = full_output.textures_delta;
+                    egui_rpass
+                        .add_textures(&device, &queue, &tdelta)
+                        .expect("add texture ok");
+                    egui_rpass.update_buffers(&device, &queue, &paint_jobs, &screen_descriptor);
+
+                    // Record all render passes.
+                    egui_rpass
+                        .execute(
+                            &mut encoder,
+                            &output_view,
+                            &paint_jobs,
+                            &screen_descriptor,
+                            Some(wgpu::Color::BLACK),
+                        )
+                        .unwrap();
+                    // Submit the commands.
+                    queue.submit(iter::once(encoder.finish()));
+                    // Redraw egui
+                    output_frame.present();
+
+                    egui_rpass
+                        .remove_textures(tdelta)
+                        .expect("remove texture ok");
+
+                    // Support reactive on windows only, but not on linux.
+                    // if _output.needs_repaint {
+                    //     *control_flow = ControlFlow::Poll;
+                    // } else {
+                    //     *control_flow = ControlFlow::Wait;
+                    // }
+                    println!("Fps: {:?}", 1.0 / now.elapsed().as_secs_f64());
+
+                    window.request_redraw();
+                }
+                winit::event::WindowEvent::Resized(size) => {
+                    // Resize with 0 width and height is used by winit to signal a minimize event on Windows.
+                    // See: https://github.com/rust-windowing/winit/issues/208
+                    // This solves an issue where the app would panic when minimizing on Windows.
+                    if size.width > 0 && size.height > 0 {
+                        surface_config.width = size.width;
+                        surface_config.height = size.height;
+                        surface.configure(&device, &surface_config);
+                    }
+                }
+                winit::event::WindowEvent::CloseRequested => {
+                    loop_target.exit();
+                }
+                _ => {}
+            },
+            _ => (),
+        }
+    })
 }
 
 pub fn create_toolpath(

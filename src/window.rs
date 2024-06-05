@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use three_d::{FrameInput, FrameInputGenerator, SurfaceSettings, WindowSettings, WindowedContext};
 use winit::{
     dpi,
@@ -9,63 +11,9 @@ use winit::{
 use crate::{config, prelude::Error};
 
 pub struct WindowHandler {
-    window: Window,
+    window: Arc<Window>,
     context: WindowedContext,
     frame_input_generator: FrameInputGenerator,
-}
-
-impl WindowHandler {
-    pub fn from_event_loop(event_loop: &EventLoop<()>) -> Self {
-        let window = build_window(event_loop).unwrap();
-
-        let surface_settings = SurfaceSettings {
-            vsync: false,
-            ..Default::default()
-        };
-        let context = WindowedContext::from_winit_window(&window, surface_settings).unwrap();
-        let frame_input_generator = FrameInputGenerator::from_winit_window(&window);
-
-        Self {
-            window,
-            context,
-            frame_input_generator,
-        }
-    }
-
-    pub fn handle_winit_event(&mut self, event: &WindowEvent<'_>, control_flow: &mut ControlFlow) {
-        // puffin::profile_function!();
-
-        self.frame_input_generator.handle_winit_window_event(event);
-
-        match event {
-            winit::event::WindowEvent::Resized(physical_size) => {
-                self.context.resize(*physical_size);
-            }
-            winit::event::WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                self.context.resize(**new_inner_size);
-            }
-            winit::event::WindowEvent::CloseRequested => {
-                control_flow.set_exit();
-            }
-            _ => (),
-        }
-    }
-
-    pub fn next_frame_input(&mut self) -> FrameInput {
-        self.frame_input_generator.generate(&self.context)
-    }
-
-    pub fn init(&mut self) {
-        self.window.set_visible(true);
-    }
-
-    pub fn request_redraw(&self) {
-        self.window.request_redraw();
-    }
-
-    pub fn borrow_context(&self) -> &WindowedContext {
-        &self.context
-    }
 }
 
 pub fn build_window(event_loop: &EventLoop<()>) -> Result<Window, Error> {

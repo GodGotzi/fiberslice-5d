@@ -145,26 +145,6 @@ fn color_background(ui: &mut egui::Ui, color: egui::Color32) {
 
 impl InnerComponent for Addons {
     fn show(&mut self, _ctx: &egui::Context, ui: &mut Ui, _state: &mut UiData) {
-        let vertical_gap_symetric = 1.5;
-
-        load_layout!(
-            <Strip direction="west">
-                <Panel size="relative" value="0.3">
-                    color_background(ui, egui::Color32::from_rgb(0, 0, 255));
-                </Panel>
-                <Panel size="remainder">
-                    <Strip direction="north" gap="@vertical_gap_symetric">
-                        <Panel size="relative" value="0.3">
-                            color_background(ui, egui::Color32::from_rgb(0, 255, 255));
-                        </Panel>
-                        <Panel size="remainder">
-                            color_background(ui, egui::Color32::from_rgb(255, 0, 255));
-                        </Panel>
-                    </Strip>
-                </Panel>
-            </Strip>
-        );
-
         /*
         let window_size = ui.available_size();
 
