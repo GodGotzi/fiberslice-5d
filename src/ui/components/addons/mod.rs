@@ -104,11 +104,14 @@ pub mod orientation {
                                 ui.add_sized([button.size.0, button.size.1], image_button);
 
                             if response.clicked() {
+                                println!("Orientation: {:?}", orientation);
+                                /*
                                 data.borrow_shared_state().writer_environment_event.send(
                                     crate::environment::EnvironmentEvent::SendOrientation(
                                         orientation,
                                     ),
                                 )
+                                */
                             }
                         },
                     );
@@ -144,8 +147,7 @@ fn color_background(ui: &mut egui::Ui, color: egui::Color32) {
 }
 
 impl InnerComponent for Addons {
-    fn show(&mut self, _ctx: &egui::Context, ui: &mut Ui, _state: &mut UiData) {
-        /*
+    fn show(&mut self, ctx: &egui::Context, ui: &mut Ui, state: &mut UiData) {
         let window_size = ui.available_size();
 
         let boundary = Boundary::new(
@@ -162,7 +164,6 @@ impl InnerComponent for Addons {
         }
 
         self.boundary = boundary;
-        */
     }
 
     fn get_enabled_mut(&mut self) -> &mut bool {

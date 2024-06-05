@@ -8,12 +8,12 @@ edition = "2021"
 
 [dependencies]
 egui_grid = { git = "https://github.com/GodGotzi/egui_grid" }
-egui_extras = "0.27.2"
+egui_extras = { version = "0.27.2", features = ["all_loaders"] }
 egui_glow = "0.27.2"
 egui = "0.27.2"
 strum = "0.26"
 strum_macros = "0.26"
-image = { version = "0.25" }
+image = { version = "0.24", features = ["jpeg", "png"] }
 lazy_static = "1.4.0"
 macros = { path = "macros" }
 traits = { path = "traits" }

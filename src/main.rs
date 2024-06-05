@@ -1,6 +1,6 @@
 use std::{iter, sync::Arc, time::Instant};
 
-use egui::FontDefinitions;
+use egui::{FontDefinitions, Visuals};
 /*
     Copyright (c) 2023 Elias Gottsbacher, Jan Traussnigg, Nico Huetter (HTBLA Kaindorf)
     All rights reserved.
@@ -10,10 +10,11 @@ use egui::FontDefinitions;
 use model::gcode::{self, DisplaySettings, MeshSettings};
 use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
 
-use prelude::{Adapter, SharedState};
+use prelude::{Adapter, SharedMut, SharedState};
 
 use egui_wgpu_backend::{RenderPass, ScreenDescriptor};
 use egui_winit_platform::{Platform, PlatformDescriptor};
+use ui::{screen::Screen, visual::customize_look_and_feel, UiData, UiState};
 use wgpu::InstanceDescriptor;
 
 mod api;
@@ -130,6 +131,11 @@ async fn main() -> Result<(), EventLoopError> {
         style: Default::default(),
     });
 
+    egui_extras::install_image_loaders(&platform.context());
+
+    let state = SharedMut::from_inner(UiState::new());
+    let mut screen = Screen::new();
+
     // We use the egui_wgpu_backend crate as the render backend.
     let mut egui_rpass = RenderPass::new(&device, surface_format, 1);
 
@@ -140,6 +146,7 @@ async fn main() -> Result<(), EventLoopError> {
 
         println!("{:?}", loop_target.control_flow());
 
+        #[allow(clippy::single_match)]
         match event {
             winit::event::Event::WindowEvent { event, .. } => match event {
                 winit::event::WindowEvent::RedrawRequested => {
@@ -168,10 +175,14 @@ async fn main() -> Result<(), EventLoopError> {
                     platform.begin_frame();
 
                     // Draw the demo application.
-                    demo_app.ui(&platform.context());
+                    let visuals = customize_look_and_feel(Visuals::light());
+                    platform.context().set_visuals(visuals);
+
+                    screen.show(&platform.context(), &mut UiData::new(state.clone()));
 
                     // End the UI frame. We could now handle the output and draw the UI with the backend.
                     let full_output = platform.end_frame(Some(&window));
+
                     let paint_jobs = platform
                         .context()
                         .tessellate(full_output.shapes, full_output.pixels_per_point);
@@ -213,15 +224,10 @@ async fn main() -> Result<(), EventLoopError> {
                         .remove_textures(tdelta)
                         .expect("remove texture ok");
 
-                    // Support reactive on windows only, but not on linux.
-                    // if _output.needs_repaint {
-                    //     *control_flow = ControlFlow::Poll;
-                    // } else {
-                    //     *control_flow = ControlFlow::Wait;
-                    // }
-                    println!("Fps: {:?}", 1.0 / now.elapsed().as_secs_f64());
-
-                    window.request_redraw();
+                    if platform.context().has_requested_repaint() {
+                        println!("Redraw Request {:?}", now.elapsed().as_secs_f64());
+                        window.request_redraw();
+                    }
                 }
                 winit::event::WindowEvent::Resized(size) => {
                     // Resize with 0 width and height is used by winit to signal a minimize event on Windows.
@@ -236,9 +242,11 @@ async fn main() -> Result<(), EventLoopError> {
                 winit::event::WindowEvent::CloseRequested => {
                     loop_target.exit();
                 }
-                _ => {}
+                _ => {
+                    window.request_redraw();
+                }
             },
-            _ => (),
+            _ => {}
         }
     })
 }

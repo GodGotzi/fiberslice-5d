@@ -1,6 +1,8 @@
+use crate::config;
+
 use super::*;
 use components::{addons, menubar, modebar, settingsbar, taskbar, toolbar};
-use egui::Margin;
+use egui::{ImageButton, Margin};
 use egui_xml::load_layout;
 use three_d::Viewport;
 
@@ -59,7 +61,6 @@ impl Screen {
                 .get_orientation_icon(crate::view::Orientation::Default)
                 .show(ui);
             */
-
             self.addons.show(ctx, ui, ui_data);
 
             /*

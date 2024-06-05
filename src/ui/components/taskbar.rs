@@ -26,7 +26,7 @@ impl Component for Taskbar {
                         ui.add_space(10.0);
                         ui.label(format!(
                             "{:.2} fps",
-                            data.borrow_shared_state().fps().unwrap_or(0.0)
+                            100.0, //data.borrow_shared_state().fps().unwrap_or(0.0)
                         ));
                     });
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {

@@ -12,7 +12,7 @@ pub mod screen;
 
 mod icon;
 pub mod parallel;
-mod visual;
+pub mod visual;
 
 use parking_lot::{RwLockReadGuard, RwLockWriteGuard};
 use three_d::{Context, FrameInput};
@@ -56,7 +56,8 @@ impl FrameHandle<ParallelUiOutput, &SharedState> for UiAdapter {
     ) -> Result<ParallelUiOutput, Error> {
         puffin::profile_function!();
 
-        self.ui.update(
+        /*
+                self.ui.update(
             &mut frame_input.events.clone(),
             frame_input.accumulated_time,
             frame_input.viewport,
@@ -79,6 +80,7 @@ impl FrameHandle<ParallelUiOutput, &SharedState> for UiAdapter {
                 );
             },
         );
+        */
 
         let camera_viewport = self.screen.construct_viewport(frame_input);
         let output = self.ui.construct_output(camera_viewport);
@@ -169,20 +171,23 @@ pub enum Theme {
 
 pub struct UiData<'a> {
     state: SharedMut<UiState>,
-    shared_state: &'a SharedState,
+    _phantom: std::marker::PhantomData<&'a SharedState>,
 }
 
 impl<'a> UiData<'a> {
+    pub fn new(state: SharedMut<UiState>) -> Self {
+        Self {
+            state,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
     pub fn borrow_ui_state(&mut self) -> RwLockReadGuard<UiState> {
         self.state.read()
     }
 
     pub fn borrow_mut_ui_state(&mut self) -> RwLockWriteGuard<UiState> {
         self.state.write()
-    }
-
-    pub fn borrow_shared_state(&self) -> &'a SharedState {
-        self.shared_state
     }
 }
 

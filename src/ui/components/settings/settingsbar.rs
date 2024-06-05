@@ -113,7 +113,7 @@ impl TabbedSettings {
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
-                            data.borrow_shared_state().settings.main.show(ui);
+                            // TODO data.borrow_shared_state().settings.main.show(ui);
                         });
                     });
                 });
@@ -122,7 +122,7 @@ impl TabbedSettings {
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
-                            data.borrow_shared_state().settings.main.show(ui);
+                            // TODO data.borrow_shared_state().settings.main.show(ui);
                         });
                     });
                 });
@@ -132,7 +132,7 @@ impl TabbedSettings {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
                             //let now = Instant::now();
-                            data.borrow_shared_state().settings.main.show(ui);
+                            // TODO data.borrow_shared_state().settings.main.show(ui);
                             //println!("Tree Time: {:?}", now.elapsed());
                         });
                     });
@@ -191,7 +191,7 @@ impl Component for Settingsbar {
                                 .min_size(Vec2::new(ui.available_width() * 0.8, 50.0));
 
                             if ui.add(slice_button).clicked() {
-                                println!("{:?}", data.borrow_shared_state().settings.main);
+                                println!("{:?}", 10.0); // TODO data.borrow_shared_state().settings.main);
                             };
                         });
 
