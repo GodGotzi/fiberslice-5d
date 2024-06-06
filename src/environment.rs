@@ -1,18 +1,18 @@
-use std::fmt::Debug;
+use std::{f32::consts::PI, fmt::Debug};
 
-use three_d::*;
-
+pub mod camera_controller;
 pub mod view;
 
 use crate::{
-    api::Contains,
-    config,
     event::EventReader,
     prelude::*,
+    render::camera::OrbitCamera,
     ui::{parallel::ParallelUiOutput, UiState},
 };
 
+use glam::vec3;
 use view::Orientation;
+use winit::event;
 
 #[derive(Debug, Clone)]
 pub enum EnvironmentEvent {
@@ -30,59 +30,25 @@ impl EnvironmentAdapter {
     }
 }
 
-impl FrameHandle<(), (SharedMut<UiState>, &Result<ParallelUiOutput, Error>)>
+impl FrameHandle<(), (), (SharedMut<UiState>, &Result<ParallelUiOutput, Error>)>
     for EnvironmentAdapter
 {
     fn handle_frame(
         &mut self,
-        frame_input: &FrameInput,
+        event: &winit::event::Event<()>,
+        wgpu_context: WgpuContext,
         (_state, result): (SharedMut<UiState>, &Result<ParallelUiOutput, Error>),
     ) -> Result<(), Error> {
         puffin::profile_function!();
-        if let Ok(result) = result {
-            if !result.pointer_use {
-                let mut events = frame_input
-                    .events
-                    .clone()
-                    .into_iter()
-                    .filter(|event| {
-                        let position = match event {
-                            Event::MousePress { position, .. } => position,
-                            Event::MouseRelease { position, .. } => position,
-                            Event::MouseMotion { position, .. } => position,
-                            Event::MouseWheel { position, .. } => position,
-                            _ => return true,
-                        };
-
-                        self.shared_environment
-                            .read()
-                            .camera
-                            .viewport()
-                            .contains(position)
-                    })
-                    .collect::<Vec<Event>>();
-
-                self.shared_environment
-                    .write()
-                    .handle_camera_events(&mut events);
-            }
-
-            if result.camera_viewport.height > 0 && result.camera_viewport.width > 0 {
-                self.shared_environment
-                    .write()
-                    .camera
-                    .set_viewport(result.camera_viewport);
-            }
-        }
 
         Ok(())
     }
 }
 
-impl Adapter<(), (SharedMut<UiState>, &Result<ParallelUiOutput, Error>), EnvironmentEvent>
+impl Adapter<(), (), (SharedMut<UiState>, &Result<ParallelUiOutput, Error>), EnvironmentEvent>
     for EnvironmentAdapter
 {
-    fn from_context(context: &Context) -> (crate::event::EventWriter<EnvironmentEvent>, Self) {
+    fn from_context(context: &WgpuContext) -> (crate::event::EventWriter<EnvironmentEvent>, Self) {
         let (reader, writer) = crate::event::create_event_bundle::<EnvironmentEvent>();
 
         (
@@ -115,9 +81,8 @@ impl Adapter<(), (SharedMut<UiState>, &Result<ParallelUiOutput, Error>), Environ
 }
 
 pub struct Environment {
-    camera: Camera,
-    camera_control: OrbitControl,
-    owned_lights: Vec<Box<dyn Light>>,
+    camera: OrbitCamera,
+    controller: camera_controller::CameraController,
 }
 
 impl Debug for Environment {
@@ -129,49 +94,19 @@ impl Debug for Environment {
 }
 
 impl Environment {
-    pub fn new(context: &Context) -> Self {
-        let mut camera = view::CameraBuilder::new()
-            .viewport(Viewport::new_at_origo(
-                config::default::WINDOW_S.0,
-                config::default::WINDOW_S.1,
-            ))
-            .position(vec3(0.00, 0.0, 0.0))
-            .target(vec3(0.0, 0.0, 0.0))
-            .up(vec3(0.0, 1.0, 0.0))
-            .fov(degrees(45.0))
-            .near(1.0)
-            .far(10000.0)
-            .build()
-            .expect("Failed to create camera");
+    pub fn new(context: &WgpuContext) -> Self {
+        let camera = OrbitCamera::new(100.0, 1.5, 1.25, vec3(0.0, 0.0, 0.0), context.aspect());
 
-        camera.handle_orientation(Orientation::Default);
+        // camera.handle_orientation(Orientation::Default);
 
         //let light0 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
         //let light1 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
 
-        let light0 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
-        let light1 = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
-
         //let bottom = DirectionalLight::new(context, 1.0, Srgba::WHITE, &vec3(0.0, -1.0, 0.0));
 
-        Self {
-            camera,
-            camera_control: OrbitControl::new(vec3(0.0, 0.0, 0.0), 0.00001, 1000.0),
-            owned_lights: vec![Box::new(light0), Box::new(light1)],
-        }
-    }
+        let controller = camera_controller::CameraController::new(5.0, 5.0);
 
-    pub fn handle_camera_events(&mut self, events: &mut [Event]) -> bool {
-        self.camera_control.handle_events(&mut self.camera, events)
-    }
-
-    pub fn camera(&self) -> &Camera {
-        &self.camera
-    }
-
-    pub fn lights(&self) -> Vec<&dyn Light> {
-        let lights: Vec<&dyn Light> = self.owned_lights.iter().map(Box::as_ref).collect();
-        lights
+        Self { camera, controller }
     }
 }
 
@@ -179,17 +114,19 @@ pub trait HandleOrientation {
     fn handle_orientation(&mut self, orientation: Orientation);
 }
 
-impl HandleOrientation for Camera {
+impl HandleOrientation for OrbitCamera {
     fn handle_orientation(&mut self, orientation: Orientation) {
-        let position = match orientation {
-            Orientation::Default => vec3(0.00, 250.0, 500.0),
-            Orientation::Diagonal => vec3(500.0, 500.0, 500.0),
-            Orientation::Top => vec3(0.0, 900.0, 0.1), // FIXME 0.1 is a hack to avoid the camera being inside the model, maybe there is a better way to do this
-            Orientation::Left => vec3(-500.0, 0.0, 0.0),
-            Orientation::Right => vec3(500.0, 0.0, 0.0),
-            Orientation::Front => vec3(0.0, 0.0, 500.0),
+        let (distance, yaw, pitch) = match orientation {
+            Orientation::Default => (100.0, 1.5, 1.25),
+            Orientation::Diagonal => (100.0, PI / 4.0, PI / 4.0),
+            Orientation::Top => (100.0, 0.0, PI / 2.0),
+            Orientation::Left => (100.0, PI / 2.0, 0.0),
+            Orientation::Right => (100.0, -PI / 2.0, 0.0),
+            Orientation::Front => (100.0, 0.0, 0.0),
         };
 
-        self.set_view(position, vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0))
+        self.set_distance(distance);
+        self.set_yaw(yaw);
+        self.set_pitch(pitch);
     }
 }

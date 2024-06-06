@@ -2,7 +2,7 @@ use three_d::Context;
 
 use crate::{
     event::EventReader,
-    prelude::{Adapter, Error, FrameHandle},
+    prelude::{Adapter, Error, FrameHandle, WgpuContext},
     render::RenderState,
 };
 
@@ -15,19 +15,19 @@ pub struct PickingAdapter {
     event_reader: EventReader<PickingEvent>,
 }
 
-impl FrameHandle<(), RenderState> for PickingAdapter {
+impl FrameHandle<(), (), RenderState> for PickingAdapter {
     fn handle_frame(
         &mut self,
-        _frame_input: &three_d::FrameInput,
-        _state: RenderState,
+        _event: &winit::event::Event<()>,
+        _wgpu_context: crate::prelude::WgpuContext,
+        _context: RenderState,
     ) -> Result<(), Error> {
-        puffin::profile_function!();
         Ok(())
     }
 }
 
-impl Adapter<(), RenderState, PickingEvent> for PickingAdapter {
-    fn from_context(context: &Context) -> (crate::event::EventWriter<PickingEvent>, Self) {
+impl Adapter<(), (), RenderState, PickingEvent> for PickingAdapter {
+    fn from_context(context: &WgpuContext) -> (crate::event::EventWriter<PickingEvent>, Self) {
         let (reader, writer) = crate::event::create_event_bundle::<PickingEvent>();
 
         (

@@ -22,7 +22,7 @@ use egui::Visuals;
 use crate::{
     environment::view::Mode,
     event::EventReader,
-    prelude::{Adapter, Error, FrameHandle, SharedMut, SharedState},
+    prelude::{Adapter, Error, FrameHandle, SharedMut, SharedState, WgpuContext},
 };
 
 use self::{
@@ -47,49 +47,26 @@ impl UiAdapter {
     }
 }
 
-impl FrameHandle<ParallelUiOutput, &SharedState> for UiAdapter {
+impl FrameHandle<(), ParallelUiOutput, &SharedState> for UiAdapter {
     fn handle_frame(
         &mut self,
-        frame_input: &three_d::FrameInput,
-        shared_state: &SharedState,
+        _event: &winit::event::Event<()>,
+        _wgpu_context: WgpuContext,
+        context: &SharedState,
     ) -> Result<ParallelUiOutput, Error> {
         puffin::profile_function!();
 
-        /*
-                self.ui.update(
-            &mut frame_input.events.clone(),
-            frame_input.accumulated_time,
-            frame_input.viewport,
-            frame_input.device_pixel_ratio,
-            |ctx| {
-                egui_extras::install_image_loaders(ctx);
+        // let camera_viewport = self.screen.construct_viewport(frame_input);
+        // let output = self.ui.construct_output(camera_viewport);
 
-                let mut result = UiResult::empty();
-                result.pointer_use = Some(ctx.is_using_pointer());
+        todo!();
 
-                let visuals = customize_look_and_feel((&self.state.read().theme).into());
-                ctx.set_visuals(visuals);
-
-                self.screen.show(
-                    ctx,
-                    &mut UiData {
-                        state: self.state.clone(),
-                        shared_state,
-                    },
-                );
-            },
-        );
-        */
-
-        let camera_viewport = self.screen.construct_viewport(frame_input);
-        let output = self.ui.construct_output(camera_viewport);
-
-        Ok(output)
+        // Ok(output)
     }
 }
 
-impl Adapter<ParallelUiOutput, &SharedState, UiEvent> for UiAdapter {
-    fn from_context(_context: &Context) -> (crate::event::EventWriter<UiEvent>, Self) {
+impl Adapter<(), ParallelUiOutput, &SharedState, UiEvent> for UiAdapter {
+    fn from_context(_context: &WgpuContext) -> (crate::event::EventWriter<UiEvent>, Self) {
         let (reader, writer) = crate::event::create_event_bundle::<UiEvent>();
         let state = SharedMut::from_inner(UiState::new());
 

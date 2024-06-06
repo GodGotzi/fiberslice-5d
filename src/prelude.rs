@@ -1,7 +1,8 @@
-use std::{borrow::Borrow, fmt::Debug, sync::Arc};
+use std::{fmt::Debug, sync::Arc};
 
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
-use three_d::{Context, FrameInput};
+use three_d::FrameInput;
+use winit::{event::Event, window::Window};
 
 pub use crate::error::Error;
 use crate::{
@@ -102,12 +103,33 @@ impl<T> Shared<T> {
     }
 }
 
-pub trait FrameHandle<T, C> {
-    fn handle_frame(&mut self, frame_input: &three_d::FrameInput, context: C) -> Result<T, Error>;
+pub struct WgpuContext<'a> {
+    window: Arc<Window>,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+    adapter: wgpu::Adapter,
+
+    surface: wgpu::Surface<'a>,
+    surface_config: wgpu::SurfaceConfiguration,
 }
 
-pub trait Adapter<T, C, E: Debug + Clone>: FrameHandle<T, C> {
-    fn from_context(context: &Context) -> (EventWriter<E>, Self);
+impl WgpuContext<'_> {
+    pub fn aspect(&self) -> f32 {
+        self.surface_config.width as f32 / self.surface_config.height as f32
+    }
+}
+
+pub trait FrameHandle<E, T, C> {
+    fn handle_frame(
+        &mut self,
+        event: &Event<E>,
+        wgpu_context: WgpuContext,
+        context: C,
+    ) -> Result<T, Error>;
+}
+
+pub trait Adapter<WinitE, T, C, E: Debug + Clone>: FrameHandle<WinitE, T, C> {
+    fn from_context(context: &WgpuContext) -> (EventWriter<E>, Self);
 
     fn get_reader(&self) -> &EventReader<E>;
     fn get_adapter_description(&self) -> String;
@@ -182,10 +204,14 @@ impl SharedState {
     }
 }
 
-impl FrameHandle<(), ()> for SharedState {
-    fn handle_frame(&mut self, frame_input: &FrameInput, _context: ()) -> Result<(), Error> {
-        self.frame_input.write().replace(frame_input.clone());
-
+impl FrameHandle<(), (), ()> for SharedState {
+    fn handle_frame(
+        &mut self,
+        _event: &Event<()>,
+        _wgpu_context: WgpuContext,
+        _context: (),
+    ) -> Result<(), Error> {
+        puffin::profile_function!();
         Ok(())
     }
 }

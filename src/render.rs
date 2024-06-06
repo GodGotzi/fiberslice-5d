@@ -1,6 +1,5 @@
 use egui_glow::Painter;
 use std::{cell::RefCell, collections::HashMap, ops::Deref};
-use strum_macros::Display;
 use three_d::{ClearState, Context, FrameInput, Gm, Mesh, Object, PhysicalMaterial, RenderTarget};
 use three_d_asset::{vec3, Mat4, Positions, TriMesh};
 
@@ -11,6 +10,13 @@ use crate::{
     prelude::*,
     ui::parallel::ParallelUiOutput,
 };
+
+pub mod camera;
+pub mod geometry;
+pub mod light;
+pub mod state;
+pub mod texture;
+pub mod vertex;
 
 #[derive(Debug, Clone)]
 pub enum RenderEvent {}
@@ -105,9 +111,12 @@ impl RenderAdapter {
     }
 
     pub fn render(&mut self, environment: &Environment) {
-        for component in self.components.values() {
+
+        /*
+                for component in self.components.values() {
             component.render(environment.camera(), &environment.lights())
         }
+        */
     }
 }
 
@@ -124,39 +133,23 @@ impl std::fmt::Display for RenderError {
 
 impl std::error::Error for RenderError {}
 
-impl FrameHandle<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>)> for RenderAdapter {
+impl FrameHandle<(), (), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>)>
+    for RenderAdapter
+{
     fn handle_frame(
         &mut self,
-        frame_input: &FrameInput,
-        (shared_environment, output): (SharedMut<Environment>, &Result<ParallelUiOutput, Error>),
+        _event: &winit::event::Event<()>,
+        _wgpu_context: WgpuContext,
+        _context: (SharedMut<Environment>, &Result<ParallelUiOutput, Error>),
     ) -> Result<(), Error> {
-        puffin::profile_function!();
-        let environment = shared_environment.read();
-        let screen: RenderTarget<'_> = frame_input.screen();
-
-        screen.clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0));
-        screen
-            .write(|| {
-                self.render(&environment);
-
-                if let Ok(output) = output {
-                    output.render(&self.ui_painter);
-                } else {
-                    println!("not rendering ui");
-                }
-
-                Result::<(), RenderError>::Ok(())
-            })
-            .unwrap();
-
         Ok(())
     }
 }
 
-impl Adapter<(), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>), RenderEvent>
+impl Adapter<(), (), (SharedMut<Environment>, &Result<ParallelUiOutput, Error>), RenderEvent>
     for RenderAdapter
 {
-    fn from_context(context: &Context) -> (EventWriter<RenderEvent>, Self) {
+    fn from_context(context: &WgpuContext) -> (EventWriter<RenderEvent>, Self) {
         let (reader, writer) = create_event_bundle::<RenderEvent>();
 
         let components = HashMap::new();
