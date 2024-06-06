@@ -175,7 +175,7 @@ async fn main() -> Result<(), EventLoopError> {
                     platform.begin_frame();
 
                     // Draw the demo application.
-                    let visuals = customize_look_and_feel(Visuals::light());
+                    let visuals = customize_look_and_feel(Visuals::dark());
                     platform.context().set_visuals(visuals);
 
                     screen.show(&platform.context(), &mut UiData::new(state.clone()));

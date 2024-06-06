@@ -1,9 +1,6 @@
-use crate::config;
-
 use super::*;
 use components::{addons, menubar, modebar, settingsbar, taskbar, toolbar};
-use egui::{ImageButton, Margin};
-use egui_xml::load_layout;
+use egui::Margin;
 use three_d::Viewport;
 
 pub struct Screen {
@@ -39,12 +36,12 @@ impl Screen {
             self.menubar.show(ctx, ui_data);
         }
 
-        if *self.quick_settings.get_enabled_mut() {
-            self.quick_settings.show(ctx, ui_data);
-        }
-
         if *self.taskbar.get_enabled_mut() {
             self.taskbar.show(ctx, ui_data);
+        }
+
+        if *self.quick_settings.get_enabled_mut() {
+            self.quick_settings.show(ctx, ui_data);
         }
 
         if *self.modebar.get_enabled_mut() {

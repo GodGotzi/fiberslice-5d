@@ -28,7 +28,6 @@ use crate::{
 use self::{
     boundary::Boundary,
     parallel::{ParallelUi, ParallelUiOutput},
-    visual::customize_look_and_feel,
 };
 
 #[derive(Debug, Clone)]
@@ -137,7 +136,7 @@ pub struct UiState {
 impl UiState {
     pub fn new() -> Self {
         Self {
-            theme: Theme::Light,
+            theme: Theme::Dark,
             mode: Mode::Preview,
         }
     }
