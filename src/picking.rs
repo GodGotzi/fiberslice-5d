@@ -1,5 +1,3 @@
-use three_d::Context;
-
 use crate::{
     event::EventReader,
     prelude::{Adapter, Error, FrameHandle, WgpuContext},
@@ -19,7 +17,8 @@ impl FrameHandle<(), (), RenderState> for PickingAdapter {
     fn handle_frame(
         &mut self,
         _event: &winit::event::Event<()>,
-        _wgpu_context: crate::prelude::WgpuContext,
+        _start_time: std::time::Instant,
+        _wgpu_context: &WgpuContext,
         _context: RenderState,
     ) -> Result<(), Error> {
         Ok(())

@@ -1,47 +1,28 @@
-use std::sync::Arc;
-
-use three_d::{FrameInput, FrameInputGenerator, SurfaceSettings, WindowSettings, WindowedContext};
 use winit::{
     dpi,
-    event::WindowEvent,
     event_loop::*,
     window::{Icon, Window, WindowBuilder},
 };
 
 use crate::{config, prelude::Error};
 
-pub struct WindowHandler {
-    window: Arc<Window>,
-    context: WindowedContext,
-    frame_input_generator: FrameInputGenerator,
-}
-
 pub fn build_window(event_loop: &EventLoop<()>) -> Result<Window, Error> {
     let window_icon = load_icon("assets/icons/main_icon.png");
-    let window_settings = WindowSettings {
-        title: "Fiberslice-5D".to_string(),
-        max_size: Some(config::default::WINDOW_S),
-        ..Default::default()
-    };
 
-    let window_builder = {
-        let window_builder = WindowBuilder::new()
-            .with_title(&window_settings.title)
-            .with_min_inner_size(dpi::LogicalSize::new(
-                window_settings.min_size.0,
-                window_settings.min_size.1,
-            ))
-            .with_visible(false)
-            .with_resizable(true)
-            .with_window_icon(Some(window_icon))
-            .with_decorations(!window_settings.borderless);
-
-        if let Some((width, height)) = window_settings.max_size {
-            window_builder.with_inner_size(dpi::LogicalSize::new(width as f64, height as f64))
-        } else {
-            window_builder.with_maximized(true)
-        }
-    };
+    let window_builder = WindowBuilder::new()
+        .with_title("Fiberslice-5D")
+        .with_min_inner_size(dpi::LogicalSize::new(
+            config::default::WINDOW_S.0,
+            config::default::WINDOW_S.1,
+        ))
+        .with_visible(false)
+        .with_resizable(true)
+        .with_window_icon(Some(window_icon))
+        .with_decorations(true)
+        .with_inner_size(dpi::LogicalSize::new(
+            config::default::WINDOW_S.0 as f64,
+            config::default::WINDOW_S.1 as f64,
+        ));
 
     window_builder
         .build(event_loop)

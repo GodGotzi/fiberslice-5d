@@ -1,31 +1,31 @@
-use three_d::Vector3;
+use glam::Vec3;
 
-pub type Triangle3d = (Vector3<f32>, Vector3<f32>, Vector3<f32>);
+pub type Triangle3d = (Vec3, Vec3, Vec3);
 
 pub struct Rect3d {
-    pub left_0: Vector3<f32>,
-    pub left_1: Vector3<f32>,
-    pub right_0: Vector3<f32>,
-    pub right_1: Vector3<f32>,
+    pub left_0: Vec3,
+    pub left_1: Vec3,
+    pub right_0: Vec3,
+    pub right_1: Vec3,
 }
 
 #[derive(Debug, Clone)]
 pub struct VirtualBox {
-    max: Vector3<f32>,
-    min: Vector3<f32>,
+    max: Vec3,
+    min: Vec3,
 }
 
 impl Default for VirtualBox {
     fn default() -> Self {
         Self {
-            max: Vector3::new(f32::MIN, f32::MIN, f32::MIN),
-            min: Vector3::new(f32::MAX, f32::MAX, f32::MAX),
+            max: Vec3::new(f32::MIN, f32::MIN, f32::MIN),
+            min: Vec3::new(f32::MAX, f32::MAX, f32::MAX),
         }
     }
 }
 
 impl VirtualBox {
-    pub fn new(max: Vector3<f32>, min: Vector3<f32>) -> Self {
+    pub fn new(max: Vec3, min: Vec3) -> Self {
         Self { max, min }
     }
 

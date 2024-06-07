@@ -3,16 +3,10 @@ use std::{f32::consts::PI, fmt::Debug};
 pub mod camera_controller;
 pub mod view;
 
-use crate::{
-    event::EventReader,
-    prelude::*,
-    render::camera::OrbitCamera,
-    ui::{parallel::ParallelUiOutput, UiState},
-};
+use crate::{event::EventReader, prelude::*, render::camera::OrbitCamera, ui::UiState};
 
 use glam::vec3;
 use view::Orientation;
-use winit::event;
 
 #[derive(Debug, Clone)]
 pub enum EnvironmentEvent {
@@ -30,14 +24,13 @@ impl EnvironmentAdapter {
     }
 }
 
-impl FrameHandle<(), (), (SharedMut<UiState>, &Result<ParallelUiOutput, Error>)>
-    for EnvironmentAdapter
-{
+impl FrameHandle<(), (), ()> for EnvironmentAdapter {
     fn handle_frame(
         &mut self,
-        event: &winit::event::Event<()>,
-        wgpu_context: WgpuContext,
-        (_state, result): (SharedMut<UiState>, &Result<ParallelUiOutput, Error>),
+        _event: &winit::event::Event<()>,
+        _start_time: std::time::Instant,
+        _wgpu_context: &WgpuContext,
+        _state: (),
     ) -> Result<(), Error> {
         puffin::profile_function!();
 
@@ -45,9 +38,7 @@ impl FrameHandle<(), (), (SharedMut<UiState>, &Result<ParallelUiOutput, Error>)>
     }
 }
 
-impl Adapter<(), (), (SharedMut<UiState>, &Result<ParallelUiOutput, Error>), EnvironmentEvent>
-    for EnvironmentAdapter
-{
+impl Adapter<(), (), (), EnvironmentEvent> for EnvironmentAdapter {
     fn from_context(context: &WgpuContext) -> (crate::event::EventWriter<EnvironmentEvent>, Self) {
         let (reader, writer) = crate::event::create_event_bundle::<EnvironmentEvent>();
 

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug, str::Lines};
 
-use three_d::Vector3;
+use glam::Vec3;
 
 use self::{
     instruction::{InstructionModul, InstructionType},
@@ -9,7 +9,7 @@ use self::{
     state::State,
 };
 
-use super::{mesh::Vertices, shapes::VirtualBox};
+use super::mesh::Vertices;
 
 pub mod instruction;
 pub mod mesh;
@@ -44,7 +44,7 @@ pub struct PrintPart {
     raw: GCodeRaw,
     wire_model: WirePath,
     pub layers: HashMap<usize, LayerModel>,
-    pub center_mass: Vector3<f32>,
+    pub center_mass: Vec3,
 }
 
 impl PrintPart {

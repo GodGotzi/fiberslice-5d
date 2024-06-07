@@ -1,7 +1,6 @@
 use super::*;
 use components::{addons, menubar, modebar, settingsbar, taskbar, toolbar};
 use egui::Margin;
-use three_d::Viewport;
 
 pub struct Screen {
     addons: addons::Addons,
@@ -68,28 +67,5 @@ impl Screen {
             }
             */
         });
-    }
-
-    pub fn construct_viewport(&self, frame_input: &FrameInput) -> Viewport {
-        let height = frame_input.viewport.height
-            - ((self.taskbar.get_boundary().get_height()
-                + self.modebar.get_boundary().get_height()
-                + self.menubar.get_boundary().get_height())
-                * frame_input.device_pixel_ratio) as u32;
-        //let extra = (height as f32 * 0.3) as u32;
-
-        let viewport = Viewport {
-            x: (self.toolbar.get_boundary().get_width() * frame_input.device_pixel_ratio) as i32,
-            y: (((self.taskbar.get_boundary().get_height()
-                + self.modebar.get_boundary().get_height())
-                * frame_input.device_pixel_ratio) as i32),
-            width: frame_input.viewport.width
-                - ((self.toolbar.get_boundary().get_width()
-                    + self.quick_settings.get_boundary().get_width())
-                    * frame_input.device_pixel_ratio) as u32,
-            height,
-        };
-
-        viewport
     }
 }

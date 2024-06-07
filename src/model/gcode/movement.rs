@@ -1,4 +1,4 @@
-use three_d::Vector3;
+use glam::Vec3;
 
 use super::SourceBuilder;
 
@@ -66,7 +66,7 @@ impl Movements {
         }
     }
 
-    pub fn to_vec3(&self, zero: Vector3<f32>) -> Vector3<f32> {
+    pub fn to_vec3(&self, zero: Vec3) -> Vec3 {
         let mut vec = zero;
 
         if let Some(x) = self.X.as_ref() {
@@ -84,7 +84,7 @@ impl Movements {
         vec
     }
 
-    pub fn to_flipped_vec3(&self, zero: Vector3<f32>) -> Vector3<f32> {
+    pub fn to_flipped_vec3(&self, zero: Vec3) -> Vec3 {
         let mut vec = zero;
 
         if let Some(x) = self.X.as_ref() {

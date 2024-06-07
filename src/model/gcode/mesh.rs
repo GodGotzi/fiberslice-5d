@@ -1,4 +1,4 @@
-use three_d::{vec3, InnerSpace, Vector3};
+use glam::{vec3, Vec3};
 
 use crate::{
     api::{math::DirectMul, Reverse},
@@ -17,15 +17,15 @@ pub enum PathOrientation {
 
 #[derive(Debug)]
 pub struct ProfileCross {
-    pub up: Vector3<f32>,
-    pub down: Vector3<f32>,
-    pub left: Vector3<f32>,
-    pub right: Vector3<f32>,
+    pub up: Vec3,
+    pub down: Vec3,
+    pub left: Vec3,
+    pub right: Vec3,
 }
 
 impl ProfileCross {
     pub fn from_direction(
-        direction: Vector3<f32>,
+        direction: Vec3,
         (horizontal_radius, vertical_radius): (f32, f32),
     ) -> Self {
         let horizontal = direction.cross(vec3(0.0, 0.0, direction.z + 1.0));
@@ -56,7 +56,7 @@ impl ProfileCross {
     }
 }
 
-fn has_flipped_faces(direction: Vector3<f32>) -> bool {
+fn has_flipped_faces(direction: Vec3) -> bool {
     adjust_pane(direction.x, direction.y)
 }
 
@@ -117,7 +117,7 @@ impl PathModul {
 
 pub(super) fn draw_path(
     vertices: &mut Vertices,
-    path: (Vector3<f32>, Vector3<f32>),
+    path: (Vec3, Vec3),
     flip: bool,
     cross: &ProfileCross,
 ) {
@@ -172,7 +172,7 @@ pub(super) fn draw_path(
 
 pub(super) fn draw_cross_connection(
     vertices: &mut Vertices,
-    center: &Vector3<f32>,
+    center: &Vec3,
     start_cross: &ProfileCross,
     end_cross: &ProfileCross,
 ) {
@@ -242,10 +242,10 @@ pub(super) fn draw_rect_path(
 
 pub(super) fn draw_rect(
     vertices: &mut Vertices,
-    point_left_0: Vector3<f32>,
-    point_left_1: Vector3<f32>,
-    point_right_0: Vector3<f32>,
-    point_right_1: Vector3<f32>,
+    point_left_0: Vec3,
+    point_left_1: Vec3,
+    point_right_0: Vec3,
+    point_right_1: Vec3,
 ) {
     vertices.push(point_left_0);
     vertices.push(point_left_1);
@@ -256,11 +256,7 @@ pub(super) fn draw_rect(
     vertices.push(point_right_0);
 }
 
-pub(super) fn draw_rect_with_cross(
-    vertices: &mut Vertices,
-    center: &Vector3<f32>,
-    cross: &ProfileCross,
-) {
+pub(super) fn draw_rect_with_cross(vertices: &mut Vertices, center: &Vec3, cross: &ProfileCross) {
     draw_rect(
         vertices,
         cross.up + *center,

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use three_d::{vec3, Vector3};
+use glam::{vec3, Vec3};
 
 use crate::{api::math::Average, slicer::print_type::PrintType};
 
@@ -8,13 +8,13 @@ use super::{instruction::InstructionType, movement, state::State, GCode};
 
 #[derive(Debug, Clone)]
 pub struct PathStroke {
-    pub start: Vector3<f32>,
-    pub end: Vector3<f32>,
+    pub start: Vec3,
+    pub end: Vec3,
     pub print: bool,
 }
 
 impl PathStroke {
-    pub fn direction(&self) -> Vector3<f32> {
+    pub fn direction(&self) -> Vec3 {
         self.end - self.start
     }
 }
@@ -43,7 +43,7 @@ impl PathModul {
 #[derive(Debug)]
 pub struct RawPath {
     pub(super) moduls: Vec<PathModul>,
-    pub(super) center_mass: Vector3<f32>,
+    pub(super) center_mass: Vec3,
 }
 
 impl From<&GCode> for RawPath {
@@ -52,7 +52,7 @@ impl From<&GCode> for RawPath {
 
         let mut current_movements = movement::Movements::new();
 
-        let mut toolpath_average = Average::<Vector3<f32>>::default();
+        let mut toolpath_average = Average::<Vec3>::default();
 
         for instruction_modul in gcode.iter() {
             let mut strokes = Vec::new();
@@ -83,11 +83,11 @@ fn compute_modul(
     points: &mut Vec<PathStroke>,
     current_movements: &mut movement::Movements,
     instruction_modul: &super::instruction::InstructionModul,
-) -> Average<Vector3<f32>> {
-    let mut modul_average = Average::<Vector3<f32>>::default();
+) -> Average<Vec3> {
+    let mut modul_average = Average::<Vec3>::default();
 
     for instructions in instruction_modul.borrow_inner().chunks(500) {
-        let mut instruction_average = Average::<Vector3<f32>>::default();
+        let mut instruction_average = Average::<Vec3>::default();
 
         for instruction in instructions {
             let movements = instruction.movements();

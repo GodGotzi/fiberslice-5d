@@ -1,7 +1,7 @@
 use std::{fmt::Debug, sync::Arc};
 
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
-use three_d::FrameInput;
+use wgpu::InstanceDescriptor;
 use winit::{event::Event, window::Window};
 
 pub use crate::error::Error;
@@ -104,16 +104,67 @@ impl<T> Shared<T> {
 }
 
 pub struct WgpuContext<'a> {
-    window: Arc<Window>,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
-    adapter: wgpu::Adapter,
+    pub window: Arc<Window>,
+    pub device: wgpu::Device,
+    pub queue: wgpu::Queue,
+    pub adapter: wgpu::Adapter,
 
-    surface: wgpu::Surface<'a>,
-    surface_config: wgpu::SurfaceConfiguration,
+    pub surface: wgpu::Surface<'a>,
+    pub surface_config: wgpu::SurfaceConfiguration,
+    pub surface_format: wgpu::TextureFormat,
 }
 
 impl WgpuContext<'_> {
+    pub fn new(window: Arc<Window>) -> Result<Self, Error> {
+        let instance = wgpu::Instance::new(InstanceDescriptor {
+            backends: wgpu::Backends::PRIMARY,
+            ..Default::default()
+        });
+        let surface = instance.create_surface(window.clone()).unwrap();
+
+        // WGPU 0.11+ support force fallback (if HW implementation not supported), set it to true or false (optional).
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::HighPerformance,
+            compatible_surface: Some(&surface),
+            force_fallback_adapter: false,
+        }))
+        .unwrap();
+
+        let (device, queue) = pollster::block_on(adapter.request_device(
+            &wgpu::DeviceDescriptor {
+                required_features: wgpu::Features::default(),
+                required_limits: wgpu::Limits::default(),
+                label: None,
+            },
+            None,
+        ))
+        .unwrap();
+
+        let size = window.inner_size();
+        let surface_format = surface.get_capabilities(&adapter).formats[0];
+        let surface_config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format: surface_format,
+            width: size.width,
+            height: size.height,
+            present_mode: wgpu::PresentMode::AutoNoVsync,
+            desired_maximum_frame_latency: 1,
+            alpha_mode: wgpu::CompositeAlphaMode::Auto,
+            view_formats: vec![surface_format],
+        };
+        surface.configure(&device, &surface_config);
+
+        Ok(Self {
+            window,
+            device,
+            queue,
+            adapter,
+            surface,
+            surface_config,
+            surface_format,
+        })
+    }
+
     pub fn aspect(&self) -> f32 {
         self.surface_config.width as f32 / self.surface_config.height as f32
     }
@@ -123,15 +174,17 @@ pub trait FrameHandle<E, T, C> {
     fn handle_frame(
         &mut self,
         event: &Event<E>,
-        wgpu_context: WgpuContext,
+        start_time: std::time::Instant,
+        wgpu_context: &WgpuContext,
         context: C,
     ) -> Result<T, Error>;
 }
 
 pub trait Adapter<WinitE, T, C, E: Debug + Clone>: FrameHandle<WinitE, T, C> {
-    fn from_context(context: &WgpuContext) -> (EventWriter<E>, Self);
+    fn from_context(wgpu_context: &WgpuContext) -> (EventWriter<E>, Self);
 
     fn get_reader(&self) -> &EventReader<E>;
+
     fn get_adapter_description(&self) -> String;
 
     fn handle_event(&mut self, event: E);
@@ -169,8 +222,6 @@ impl Default for SharedSettings {
 
 #[derive(Clone)]
 pub struct SharedState {
-    frame_input: SharedMut<Option<FrameInput>>,
-
     pub settings: SharedSettings,
 
     pub writer_ui_event: EventWriter<UiEvent>,
@@ -187,7 +238,7 @@ impl SharedState {
         writer_picking_event: EventWriter<PickingEvent>,
     ) -> Self {
         Self {
-            frame_input: SharedMut::from_inner(None),
+            // frame_input: SharedMut::from_inner(None),
             settings: SharedSettings::default(),
             writer_ui_event,
             writer_environment_event,
@@ -195,20 +246,14 @@ impl SharedState {
             writer_picking_event,
         }
     }
-
-    pub fn fps(&self) -> Option<f32> {
-        self.frame_input
-            .read()
-            .as_ref()
-            .map(|frame_input| 1000.0 / frame_input.elapsed_time as f32)
-    }
 }
 
 impl FrameHandle<(), (), ()> for SharedState {
     fn handle_frame(
         &mut self,
         _event: &Event<()>,
-        _wgpu_context: WgpuContext,
+        start_time: std::time::Instant,
+        _wgpu_context: &WgpuContext,
         _context: (),
     ) -> Result<(), Error> {
         puffin::profile_function!();

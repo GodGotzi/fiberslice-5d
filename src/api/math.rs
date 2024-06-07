@@ -1,6 +1,6 @@
 use std::ops::AddAssign;
 
-use three_d::Vector3;
+use glam::Vec3;
 
 use super::{FlipYZ, Reverse};
 
@@ -8,9 +8,9 @@ pub trait DirectMul {
     fn direct_mul(&self, other: &Self) -> Self;
 }
 
-impl<S: std::ops::Mul<S, Output = S> + Copy> DirectMul for Vector3<S> {
+impl DirectMul for Vec3 {
     fn direct_mul(&self, other: &Self) -> Self {
-        Vector3 {
+        Vec3 {
             x: self.x * other.x,
             y: self.y * other.y,
             z: self.z * other.z,
@@ -18,13 +18,13 @@ impl<S: std::ops::Mul<S, Output = S> + Copy> DirectMul for Vector3<S> {
     }
 }
 
-impl FlipYZ for Vector3<f32> {
+impl FlipYZ for Vec3 {
     fn flip(&mut self) {
         std::mem::swap(&mut self.y, &mut self.z);
     }
 }
 
-impl FlipYZ for (Vector3<f32>, Vector3<f32>, Vector3<f32>) {
+impl FlipYZ for (Vec3, Vec3, Vec3) {
     fn flip(&mut self) {
         self.0.flip();
         self.1.flip();
@@ -32,7 +32,7 @@ impl FlipYZ for (Vector3<f32>, Vector3<f32>, Vector3<f32>) {
     }
 }
 
-impl Reverse for (Vector3<f32>, Vector3<f32>, Vector3<f32>) {
+impl Reverse for (Vec3, Vec3, Vec3) {
     fn reverse(&mut self) {
         std::mem::swap(&mut self.0, &mut self.2);
     }

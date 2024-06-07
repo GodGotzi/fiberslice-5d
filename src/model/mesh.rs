@@ -1,6 +1,4 @@
-use three_d::Vector3;
-
-pub type Vertices = Vec<Vector3<f32>>;
+pub type Vertices = Vec<glam::Vec3>;
 
 pub trait ToFlipYZ {
     fn flip_yz(&self) -> Self;
