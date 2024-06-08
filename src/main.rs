@@ -82,8 +82,11 @@ async fn main() -> Result<(), EventLoopError> {
 
     let start_time = Instant::now();
     event_loop.run(move |event, loop_target| {
-        if let winit::event::Event::WindowEvent { event, .. } = event.clone() {
-            match event {
+        if let winit::event::Event::WindowEvent {
+            event: winit_event, ..
+        } = event.clone()
+        {
+            match winit_event {
                 winit::event::WindowEvent::Resized(size) => {
                     // Resize with 0 width and height is used by winit to signal a minimize event on Windows.
                     // See: https://github.com/rust-windowing/winit/issues/208
@@ -99,16 +102,27 @@ async fn main() -> Result<(), EventLoopError> {
                 winit::event::WindowEvent::CloseRequested => {
                     loop_target.exit();
                 }
+                winit::event::WindowEvent::RedrawRequested => {}
                 _ => {
                     window.request_redraw();
                 }
             }
         }
 
-        ui_adapter
+        let ui_output = ui_adapter
             .handle_frame(&event, start_time, &wgpu_context, global_state.clone())
             .unwrap();
 
+        render_adapter
+            .handle_frame(
+                &event,
+                start_time,
+                &wgpu_context,
+                (global_state.clone(), ui_output),
+            )
+            .unwrap();
+
+        /*
         environment_adapter
             .handle_frame(&event, start_time, &wgpu_context, global_state.clone())
             .unwrap();
@@ -116,10 +130,7 @@ async fn main() -> Result<(), EventLoopError> {
         picking_adapter
             .handle_frame(&event, start_time, &wgpu_context, global_state.clone())
             .unwrap();
-
-        render_adapter
-            .handle_frame(&event, start_time, &wgpu_context, global_state.clone())
-            .unwrap();
+        */
 
         if reader.has_active_events() {
             for event in reader.read() {

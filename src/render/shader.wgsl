@@ -53,7 +53,7 @@ var s_diffuse: sampler;
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let object_color: vec4<f32> = textureSample(t_diffuse, s_diffuse, in.tex_coords);
-    
+
     let ambient_color = light.color.xyz * light.color.a;
 
     let light_dir = normalize(light.position.xyz - in.world_position);

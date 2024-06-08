@@ -25,7 +25,7 @@ impl EnvironmentAdapter {
     }
 }
 
-impl FrameHandle<(), (), GlobalState> for EnvironmentAdapter {
+impl FrameHandle<'_, (), (), GlobalState> for EnvironmentAdapter {
     fn handle_frame(
         &mut self,
         _event: &winit::event::Event<()>,
@@ -39,7 +39,7 @@ impl FrameHandle<(), (), GlobalState> for EnvironmentAdapter {
     }
 }
 
-impl Adapter<(), (), GlobalState, EnvironmentEvent> for EnvironmentAdapter {
+impl<'a> Adapter<'a, (), (), GlobalState, EnvironmentEvent> for EnvironmentAdapter {
     fn from_context(context: &WgpuContext) -> Self {
         Self {
             shared_environment: SharedMut::from_inner(Environment::new(context)),

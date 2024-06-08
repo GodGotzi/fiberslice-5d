@@ -278,7 +278,7 @@ pub fn get_box_vertecies(
         * Mat4::from_scale(size);
 
     // Vertecies for a box
-    let points = vec![
+    let points = [
         homogenous_vector_to_array_3d(transform * Vec4::new(-0.5f32, -0.5f32, 0.5f32, 1.0f32)),
         homogenous_vector_to_array_3d(transform * Vec4::new(-0.5f32, 0.5f32, 0.5f32, 1.0f32)),
         homogenous_vector_to_array_3d(transform * Vec4::new(0.5f32, -0.5f32, 0.5f32, 1.0f32)),

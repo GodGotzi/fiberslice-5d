@@ -10,7 +10,7 @@ pub enum PickingEvent {
 
 pub struct PickingAdapter {}
 
-impl FrameHandle<(), (), GlobalState> for PickingAdapter {
+impl FrameHandle<'_, (), (), GlobalState> for PickingAdapter {
     fn handle_frame(
         &mut self,
         _event: &winit::event::Event<()>,
@@ -22,7 +22,7 @@ impl FrameHandle<(), (), GlobalState> for PickingAdapter {
     }
 }
 
-impl Adapter<(), (), GlobalState, PickingEvent> for PickingAdapter {
+impl<'a> Adapter<'a, (), (), GlobalState, PickingEvent> for PickingAdapter {
     fn from_context(context: &WgpuContext) -> Self {
         Self {}
     }

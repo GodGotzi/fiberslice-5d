@@ -26,7 +26,8 @@ pub struct WgpuContext<'a> {
 impl WgpuContext<'_> {
     pub fn new(window: Arc<Window>) -> Result<Self, Error> {
         let instance = wgpu::Instance::new(InstanceDescriptor {
-            backends: wgpu::Backends::PRIMARY,
+            backends: wgpu::Backends::all(),
+            dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
             ..Default::default()
         });
         let surface = instance.create_surface(window.clone()).unwrap();
@@ -79,9 +80,9 @@ impl WgpuContext<'_> {
     }
 }
 
-pub trait FrameHandle<E, T, C> {
+pub trait FrameHandle<'a, E, T, C> {
     fn handle_frame(
-        &mut self,
+        &'a mut self,
         event: &Event<E>,
         start_time: std::time::Instant,
         wgpu_context: &WgpuContext,
@@ -89,7 +90,7 @@ pub trait FrameHandle<E, T, C> {
     ) -> Result<T, Error>;
 }
 
-pub trait Adapter<WinitE, T, C, E: Debug + Clone>: FrameHandle<WinitE, T, C> {
+pub trait Adapter<'a, WinitE, T, C, E: Debug + Clone>: FrameHandle<'a, WinitE, T, C> {
     fn from_context(wgpu_context: &WgpuContext) -> Self;
 
     fn get_adapter_description(&self) -> String;

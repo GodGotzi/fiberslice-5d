@@ -22,11 +22,17 @@ use egui::{FontDefinitions, Visuals};
 
 use crate::{
     environment::view::Mode,
-    prelude::{event::*, Adapter, Error, FrameHandle, SharedMut, WgpuContext},
+    prelude::{Adapter, Error, FrameHandle, SharedMut, WgpuContext},
     GlobalState,
 };
 
 use self::boundary::Boundary;
+
+pub struct UiOutput {
+    pub paint_jobs: Vec<egui::ClippedPrimitive>,
+    pub tdelta: egui::TexturesDelta,
+    pub screen_descriptor: ScreenDescriptor,
+}
 
 #[derive(Debug, Clone)]
 pub enum UiEvent {}
@@ -34,7 +40,6 @@ pub enum UiEvent {}
 pub struct UiAdapter {
     state: SharedMut<UiState>,
     screen: Screen,
-    egui_rpass: RenderPass,
     platform: Platform,
 }
 
@@ -44,111 +49,83 @@ impl UiAdapter {
     }
 }
 
-impl FrameHandle<(), (), GlobalState> for UiAdapter {
+impl<'a> FrameHandle<'a, (), Option<UiOutput>, GlobalState> for UiAdapter {
     fn handle_frame(
-        &mut self,
+        &'a mut self,
         event: &winit::event::Event<()>,
         start_time: std::time::Instant,
         wgpu_context: &WgpuContext,
         context: GlobalState,
-    ) -> Result<(), Error> {
+    ) -> Result<Option<UiOutput>, Error> {
         puffin::profile_function!();
 
         self.platform.handle_event(event);
 
-        if *event == winit::event::Event::UserEvent(()) {
-            self.platform
-                .update_time(start_time.elapsed().as_secs_f64());
+        if let winit::event::Event::WindowEvent { event, .. } = event {
+            if event == &winit::event::WindowEvent::RedrawRequested {
+                self.platform
+                    .update_time(start_time.elapsed().as_secs_f64());
 
-            let output_frame = match wgpu_context.surface.get_current_texture() {
-                Ok(frame) => frame,
-                Err(wgpu::SurfaceError::Outdated) => {
-                    // This error occurs when the app is minimized on Windows.
-                    // Silently return here to prevent spamming the console with:
-                    // "The underlying surface has changed, and therefore the swap chain must be updated"
-                    return Err(Error::Generic("Surface outdated".to_string()));
-                }
-                Err(e) => {
-                    eprintln!("Dropped frame with error: {}", e);
-                    return Err(Error::Generic("Dropped frame".to_string()));
-                }
-            };
-            let output_view = output_frame
-                .texture
-                .create_view(&wgpu::TextureViewDescriptor::default());
+                self.platform.begin_frame();
 
-            self.platform.begin_frame();
+                self.screen.show(
+                    &self.platform.context(),
+                    &mut UiData::new(self.state.clone()),
+                );
 
-            self.screen.show(
-                &self.platform.context(),
-                &mut UiData::new(self.state.clone()),
-            );
+                let full_output = self.platform.end_frame(Some(&wgpu_context.window));
 
-            let full_output = self.platform.end_frame(Some(&wgpu_context.window));
+                let paint_jobs = self
+                    .platform
+                    .context()
+                    .tessellate(full_output.shapes, full_output.pixels_per_point);
 
-            let paint_jobs = self
-                .platform
-                .context()
-                .tessellate(full_output.shapes, full_output.pixels_per_point);
+                let tdelta: egui::TexturesDelta = full_output.textures_delta;
 
-            let mut encoder =
-                wgpu_context
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("egui_encoder"),
-                    });
+                let screen_descriptor = ScreenDescriptor {
+                    physical_width: wgpu_context.surface_config.width,
+                    physical_height: wgpu_context.surface_config.height,
+                    scale_factor: wgpu_context.window.scale_factor() as f32,
+                };
 
-            let screen_descriptor = ScreenDescriptor {
-                physical_width: wgpu_context.surface_config.width,
-                physical_height: wgpu_context.surface_config.height,
-                scale_factor: wgpu_context.window.scale_factor() as f32,
-            };
+                /*
+                self.egui_rpass
+                    .add_textures(&wgpu_context.device, &wgpu_context.queue, &tdelta)
+                    .expect("add texture ok");
 
-            let tdelta: egui::TexturesDelta = full_output.textures_delta;
-
-            self.egui_rpass
-                .add_textures(&wgpu_context.device, &wgpu_context.queue, &tdelta)
-                .expect("add texture ok");
-
-            self.egui_rpass.update_buffers(
-                &wgpu_context.device,
-                &wgpu_context.queue,
-                &paint_jobs,
-                &screen_descriptor,
-            );
-
-            self.egui_rpass
-                .execute(
-                    &mut encoder,
-                    &output_view,
+                self.egui_rpass.update_buffers(
+                    &wgpu_context.device,
+                    &wgpu_context.queue,
                     &paint_jobs,
                     &screen_descriptor,
-                    None,
-                )
-                .unwrap();
+                );
 
-            wgpu_context.queue.submit(std::iter::once(encoder.finish()));
+                self.egui_rpass
+                    .remove_textures(tdelta)
+                    .expect("remove texture ok");
+                */
 
-            output_frame.present();
+                if self.platform.context().has_requested_repaint() {
+                    wgpu_context.window.request_redraw();
+                }
 
-            self.egui_rpass
-                .remove_textures(tdelta)
-                .expect("remove texture ok");
-
-            if self.platform.context().has_requested_repaint() {
-                wgpu_context.window.request_redraw();
+                return Ok(Some(UiOutput {
+                    paint_jobs,
+                    tdelta,
+                    screen_descriptor,
+                }));
             }
         }
 
         // let camera_viewport = self.screen.construct_viewport(frame_input);
         // let output = self.ui.construct_output(camera_viewport);
 
-        Ok(())
+        Ok(None)
         // Ok(output)
     }
 }
 
-impl Adapter<(), (), GlobalState, UiEvent> for UiAdapter {
+impl<'a> Adapter<'a, (), Option<UiOutput>, GlobalState, UiEvent> for UiAdapter {
     fn from_context(context: &WgpuContext) -> Self {
         let platform = Platform::new(PlatformDescriptor {
             physical_width: context.window.inner_size().width,
@@ -164,12 +141,10 @@ impl Adapter<(), (), GlobalState, UiEvent> for UiAdapter {
         let screen = Screen::new();
 
         // We use the egui_wgpu_backend crate as the render backend.
-        let egui_rpass = RenderPass::new(&context.device, context.surface_format, 1);
 
         Self {
             state,
             screen,
-            egui_rpass,
             platform,
         }
     }
