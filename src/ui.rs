@@ -22,8 +22,8 @@ use egui::{FontDefinitions, Visuals};
 
 use crate::{
     environment::view::Mode,
-    event::EventReader,
-    prelude::{Adapter, Error, FrameHandle, SharedMut, SharedState, WgpuContext},
+    prelude::{event::*, Adapter, Error, FrameHandle, SharedMut, WgpuContext},
+    GlobalState,
 };
 
 use self::boundary::Boundary;
@@ -32,8 +32,6 @@ use self::boundary::Boundary;
 pub enum UiEvent {}
 
 pub struct UiAdapter {
-    event_reader: EventReader<UiEvent>,
-
     state: SharedMut<UiState>,
     screen: Screen,
     egui_rpass: RenderPass,
@@ -46,13 +44,13 @@ impl UiAdapter {
     }
 }
 
-impl FrameHandle<(), (), ()> for UiAdapter {
+impl FrameHandle<(), (), GlobalState> for UiAdapter {
     fn handle_frame(
         &mut self,
         event: &winit::event::Event<()>,
         start_time: std::time::Instant,
         wgpu_context: &WgpuContext,
-        context: (),
+        context: GlobalState,
     ) -> Result<(), Error> {
         puffin::profile_function!();
 
@@ -119,13 +117,15 @@ impl FrameHandle<(), (), ()> for UiAdapter {
                 &screen_descriptor,
             );
 
-            self.egui_rpass.execute(
-                &mut encoder,
-                &output_view,
-                &paint_jobs,
-                &screen_descriptor,
-                None,
-            );
+            self.egui_rpass
+                .execute(
+                    &mut encoder,
+                    &output_view,
+                    &paint_jobs,
+                    &screen_descriptor,
+                    None,
+                )
+                .unwrap();
 
             wgpu_context.queue.submit(std::iter::once(encoder.finish()));
 
@@ -148,9 +148,8 @@ impl FrameHandle<(), (), ()> for UiAdapter {
     }
 }
 
-impl Adapter<(), (), (), UiEvent> for UiAdapter {
-    fn from_context(context: &WgpuContext) -> (crate::event::EventWriter<UiEvent>, Self) {
-        let (reader, writer) = crate::event::create_event_bundle::<UiEvent>();
+impl Adapter<(), (), GlobalState, UiEvent> for UiAdapter {
+    fn from_context(context: &WgpuContext) -> Self {
         let platform = Platform::new(PlatformDescriptor {
             physical_width: context.window.inner_size().width,
             physical_height: context.window.inner_size().height,
@@ -167,19 +166,12 @@ impl Adapter<(), (), (), UiEvent> for UiAdapter {
         // We use the egui_wgpu_backend crate as the render backend.
         let egui_rpass = RenderPass::new(&context.device, context.surface_format, 1);
 
-        let adapter = Self {
-            event_reader: reader,
+        Self {
             state,
             screen,
             egui_rpass,
             platform,
-        };
-
-        (writer, adapter)
-    }
-
-    fn get_reader(&self) -> &EventReader<UiEvent> {
-        &self.event_reader
+        }
     }
 
     fn handle_event(&mut self, event: UiEvent) {
@@ -241,17 +233,14 @@ pub enum Theme {
     Dark,
 }
 
-pub struct UiData<'a> {
+pub struct UiData {
     state: SharedMut<UiState>,
-    _phantom: std::marker::PhantomData<&'a SharedState>,
+    // _phantom: std::marker::PhantomData<&'a SharedState>,
 }
 
-impl<'a> UiData<'a> {
+impl UiData {
     pub fn new(state: SharedMut<UiState>) -> Self {
-        Self {
-            state,
-            _phantom: std::marker::PhantomData,
-        }
+        Self { state }
     }
 
     pub fn borrow_ui_state(&mut self) -> RwLockReadGuard<UiState> {

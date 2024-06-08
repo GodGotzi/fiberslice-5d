@@ -9,14 +9,16 @@ use model::gcode::{self, DisplaySettings, MeshSettings};
 use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
 use std::{sync::Arc, time::Instant};
 
-use prelude::{Adapter, FrameHandle, WgpuContext};
+use prelude::{
+    event::{create_event_bundle, EventWriter},
+    Adapter, FrameHandle, Shared, WgpuContext,
+};
 
 mod api;
 mod config;
 mod control;
 mod environment;
 mod error;
-mod event;
 mod model;
 mod picking;
 mod prelude;
@@ -30,6 +32,19 @@ mod ui;
 mod window;
 
 use winit::{error::EventLoopError, event_loop::EventLoop};
+
+#[derive(Debug, Clone)]
+pub enum RootEvent {
+    UiEvent(ui::UiEvent),
+    PickingEvent(picking::PickingEvent),
+    EnvironmentEvent(environment::EnvironmentEvent),
+    RenderEvent(render::RenderEvent),
+}
+
+#[derive(Debug, Clone)]
+pub struct GlobalState {
+    pub writer: Shared<EventWriter<RootEvent>>,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), EventLoopError> {
@@ -51,32 +66,23 @@ async fn main() -> Result<(), EventLoopError> {
 
     let mut wgpu_context = WgpuContext::new(window.clone()).unwrap();
 
-    let (render_event_writer, mut render_adapter) =
-        render::RenderAdapter::from_context(&wgpu_context);
+    let mut render_adapter = render::RenderAdapter::from_context(&wgpu_context);
 
-    let (ui_event_writer, mut ui_adapter) = ui::UiAdapter::from_context(&wgpu_context);
+    let mut ui_adapter = ui::UiAdapter::from_context(&wgpu_context);
 
-    let (picking_event_writer, mut picking_adapter) =
-        picking::PickingAdapter::from_context(&wgpu_context);
+    let mut picking_adapter = picking::PickingAdapter::from_context(&wgpu_context);
 
-    let (environment_event_writer, mut environment_adapter) =
-        environment::EnvironmentAdapter::from_context(&wgpu_context);
+    let mut environment_adapter = environment::EnvironmentAdapter::from_context(&wgpu_context);
+
+    let (reader, writer) = create_event_bundle::<RootEvent>();
+
+    let global_state = GlobalState {
+        writer: Shared::from_inner(writer),
+    };
 
     let start_time = Instant::now();
     event_loop.run(move |event, loop_target| {
-        // Pass the winit events to the platform integration.
-        ui_adapter
-            .handle_frame(&event, start_time, &wgpu_context, ())
-            .unwrap();
-
-        render_adapter.handle_events();
-        ui_adapter.handle_events();
-
-        render_adapter
-            .handle_frame(&event, start_time, &wgpu_context, ())
-            .unwrap();
-
-        if let winit::event::Event::WindowEvent { event, .. } = event {
+        if let winit::event::Event::WindowEvent { event, .. } = event.clone() {
             match event {
                 winit::event::WindowEvent::Resized(size) => {
                     // Resize with 0 width and height is used by winit to signal a minimize event on Windows.
@@ -95,6 +101,41 @@ async fn main() -> Result<(), EventLoopError> {
                 }
                 _ => {
                     window.request_redraw();
+                }
+            }
+        }
+
+        ui_adapter
+            .handle_frame(&event, start_time, &wgpu_context, global_state.clone())
+            .unwrap();
+
+        environment_adapter
+            .handle_frame(&event, start_time, &wgpu_context, global_state.clone())
+            .unwrap();
+
+        picking_adapter
+            .handle_frame(&event, start_time, &wgpu_context, global_state.clone())
+            .unwrap();
+
+        render_adapter
+            .handle_frame(&event, start_time, &wgpu_context, global_state.clone())
+            .unwrap();
+
+        if reader.has_active_events() {
+            for event in reader.read() {
+                match event {
+                    RootEvent::UiEvent(ui_event) => {
+                        ui_adapter.handle_event(ui_event);
+                    }
+                    RootEvent::PickingEvent(picking_event) => {
+                        picking_adapter.handle_event(picking_event);
+                    }
+                    RootEvent::EnvironmentEvent(environment_event) => {
+                        environment_adapter.handle_event(environment_event);
+                    }
+                    RootEvent::RenderEvent(render_event) => {
+                        render_adapter.handle_event(render_event);
+                    }
                 }
             }
         }

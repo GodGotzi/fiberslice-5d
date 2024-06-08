@@ -1,6 +1,31 @@
-use std::fmt::Debug;
+use std::{any::TypeId, collections::HashMap, fmt::Debug};
 
-use crate::prelude::SharedMut;
+use super::SharedMut;
+
+#[derive(Debug)]
+pub struct EventWriters<T: 'static + Debug> {
+    writers: HashMap<TypeId, EventWriter<T>>,
+}
+
+impl<T: 'static + Debug> Default for EventWriters<T> {
+    fn default() -> Self {
+        Self {
+            writers: HashMap::new(),
+        }
+    }
+}
+
+impl<T: 'static + Debug> EventWriters<T> {
+    pub fn add_adapter_writer<A: 'static>(&mut self, writer: EventWriter<T>) {
+        self.writers.insert(TypeId::of::<A>(), writer);
+    }
+
+    pub fn send_event_to_adapter<A: 'static>(&mut self, event: T) {
+        if let Some(writer) = self.writers.get_mut(&TypeId::of::<A>()) {
+            writer.send(event);
+        }
+    }
+}
 
 pub struct EventReader<E: Debug> {
     events: SharedMut<Vec<E>>,
@@ -16,7 +41,7 @@ impl<E: Debug> Clone for EventReader<E> {
 
 impl<E: Debug + Clone> EventReader<E> {
     pub fn read(&self) -> Vec<E> {
-        let mut result = self.events.read().clone();
+        let result = self.events.read().clone();
         self.events.write().clear();
 
         result
@@ -27,6 +52,7 @@ impl<E: Debug + Clone> EventReader<E> {
     }
 }
 
+#[derive(Debug)]
 pub struct EventWriter<E: Debug> {
     events: SharedMut<Vec<E>>,
 }

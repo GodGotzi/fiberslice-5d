@@ -5,15 +5,13 @@ use light::LightUniform;
 use vertex::Vertex;
 use wgpu::util::DeviceExt;
 
-use crate::{
-    event::{EventReader, EventWriter},
-    prelude::*,
-};
+use crate::{prelude::*, GlobalState};
+
+use event::{create_event_bundle, EventReader, EventWriter};
 
 pub mod camera;
 pub mod geometry;
 pub mod light;
-pub mod state;
 pub mod texture;
 pub mod vertex;
 
@@ -41,7 +39,6 @@ impl RenderState {}
 pub struct RenderAdapter {
     render_pipeline: wgpu::RenderPipeline,
     render_state: RenderState,
-    event_reader: EventReader<RenderEvent>,
 }
 
 impl RenderAdapter {}
@@ -59,13 +56,13 @@ impl std::fmt::Display for RenderError {
 
 impl std::error::Error for RenderError {}
 
-impl FrameHandle<(), (), ()> for RenderAdapter {
+impl FrameHandle<(), (), GlobalState> for RenderAdapter {
     fn handle_frame(
         &mut self,
         _event: &winit::event::Event<()>,
-        start_time: std::time::Instant,
+        _start_time: std::time::Instant,
         wgpu_context: &WgpuContext,
-        _context: (),
+        _state: GlobalState,
     ) -> Result<(), Error> {
         puffin::profile_function!();
 
@@ -130,8 +127,8 @@ impl FrameHandle<(), (), ()> for RenderAdapter {
     }
 }
 
-impl Adapter<(), (), (), RenderEvent> for RenderAdapter {
-    fn from_context(context: &WgpuContext) -> (EventWriter<RenderEvent>, Self) {
+impl Adapter<(), (), GlobalState, RenderEvent> for RenderAdapter {
+    fn from_context(context: &WgpuContext) -> Self {
         let camera_uniform = CameraUniform::default();
 
         let camera_buffer = context
@@ -315,19 +312,10 @@ impl Adapter<(), (), (), RenderEvent> for RenderAdapter {
                     multiview: None,
                 });
 
-        let (reader, writer) = crate::event::create_event_bundle::<RenderEvent>();
-
-        let render_adapter = RenderAdapter {
+        RenderAdapter {
             render_pipeline,
             render_state,
-            event_reader: reader,
-        };
-
-        (writer, render_adapter)
-    }
-
-    fn get_reader(&self) -> &EventReader<RenderEvent> {
-        &self.event_reader
+        }
     }
 
     fn handle_event(&mut self, event: RenderEvent) {

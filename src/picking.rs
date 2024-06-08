@@ -1,7 +1,6 @@
 use crate::{
-    event::EventReader,
-    prelude::{Adapter, Error, FrameHandle, WgpuContext},
-    render::RenderState,
+    prelude::{event::*, Adapter, Error, FrameHandle, WgpuContext},
+    GlobalState,
 };
 
 #[derive(Debug, Clone)]
@@ -9,36 +8,23 @@ pub enum PickingEvent {
     Select,
 }
 
-pub struct PickingAdapter {
-    event_reader: EventReader<PickingEvent>,
-}
+pub struct PickingAdapter {}
 
-impl FrameHandle<(), (), RenderState> for PickingAdapter {
+impl FrameHandle<(), (), GlobalState> for PickingAdapter {
     fn handle_frame(
         &mut self,
         _event: &winit::event::Event<()>,
         _start_time: std::time::Instant,
         _wgpu_context: &WgpuContext,
-        _context: RenderState,
+        _context: GlobalState,
     ) -> Result<(), Error> {
         Ok(())
     }
 }
 
-impl Adapter<(), (), RenderState, PickingEvent> for PickingAdapter {
-    fn from_context(context: &WgpuContext) -> (crate::event::EventWriter<PickingEvent>, Self) {
-        let (reader, writer) = crate::event::create_event_bundle::<PickingEvent>();
-
-        (
-            writer,
-            Self {
-                event_reader: reader,
-            },
-        )
-    }
-
-    fn get_reader(&self) -> &EventReader<PickingEvent> {
-        &self.event_reader
+impl Adapter<(), (), GlobalState, PickingEvent> for PickingAdapter {
+    fn from_context(context: &WgpuContext) -> Self {
+        Self {}
     }
 
     fn handle_event(&mut self, event: PickingEvent) {}

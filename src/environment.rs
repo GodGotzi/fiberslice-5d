@@ -3,7 +3,9 @@ use std::{f32::consts::PI, fmt::Debug};
 pub mod camera_controller;
 pub mod view;
 
-use crate::{event::EventReader, prelude::*, render::camera::OrbitCamera, ui::UiState};
+use crate::{prelude::*, render::camera::OrbitCamera, GlobalState, RootEvent};
+
+use event::*;
 
 use glam::vec3;
 use view::Orientation;
@@ -15,7 +17,6 @@ pub enum EnvironmentEvent {
 
 pub struct EnvironmentAdapter {
     shared_environment: SharedMut<Environment>,
-    event_reader: EventReader<EnvironmentEvent>,
 }
 
 impl EnvironmentAdapter {
@@ -24,13 +25,13 @@ impl EnvironmentAdapter {
     }
 }
 
-impl FrameHandle<(), (), ()> for EnvironmentAdapter {
+impl FrameHandle<(), (), GlobalState> for EnvironmentAdapter {
     fn handle_frame(
         &mut self,
         _event: &winit::event::Event<()>,
         _start_time: std::time::Instant,
         _wgpu_context: &WgpuContext,
-        _state: (),
+        _state: GlobalState,
     ) -> Result<(), Error> {
         puffin::profile_function!();
 
@@ -38,21 +39,11 @@ impl FrameHandle<(), (), ()> for EnvironmentAdapter {
     }
 }
 
-impl Adapter<(), (), (), EnvironmentEvent> for EnvironmentAdapter {
-    fn from_context(context: &WgpuContext) -> (crate::event::EventWriter<EnvironmentEvent>, Self) {
-        let (reader, writer) = crate::event::create_event_bundle::<EnvironmentEvent>();
-
-        (
-            writer,
-            Self {
-                shared_environment: SharedMut::from_inner(Environment::new(context)),
-                event_reader: reader,
-            },
-        )
-    }
-
-    fn get_reader(&self) -> &EventReader<EnvironmentEvent> {
-        &self.event_reader
+impl Adapter<(), (), GlobalState, EnvironmentEvent> for EnvironmentAdapter {
+    fn from_context(context: &WgpuContext) -> Self {
+        Self {
+            shared_environment: SharedMut::from_inner(Environment::new(context)),
+        }
     }
 
     fn handle_event(&mut self, event: EnvironmentEvent) {
@@ -86,7 +77,7 @@ impl Debug for Environment {
 
 impl Environment {
     pub fn new(context: &WgpuContext) -> Self {
-        let camera = OrbitCamera::new(100.0, 1.5, 1.25, vec3(0.0, 0.0, 0.0), context.aspect());
+        let camera = OrbitCamera::new(10.0, 1.5, 1.25, vec3(0.0, 0.0, 0.0), context.aspect());
 
         // camera.handle_orientation(Orientation::Default);
 
