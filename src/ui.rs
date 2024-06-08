@@ -32,6 +32,8 @@ pub struct UiOutput {
     pub paint_jobs: Vec<egui::ClippedPrimitive>,
     pub tdelta: egui::TexturesDelta,
     pub screen_descriptor: ScreenDescriptor,
+
+    pub viewport: (f32, f32, f32, f32),
 }
 
 #[derive(Debug, Clone)]
@@ -75,6 +77,8 @@ impl<'a> FrameHandle<'a, (), Option<UiOutput>, GlobalState> for UiAdapter {
 
                 let full_output = self.platform.end_frame(Some(&wgpu_context.window));
 
+                let viewport = self.screen.construct_viewport(wgpu_context);
+
                 let paint_jobs = self
                     .platform
                     .context()
@@ -113,6 +117,7 @@ impl<'a> FrameHandle<'a, (), Option<UiOutput>, GlobalState> for UiAdapter {
                     paint_jobs,
                     tdelta,
                     screen_descriptor,
+                    viewport,
                 }));
             }
         }

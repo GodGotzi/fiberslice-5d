@@ -1,16 +1,13 @@
-use std::{
-    borrow::{Borrow, BorrowMut},
-    time::Instant,
-};
+use std::time::Instant;
 
 use camera::{CameraUniform, OrbitCamera};
 use geometry::r#box::get_box_vertecies;
 use glam::Vec3;
 use light::LightUniform;
 use vertex::Vertex;
-use wgpu::{util::DeviceExt, Color, TextureView};
+use wgpu::util::DeviceExt;
 
-use crate::{environment::camera_controller, prelude::*, render, ui::UiOutput, GlobalState};
+use crate::{environment::camera_controller, prelude::*, ui::UiOutput, GlobalState};
 
 pub mod camera;
 pub mod geometry;
@@ -23,7 +20,7 @@ const MSAA_SAMPLE_COUNT: u32 = 1;
 #[derive(Debug, Clone)]
 pub enum RenderEvent {}
 
-pub struct RenderState {
+struct RenderState {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     num_indices: u32,
@@ -36,6 +33,7 @@ pub struct RenderState {
     diffuse_texture: texture::Texture,
     diffuse_bind_group: wgpu::BindGroup,
 
+    camera_viewport: Option<(f32, f32, f32, f32)>,
     camera_uniform: camera::CameraUniform,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
@@ -78,19 +76,6 @@ pub struct RenderAdapter {
 
     render_state: RenderState,
 }
-
-#[derive(Debug)]
-struct RenderError {
-    message: String,
-}
-
-impl std::fmt::Display for RenderError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "RenderError: {}", self.message)
-    }
-}
-
-impl std::error::Error for RenderError {}
 
 impl FrameHandle<'_, (), (), (GlobalState, Option<UiOutput>)> for RenderAdapter {
     fn handle_frame(
@@ -160,8 +145,16 @@ impl FrameHandle<'_, (), (), (GlobalState, Option<UiOutput>)> for RenderAdapter 
                         occlusion_query_set: None,
                     });
 
-                    render_pass.set_viewport(200.0, 200.0, 500.0, 500.0, 0.0, 1.0);
-                    render_pass.set_scissor_rect(200, 200, 500, 500);
+                    let UiOutput {
+                        paint_jobs,
+                        tdelta,
+                        screen_descriptor,
+                        viewport: (x, y, width, height),
+                    } = ui_output.unwrap();
+
+                    self.render_state.camera_viewport = Some((x, y, width, height));
+                    render_pass.set_viewport(x, y, width, height, 0.0, 1.0);
+                    // render_pass.set_scissor_rect(x as u32, y as u32, width as , height);
 
                     render_pass.set_pipeline(&self.render_pipeline);
                     render_pass.set_bind_group(0, &self.render_state.diffuse_bind_group, &[]);
@@ -170,12 +163,6 @@ impl FrameHandle<'_, (), (), (GlobalState, Option<UiOutput>)> for RenderAdapter 
                     render_pass.set_vertex_buffer(0, self.render_state.vertex_buffer.slice(..));
 
                     render_pass.draw(0..self.render_state.num_indices, 0..1);
-
-                    let UiOutput {
-                        paint_jobs,
-                        tdelta,
-                        screen_descriptor,
-                    } = ui_output.unwrap();
 
                     self.egui_rpass
                         .add_textures(&wgpu_context.device, &wgpu_context.queue, &tdelta)
@@ -220,8 +207,13 @@ impl FrameHandle<'_, (), (), (GlobalState, Option<UiOutput>)> for RenderAdapter 
                                 "multisampled_framebuffer",
                             );
 
-                        self.render_state.camera.aspect = wgpu_context.surface_config.width as f32
-                            / wgpu_context.surface_config.height as f32;
+                        if let Some((_x, _y, w, h)) = self.render_state.camera_viewport {
+                            self.render_state.camera.aspect = w / h;
+                        } else {
+                            self.render_state.camera.aspect = wgpu_context.surface_config.width
+                                as f32
+                                / wgpu_context.surface_config.height as f32;
+                        }
                     }
 
                     wgpu_context.window.request_redraw();
@@ -467,6 +459,7 @@ impl<'a> Adapter<'a, (), (), (GlobalState, Option<UiOutput>), RenderEvent> for R
             diffuse_bind_group,
             diffuse_texture,
 
+            camera_viewport: None,
             camera_uniform,
             camera_buffer,
             camera_bind_group,
