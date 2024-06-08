@@ -13,7 +13,9 @@ pub mod screen;
 mod icon;
 pub mod visual;
 
-use egui_wgpu_backend::{RenderPass, ScreenDescriptor};
+use std::sync::atomic::AtomicBool;
+
+use egui_wgpu_backend::ScreenDescriptor;
 use egui_winit_platform::{Platform, PlatformDescriptor};
 use parking_lot::{RwLockReadGuard, RwLockWriteGuard};
 use screen::Screen;
@@ -22,13 +24,42 @@ use egui::{FontDefinitions, Visuals};
 
 use crate::{
     environment::view::Mode,
-    prelude::{Adapter, Error, FrameHandle, SharedMut, WgpuContext},
-    GlobalState,
+    prelude::{Adapter, Error, FrameHandle, Shared, SharedMut, WgpuContext},
+    GlobalState, RootEvent,
 };
 
 use self::boundary::Boundary;
 
-pub struct UiOutput {
+#[derive(Debug, Clone)]
+pub enum UiEvent {}
+
+#[derive(Debug, Clone)]
+pub struct UiState {
+    pub pointer_in_use: Shared<AtomicBool>,
+    pub theme: Theme,
+    pub mode: Mode,
+}
+
+impl Default for UiState {
+    fn default() -> Self {
+        Self {
+            pointer_in_use: Shared::from_inner(AtomicBool::new(false)),
+            theme: Theme::Light,
+            mode: Mode::Preview,
+        }
+    }
+}
+
+impl UiState {
+    pub fn toggle_theme(&mut self) {
+        self.theme = match self.theme {
+            Theme::Light => Theme::Dark,
+            Theme::Dark => Theme::Light,
+        };
+    }
+}
+
+pub struct UiUpdateOutput {
     pub paint_jobs: Vec<egui::ClippedPrimitive>,
     pub tdelta: egui::TexturesDelta,
     pub screen_descriptor: ScreenDescriptor,
@@ -36,43 +67,59 @@ pub struct UiOutput {
     pub viewport: (f32, f32, f32, f32),
 }
 
-#[derive(Debug, Clone)]
-pub enum UiEvent {}
-
 pub struct UiAdapter {
-    state: SharedMut<UiState>,
+    state: UiState,
     screen: Screen,
     platform: Platform,
 }
 
 impl UiAdapter {
-    pub fn share_state(&self) -> SharedMut<UiState> {
-        self.state.clone()
+    fn update(
+        &mut self,
+        event: &winit::event::Event<RootEvent>,
+        start_time: std::time::Instant,
+        wgpu_context: &WgpuContext,
+    ) {
+        self.platform.handle_event(event);
+        self.platform
+            .update_time(start_time.elapsed().as_secs_f64());
+
+        let (x, y, width, height) = self.screen.construct_viewport(wgpu_context);
+
+        let is_pointer_over_viewport = {
+            if let Some(pos) = self.platform.context().pointer_latest_pos() {
+                pos.x >= x && pos.x <= x + width && pos.y >= y && pos.y <= y + height
+            } else {
+                false
+            }
+        };
+
+        self.state.pointer_in_use.inner().store(
+            self.platform.context().is_using_pointer() || !is_pointer_over_viewport,
+            std::sync::atomic::Ordering::Relaxed,
+        );
     }
 }
 
-impl<'a> FrameHandle<'a, (), Option<UiOutput>, GlobalState> for UiAdapter {
+impl<'a> FrameHandle<'a, RootEvent, Option<UiUpdateOutput>, GlobalState<RootEvent>> for UiAdapter {
     fn handle_frame(
         &'a mut self,
-        event: &winit::event::Event<()>,
+        event: &winit::event::Event<RootEvent>,
         start_time: std::time::Instant,
         wgpu_context: &WgpuContext,
-        context: GlobalState,
-    ) -> Result<Option<UiOutput>, Error> {
+        _context: GlobalState<RootEvent>,
+    ) -> Result<Option<UiUpdateOutput>, Error> {
         puffin::profile_function!();
 
-        self.platform.handle_event(event);
+        self.update(event, start_time, wgpu_context);
 
         if let winit::event::Event::WindowEvent { event, .. } = event {
             if event == &winit::event::WindowEvent::RedrawRequested {
-                self.platform
-                    .update_time(start_time.elapsed().as_secs_f64());
-
                 self.platform.begin_frame();
 
                 self.screen.show(
                     &self.platform.context(),
-                    &mut UiData::new(self.state.clone()),
+                    &mut UiData::new(SharedMut::from_inner(self.state.clone())),
                 );
 
                 let full_output = self.platform.end_frame(Some(&wgpu_context.window));
@@ -92,28 +139,11 @@ impl<'a> FrameHandle<'a, (), Option<UiOutput>, GlobalState> for UiAdapter {
                     scale_factor: wgpu_context.window.scale_factor() as f32,
                 };
 
-                /*
-                self.egui_rpass
-                    .add_textures(&wgpu_context.device, &wgpu_context.queue, &tdelta)
-                    .expect("add texture ok");
-
-                self.egui_rpass.update_buffers(
-                    &wgpu_context.device,
-                    &wgpu_context.queue,
-                    &paint_jobs,
-                    &screen_descriptor,
-                );
-
-                self.egui_rpass
-                    .remove_textures(tdelta)
-                    .expect("remove texture ok");
-                */
-
                 if self.platform.context().has_requested_repaint() {
                     wgpu_context.window.request_redraw();
                 }
 
-                return Ok(Some(UiOutput {
+                return Ok(Some(UiUpdateOutput {
                     paint_jobs,
                     tdelta,
                     screen_descriptor,
@@ -122,16 +152,14 @@ impl<'a> FrameHandle<'a, (), Option<UiOutput>, GlobalState> for UiAdapter {
             }
         }
 
-        // let camera_viewport = self.screen.construct_viewport(frame_input);
-        // let output = self.ui.construct_output(camera_viewport);
-
         Ok(None)
-        // Ok(output)
     }
 }
 
-impl<'a> Adapter<'a, (), Option<UiOutput>, GlobalState, UiEvent> for UiAdapter {
-    fn from_context(context: &WgpuContext) -> Self {
+impl<'a> Adapter<'a, RootEvent, UiState, Option<UiUpdateOutput>, GlobalState<RootEvent>, UiEvent>
+    for UiAdapter
+{
+    fn from_context(context: &WgpuContext) -> (UiState, Self) {
         let platform = Platform::new(PlatformDescriptor {
             physical_width: context.window.inner_size().width,
             physical_height: context.window.inner_size().height,
@@ -142,20 +170,19 @@ impl<'a> Adapter<'a, (), Option<UiOutput>, GlobalState, UiEvent> for UiAdapter {
 
         egui_extras::install_image_loaders(&platform.context());
 
-        let state = SharedMut::from_inner(UiState::new());
+        let state = UiState::default();
         let screen = Screen::new();
 
         // We use the egui_wgpu_backend crate as the render backend.
 
-        Self {
-            state,
-            screen,
-            platform,
-        }
-    }
-
-    fn handle_event(&mut self, event: UiEvent) {
-        puffin::profile_function!();
+        (
+            state.clone(),
+            Self {
+                state,
+                screen,
+                platform,
+            },
+        )
     }
 
     fn get_adapter_description(&self) -> String {
@@ -169,41 +196,6 @@ impl From<&Theme> for Visuals {
             Theme::Light => Visuals::light(),
             Theme::Dark => Visuals::dark(),
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct UiState {
-    pub theme: Theme,
-    pub mode: Mode,
-}
-
-impl UiState {
-    pub fn new() -> Self {
-        Self {
-            theme: Theme::Dark,
-            mode: Mode::Preview,
-        }
-    }
-}
-
-impl UiState {
-    pub fn toggle_theme(&mut self) {
-        self.theme = match self.theme {
-            Theme::Light => Theme::Dark,
-            Theme::Dark => Theme::Light,
-        };
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct UiResult {
-    pub pointer_use: Option<bool>,
-}
-
-impl UiResult {
-    fn empty() -> Self {
-        Self { pointer_use: None }
     }
 }
 

@@ -21,37 +21,53 @@ impl CameraController {
         }
     }
 
-    pub fn process_events(&mut self, event: &Event<()>, window: &Window, camera: &mut OrbitCamera) {
-        match event {
-            winit::event::Event::WindowEvent { event, .. } => match event {
-                WindowEvent::MouseWheel { delta, .. } => {
-                    let scroll_amount = -match delta {
-                        // A mouse line is about 1 px.
-                        MouseScrollDelta::LineDelta(_, scroll) => scroll * 1.0,
-                        MouseScrollDelta::PixelDelta(PhysicalPosition { y: scroll, .. }) => {
-                            *scroll as f32
-                        }
-                    };
-                    camera.add_distance(scroll_amount * self.zoom_speed);
-                    window.request_redraw();
-                }
-                WindowEvent::MouseInput { button, state, .. } => {
-                    let is_pressed = *state == ElementState::Pressed;
-                    self.is_drag_rotate = *button == winit::event::MouseButton::Left && is_pressed;
+    pub fn process_events<T>(
+        &mut self,
+        event: &Event<T>,
+        window: &Window,
+        camera: &mut OrbitCamera,
+        pointer_in_use: bool,
+    ) {
+        if !pointer_in_use {
+            match event {
+                winit::event::Event::WindowEvent { event, .. } => match event {
+                    WindowEvent::MouseWheel { delta, .. } => {
+                        let scroll_amount = -match delta {
+                            // A mouse line is about 1 px.
+                            MouseScrollDelta::LineDelta(_, scroll) => scroll * 1.0,
+                            MouseScrollDelta::PixelDelta(PhysicalPosition {
+                                y: scroll, ..
+                            }) => *scroll as f32,
+                        };
+                        camera.add_distance(scroll_amount * self.zoom_speed);
+                        window.request_redraw();
+                    }
+                    WindowEvent::MouseInput { button, state, .. } => {
+                        let is_pressed = *state == ElementState::Pressed;
+                        self.is_drag_rotate =
+                            *button == winit::event::MouseButton::Left && is_pressed;
+                    }
+                    _ => (),
+                },
+                winit::event::Event::DeviceEvent {
+                    event: DeviceEvent::MouseMotion { delta },
+                    ..
+                } => {
+                    if self.is_drag_rotate {
+                        camera.add_yaw(-delta.0 as f32 * self.rotate_speed);
+                        camera.add_pitch(delta.1 as f32 * self.rotate_speed);
+                        window.request_redraw();
+                    }
                 }
                 _ => (),
-            },
-            winit::event::Event::DeviceEvent {
-                event: DeviceEvent::MouseMotion { delta },
-                ..
-            } => {
-                if self.is_drag_rotate {
-                    camera.add_yaw(-delta.0 as f32 * self.rotate_speed);
-                    camera.add_pitch(delta.1 as f32 * self.rotate_speed);
-                    window.request_redraw();
-                }
             }
-            _ => (),
+        } else if let &winit::event::Event::WindowEvent {
+            event: WindowEvent::MouseInput { button, state, .. },
+            ..
+        } = &event
+        {
+            let is_pressed = *state == ElementState::Pressed;
+            self.is_drag_rotate = *button == winit::event::MouseButton::Left && is_pressed;
         }
     }
 }

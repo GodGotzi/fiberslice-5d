@@ -1,10 +1,6 @@
-use std::sync::Arc;
-
 use super::*;
 use components::{addons, menubar, modebar, settingsbar, taskbar, toolbar};
 use egui::Margin;
-use wgpu::SurfaceConfiguration;
-use winit::window::Window;
 
 pub struct Screen {
     addons: addons::Addons,
@@ -78,9 +74,6 @@ impl Screen {
             - self.taskbar.get_boundary().get_height()
             - self.modebar.get_boundary().get_height()
             - self.menubar.get_boundary().get_height();
-
-        println!("Window scale {}", wgpu_context.window.scale_factor() as f32);
-        //let extra = (height as f32 * 0.3) as u32;
 
         let viewport = (
             self.toolbar.get_boundary().get_width(),

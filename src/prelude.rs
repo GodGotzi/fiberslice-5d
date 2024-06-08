@@ -90,10 +90,10 @@ pub trait FrameHandle<'a, E, T, C> {
     ) -> Result<T, Error>;
 }
 
-pub trait Adapter<'a, WinitE, T, C, E: Debug + Clone>: FrameHandle<'a, WinitE, T, C> {
-    fn from_context(wgpu_context: &WgpuContext) -> Self;
+pub trait Adapter<'a, WinitE, S: Sized, T, C, E: Debug + Clone>:
+    FrameHandle<'a, WinitE, T, C>
+{
+    fn from_context(wgpu_context: &WgpuContext) -> (S, Self);
 
     fn get_adapter_description(&self) -> String;
-
-    fn handle_event(&mut self, event: E);
 }

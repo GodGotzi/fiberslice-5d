@@ -6,7 +6,7 @@ use winit::{
 
 use crate::{config, prelude::Error};
 
-pub fn build_window(event_loop: &EventLoop<()>) -> Result<Window, Error> {
+pub fn build_window<T>(event_loop: &EventLoop<T>) -> Result<Window, Error> {
     let window_icon = load_icon("assets/icons/main_icon.png");
 
     let window_builder = WindowBuilder::new()

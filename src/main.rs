@@ -5,14 +5,10 @@
     Please refer to the terms and conditions stated therein.
 */
 
-use model::gcode::{self, DisplaySettings, MeshSettings};
-use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
+use model::gcode::{DisplaySettings, MeshSettings};
 use std::{sync::Arc, time::Instant};
 
-use prelude::{
-    event::{create_event_bundle, EventWriter},
-    Adapter, FrameHandle, Shared, WgpuContext,
-};
+use prelude::{Adapter, FrameHandle, WgpuContext};
 
 mod api;
 mod config;
@@ -31,19 +27,22 @@ mod ui;
 
 mod window;
 
-use winit::{error::EventLoopError, event_loop::EventLoop};
+use winit::{
+    error::EventLoopError,
+    event_loop::{EventLoop, EventLoopProxy},
+};
 
 #[derive(Debug, Clone)]
 pub enum RootEvent {
     UiEvent(ui::UiEvent),
     PickingEvent(picking::PickingEvent),
-    EnvironmentEvent(environment::EnvironmentEvent),
     RenderEvent(render::RenderEvent),
 }
 
 #[derive(Debug, Clone)]
-pub struct GlobalState {
-    pub writer: Shared<EventWriter<RootEvent>>,
+pub struct GlobalState<T: 'static> {
+    pub proxy: EventLoopProxy<T>,
+    pub ui_state: ui::UiState,
 }
 
 #[tokio::main]
@@ -53,7 +52,7 @@ async fn main() -> Result<(), EventLoopError> {
     eprintln!("Run this to view profiling data:  puffin_viewer {server_addr}");
     puffin::set_scopes_on(true);
 
-    let event_loop = EventLoop::new().unwrap();
+    let event_loop = EventLoop::<RootEvent>::with_user_event().unwrap();
     let window = Arc::new(window::build_window(&event_loop).unwrap());
 
     // let settings = SharedMut::from_inner(settings::Settings { diameter: 0.45 });
@@ -66,19 +65,16 @@ async fn main() -> Result<(), EventLoopError> {
 
     let mut wgpu_context = WgpuContext::new(window.clone()).unwrap();
 
-    let mut render_adapter = render::RenderAdapter::from_context(&wgpu_context);
+    let mut render_adapter = render::RenderAdapter::from_context(&wgpu_context).1;
 
-    let mut ui_adapter = ui::UiAdapter::from_context(&wgpu_context);
+    let (ui_state, mut ui_adapter) = ui::UiAdapter::from_context(&wgpu_context);
 
-    let mut picking_adapter = picking::PickingAdapter::from_context(&wgpu_context);
+    // let mut picking_adapter = picking::PickingAdapter::from_context(&wgpu_context);
+    // let mut environment_adapter = environment::EnvironmentAdapter::from_context(&wgpu_context);
 
-    let mut environment_adapter = environment::EnvironmentAdapter::from_context(&wgpu_context);
+    let proxy = event_loop.create_proxy();
 
-    let (reader, writer) = create_event_bundle::<RootEvent>();
-
-    let global_state = GlobalState {
-        writer: Shared::from_inner(writer),
-    };
+    let global_state = GlobalState { proxy, ui_state };
 
     let start_time = Instant::now();
     event_loop.run(move |event, loop_target| {
@@ -87,22 +83,22 @@ async fn main() -> Result<(), EventLoopError> {
         } = event.clone()
         {
             match winit_event {
+                winit::event::WindowEvent::RedrawRequested => {}
                 winit::event::WindowEvent::Resized(size) => {
-                    // Resize with 0 width and height is used by winit to signal a minimize event on Windows.
-                    // See: https://github.com/rust-windowing/winit/issues/208
-                    // This solves an issue where the app would panic when minimizing on Windows.
-                    if size.width > 0 && size.height > 0 {
-                        wgpu_context.surface_config.width = size.width;
-                        wgpu_context.surface_config.height = size.height;
-                        wgpu_context
-                            .surface
-                            .configure(&wgpu_context.device, &wgpu_context.surface_config);
-                    }
+                    resize_surface(&mut wgpu_context, size);
+
+                    wgpu_context.window.request_redraw();
+                }
+                winit::event::WindowEvent::ScaleFactorChanged { .. } => {
+                    let size = wgpu_context.window.inner_size();
+
+                    resize_surface(&mut wgpu_context, size);
+
+                    wgpu_context.window.request_redraw();
                 }
                 winit::event::WindowEvent::CloseRequested => {
                     loop_target.exit();
                 }
-                winit::event::WindowEvent::RedrawRequested => {}
                 _ => {
                     window.request_redraw();
                 }
@@ -131,64 +127,15 @@ async fn main() -> Result<(), EventLoopError> {
             .handle_frame(&event, start_time, &wgpu_context, global_state.clone())
             .unwrap();
         */
-
-        if reader.has_active_events() {
-            for event in reader.read() {
-                match event {
-                    RootEvent::UiEvent(ui_event) => {
-                        ui_adapter.handle_event(ui_event);
-                    }
-                    RootEvent::PickingEvent(picking_event) => {
-                        picking_adapter.handle_event(picking_event);
-                    }
-                    RootEvent::EnvironmentEvent(environment_event) => {
-                        environment_adapter.handle_event(environment_event);
-                    }
-                    RootEvent::RenderEvent(render_event) => {
-                        render_adapter.handle_event(render_event);
-                    }
-                }
-            }
-        }
     })
 }
 
-pub fn create_toolpath(
-    mesh_settings: &MeshSettings,
-    display_settings: &DisplaySettings,
-) -> Option<gcode::PrintPart> {
-    let nfd = Nfd::new().unwrap();
-    let result = nfd.open_file().add_filter("Gcode", "gcode").unwrap().show();
-
-    match result {
-        DialogResult::Ok(path) => {
-            let content = std::fs::read_to_string(path).unwrap();
-            let gcode: gcode::GCode = gcode::parser::parse_content(&content).unwrap();
-
-            let workpiece = gcode::PrintPart::from_gcode(
-                (content.lines(), gcode),
-                mesh_settings,
-                display_settings,
-            );
-
-            /*
-                        let mut cpu_model = Gm::new(
-                Mesh::new(context, &cpu_mesh.0),
-                PhysicalMaterial::new(context, &CpuMaterial::default()),
-            );
-
-            if let Some(vec) = cpu_mesh.1 {
-                cpu_model.set_transformation(Mat4::from_translation(Vector3::new(
-                    -vec.x, -vec.y, -vec.z,
-                )));
-            }
-
-            cpu_model
-
-             */
-
-            Some(workpiece)
-        }
-        _ => None,
+fn resize_surface(wgpu_context: &mut WgpuContext, size: winit::dpi::PhysicalSize<u32>) {
+    if size.width > 0 && size.height > 0 {
+        wgpu_context.surface_config.width = size.width;
+        wgpu_context.surface_config.height = size.height;
+        wgpu_context
+            .surface
+            .configure(&wgpu_context.device, &wgpu_context.surface_config);
     }
 }

@@ -31,9 +31,17 @@ impl<T: std::fmt::Debug> SharedMut<T> {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct Shared<T> {
     inner: Arc<T>,
+}
+
+impl<T> Clone for Shared<T> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+        }
+    }
 }
 
 impl<T> Shared<T> {

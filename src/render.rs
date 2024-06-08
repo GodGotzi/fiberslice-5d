@@ -7,7 +7,9 @@ use light::LightUniform;
 use vertex::Vertex;
 use wgpu::util::DeviceExt;
 
-use crate::{environment::camera_controller, prelude::*, ui::UiOutput, GlobalState};
+use crate::{
+    environment::camera_controller, prelude::*, ui::UiUpdateOutput, GlobalState, RootEvent,
+};
 
 pub mod camera;
 pub mod geometry;
@@ -18,7 +20,9 @@ pub mod vertex;
 const MSAA_SAMPLE_COUNT: u32 = 1;
 
 #[derive(Debug, Clone)]
-pub enum RenderEvent {}
+pub enum RenderEvent {
+    CameraViewportChanged((f32, f32, f32, f32)),
+}
 
 struct RenderState {
     vertex_buffer: wgpu::Buffer,
@@ -77,20 +81,29 @@ pub struct RenderAdapter {
     render_state: RenderState,
 }
 
-impl FrameHandle<'_, (), (), (GlobalState, Option<UiOutput>)> for RenderAdapter {
+impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, Option<UiUpdateOutput>)>
+    for RenderAdapter
+{
     fn handle_frame(
         &mut self,
-        event: &winit::event::Event<()>,
+        event: &winit::event::Event<RootEvent>,
         _start_time: std::time::Instant,
         wgpu_context: &WgpuContext,
-        (_state, ui_output): (GlobalState, Option<UiOutput>),
+        (state, ui_output): (GlobalState<RootEvent>, Option<UiUpdateOutput>),
     ) -> Result<(), Error> {
         puffin::profile_function!();
+
+        let pointer_in_use = state
+            .ui_state
+            .pointer_in_use
+            .inner()
+            .load(std::sync::atomic::Ordering::Relaxed);
 
         self.render_state.camera_controller.process_events(
             event,
             &wgpu_context.window,
             &mut self.render_state.camera,
+            pointer_in_use,
         );
 
         if let winit::event::Event::WindowEvent { event, .. } = event {
@@ -145,24 +158,32 @@ impl FrameHandle<'_, (), (), (GlobalState, Option<UiOutput>)> for RenderAdapter 
                         occlusion_query_set: None,
                     });
 
-                    let UiOutput {
+                    let UiUpdateOutput {
                         paint_jobs,
                         tdelta,
                         screen_descriptor,
-                        viewport: (x, y, width, height),
+                        viewport,
                     } = ui_output.unwrap();
 
-                    self.render_state.camera_viewport = Some((x, y, width, height));
-                    render_pass.set_viewport(x, y, width, height, 0.0, 1.0);
-                    // render_pass.set_scissor_rect(x as u32, y as u32, width as , height);
+                    if viewport != self.render_state.camera_viewport.unwrap_or_default() {
+                        self.render_state.camera_viewport = Some(viewport);
+                        self.render_state.camera.aspect = viewport.2 / viewport.3;
+                    }
 
-                    render_pass.set_pipeline(&self.render_pipeline);
-                    render_pass.set_bind_group(0, &self.render_state.diffuse_bind_group, &[]);
-                    render_pass.set_bind_group(1, &self.render_state.camera_bind_group, &[]);
-                    render_pass.set_bind_group(2, &self.render_state.light_bind_group, &[]);
-                    render_pass.set_vertex_buffer(0, self.render_state.vertex_buffer.slice(..));
+                    let (x, y, width, height) = viewport;
 
-                    render_pass.draw(0..self.render_state.num_indices, 0..1);
+                    if width > 0.0 && height > 0.0 {
+                        render_pass.set_viewport(x, y, width, height, 0.0, 1.0);
+                        // render_pass.set_scissor_rect(x as u32, y as u32, width as , height);
+
+                        render_pass.set_pipeline(&self.render_pipeline);
+                        render_pass.set_bind_group(0, &self.render_state.diffuse_bind_group, &[]);
+                        render_pass.set_bind_group(1, &self.render_state.camera_bind_group, &[]);
+                        render_pass.set_bind_group(2, &self.render_state.light_bind_group, &[]);
+                        render_pass.set_vertex_buffer(0, self.render_state.vertex_buffer.slice(..));
+
+                        render_pass.draw(0..self.render_state.num_indices, 0..1);
+                    }
 
                     self.egui_rpass
                         .add_textures(&wgpu_context.device, &wgpu_context.queue, &tdelta)
@@ -206,17 +227,7 @@ impl FrameHandle<'_, (), (), (GlobalState, Option<UiOutput>)> for RenderAdapter 
                                 MSAA_SAMPLE_COUNT,
                                 "multisampled_framebuffer",
                             );
-
-                        if let Some((_x, _y, w, h)) = self.render_state.camera_viewport {
-                            self.render_state.camera.aspect = w / h;
-                        } else {
-                            self.render_state.camera.aspect = wgpu_context.surface_config.width
-                                as f32
-                                / wgpu_context.surface_config.height as f32;
-                        }
                     }
-
-                    wgpu_context.window.request_redraw();
                 }
                 winit::event::WindowEvent::ScaleFactorChanged { .. } => {
                     let size = wgpu_context.window.inner_size();
@@ -236,12 +247,7 @@ impl FrameHandle<'_, (), (), (GlobalState, Option<UiOutput>)> for RenderAdapter 
                                 MSAA_SAMPLE_COUNT,
                                 "multisampled_framebuffer",
                             );
-
-                        self.render_state.camera.aspect = wgpu_context.surface_config.width as f32
-                            / wgpu_context.surface_config.height as f32;
                     }
-
-                    wgpu_context.window.request_redraw();
                 }
                 _ => {}
             }
@@ -251,8 +257,11 @@ impl FrameHandle<'_, (), (), (GlobalState, Option<UiOutput>)> for RenderAdapter 
     }
 }
 
-impl<'a> Adapter<'a, (), (), (GlobalState, Option<UiOutput>), RenderEvent> for RenderAdapter {
-    fn from_context(context: &WgpuContext) -> Self {
+impl<'a>
+    Adapter<'a, RootEvent, (), (), (GlobalState<RootEvent>, Option<UiUpdateOutput>), RenderEvent>
+    for RenderAdapter
+{
+    fn from_context(context: &WgpuContext) -> ((), Self) {
         let diffuse_bytes = include_bytes!("render/texture.png");
         let diffuse_texture = texture::Texture::from_bytes(
             &context.device,
@@ -553,22 +562,16 @@ impl<'a> Adapter<'a, (), (), (GlobalState, Option<UiOutput>), RenderEvent> for R
             MSAA_SAMPLE_COUNT,
         );
 
-        RenderAdapter {
-            render_pipeline,
-            multisampled_framebuffer,
+        (
+            (),
+            RenderAdapter {
+                render_pipeline,
+                multisampled_framebuffer,
 
-            egui_rpass,
-            render_state,
-        }
-    }
-
-    fn handle_event(&mut self, event: RenderEvent) {
-        puffin::profile_function!();
-        println!("=================");
-        println!("Handling event");
-        println!("Adapter: {:?}", self.get_adapter_description());
-        println!("Event: {:?}", event);
-        println!("=================");
+                egui_rpass,
+                render_state,
+            },
+        )
     }
 
     fn get_adapter_description(&self) -> String {
