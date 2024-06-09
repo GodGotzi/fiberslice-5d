@@ -57,7 +57,8 @@ pub mod orientation {
 
     use crate::{
         config,
-        ui::{icon, UiData},
+        render::RenderEvent,
+        ui::{icon, UiData, UiEvent},
     };
 
     use crate::environment::view::Orientation;
@@ -105,6 +106,13 @@ pub mod orientation {
 
                             if response.clicked() {
                                 println!("Orientation: {:?}", orientation);
+
+                                data.global
+                                    .proxy
+                                    .send_event(crate::RootEvent::RenderEvent(
+                                        RenderEvent::CameraOrientationChanged(orientation),
+                                    ))
+                                    .unwrap();
                                 /*
                                 data.borrow_shared_state().writer_environment_event.send(
                                     crate::environment::EnvironmentEvent::SendOrientation(

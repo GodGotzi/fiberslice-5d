@@ -21,6 +21,7 @@ use parking_lot::{RwLockReadGuard, RwLockWriteGuard};
 use screen::Screen;
 
 use egui::{FontDefinitions, Visuals};
+use wgpu::core::device::global;
 
 use crate::{
     environment::view::Mode,
@@ -107,7 +108,7 @@ impl<'a> FrameHandle<'a, RootEvent, Option<UiUpdateOutput>, GlobalState<RootEven
         event: &winit::event::Event<RootEvent>,
         start_time: std::time::Instant,
         wgpu_context: &WgpuContext,
-        _context: GlobalState<RootEvent>,
+        global_state: GlobalState<RootEvent>,
     ) -> Result<Option<UiUpdateOutput>, Error> {
         puffin::profile_function!();
 
@@ -119,7 +120,7 @@ impl<'a> FrameHandle<'a, RootEvent, Option<UiUpdateOutput>, GlobalState<RootEven
 
                 self.screen.show(
                     &self.platform.context(),
-                    &mut UiData::new(SharedMut::from_inner(self.state.clone())),
+                    &mut UiData::new(SharedMut::from_inner(self.state.clone()), global_state),
                 );
 
                 let full_output = self.platform.end_frame(Some(&wgpu_context.window));
@@ -207,12 +208,13 @@ pub enum Theme {
 
 pub struct UiData {
     state: SharedMut<UiState>,
+    pub global: GlobalState<RootEvent>,
     // _phantom: std::marker::PhantomData<&'a SharedState>,
 }
 
 impl UiData {
-    pub fn new(state: SharedMut<UiState>) -> Self {
-        Self { state }
+    pub fn new(state: SharedMut<UiState>, global: GlobalState<RootEvent>) -> Self {
+        Self { state, global }
     }
 
     pub fn borrow_ui_state(&mut self) -> RwLockReadGuard<UiState> {

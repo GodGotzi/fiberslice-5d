@@ -8,7 +8,10 @@ use vertex::Vertex;
 use wgpu::util::DeviceExt;
 
 use crate::{
-    environment::camera_controller, prelude::*, ui::UiUpdateOutput, GlobalState, RootEvent,
+    environment::{camera_controller, HandleOrientation},
+    prelude::*,
+    ui::UiUpdateOutput,
+    GlobalState, RootEvent,
 };
 
 pub mod camera;
@@ -21,7 +24,7 @@ const MSAA_SAMPLE_COUNT: u32 = 1;
 
 #[derive(Debug, Clone)]
 pub enum RenderEvent {
-    CameraViewportChanged((f32, f32, f32, f32)),
+    CameraOrientationChanged(crate::environment::view::Orientation),
 }
 
 struct RenderState {
@@ -106,151 +109,171 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, Option<UiUpdateOutp
             pointer_in_use,
         );
 
-        if let winit::event::Event::WindowEvent { event, .. } = event {
-            match event {
-                winit::event::WindowEvent::RedrawRequested => {
-                    self.render_state.update(wgpu_context);
+        match event {
+            winit::event::Event::WindowEvent { event, .. } => {
+                match event {
+                    winit::event::WindowEvent::RedrawRequested => {
+                        self.render_state.update(wgpu_context);
 
-                    let now = Instant::now();
+                        let now = Instant::now();
 
-                    let output = wgpu_context
-                        .surface
-                        .get_current_texture()
-                        .expect("Failed to acquire next swap chain texture");
-                    let view = output
-                        .texture
-                        .create_view(&wgpu::TextureViewDescriptor::default());
+                        let output = wgpu_context
+                            .surface
+                            .get_current_texture()
+                            .expect("Failed to acquire next swap chain texture");
+                        let view = output
+                            .texture
+                            .create_view(&wgpu::TextureViewDescriptor::default());
 
-                    let mut encoder = wgpu_context.device.create_command_encoder(
-                        &wgpu::CommandEncoderDescriptor {
-                            label: Some("Render Encoder"),
-                        },
-                    );
+                        let mut encoder = wgpu_context.device.create_command_encoder(
+                            &wgpu::CommandEncoderDescriptor {
+                                label: Some("Render Encoder"),
+                            },
+                        );
 
-                    let clear_color = wgpu::Color {
-                        r: 0.4,
-                        g: 0.5,
-                        b: 0.4,
-                        a: 1.0,
-                    };
+                        let clear_color = wgpu::Color {
+                            r: 0.4,
+                            g: 0.5,
+                            b: 0.4,
+                            a: 1.0,
+                        };
 
-                    let rpass_color_attachment = wgpu::RenderPassColorAttachment {
-                        view: &view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(clear_color),
-                            store: wgpu::StoreOp::Store,
-                        },
-                    };
-
-                    let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                        label: Some("Render Pass"),
-                        color_attachments: &[Some(rpass_color_attachment)],
-                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                            view: &self.render_state.depth_texture_view,
-                            depth_ops: Some(wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(1.0),
+                        let rpass_color_attachment = wgpu::RenderPassColorAttachment {
+                            view: &view,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(clear_color),
                                 store: wgpu::StoreOp::Store,
-                            }),
-                            stencil_ops: None,
-                        }),
-                        timestamp_writes: None,
-                        occlusion_query_set: None,
-                    });
+                            },
+                        };
 
-                    let UiUpdateOutput {
-                        paint_jobs,
-                        tdelta,
-                        screen_descriptor,
-                        viewport,
-                    } = ui_output.unwrap();
+                        let mut render_pass =
+                            encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                                label: Some("Render Pass"),
+                                color_attachments: &[Some(rpass_color_attachment)],
+                                depth_stencil_attachment: Some(
+                                    wgpu::RenderPassDepthStencilAttachment {
+                                        view: &self.render_state.depth_texture_view,
+                                        depth_ops: Some(wgpu::Operations {
+                                            load: wgpu::LoadOp::Clear(1.0),
+                                            store: wgpu::StoreOp::Store,
+                                        }),
+                                        stencil_ops: None,
+                                    },
+                                ),
+                                timestamp_writes: None,
+                                occlusion_query_set: None,
+                            });
 
-                    if viewport != self.render_state.camera_viewport.unwrap_or_default() {
-                        self.render_state.camera_viewport = Some(viewport);
-                        self.render_state.camera.aspect = viewport.2 / viewport.3;
+                        let UiUpdateOutput {
+                            paint_jobs,
+                            tdelta,
+                            screen_descriptor,
+                            viewport,
+                        } = ui_output.unwrap();
+
+                        if viewport != self.render_state.camera_viewport.unwrap_or_default() {
+                            self.render_state.camera_viewport = Some(viewport);
+                            self.render_state.camera.aspect = viewport.2 / viewport.3;
+                        }
+
+                        let (x, y, width, height) = viewport;
+
+                        if width > 0.0 && height > 0.0 {
+                            render_pass.set_viewport(x, y, width, height, 0.0, 1.0);
+                            // render_pass.set_scissor_rect(x as u32, y as u32, width as , height);
+
+                            render_pass.set_pipeline(&self.render_pipeline);
+                            render_pass.set_bind_group(
+                                0,
+                                &self.render_state.diffuse_bind_group,
+                                &[],
+                            );
+                            render_pass.set_bind_group(
+                                1,
+                                &self.render_state.camera_bind_group,
+                                &[],
+                            );
+                            render_pass.set_bind_group(2, &self.render_state.light_bind_group, &[]);
+                            render_pass
+                                .set_vertex_buffer(0, self.render_state.vertex_buffer.slice(..));
+
+                            render_pass.draw(0..self.render_state.num_indices, 0..1);
+                        }
+
+                        self.egui_rpass
+                            .add_textures(&wgpu_context.device, &wgpu_context.queue, &tdelta)
+                            .expect("add texture ok");
+
+                        self.egui_rpass.update_buffers(
+                            &wgpu_context.device,
+                            &wgpu_context.queue,
+                            &paint_jobs,
+                            &screen_descriptor,
+                        );
+
+                        drop(render_pass);
+
+                        self.egui_rpass
+                            .execute(&mut encoder, &view, &paint_jobs, &screen_descriptor, None)
+                            .expect("execute render pass ok");
+
+                        wgpu_context.queue.submit(std::iter::once(encoder.finish()));
+                        output.present();
+
+                        self.egui_rpass
+                            .remove_textures(tdelta)
+                            .expect("remove texture ok");
+
+                        println!("Render time: {:?}", now.elapsed());
                     }
-
-                    let (x, y, width, height) = viewport;
-
-                    if width > 0.0 && height > 0.0 {
-                        render_pass.set_viewport(x, y, width, height, 0.0, 1.0);
-                        // render_pass.set_scissor_rect(x as u32, y as u32, width as , height);
-
-                        render_pass.set_pipeline(&self.render_pipeline);
-                        render_pass.set_bind_group(0, &self.render_state.diffuse_bind_group, &[]);
-                        render_pass.set_bind_group(1, &self.render_state.camera_bind_group, &[]);
-                        render_pass.set_bind_group(2, &self.render_state.light_bind_group, &[]);
-                        render_pass.set_vertex_buffer(0, self.render_state.vertex_buffer.slice(..));
-
-                        render_pass.draw(0..self.render_state.num_indices, 0..1);
+                    winit::event::WindowEvent::Resized(size) => {
+                        if size.width > 0 && size.height > 0 {
+                            self.render_state.depth_texture_view =
+                                texture::Texture::create_depth_texture(
+                                    &wgpu_context.device,
+                                    &wgpu_context.surface_config,
+                                    MSAA_SAMPLE_COUNT,
+                                    "depth_texture",
+                                );
+                            self.multisampled_framebuffer =
+                                texture::Texture::create_multisampled_framebuffer(
+                                    &wgpu_context.device,
+                                    &wgpu_context.surface_config,
+                                    MSAA_SAMPLE_COUNT,
+                                    "multisampled_framebuffer",
+                                );
+                        }
                     }
+                    winit::event::WindowEvent::ScaleFactorChanged { .. } => {
+                        let size = wgpu_context.window.inner_size();
 
-                    self.egui_rpass
-                        .add_textures(&wgpu_context.device, &wgpu_context.queue, &tdelta)
-                        .expect("add texture ok");
-
-                    self.egui_rpass.update_buffers(
-                        &wgpu_context.device,
-                        &wgpu_context.queue,
-                        &paint_jobs,
-                        &screen_descriptor,
-                    );
-
-                    drop(render_pass);
-
-                    self.egui_rpass
-                        .execute(&mut encoder, &view, &paint_jobs, &screen_descriptor, None)
-                        .expect("execute render pass ok");
-
-                    wgpu_context.queue.submit(std::iter::once(encoder.finish()));
-                    output.present();
-
-                    self.egui_rpass
-                        .remove_textures(tdelta)
-                        .expect("remove texture ok");
-
-                    println!("Render time: {:?}", now.elapsed());
+                        if size.width > 0 && size.height > 0 {
+                            self.render_state.depth_texture_view =
+                                texture::Texture::create_depth_texture(
+                                    &wgpu_context.device,
+                                    &wgpu_context.surface_config,
+                                    MSAA_SAMPLE_COUNT,
+                                    "depth_texture",
+                                );
+                            self.multisampled_framebuffer =
+                                texture::Texture::create_multisampled_framebuffer(
+                                    &wgpu_context.device,
+                                    &wgpu_context.surface_config,
+                                    MSAA_SAMPLE_COUNT,
+                                    "multisampled_framebuffer",
+                                );
+                        }
+                    }
+                    _ => {}
                 }
-                winit::event::WindowEvent::Resized(size) => {
-                    if size.width > 0 && size.height > 0 {
-                        self.render_state.depth_texture_view =
-                            texture::Texture::create_depth_texture(
-                                &wgpu_context.device,
-                                &wgpu_context.surface_config,
-                                MSAA_SAMPLE_COUNT,
-                                "depth_texture",
-                            );
-                        self.multisampled_framebuffer =
-                            texture::Texture::create_multisampled_framebuffer(
-                                &wgpu_context.device,
-                                &wgpu_context.surface_config,
-                                MSAA_SAMPLE_COUNT,
-                                "multisampled_framebuffer",
-                            );
-                    }
-                }
-                winit::event::WindowEvent::ScaleFactorChanged { .. } => {
-                    let size = wgpu_context.window.inner_size();
-
-                    if size.width > 0 && size.height > 0 {
-                        self.render_state.depth_texture_view =
-                            texture::Texture::create_depth_texture(
-                                &wgpu_context.device,
-                                &wgpu_context.surface_config,
-                                MSAA_SAMPLE_COUNT,
-                                "depth_texture",
-                            );
-                        self.multisampled_framebuffer =
-                            texture::Texture::create_multisampled_framebuffer(
-                                &wgpu_context.device,
-                                &wgpu_context.surface_config,
-                                MSAA_SAMPLE_COUNT,
-                                "multisampled_framebuffer",
-                            );
-                    }
-                }
-                _ => {}
             }
+            winit::event::Event::UserEvent(RootEvent::RenderEvent(event)) => match event {
+                RenderEvent::CameraOrientationChanged(orientation) => {
+                    self.render_state.camera.handle_orientation(*orientation);
+                }
+            },
+            _ => {}
         }
 
         Ok(())

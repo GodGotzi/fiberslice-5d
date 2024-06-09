@@ -1,3 +1,6 @@
+use std::f32::consts::PI;
+
+use glam::{vec3, Vec3};
 use winit::{
     dpi::PhysicalPosition,
     event::{DeviceEvent, ElementState, Event, MouseScrollDelta, WindowEvent},
@@ -10,6 +13,7 @@ pub struct CameraController {
     pub rotate_speed: f32,
     pub zoom_speed: f32,
     is_drag_rotate: bool,
+    is_drag_move: bool,
 }
 
 impl CameraController {
@@ -18,6 +22,7 @@ impl CameraController {
             rotate_speed,
             zoom_speed,
             is_drag_rotate: false,
+            is_drag_move: false,
         }
     }
 
@@ -42,11 +47,15 @@ impl CameraController {
                         camera.add_distance(scroll_amount * self.zoom_speed);
                         window.request_redraw();
                     }
-                    WindowEvent::MouseInput { button, state, .. } => {
-                        let is_pressed = *state == ElementState::Pressed;
-                        self.is_drag_rotate =
-                            *button == winit::event::MouseButton::Left && is_pressed;
-                    }
+                    WindowEvent::MouseInput { button, state, .. } => match button {
+                        winit::event::MouseButton::Left => {
+                            self.is_drag_rotate = *state == ElementState::Pressed;
+                        }
+                        winit::event::MouseButton::Middle => {
+                            self.is_drag_move = *state == ElementState::Pressed;
+                        }
+                        _ => (),
+                    },
                     _ => (),
                 },
                 winit::event::Event::DeviceEvent {
@@ -57,6 +66,18 @@ impl CameraController {
                         camera.add_yaw(-delta.0 as f32 * self.rotate_speed);
                         camera.add_pitch(delta.1 as f32 * self.rotate_speed);
                         window.request_redraw();
+                    } else if self.is_drag_move {
+                        camera.target.x -= delta.0 as f32 * 0.01 * camera.yaw.cos();
+                        camera.eye.x -= delta.0 as f32 * 0.01 * camera.yaw.cos();
+
+                        camera.target.z -= delta.1 as f32 * 0.01 * camera.yaw.sin();
+                        camera.eye.z -= delta.1 as f32 * 0.01 * camera.yaw.sin();
+
+                        // camera.target.y += delta.1 as f32 * self.rotate_speed;
+                        // camera.eye.y += delta.1 as f32 * self.rotate_speed;
+                        // camera.target.z += delta.1 as f32;
+
+                        window.request_redraw();
                     }
                 }
                 _ => (),
@@ -66,8 +87,15 @@ impl CameraController {
             ..
         } = &event
         {
-            let is_pressed = *state == ElementState::Pressed;
-            self.is_drag_rotate = *button == winit::event::MouseButton::Left && is_pressed;
+            match button {
+                winit::event::MouseButton::Left => {
+                    self.is_drag_rotate = *state == ElementState::Pressed;
+                }
+                winit::event::MouseButton::Middle => {
+                    self.is_drag_move = *state == ElementState::Pressed;
+                }
+                _ => (),
+            }
         }
     }
 }
