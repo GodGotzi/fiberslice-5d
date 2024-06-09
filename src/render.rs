@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use camera::{CameraUniform, OrbitCamera};
 use geometry::r#box::get_box_vertecies;
-use glam::Vec3;
+use glam::{Vec3, Vec4};
 use light::LightUniform;
 use vertex::Vertex;
 use wgpu::util::DeviceExt;
@@ -427,6 +427,7 @@ impl<'a>
             Vec3::new(0.0, 0.0, 0.0),
             Vec3::new(1.0, 1.0, 1.0),
             Vec3::new(0.0, 0.0, 0.0),
+            Vec4::new(0.0, 1.0, 1.0, 1.0),
         );
 
         /* let mut vertices = Vec::new();

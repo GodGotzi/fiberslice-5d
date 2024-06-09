@@ -266,6 +266,7 @@ pub fn get_box_vertecies(
     position: Vec3,
     size: Vec3,
     rotation: Vec3,
+    color: Vec4,
 ) -> (Vec<Vertex>, Vec<u32>) {
     // Calculate transformation
     let transform = Mat4::from_translation(position)
@@ -331,186 +332,222 @@ pub fn get_box_vertecies(
             position: points[0],
             tex_coords: [0.0, 1.0],
             normal: front,
+            color: color.to_array(),
         },
         Vertex {
             position: points[2],
             tex_coords: [1.0, 1.0],
             normal: front,
+            color: color.to_array(),
         },
         Vertex {
             position: points[3],
             tex_coords: [1.0, 0.0],
             normal: front,
+            color: color.to_array(),
         },
         Vertex {
             position: points[0],
             tex_coords: [0.0, 1.0],
             normal: front,
+            color: color.to_array(),
         },
         Vertex {
             position: points[3],
             tex_coords: [1.0, 0.0],
             normal: front,
+            color: color.to_array(),
         },
         Vertex {
             position: points[1],
             tex_coords: [0.0, 0.0],
             normal: front,
+            color: color.to_array(),
         },
         // Back
         Vertex {
             position: points[7],
             tex_coords: [0.0, 0.0],
             normal: back,
+            color: color.to_array(),
         },
         Vertex {
             position: points[6],
             tex_coords: [0.0, 1.0],
             normal: back,
+            color: color.to_array(),
         },
         Vertex {
             position: points[4],
             tex_coords: [1.0, 1.0],
             normal: back,
+            color: color.to_array(),
         },
         Vertex {
             position: points[7],
             tex_coords: [0.0, 0.0],
             normal: back,
+            color: color.to_array(),
         },
         Vertex {
             position: points[4],
             tex_coords: [1.0, 1.0],
             normal: back,
+            color: color.to_array(),
         },
         Vertex {
             position: points[5],
             tex_coords: [1.0, 0.0],
             normal: back,
+            color: color.to_array(),
         },
         // Left
         Vertex {
             position: points[1],
             tex_coords: [1.0, 0.0],
             normal: left,
+            color: color.to_array(),
         },
         Vertex {
             position: points[5],
             tex_coords: [0.0, 0.0],
             normal: left,
+            color: color.to_array(),
         },
         Vertex {
             position: points[4],
             tex_coords: [0.0, 1.0],
             normal: left,
+            color: color.to_array(),
         },
         Vertex {
             position: points[1],
             tex_coords: [1.0, 0.0],
             normal: left,
+            color: color.to_array(),
         },
         Vertex {
             position: points[4],
             tex_coords: [0.0, 1.0],
             normal: left,
+            color: color.to_array(),
         },
         Vertex {
             position: points[0],
             tex_coords: [1.0, 1.0],
             normal: left,
+            color: color.to_array(),
         },
         // Right
         Vertex {
             position: points[6],
             tex_coords: [1.0, 1.0],
             normal: right,
+            color: color.to_array(),
         },
         Vertex {
             position: points[7],
             tex_coords: [1.0, 0.0],
             normal: right,
+            color: color.to_array(),
         },
         Vertex {
             position: points[3],
             tex_coords: [0.0, 0.0],
             normal: right,
+            color: color.to_array(),
         },
         Vertex {
             position: points[6],
             tex_coords: [1.0, 1.0],
             normal: right,
+            color: color.to_array(),
         },
         Vertex {
             position: points[3],
             tex_coords: [0.0, 0.0],
             normal: right,
+            color: color.to_array(),
         },
         Vertex {
             position: points[2],
             tex_coords: [0.0, 1.0],
             normal: right,
+            color: color.to_array(),
         },
         // Top
         Vertex {
             position: points[5],
             tex_coords: [0.0, 0.0],
             normal: top,
+            color: color.to_array(),
         },
         Vertex {
             position: points[1],
             tex_coords: [0.0, 1.0],
             normal: top,
+            color: color.to_array(),
         },
         Vertex {
             position: points[3],
             tex_coords: [1.0, 1.0],
             normal: top,
+            color: color.to_array(),
         },
         Vertex {
             position: points[5],
             tex_coords: [0.0, 0.0],
             normal: top,
+            color: color.to_array(),
         },
         Vertex {
             position: points[3],
             tex_coords: [1.0, 1.0],
             normal: top,
+            color: color.to_array(),
         },
         Vertex {
             position: points[7],
             tex_coords: [1.0, 0.0],
             normal: top,
+            color: color.to_array(),
         },
         // Bottom
         Vertex {
             position: points[2],
             tex_coords: [1.0, 1.0],
             normal: bottom,
+            color: color.to_array(),
         },
         Vertex {
             position: points[0],
             tex_coords: [1.0, 0.0],
             normal: bottom,
+            color: color.to_array(),
         },
         Vertex {
             position: points[4],
             tex_coords: [0.0, 0.0],
             normal: bottom,
+            color: color.to_array(),
         },
         Vertex {
             position: points[2],
             tex_coords: [1.0, 1.0],
             normal: bottom,
+            color: color.to_array(),
         },
         Vertex {
             position: points[4],
             tex_coords: [0.0, 0.0],
             normal: bottom,
+            color: color.to_array(),
         },
         Vertex {
             position: points[6],
             tex_coords: [0.0, 1.0],
             normal: bottom,
+            color: color.to_array(),
         },
     ];
 
