@@ -8,7 +8,7 @@
 use model::gcode::{DisplaySettings, MeshSettings};
 use std::{sync::Arc, time::Instant};
 
-use prelude::{Adapter, FrameHandle, WgpuContext};
+use prelude::{Adapter, FrameHandle, GlobalContext, WgpuContext};
 
 mod api;
 mod config;
@@ -43,6 +43,7 @@ pub enum RootEvent {
 pub struct GlobalState<T: 'static> {
     pub proxy: EventLoopProxy<T>,
     pub ui_state: ui::UiState,
+    pub ctx: GlobalContext,
 }
 
 #[tokio::main]
@@ -74,7 +75,11 @@ async fn main() -> Result<(), EventLoopError> {
 
     let proxy = event_loop.create_proxy();
 
-    let global_state = GlobalState { proxy, ui_state };
+    let mut global_state = GlobalState {
+        proxy,
+        ui_state,
+        ctx: GlobalContext::default(),
+    };
 
     let start_time = Instant::now();
     event_loop.run(move |event, loop_target| {
@@ -83,7 +88,9 @@ async fn main() -> Result<(), EventLoopError> {
         } = event.clone()
         {
             match winit_event {
-                winit::event::WindowEvent::RedrawRequested => {}
+                winit::event::WindowEvent::RedrawRequested => {
+                    global_state.ctx.begin_frame();
+                }
                 winit::event::WindowEvent::Resized(size) => {
                     resize_surface(&mut wgpu_context, size);
 
@@ -127,6 +134,14 @@ async fn main() -> Result<(), EventLoopError> {
             .handle_frame(&event, start_time, &wgpu_context, global_state.clone())
             .unwrap();
         */
+
+        if let winit::event::Event::WindowEvent {
+            event: winit::event::WindowEvent::RedrawRequested,
+            ..
+        } = event.clone()
+        {
+            global_state.ctx.end_frame();
+        }
     })
 }
 

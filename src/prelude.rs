@@ -12,6 +12,33 @@ pub mod wrap;
 pub use shared::*;
 pub use wrap::*;
 
+#[derive(Debug, Clone)]
+pub struct GlobalContext {
+    pub frame_time: f32,
+    last_frame_time: std::time::Instant,
+}
+
+impl Default for GlobalContext {
+    fn default() -> Self {
+        Self {
+            frame_time: 0.0,
+            last_frame_time: std::time::Instant::now(),
+        }
+    }
+}
+
+impl GlobalContext {
+    pub fn begin_frame(&mut self) {
+        self.last_frame_time = std::time::Instant::now();
+    }
+
+    pub fn end_frame(&mut self) {
+        self.frame_time = self.last_frame_time.elapsed().as_secs_f32();
+
+        println!("Frame time: {}", self.frame_time);
+    }
+}
+
 pub struct WgpuContext<'a> {
     pub window: Arc<Window>,
     pub device: wgpu::Device,

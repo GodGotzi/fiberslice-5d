@@ -13,7 +13,7 @@ pub mod screen;
 mod icon;
 pub mod visual;
 
-use std::sync::atomic::AtomicBool;
+use std::{sync::atomic::AtomicBool, time::Instant};
 
 use egui_wgpu_backend::ScreenDescriptor;
 use egui_winit_platform::{Platform, PlatformDescriptor};
@@ -21,7 +21,6 @@ use parking_lot::{RwLockReadGuard, RwLockWriteGuard};
 use screen::Screen;
 
 use egui::{FontDefinitions, Visuals};
-use wgpu::core::device::global;
 
 use crate::{
     environment::view::Mode,
@@ -64,7 +63,6 @@ pub struct UiUpdateOutput {
     pub paint_jobs: Vec<egui::ClippedPrimitive>,
     pub tdelta: egui::TexturesDelta,
     pub screen_descriptor: ScreenDescriptor,
-
     pub viewport: (f32, f32, f32, f32),
 }
 
