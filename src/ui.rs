@@ -13,18 +13,18 @@ pub mod screen;
 mod icon;
 pub mod visual;
 
-use std::{sync::atomic::AtomicBool, time::Instant};
+use std::sync::atomic::{AtomicBool, AtomicU16};
 
 use egui_wgpu_backend::ScreenDescriptor;
 use egui_winit_platform::{Platform, PlatformDescriptor};
-use parking_lot::{RwLockReadGuard, RwLockWriteGuard};
 use screen::Screen;
 
-use egui::{FontDefinitions, Visuals};
+use egui::{FontDefinitions, InnerResponse, Pos2, Rect, Visuals};
+use visual::customize_look_and_feel;
 
 use crate::{
     environment::view::Mode,
-    prelude::{Adapter, Error, FrameHandle, Shared, SharedMut, WgpuContext},
+    prelude::{Adapter, Error, FrameHandle, Shared, SharedMut, WgpuContext, WrappedSharedMut},
     GlobalState, RootEvent,
 };
 
@@ -36,26 +36,36 @@ pub enum UiEvent {}
 #[derive(Debug, Clone)]
 pub struct UiState {
     pub pointer_in_use: Shared<AtomicBool>,
-    pub theme: Theme,
-    pub mode: Mode,
+    pub theme: WrappedSharedMut<Option<Theme>>,
+    pub mode: WrappedSharedMut<Mode>,
+
+    pub layer_max: WrappedSharedMut<u16>,
+    pub time_stamp: WrappedSharedMut<u16>,
 }
 
 impl Default for UiState {
     fn default() -> Self {
         Self {
             pointer_in_use: Shared::from_inner(AtomicBool::new(false)),
-            theme: Theme::Light,
-            mode: Mode::Preview,
+            theme: WrappedSharedMut::from_inner(Option::Some(Theme::Light)),
+            mode: WrappedSharedMut::from_inner(Mode::Prepare),
+
+            layer_max: WrappedSharedMut::from_inner(u16::MAX),
+            time_stamp: WrappedSharedMut::from_inner(u16::MAX),
         }
     }
 }
 
 impl UiState {
-    pub fn toggle_theme(&mut self) {
-        self.theme = match self.theme {
-            Theme::Light => Theme::Dark,
-            Theme::Dark => Theme::Light,
-        };
+    pub fn toggle_theme(&self) {
+        self.theme.write_with_fn(|theme| {
+            let current_theme = theme.clone().expect("Theme is not set");
+
+            theme.replace(match current_theme {
+                Theme::Light => Theme::Dark,
+                Theme::Dark => Theme::Light,
+            });
+        });
     }
 }
 
@@ -116,9 +126,20 @@ impl<'a> FrameHandle<'a, RootEvent, Option<UiUpdateOutput>, GlobalState<RootEven
             if event == &winit::event::WindowEvent::RedrawRequested {
                 self.platform.begin_frame();
 
+                let visuals = self.state.theme.read_with_fn(|theme| {
+                    match theme.as_ref().expect("Theme not set") {
+                        Theme::Light => Visuals::light(),
+                        Theme::Dark => Visuals::dark(),
+                    }
+                });
+
+                self.platform
+                    .context()
+                    .set_visuals(customize_look_and_feel(visuals));
+
                 self.screen.show(
                     &self.platform.context(),
-                    &mut UiData::new(SharedMut::from_inner(self.state.clone()), global_state),
+                    &(self.state.clone(), global_state),
                 );
 
                 let full_output = self.platform.end_frame(Some(&wgpu_context.window));
@@ -204,28 +225,8 @@ pub enum Theme {
     Dark,
 }
 
-pub struct UiData {
-    state: SharedMut<UiState>,
-    pub global: GlobalState<RootEvent>,
-    // _phantom: std::marker::PhantomData<&'a SharedState>,
-}
-
-impl UiData {
-    pub fn new(state: SharedMut<UiState>, global: GlobalState<RootEvent>) -> Self {
-        Self { state, global }
-    }
-
-    pub fn borrow_ui_state(&mut self) -> RwLockReadGuard<UiState> {
-        self.state.read()
-    }
-
-    pub fn borrow_mut_ui_state(&mut self) -> RwLockWriteGuard<UiState> {
-        self.state.write()
-    }
-}
-
 pub trait Component: Send + Sync {
-    fn show(&mut self, ctx: &egui::Context, state: &mut UiData);
+    fn show(&mut self, ctx: &egui::Context, shared_state: &(UiState, GlobalState<RootEvent>));
 
     fn get_enabled_mut(&mut self) -> &mut bool;
 
@@ -233,9 +234,36 @@ pub trait Component: Send + Sync {
 }
 
 pub trait InnerComponent: Send + Sync {
-    fn show(&mut self, ui: &mut egui::Ui, state: &mut UiData);
+    fn show(&mut self, ui: &mut egui::Ui, shared_state: &(UiState, GlobalState<RootEvent>));
 
     fn get_enabled_mut(&mut self) -> &mut bool;
+}
 
-    fn get_boundary(&self) -> &Boundary;
+pub trait AllocateInnerUiRect {
+    fn allocate_ui_in_rect<R>(
+        &mut self,
+        inner: Rect,
+        add_contents: impl FnOnce(&mut Self) -> R,
+    ) -> InnerResponse<R>;
+}
+
+impl AllocateInnerUiRect for egui::Ui {
+    fn allocate_ui_in_rect<R>(
+        &mut self,
+        inner: Rect,
+        add_contents: impl FnOnce(&mut Self) -> R,
+    ) -> InnerResponse<R> {
+        let rect = self.available_rect_before_wrap();
+
+        self.allocate_ui_at_rect(
+            Rect::from_two_pos(
+                Pos2::new(inner.left() + rect.left(), inner.top() + rect.top()),
+                Pos2::new(
+                    inner.left() + rect.left() + inner.width(),
+                    inner.top() + rect.top() + inner.height(),
+                ),
+            ),
+            add_contents,
+        )
+    }
 }

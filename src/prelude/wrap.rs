@@ -23,8 +23,24 @@ impl<T: std::fmt::Debug> WrappedSharedMut<T> {
         self.inner.read()
     }
 
+    pub fn read_with_fn<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(&T) -> R,
+    {
+        let inner = self.inner.read();
+        f(&inner.inner)
+    }
+
     pub fn write(&self) -> RwLockWriteGuard<Wrapper<T>> {
         self.inner.write()
+    }
+
+    pub fn write_with_fn<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(&mut T) -> R,
+    {
+        let mut inner = self.inner.write();
+        f(&mut inner.inner)
     }
 }
 

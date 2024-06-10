@@ -3,7 +3,9 @@ use egui::{Context, SidePanel};
 use crate::config;
 use crate::ui::boundary::Boundary;
 use crate::ui::Component;
-use crate::ui::UiData;
+use crate::ui::UiState;
+use crate::GlobalState;
+use crate::RootEvent;
 
 #[derive(Debug, Clone)]
 pub struct Toolbar {
@@ -21,13 +23,15 @@ impl Toolbar {
 }
 
 impl Component for Toolbar {
-    fn show(&mut self, ctx: &Context, data: &mut UiData) {
-        self.boundary = SidePanel::left("toolbar")
-            .resizable(false)
-            .default_width(config::gui::TOOLBAR_W)
-            .show(ctx, |_ui| {})
-            .response
-            .into();
+    fn show(&mut self, ctx: &Context, _shared_state: &(UiState, GlobalState<RootEvent>)) {
+        if self.enabled {
+            self.boundary = SidePanel::left("toolbar")
+                .resizable(false)
+                .default_width(config::gui::TOOLBAR_W)
+                .show(ctx, |_ui| {})
+                .response
+                .into();
+        }
     }
 
     fn get_enabled_mut(&mut self) -> &mut bool {

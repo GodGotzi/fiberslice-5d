@@ -3,7 +3,9 @@ use egui::Ui;
 use crate::config;
 use crate::ui::boundary::Boundary;
 use crate::ui::Component;
-use crate::ui::UiData;
+use crate::ui::UiState;
+use crate::GlobalState;
+use crate::RootEvent;
 
 pub struct Menubar {
     //enabled: bool,
@@ -21,21 +23,23 @@ impl Menubar {
 }
 
 impl Component for Menubar {
-    fn show(&mut self, ctx: &egui::Context, data: &mut UiData) {
-        self.boundary = egui::TopBottomPanel::top("menubar")
-            .default_height(config::gui::MENUBAR_H)
-            .show(ctx, |ui: &mut Ui| {
-                egui::menu::bar(ui, |ui| {
-                    file_button(ui, data);
-                    edit_button(ui, data);
-                    window_button(ui, data);
-                    view_button(ui, data);
-                    //settings_button(ui, data);
-                    help_button(ui, data);
-                });
-            })
-            .response
-            .into();
+    fn show(&mut self, ctx: &egui::Context, shared_state: &(UiState, GlobalState<RootEvent>)) {
+        if self.enabled {
+            self.boundary = egui::TopBottomPanel::top("menubar")
+                .default_height(config::gui::MENUBAR_H)
+                .show(ctx, |ui: &mut Ui| {
+                    egui::menu::bar(ui, |ui| {
+                        file_button(ui, shared_state);
+                        edit_button(ui, shared_state);
+                        window_button(ui, shared_state);
+                        view_button(ui, shared_state);
+                        //settings_button(ui, data);
+                        help_button(ui, shared_state);
+                    });
+                })
+                .response
+                .into();
+        }
     }
 
     fn get_enabled_mut(&mut self) -> &mut bool {
@@ -47,7 +51,7 @@ impl Component for Menubar {
     }
 }
 
-fn file_button(ui: &mut Ui, data: &mut UiData) {
+fn file_button(ui: &mut Ui, _shared_state: &(UiState, GlobalState<RootEvent>)) {
     ui.menu_button("File", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
@@ -75,14 +79,14 @@ fn file_button(ui: &mut Ui, data: &mut UiData) {
     });
 }
 
-fn edit_button(ui: &mut Ui, _data: &mut UiData) {
+fn edit_button(ui: &mut Ui, _shared_state: &(UiState, GlobalState<RootEvent>)) {
     ui.menu_button("Edit", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
     });
 }
 
-fn window_button(ui: &mut Ui, data: &mut UiData) {
+fn window_button(ui: &mut Ui, _shared_state: &(UiState, GlobalState<RootEvent>)) {
     ui.menu_button("Window", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
@@ -114,14 +118,14 @@ fn window_button(ui: &mut Ui, data: &mut UiData) {
     });
 }
 
-fn view_button(ui: &mut Ui, _data: &mut UiData) {
+fn view_button(ui: &mut Ui, _shared_state: &(UiState, GlobalState<RootEvent>)) {
     ui.menu_button("View", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
     });
 }
 
-fn help_button(ui: &mut Ui, _data: &mut UiData) {
+fn help_button(ui: &mut Ui, _shared_state: &(UiState, GlobalState<RootEvent>)) {
     ui.menu_button("Help", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);

@@ -29,7 +29,7 @@ mod window;
 
 use winit::{
     error::EventLoopError,
-    event_loop::{EventLoop, EventLoopProxy},
+    event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy},
 };
 
 #[derive(Debug, Clone)]
@@ -53,12 +53,14 @@ async fn main() -> Result<(), EventLoopError> {
     eprintln!("Run this to view profiling data:  puffin_viewer {server_addr}");
     puffin::set_scopes_on(true);
 
-    let event_loop = EventLoop::<RootEvent>::with_user_event().unwrap();
+    let event_loop = EventLoopBuilder::<RootEvent>::with_user_event()
+        .build()
+        .unwrap();
     let window = Arc::new(window::build_window(&event_loop).unwrap());
 
     // let settings = SharedMut::from_inner(settings::Settings { diameter: 0.45 });
-    let mesh_settings = MeshSettings {};
-    let display_settings = DisplaySettings {
+    let _mesh_settings = MeshSettings {};
+    let _display_settings = DisplaySettings {
         diameter: 0.45,
         horizontal: 0.425,
         vertical: 0.325,

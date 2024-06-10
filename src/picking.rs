@@ -27,7 +27,7 @@ impl FrameHandle<'_, RootEvent, (), GlobalState<RootEvent>> for PickingAdapter {
 impl<'a> Adapter<'a, RootEvent, PickingState, (), GlobalState<RootEvent>, PickingEvent>
     for PickingAdapter
 {
-    fn from_context(context: &WgpuContext) -> (PickingState, Self) {
+    fn from_context(_wgpu_context: &WgpuContext) -> (PickingState, Self) {
         (PickingState {}, Self {})
     }
 

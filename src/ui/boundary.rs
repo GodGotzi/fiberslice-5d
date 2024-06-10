@@ -7,10 +7,6 @@ pub struct Boundary {
 }
 
 impl Boundary {
-    pub fn new(location: egui::Pos2, size: egui::Vec2) -> Self {
-        Self { location, size }
-    }
-
     pub fn zero() -> Self {
         Self {
             location: egui::Pos2::ZERO,
@@ -24,10 +20,6 @@ impl Boundary {
 
     pub fn get_height(&self) -> f32 {
         self.size.y
-    }
-
-    pub fn get_size(&self) -> egui::Vec2 {
-        self.size
     }
 }
 
