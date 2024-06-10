@@ -57,7 +57,9 @@ impl Screen {
                 .get_orientation_icon(crate::view::Orientation::Default)
                 .show(ui);
             */
-            self.addons.show(ctx, ui, ui_data);
+            if *self.addons.get_enabled_mut() {
+                self.addons.show(ui, ui_data);
+            }
 
             /*
             for component in self.inner_components.iter_mut() {

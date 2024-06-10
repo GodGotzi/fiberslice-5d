@@ -593,8 +593,9 @@ dependencies = [
 
 [[package]]
 name = "egui_grid"
-version = "0.4.0"
-source = "git+https://github.com/GodGotzi/egui_grid#e244523922826b818ebfa819167fd7008ff4dae4"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0261777a5fff5382eda7af64154373b7f5f98bb9541159acf21cffaf41eb235"
 dependencies = [
  "egui",
  "egui_extras",

@@ -233,7 +233,7 @@ pub trait Component: Send + Sync {
 }
 
 pub trait InnerComponent: Send + Sync {
-    fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, state: &mut UiData);
+    fn show(&mut self, ui: &mut egui::Ui, state: &mut UiData);
 
     fn get_enabled_mut(&mut self) -> &mut bool;
 
