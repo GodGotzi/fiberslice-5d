@@ -25,6 +25,7 @@ const MSAA_SAMPLE_COUNT: u32 = 1;
 #[derive(Debug, Clone)]
 pub enum RenderEvent {
     CameraOrientationChanged(crate::environment::view::Orientation),
+    UpdateVertexBuffer(Vec<Vertex>),
 }
 
 struct RenderState {
@@ -272,6 +273,19 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, Option<UiUpdateOutp
                 RenderEvent::CameraOrientationChanged(orientation) => {
                     self.render_state.camera.handle_orientation(*orientation);
                 }
+                RenderEvent::UpdateVertexBuffer(vertices) => {
+                    let vertex_buffer =
+                        wgpu_context
+                            .device
+                            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                                label: Some("Vertex Buffer"),
+                                contents: bytemuck::cast_slice(vertices),
+                                usage: wgpu::BufferUsages::VERTEX,
+                            });
+
+                    self.render_state.vertex_buffer = vertex_buffer;
+                    self.render_state.num_indices = vertices.len() as u32;
+                }
             },
             _ => {}
         }
@@ -382,7 +396,7 @@ impl<'a>
             });
 
         let light_uniform = LightUniform {
-            position: [2.0, 6.0, 4.0, 1.0],
+            position: [1000.0, 1000.0, 1000.0, 1.0],
             color: [1.0, 1.0, 1.0, 0.1],
         };
 

@@ -30,7 +30,7 @@ impl TabbedSettings {
     pub fn show(
         &mut self,
         ui: &mut egui::Ui,
-        _shared_state: &(UiState, GlobalState<RootEvent>),
+        (ui_state, global_state): &(UiState, GlobalState<RootEvent>),
         side_view: &mut Settingsbar,
     ) {
         ui.horizontal(|ui| {
@@ -117,8 +117,11 @@ impl TabbedSettings {
             SettingsPanel::Fiber => {
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
-                        egui::ScrollArea::both().show(ui, |_ui| {
+                        egui::ScrollArea::both().show(ui, |ui| {
                             // TODO data.borrow_shared_state().settings.main.show(ui);
+                            global_state.fiber_settings.write_with_fn(|settings| {
+                                settings.show(ui);
+                            });
                         });
                     });
                 });
@@ -126,8 +129,11 @@ impl TabbedSettings {
             SettingsPanel::TopologyOptimization => {
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
-                        egui::ScrollArea::both().show(ui, |_ui| {
+                        egui::ScrollArea::both().show(ui, |ui| {
                             // TODO data.borrow_shared_state().settings.main.show(ui);
+                            global_state.topology_settings.write_with_fn(|settings| {
+                                settings.show(ui);
+                            });
                         });
                     });
                 });
@@ -135,10 +141,13 @@ impl TabbedSettings {
             SettingsPanel::View => {
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
-                        egui::ScrollArea::both().show(ui, |_ui| {
+                        egui::ScrollArea::both().show(ui, |ui| {
                             // let now = Instant::now();
                             // TODO data.borrow_shared_state().settings.main.show(ui);
                             // println!("Tree Time: {:?}", now.elapsed());
+                            global_state.view_settings.write_with_fn(|settings| {
+                                settings.show(ui);
+                            });
                         });
                     });
                 });

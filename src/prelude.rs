@@ -53,7 +53,7 @@ pub struct WgpuContext<'a> {
 impl WgpuContext<'_> {
     pub fn new(window: Arc<Window>) -> Result<Self, Error> {
         let instance = wgpu::Instance::new(InstanceDescriptor {
-            backends: wgpu::Backends::all(),
+            backends: wgpu::Backends::PRIMARY,
             dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
             ..Default::default()
         });
@@ -67,10 +67,15 @@ impl WgpuContext<'_> {
         }))
         .unwrap();
 
+        println!("Adapter: {:?}", adapter.get_info());
+
         let (device, queue) = pollster::block_on(adapter.request_device(
             &wgpu::DeviceDescriptor {
                 required_features: wgpu::Features::default(),
-                required_limits: wgpu::Limits::default(),
+                required_limits: wgpu::Limits {
+                    max_buffer_size: 1024 * 1024 * 1024,
+                    ..Default::default()
+                },
                 label: None,
             },
             None,
@@ -84,7 +89,7 @@ impl WgpuContext<'_> {
             format: surface_format,
             width: size.width,
             height: size.height,
-            present_mode: wgpu::PresentMode::AutoNoVsync,
+            present_mode: wgpu::PresentMode::AutoVsync,
             desired_maximum_frame_latency: 1,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
             view_formats: vec![surface_format],
