@@ -303,6 +303,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "catppuccin-egui"
+version = "5.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c521c1737df50564c5868f5d23e582fbcf8fc40366053cb02290421955e4c8f"
+dependencies = [
+ "egui",
+]
+
+[[package]]
 name = "cc"
 version = "1.0.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -782,6 +791,7 @@ name = "fiberslice-5d"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "catppuccin-egui",
  "egui",
  "egui_extras",
  "egui_grid",

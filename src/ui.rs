@@ -13,7 +13,7 @@ pub mod screen;
 mod icon;
 pub mod visual;
 
-use std::sync::atomic::{AtomicBool, AtomicU16};
+use std::sync::atomic::AtomicBool;
 
 use egui_wgpu_backend::ScreenDescriptor;
 use egui_winit_platform::{Platform, PlatformDescriptor};
@@ -24,7 +24,7 @@ use visual::customize_look_and_feel;
 
 use crate::{
     environment::view::Mode,
-    prelude::{Adapter, Error, FrameHandle, Shared, SharedMut, WgpuContext, WrappedSharedMut},
+    prelude::{Adapter, Error, FrameHandle, Shared, WgpuContext, WrappedSharedMut},
     GlobalState, RootEvent,
 };
 
@@ -126,17 +126,11 @@ impl<'a> FrameHandle<'a, RootEvent, Option<UiUpdateOutput>, GlobalState<RootEven
             if event == &winit::event::WindowEvent::RedrawRequested {
                 self.platform.begin_frame();
 
-                let visuals = self.state.theme.read_with_fn(|theme| {
-                    match theme.as_ref().expect("Theme not set") {
-                        Theme::Light => Visuals::light(),
-                        Theme::Dark => Visuals::dark(),
-                    }
+                self.platform.context().style_mut(|style| {
+                    catppuccin_egui::set_style_theme(style, catppuccin_egui::MOCHA);
                 });
 
-                self.platform
-                    .context()
-                    .set_visuals(customize_look_and_feel(visuals));
-
+                println!("Theme set to Macchiato");
                 self.screen.show(
                     &self.platform.context(),
                     &(self.state.clone(), global_state),

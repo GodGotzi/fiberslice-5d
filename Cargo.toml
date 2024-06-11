@@ -43,3 +43,6 @@ wgpu = "0.20"
 
 glam = "0.27"
 bytemuck = "1.7.0"
+catppuccin-egui = { version = "5.1", default-features = false, features = [
+    "egui27",
+] }
