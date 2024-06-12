@@ -15,7 +15,6 @@ pub fn build_window<T>(event_loop: &EventLoop<T>) -> Result<Window, Error> {
             config::default::WINDOW_S.0,
             config::default::WINDOW_S.1,
         ))
-        .with_visible(false)
         .with_resizable(true)
         .with_window_icon(Some(window_icon))
         .with_decorations(true)
