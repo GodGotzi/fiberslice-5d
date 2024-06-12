@@ -19,6 +19,7 @@ pub fn build_window<T>(event_loop: &EventLoop<T>) -> Result<Window, Error> {
         .with_resizable(true)
         .with_window_icon(Some(window_icon))
         .with_decorations(true)
+        .with_active(true)
         .with_inner_size(dpi::LogicalSize::new(
             config::default::WINDOW_S.0 as f64,
             config::default::WINDOW_S.1 as f64,
