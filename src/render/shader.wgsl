@@ -67,7 +67,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     //let reflect_dir = reflect(-light_dir, in.world_normal);
     //let specular_strength = pow(max(dot(view_dir, reflect_dir), 0.0), 32.0);
 
-    // Blinn-Phong lighting.
+    // Blinn-Phong lighsting.
     let view_dir = normalize(in.camera_view_pos.xyz - in.world_position);
     let half_dir = normalize(view_dir + light_dir);
     let specular_strength = pow(max(dot(in.world_normal, half_dir), 0.0), 32.0);
