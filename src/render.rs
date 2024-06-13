@@ -491,7 +491,7 @@ impl<'a>
 
         camera_uniform.update_view_proj(&camera);
 
-        let camera_controller = camera_controller::CameraController::new(0.005, -0.2);
+        let camera_controller = camera_controller::CameraController::new(0.01, -2.0);
 
         let render_state = RenderState {
             vertex_buffer,

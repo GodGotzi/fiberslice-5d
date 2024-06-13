@@ -2,36 +2,42 @@ use std::collections::HashMap;
 
 use glam::{vec3, Vec3};
 
-use crate::{api::math::Average, slicer::print_type::PrintType};
+use crate::{api::math::Average, model::mesh::Mesh, slicer::print_type::PrintType};
 
 use super::{instruction::InstructionType, movement, state::State, GCode};
 
 #[derive(Debug, Clone)]
-pub struct PathStroke {
+pub struct Line {
     pub start: Vec3,
     pub end: Vec3,
     pub print: bool,
 }
 
-impl PathStroke {
+impl Line {
     pub fn direction(&self) -> Vec3 {
         self.end - self.start
     }
 }
 
+impl Mesh for Line {
+    fn to_vertices(&self) -> crate::model::mesh::Vertices {
+        vec![self.start, self.end]
+    }
+
+    fn to_vertices_flipped(&self) -> crate::model::mesh::Vertices {
+        vec![self.end, self.start]
+    }
+}
+
 #[derive(Debug)]
 pub struct PathModul {
-    pub paths: Vec<PathStroke>,
+    pub paths: Vec<Line>,
     pub line_range: (usize, usize),
     pub state: State,
 }
 
 impl PathModul {
-    pub fn new(
-        points: Vec<PathStroke>,
-        line_range: (usize, usize),
-        state: super::state::State,
-    ) -> Self {
+    pub fn new(points: Vec<Line>, line_range: (usize, usize), state: super::state::State) -> Self {
         Self {
             paths: points,
             line_range,
@@ -80,7 +86,7 @@ impl From<&GCode> for RawPath {
 }
 
 fn compute_modul(
-    points: &mut Vec<PathStroke>,
+    points: &mut Vec<Line>,
     current_movements: &mut movement::Movements,
     instruction_modul: &super::instruction::InstructionModul,
 ) -> Average<Vec3> {
@@ -114,7 +120,7 @@ fn compute_modul(
                 }
             }
 
-            points.push(PathStroke {
+            points.push(Line {
                 start: last_point,
                 end: current_point,
                 print,

@@ -5,6 +5,7 @@ use wgpu::Color;
 pub enum PrintType {
     InternalInfill,
     SolidInfill,
+    Skin,
     BridgeInfill,
     TopSolidInfill,
     Skirt,
@@ -28,7 +29,7 @@ impl PrintType {
                 b: 1.0,
                 a: 1.0,
             },
-            Self::SolidInfill => Color {
+            Self::SolidInfill | Self::Skin => Color {
                 r: 0.0,
                 g: 1.0,
                 b: 0.0,

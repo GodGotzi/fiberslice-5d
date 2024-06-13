@@ -46,3 +46,5 @@ bytemuck = "1.7.0"
 catppuccin-egui = { version = "5.1", default-features = false, features = [
     "egui27",
 ] }
+simple-logging = "2.0.2"
+log = "0.4.21"

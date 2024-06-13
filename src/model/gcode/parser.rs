@@ -30,6 +30,10 @@ pub fn parse_content(content: &str) -> Result<GCode, crate::error::Error> {
         }
     }
 
+    if !modul.as_ref().unwrap().is_empty() {
+        moduls.push(modul.take().unwrap());
+    }
+
     Ok(moduls)
 }
 

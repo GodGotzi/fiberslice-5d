@@ -5,6 +5,7 @@
     Please refer to the terms and conditions stated therein.
 */
 
+use log::LevelFilter;
 use model::gcode::{self, parser, DisplaySettings, GCode, MeshSettings, PrintPart};
 use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
 use settings::tree::QuickSettings;
@@ -59,6 +60,9 @@ async fn main() -> Result<(), EventLoopError> {
     let _puffin_server = puffin_http::Server::new(&server_addr).unwrap();
     eprintln!("Run this to view profiling data:  puffin_viewer {server_addr}");
     puffin::set_scopes_on(true);
+
+    #[cfg(debug_assertions)]
+    simple_logging::log_to_file("app.log", LevelFilter::Info).unwrap();
 
     let event_loop = EventLoopBuilder::<RootEvent>::with_user_event()
         .build()

@@ -7,7 +7,7 @@ use crate::render::vertex::Vertex;
 use self::{
     instruction::{InstructionModul, InstructionType},
     movement::Movements,
-    path::{PathStroke, RawPath},
+    path::{Line, RawPath},
     state::State,
 };
 
@@ -66,7 +66,8 @@ impl PrintPart {
 
             strokes.extend(modul.paths.clone());
 
-            let (mut raw_vertices, child_offsets) = modul.to_vertices(display_settings);
+            let (mut raw_vertices, child_offsets) =
+                modul.to_vertices(display_settings, state.layer.unwrap_or(0));
 
             let color = state
                 .print_type
@@ -156,11 +157,11 @@ pub fn compute_normals(raw_vertices: &[Vec3], vertices: &mut [Vertex]) {
 }
 
 pub struct WirePath {
-    strokes: Vec<PathStroke>,
+    strokes: Vec<Line>,
 }
 
 impl WirePath {
-    pub fn new(strokes: Vec<PathStroke>) -> Self {
+    pub fn new(strokes: Vec<Line>) -> Self {
         Self { strokes }
     }
 }

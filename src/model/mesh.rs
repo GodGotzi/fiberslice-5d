@@ -1,18 +1,17 @@
 pub type Vertices = Vec<glam::Vec3>;
 
-pub trait ToFlipYZ {
-    fn flip_yz(&self) -> Self;
+pub trait Mesh {
+    fn to_vertices(&self) -> Vertices;
+    fn to_vertices_flipped(&self) -> Vertices;
 }
 
-impl ToFlipYZ for Vertices {
-    fn flip_yz(&self) -> Self {
-        let mut vertices = self.clone();
+pub trait WithOffset {
+    fn with_offset(&self, offset: glam::Vec3) -> Self;
+}
 
-        for vertex in vertices.iter_mut() {
-            std::mem::swap(&mut vertex.y, &mut vertex.z);
-        }
-
-        vertices
+impl WithOffset for Vertices {
+    fn with_offset(&self, offset: glam::Vec3) -> Self {
+        self.iter().map(|v| *v + offset).collect()
     }
 }
 
