@@ -1,6 +1,3 @@
-use std::f32::consts::PI;
-
-use glam::{vec3, Vec3};
 use winit::{
     dpi::PhysicalPosition,
     event::{DeviceEvent, ElementState, Event, MouseScrollDelta, WindowEvent},
@@ -63,7 +60,7 @@ impl CameraController {
                     ..
                 } => {
                     if self.is_drag_rotate {
-                        camera.add_yaw(-delta.0 as f32 * self.rotate_speed);
+                        camera.add_yaw(delta.0 as f32 * self.rotate_speed);
                         camera.add_pitch(delta.1 as f32 * self.rotate_speed);
                         window.request_redraw();
                     } else if self.is_drag_move {

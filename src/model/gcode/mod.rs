@@ -81,6 +81,10 @@ impl PrintPart {
                 vertex.z -= raw_path.center_mass.z;
             }
 
+            raw_vertices.iter_mut().for_each(|vertex| {
+                std::mem::swap(&mut vertex.y, &mut vertex.z);
+            });
+
             let mut vertices = raw_vertices
                 .iter()
                 .map(|v| Vertex {

@@ -44,8 +44,8 @@ pub struct OrbitCamera {
 
 impl Camera for OrbitCamera {
     fn build_view_projection_matrix(&self) -> Mat4 {
-        let view = Mat4::look_at_rh(self.eye, self.target, self.up);
-        let proj = Mat4::perspective_rh(self.fovy, self.aspect, self.znear, self.zfar);
+        let view = Mat4::look_at_lh(self.eye, self.target, self.up);
+        let proj = Mat4::perspective_lh(self.fovy, self.aspect, self.znear, self.zfar);
         proj * view
     }
 }

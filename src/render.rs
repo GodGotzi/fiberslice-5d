@@ -491,7 +491,7 @@ impl<'a>
 
         camera_uniform.update_view_proj(&camera);
 
-        let camera_controller = camera_controller::CameraController::new(0.005, 0.2);
+        let camera_controller = camera_controller::CameraController::new(0.005, -0.2);
 
         let render_state = RenderState {
             vertex_buffer,
@@ -571,7 +571,7 @@ impl<'a>
                     primitive: wgpu::PrimitiveState {
                         topology: wgpu::PrimitiveTopology::TriangleList,
                         strip_index_format: None,
-                        front_face: wgpu::FrontFace::Ccw,
+                        front_face: wgpu::FrontFace::Cw,
                         cull_mode: Some(wgpu::Face::Back),
                         // Requires Features::NON_FILL_POLYGON_MODE
                         polygon_mode: wgpu::PolygonMode::Fill,
