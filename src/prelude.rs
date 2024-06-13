@@ -53,7 +53,7 @@ pub struct WgpuContext<'a> {
 impl WgpuContext<'_> {
     pub fn new(window: Arc<Window>) -> Result<Self, Error> {
         let instance = wgpu::Instance::new(InstanceDescriptor {
-            backends: wgpu::Backends::GL,
+            backends: wgpu::Backends::all(),
             dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
             ..Default::default()
         });

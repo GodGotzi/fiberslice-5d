@@ -134,6 +134,8 @@ async fn main() -> Result<(), EventLoopError> {
         ctx: GlobalContext::default(),
     };
 
+    window.set_visible(true);
+
     let start_time = Instant::now();
     event_loop.run(move |event, loop_target| {
         if let winit::event::Event::WindowEvent {
@@ -193,7 +195,6 @@ async fn main() -> Result<(), EventLoopError> {
             ..
         } = event.clone()
         {
-            window.set_visible(true);
             global_state.ctx.end_frame();
         }
     })
