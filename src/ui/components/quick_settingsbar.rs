@@ -163,7 +163,7 @@ pub struct Settingsbar {
     open_panel: SettingsPanel,
 
     boundary: Boundary,
-    enabled: bool,
+    enabled: UnparallelSharedMut<bool>,
 }
 
 impl Settingsbar {
@@ -172,7 +172,7 @@ impl Settingsbar {
             open_panel: SettingsPanel::Fiber,
 
             boundary: Boundary::zero(),
-            enabled: true,
+            enabled: UnparallelSharedMut::from_inner(true),
         }
     }
 }
@@ -181,7 +181,7 @@ impl Component for Settingsbar {
     fn show(&mut self, ctx: &egui::Context, shared_state: &(UiState, GlobalState<RootEvent>)) {
         let mut tabbed_view = TabbedSettings::init();
 
-        if self.enabled {
+        if *self.enabled.inner().borrow() {
             self.boundary = Boundary::from(
                 egui::SidePanel::right("settingsbar")
                     .resizable(true)
@@ -224,11 +224,11 @@ impl Component for Settingsbar {
         }
     }
 
-    fn get_enabled_mut(&mut self) -> &mut bool {
-        &mut self.enabled
-    }
-
     fn get_boundary(&self) -> &Boundary {
         &self.boundary
+    }
+
+    fn get_enabled(&self) -> UnparallelSharedMut<bool> {
+        self.enabled.clone()
     }
 }

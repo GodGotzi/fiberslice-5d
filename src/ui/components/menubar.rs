@@ -8,6 +8,7 @@ use crate::config;
 use crate::model::gcode;
 use crate::model::gcode::DisplaySettings;
 use crate::model::gcode::MeshSettings;
+use crate::prelude::UnparallelSharedMut;
 use crate::render;
 use crate::ui::boundary::Boundary;
 use crate::ui::Component;
@@ -18,21 +19,21 @@ use crate::RootEvent;
 pub struct Menubar {
     //enabled: bool,
     boundary: Boundary,
-    enabled: bool,
+    enabled: UnparallelSharedMut<bool>,
 }
 
 impl Menubar {
     pub fn new() -> Self {
         Self {
             boundary: Boundary::zero(),
-            enabled: true,
+            enabled: UnparallelSharedMut::from_inner(true),
         }
     }
 }
 
 impl Component for Menubar {
     fn show(&mut self, ctx: &egui::Context, shared_state: &(UiState, GlobalState<RootEvent>)) {
-        if self.enabled {
+        if *self.enabled.inner().borrow() {
             self.boundary = egui::TopBottomPanel::top("menubar")
                 .default_height(config::gui::MENUBAR_H)
                 .show(ctx, |ui: &mut Ui| {
@@ -50,12 +51,12 @@ impl Component for Menubar {
         }
     }
 
-    fn get_enabled_mut(&mut self) -> &mut bool {
-        &mut self.enabled
-    }
-
     fn get_boundary(&self) -> &Boundary {
         &self.boundary
+    }
+
+    fn get_enabled(&self) -> UnparallelSharedMut<bool> {
+        self.enabled.clone()
     }
 }
 

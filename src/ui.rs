@@ -9,11 +9,12 @@ pub mod api;
 pub mod boundary;
 pub mod components;
 pub mod screen;
+pub mod windows;
 
 mod icon;
 pub mod visual;
 
-use std::sync::atomic::AtomicBool;
+use std::{cell::RefCell, rc::Rc, sync::atomic::AtomicBool};
 
 use egui_toast::ToastOptions;
 use egui_wgpu_backend::ScreenDescriptor;
@@ -25,7 +26,10 @@ use winit::event::WindowEvent;
 
 use crate::{
     environment::view::Mode,
-    prelude::{Adapter, Error, FrameHandle, Shared, WgpuContext, WrappedSharedMut},
+    prelude::{
+        Adapter, Error, FrameHandle, Shared, UnparallelShared, UnparallelSharedMut, WgpuContext,
+        WrappedSharedMut,
+    },
     GlobalState, RootEvent,
 };
 
@@ -274,20 +278,18 @@ pub enum Theme {
     Dark,
 }
 
-pub trait Component: Send + Sync {
+pub trait Component {
     fn show(&mut self, ctx: &egui::Context, shared_state: &(UiState, GlobalState<RootEvent>));
 
-    #[allow(dead_code)]
-    fn get_enabled_mut(&mut self) -> &mut bool;
-
     fn get_boundary(&self) -> &Boundary;
+
+    fn get_enabled(&self) -> UnparallelSharedMut<bool>;
 }
 
-pub trait InnerComponent: Send + Sync {
+pub trait InnerComponent {
     fn show(&mut self, ui: &mut egui::Ui, shared_state: &(UiState, GlobalState<RootEvent>));
 
-    #[allow(dead_code)]
-    fn get_enabled_mut(&mut self) -> &mut bool;
+    fn get_enabled(&self) -> UnparallelSharedMut<bool>;
 }
 
 pub trait AllocateInnerUiRect {

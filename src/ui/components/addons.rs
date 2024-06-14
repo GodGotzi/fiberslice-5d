@@ -276,8 +276,4 @@ impl InnerComponent for Addons {
             );
         }
     }
-
-    fn get_enabled_mut(&mut self) -> &mut bool {
-        &mut self.enabled
-    }
 }

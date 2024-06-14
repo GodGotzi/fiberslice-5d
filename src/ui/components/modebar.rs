@@ -2,20 +2,21 @@ use egui_extras::Size;
 use egui_grid::GridBuilder;
 
 use crate::environment::view::Mode;
+use crate::prelude::UnparallelSharedMut;
 use crate::ui::boundary::Boundary;
 use crate::ui::{Component, UiState};
 use crate::{config, GlobalState, RootEvent};
 
 pub struct Modebar {
     boundary: Boundary,
-    enabled: bool,
+    enabled: UnparallelSharedMut<bool>,
 }
 
 impl Modebar {
     pub fn new() -> Self {
         Self {
             boundary: Boundary::zero(),
-            enabled: true,
+            enabled: UnparallelSharedMut::from_inner(true),
         }
     }
 }
@@ -26,7 +27,7 @@ impl Component for Modebar {
         ctx: &egui::Context,
         (ui_state, _global_state): &(UiState, GlobalState<RootEvent>),
     ) {
-        if self.enabled {
+        if *self.enabled.inner().borrow() {
             self.boundary = egui::TopBottomPanel::bottom("modebar")
                 .default_height(config::gui::MODEBAR_H)
                 .show(ctx, |ui: &mut egui::Ui| {
@@ -82,11 +83,11 @@ impl Component for Modebar {
         }
     }
 
-    fn get_enabled_mut(&mut self) -> &mut bool {
-        &mut self.enabled
-    }
-
     fn get_boundary(&self) -> &Boundary {
         &self.boundary
+    }
+
+    fn get_enabled(&self) -> UnparallelSharedMut<bool> {
+        self.enabled.clone()
     }
 }

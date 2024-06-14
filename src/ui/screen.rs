@@ -5,6 +5,8 @@ use egui_toast::Toasts;
 
 pub struct Screen {
     toasts: Toasts,
+
+    windows: windows::Windows,
     addons: addons::Addons,
 
     quick_settings: quick_settingsbar::Settingsbar,
@@ -12,11 +14,14 @@ pub struct Screen {
     taskbar: taskbar::Taskbar,
     modebar: modebar::Modebar,
     toolbar: toolbar::Toolbar,
+
+    enabled: Vec<UnparallelSharedMut<bool>>,
 }
 
 impl Screen {
     pub fn new() -> Self {
-        Self {
+        let mut screen = Self {
+            windows: windows::Windows::default(),
             toasts: Toasts::new()
                 .anchor(Align2::CENTER_TOP, (0.0, 10.0))
                 .direction(egui::Direction::TopDown),
@@ -26,7 +31,20 @@ impl Screen {
             taskbar: taskbar::Taskbar::new(),
             modebar: modebar::Modebar::new(),
             toolbar: toolbar::Toolbar::new(),
-        }
+
+            enabled: Vec::new(),
+        };
+
+        screen.enabled = vec![
+            screen.addons.get_enabled(),
+            screen.taskbar.get_enabled(),
+            screen.menubar.get_enabled(),
+            screen.toolbar.get_enabled(),
+            screen.modebar.get_enabled(),
+            screen.quick_settings.get_enabled(),
+        ];
+
+        screen
     }
 
     pub fn show(&mut self, ctx: &egui::Context, shared_state: &(UiState, GlobalState<RootEvent>)) {
@@ -48,6 +66,8 @@ impl Screen {
 
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
             self.addons.show(ui, shared_state);
+
+            self.windows.show(ctx, shared_state)
         });
 
         self.toasts.show(ctx);
