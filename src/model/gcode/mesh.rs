@@ -169,10 +169,6 @@ impl Mesh for CuboidConnection {
             self.profile_end.left,
         ]
     }
-
-    fn to_vertices_flipped(&self) -> Vertices {
-        panic!("Not implemented")
-    }
 }
 
 impl PathModul {
