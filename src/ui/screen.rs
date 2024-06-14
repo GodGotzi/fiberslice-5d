@@ -1,8 +1,10 @@
 use super::*;
 use components::{addons, menubar, modebar, quick_settingsbar, taskbar, toolbar};
-use egui::Margin;
+use egui::{Align2, Margin};
+use egui_toast::Toasts;
 
 pub struct Screen {
+    toasts: Toasts,
     addons: addons::Addons,
 
     quick_settings: quick_settingsbar::Settingsbar,
@@ -15,6 +17,9 @@ pub struct Screen {
 impl Screen {
     pub fn new() -> Self {
         Self {
+            toasts: Toasts::new()
+                .anchor(Align2::CENTER_TOP, (0.0, 10.0))
+                .direction(egui::Direction::TopDown),
             addons: addons::Addons::new(),
             quick_settings: quick_settingsbar::Settingsbar::new(),
             menubar: menubar::Menubar::new(),
@@ -44,6 +49,12 @@ impl Screen {
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
             self.addons.show(ui, shared_state);
         });
+
+        self.toasts.show(ctx);
+    }
+
+    pub fn add_toast(&mut self, toast: egui_toast::Toast) {
+        self.toasts.add(toast);
     }
 
     pub fn construct_viewport(&self, wgpu_context: &WgpuContext) -> (f32, f32, f32, f32) {

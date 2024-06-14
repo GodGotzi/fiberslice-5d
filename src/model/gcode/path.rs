@@ -2,7 +2,9 @@ use std::collections::HashMap;
 
 use glam::{vec3, Vec3};
 
-use crate::{api::math::Average, model::mesh::Mesh, slicer::print_type::PrintType};
+use crate::{
+    api::math::Average, geometry::BoundingBox, model::mesh::Mesh, slicer::print_type::PrintType,
+};
 
 use super::{instruction::InstructionType, movement, state::State, GCode};
 
@@ -31,7 +33,7 @@ impl Mesh for Line {
 
 #[derive(Debug)]
 pub struct PathModul {
-    pub paths: Vec<Line>,
+    pub lines: Vec<Line>,
     pub line_range: (usize, usize),
     pub state: State,
 }
@@ -39,7 +41,7 @@ pub struct PathModul {
 impl PathModul {
     pub fn new(points: Vec<Line>, line_range: (usize, usize), state: super::state::State) -> Self {
         Self {
-            paths: points,
+            lines: points,
             line_range,
             state,
         }
@@ -50,6 +52,7 @@ impl PathModul {
 pub struct RawPath {
     pub(super) moduls: Vec<PathModul>,
     pub(super) center_mass: Vec3,
+    pub(super) virtual_box: BoundingBox,
 }
 
 impl From<&GCode> for RawPath {
@@ -58,22 +61,24 @@ impl From<&GCode> for RawPath {
 
         let mut current_movements = movement::Movements::new();
 
+        let mut toolpath_box = BoundingBox::default();
         let mut toolpath_average = Average::<Vec3>::default();
 
         for instruction_modul in gcode.iter() {
             let mut strokes = Vec::new();
 
             //split instuctions into chunks of 5000 for performance
-            let modul_average =
+            let (modul_average, virtual_box) =
                 compute_modul(&mut strokes, &mut current_movements, instruction_modul);
 
             moduls.push(PathModul {
-                paths: strokes.clone(),
+                lines: strokes.clone(),
                 line_range: instruction_modul.range(),
                 state: instruction_modul.state.clone(),
             });
 
             toolpath_average += modul_average;
+            toolpath_box.expand(virtual_box);
         }
 
         let center_mass = toolpath_average.divide_average();
@@ -81,6 +86,7 @@ impl From<&GCode> for RawPath {
         RawPath {
             moduls,
             center_mass: center_mass.unwrap_or(vec3(0.0, 0.0, 0.0)),
+            virtual_box: toolpath_box,
         }
     }
 }
@@ -89,8 +95,9 @@ fn compute_modul(
     points: &mut Vec<Line>,
     current_movements: &mut movement::Movements,
     instruction_modul: &super::instruction::InstructionModul,
-) -> Average<Vec3> {
+) -> (Average<Vec3>, BoundingBox) {
     let mut modul_average = Average::<Vec3>::default();
+    let mut virtual_box = BoundingBox::default();
 
     for instructions in instruction_modul.borrow_inner().chunks(500) {
         let mut instruction_average = Average::<Vec3>::default();
@@ -102,6 +109,7 @@ fn compute_modul(
             current_movements.add_movements(movements);
 
             let current_point = current_movements.to_vec3(vec3(0.0, 0.0, 0.0));
+            virtual_box.expand_point(current_point);
 
             if current_point == last_point {
                 continue;
@@ -130,7 +138,7 @@ fn compute_modul(
         modul_average += instruction_average;
     }
 
-    modul_average
+    (modul_average, virtual_box)
 }
 
 impl From<RawPath> for HashMap<usize, Vec<PathModul>> {

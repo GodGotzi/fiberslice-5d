@@ -11,6 +11,8 @@ use self::{
     state::State,
 };
 
+use crate::geometry::BoundingBox;
+
 pub mod instruction;
 pub mod mesh;
 pub mod movement;
@@ -21,7 +23,7 @@ pub mod state;
 pub type GCodeRaw = Vec<String>;
 pub type GCode = Vec<InstructionModul>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ModulModel {
     pub mesh: Vec<Vertex>,
     pub child_offsets: Vec<usize>,
@@ -40,11 +42,14 @@ pub struct DisplaySettings {
 
 pub struct MeshSettings {}
 
+#[derive(Debug, Clone)]
 pub struct PrintPart {
     raw: GCodeRaw,
-    wire_model: WirePath,
+    wire_model: WireModel,
     pub layers: HashMap<usize, LayerModel>,
+
     pub center_mass: Vec3,
+    pub bounding_box: BoundingBox,
 }
 
 impl PrintPart {
@@ -55,7 +60,7 @@ impl PrintPart {
     ) -> Self {
         let raw_path = RawPath::from(&gcode);
 
-        let mut strokes = Vec::new();
+        let mut lines = Vec::new();
 
         let mut layers: HashMap<usize, LayerModel> = HashMap::new();
 
@@ -64,10 +69,9 @@ impl PrintPart {
             let state = modul.state.clone();
             let range = modul.line_range;
 
-            strokes.extend(modul.paths.clone());
+            lines.extend(modul.lines.clone());
 
-            let (mut raw_vertices, child_offsets) =
-                modul.to_vertices(display_settings, state.layer.unwrap_or(0));
+            let (mut raw_vertices, child_offsets) = modul.to_vertices(display_settings);
 
             let color = state
                 .print_type
@@ -113,13 +117,15 @@ impl PrintPart {
             layers.entry(layer).or_default().push(model);
         }
 
-        let wire_model = WirePath::new(strokes);
+        let wire_model = WireModel::new(lines);
 
         Self {
             raw: raw.map(|s| s.to_string()).collect(),
             wire_model,
             layers,
+
             center_mass: raw_path.center_mass,
+            bounding_box: raw_path.virtual_box,
         }
     }
 
@@ -130,15 +136,6 @@ impl PrintPart {
             .flat_map(|modul| modul.mesh.iter())
             .cloned()
             .collect()
-    }
-}
-
-impl Debug for PrintPart {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        //only debug layers
-        f.debug_struct("Path")
-            .field("layers", &self.layers)
-            .finish()
     }
 }
 
@@ -156,13 +153,14 @@ pub fn compute_normals(raw_vertices: &[Vec3], vertices: &mut [Vertex]) {
     }
 }
 
-pub struct WirePath {
-    strokes: Vec<Line>,
+#[derive(Debug, Clone)]
+pub struct WireModel {
+    lines: Vec<Line>,
 }
 
-impl WirePath {
-    pub fn new(strokes: Vec<Line>) -> Self {
-        Self { strokes }
+impl WireModel {
+    pub fn new(lines: Vec<Line>) -> Self {
+        Self { lines }
     }
 }
 

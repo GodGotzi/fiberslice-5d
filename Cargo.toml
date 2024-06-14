@@ -48,3 +48,5 @@ catppuccin-egui = { version = "5.1", default-features = false, features = [
 ] }
 simple-logging = "2.0.2"
 log = "0.4.21"
+toml = "0.8.14"
+egui-toast = "0.13.0"

@@ -2,22 +2,11 @@ use glam::{vec3, Vec3};
 use log::info;
 
 use crate::{
-    api::{math::DirectMul, Reverse},
-    model::{
-        mesh::{Mesh, Vertices, WithOffset},
-        shapes::Rect3d,
-    },
+    api::math::DirectMul,
+    model::mesh::{Mesh, Vertices, WithOffset},
 };
 
 use super::{path::PathModul, DisplaySettings};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PathOrientation {
-    SouthEast,
-    SouthWest,
-    NorthEast,
-    NorthWest,
-}
 
 #[derive(Debug, Clone)]
 pub struct ProfileCross {
@@ -32,19 +21,15 @@ impl ProfileCross {
         direction: Vec3,
         (horizontal_radius, vertical_radius): (f32, f32),
     ) -> Self {
-        let horizontal = if direction != Vec3::Z {
-            direction.cross(Vec3::Z)
-        } else {
+        let horizontal = if direction.z.abs() > 0.0 {
             direction.cross(Vec3::X)
+        } else {
+            direction.cross(Vec3::Z)
         };
 
-        // turn horizontal vector to the right direction on direction vector
         let vertical = direction.cross(horizontal);
 
-        info!("Direction: {:?}", direction);
-
-        info!("Horizontal: {:?}", horizontal);
-        info!("Vertical: {:?}", vertical);
+        // info!("Direction: {:?}", direction);
 
         let normal_vertical = vertical.normalize();
         let normal_horizontal = horizontal.normalize();
@@ -205,32 +190,14 @@ impl Mesh for CuboidConnection {
     }
 }
 
-fn has_flipped_faces(direction: Vec3) -> bool {
-    adjust_pane(direction.x, direction.y)
-}
-
-fn adjust_pane(x: f32, y: f32) -> bool {
-    let alpha = (x / (y * y + x * x).sqrt()).asin().to_degrees();
-
-    if (-45.0..=45.0).contains(&alpha) {
-        y > 0.0
-    } else {
-        x < 0.0
-    }
-}
-
 impl PathModul {
-    pub(super) fn to_vertices(
-        &self,
-        settings: &DisplaySettings,
-        layer: usize,
-    ) -> (Vertices, Vec<usize>) {
+    pub(super) fn to_vertices(&self, settings: &DisplaySettings) -> (Vertices, Vec<usize>) {
         let mut vertices = Vec::new();
         let mut offsets: Vec<usize> = Vec::new();
 
         let mut last_cross: Option<ProfileCross> = None;
 
-        for (index, line) in self.paths.iter().enumerate() {
+        for (index, line) in self.lines.iter().enumerate() {
             let direction = line.direction();
 
             let profile = ProfileCross::from_direction(
@@ -241,7 +208,7 @@ impl PathModul {
             let profile_start = profile.with_offset(line.start);
             let profile_end = profile.with_offset(line.end);
 
-            if index == self.paths.len() - 1 {
+            if index == self.lines.len() - 1 {
                 vertices.extend_from_slice(&profile_end.to_vertices_flipped());
                 offsets.push(vertices.len());
             }
@@ -268,155 +235,4 @@ impl PathModul {
 
         (vertices, offsets)
     }
-}
-
-pub(super) fn draw_path(
-    vertices: &mut Vertices,
-    path: (Vec3, Vec3),
-    flip: bool,
-    cross: &ProfileCross,
-) {
-    draw_rect_path(
-        vertices,
-        Rect3d {
-            left_0: cross.up + path.0,
-            left_1: cross.right + path.0,
-            right_0: cross.up + path.1,
-            right_1: cross.right + path.1,
-        },
-        flip,
-        PathOrientation::SouthWest,
-    );
-
-    draw_rect_path(
-        vertices,
-        Rect3d {
-            left_0: cross.down + path.0,
-            left_1: cross.right + path.0,
-            right_0: cross.down + path.1,
-            right_1: cross.right + path.1,
-        },
-        flip,
-        PathOrientation::NorthWest,
-    );
-
-    draw_rect_path(
-        vertices,
-        Rect3d {
-            left_0: cross.down + path.0,
-            left_1: cross.left + path.0,
-            right_0: cross.down + path.1,
-            right_1: cross.left + path.1,
-        },
-        flip,
-        PathOrientation::NorthEast,
-    );
-
-    draw_rect_path(
-        vertices,
-        Rect3d {
-            left_0: cross.up + path.0,
-            left_1: cross.left + path.0,
-            right_0: cross.up + path.1,
-            right_1: cross.left + path.1,
-        },
-        flip,
-        PathOrientation::SouthEast,
-    );
-}
-
-pub(super) fn draw_cross_connection(
-    vertices: &mut Vertices,
-    center: &Vec3,
-    start_cross: &ProfileCross,
-    end_cross: &ProfileCross,
-) {
-    vertices.push(end_cross.up + *center);
-    vertices.push(end_cross.right + *center);
-    vertices.push(start_cross.right + *center);
-
-    vertices.push(end_cross.up + *center);
-    vertices.push(end_cross.left + *center);
-    vertices.push(start_cross.left + *center);
-
-    vertices.push(end_cross.down + *center);
-    vertices.push(end_cross.right + *center);
-    vertices.push(start_cross.right + *center);
-
-    vertices.push(end_cross.down + *center);
-    vertices.push(end_cross.left + *center);
-    vertices.push(start_cross.left + *center);
-}
-
-pub(super) fn draw_rect_path(
-    vertices: &mut Vertices,
-    rect: Rect3d,
-    face_flip: bool,
-    orienation: PathOrientation,
-) {
-    let (mut triangle1, mut triangle2) = match orienation {
-        PathOrientation::SouthEast => {
-            let triangle1 = (rect.right_0, rect.left_1, rect.left_0);
-            let triangle2 = (rect.right_0, rect.right_1, rect.left_1);
-
-            (triangle1, triangle2)
-        }
-        PathOrientation::SouthWest => {
-            let triangle1 = (rect.left_0, rect.left_1, rect.right_1);
-            let triangle2 = (rect.right_1, rect.right_0, rect.left_0);
-
-            (triangle1, triangle2)
-        }
-        PathOrientation::NorthEast => {
-            let triangle1 = (rect.left_0, rect.left_1, rect.right_0);
-            let triangle2 = (rect.left_1, rect.right_1, rect.right_0);
-
-            (triangle1, triangle2)
-        }
-        PathOrientation::NorthWest => {
-            let triangle1 = (rect.left_0, rect.right_0, rect.right_1);
-            let triangle2 = (rect.right_1, rect.left_1, rect.left_0);
-
-            (triangle1, triangle2)
-        }
-    };
-
-    if face_flip {
-        triangle1.reverse();
-        triangle2.reverse();
-    }
-
-    vertices.push(triangle1.0);
-    vertices.push(triangle1.1);
-    vertices.push(triangle1.2);
-
-    vertices.push(triangle2.0);
-    vertices.push(triangle2.1);
-    vertices.push(triangle2.2);
-}
-
-pub(super) fn draw_rect(
-    vertices: &mut Vertices,
-    point_left_0: Vec3,
-    point_left_1: Vec3,
-    point_right_0: Vec3,
-    point_right_1: Vec3,
-) {
-    vertices.push(point_left_0);
-    vertices.push(point_left_1);
-    vertices.push(point_right_0);
-
-    vertices.push(point_left_1);
-    vertices.push(point_right_1);
-    vertices.push(point_right_0);
-}
-
-pub(super) fn draw_rect_with_cross(vertices: &mut Vertices, center: &Vec3, cross: &ProfileCross) {
-    draw_rect(
-        vertices,
-        cross.up + *center,
-        cross.right + *center,
-        cross.down + *center,
-        cross.left + *center,
-    );
 }

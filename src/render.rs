@@ -1,21 +1,20 @@
 use std::time::Instant;
 
 use camera::{CameraUniform, OrbitCamera};
-use geometry::r#box::get_box_vertecies;
-use glam::{Vec3, Vec4};
+use glam::Vec3;
 use light::LightUniform;
 use vertex::Vertex;
 use wgpu::util::DeviceExt;
 
 use crate::{
     environment::{camera_controller, HandleOrientation},
+    model::gcode::PrintPart,
     prelude::*,
     ui::UiUpdateOutput,
     GlobalState, RootEvent,
 };
 
 pub mod camera;
-pub mod geometry;
 pub mod light;
 pub mod texture;
 pub mod vertex;
@@ -25,21 +24,17 @@ const MSAA_SAMPLE_COUNT: u32 = 1;
 #[derive(Debug, Clone)]
 pub enum RenderEvent {
     CameraOrientationChanged(crate::environment::view::Orientation),
-    UpdateVertexBuffer(Vec<Vertex>),
+    AddGCodeToolpath(PrintPart),
 }
 
 struct RenderState {
     vertex_buffer: wgpu::Buffer,
-    index_buffer: wgpu::Buffer,
     num_indices: u32,
 
     depth_texture_view: wgpu::TextureView,
 
     camera: OrbitCamera,
     camera_controller: camera_controller::CameraController,
-
-    diffuse_texture: texture::Texture,
-    diffuse_bind_group: wgpu::BindGroup,
 
     camera_viewport: Option<(f32, f32, f32, f32)>,
     camera_uniform: camera::CameraUniform,
@@ -187,15 +182,10 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, Option<UiUpdateOutp
                             render_pass.set_pipeline(&self.render_pipeline);
                             render_pass.set_bind_group(
                                 0,
-                                &self.render_state.diffuse_bind_group,
-                                &[],
-                            );
-                            render_pass.set_bind_group(
-                                1,
                                 &self.render_state.camera_bind_group,
                                 &[],
                             );
-                            render_pass.set_bind_group(2, &self.render_state.light_bind_group, &[]);
+                            render_pass.set_bind_group(1, &self.render_state.light_bind_group, &[]);
                             render_pass
                                 .set_vertex_buffer(0, self.render_state.vertex_buffer.slice(..));
 
@@ -273,18 +263,32 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, Option<UiUpdateOutp
                 RenderEvent::CameraOrientationChanged(orientation) => {
                     self.render_state.camera.handle_orientation(*orientation);
                 }
-                RenderEvent::UpdateVertexBuffer(vertices) => {
+                RenderEvent::AddGCodeToolpath(part) => {
+                    let vertices = part.vertices();
+
                     let vertex_buffer =
                         wgpu_context
                             .device
                             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                                 label: Some("Vertex Buffer"),
-                                contents: bytemuck::cast_slice(vertices),
+                                contents: bytemuck::cast_slice(&vertices),
                                 usage: wgpu::BufferUsages::VERTEX,
                             });
 
                     self.render_state.vertex_buffer = vertex_buffer;
                     self.render_state.num_indices = vertices.len() as u32;
+                    self.render_state
+                        .camera
+                        .set_best_distance(&part.bounding_box);
+
+                    state
+                        .proxy
+                        .send_event(RootEvent::UiEvent(crate::ui::UiEvent::ShowSuccess(
+                            "Gcode loaded".to_string(),
+                        )))
+                        .unwrap();
+
+                    wgpu_context.window.request_redraw();
                 }
             },
             _ => {}
@@ -299,57 +303,6 @@ impl<'a>
     for RenderAdapter
 {
     fn from_context(context: &WgpuContext) -> ((), Self) {
-        let diffuse_bytes = include_bytes!("render/texture.png");
-        let diffuse_texture = texture::Texture::from_bytes(
-            &context.device,
-            &context.queue,
-            diffuse_bytes,
-            "texture.png",
-        )
-        .unwrap();
-
-        let texture_bind_group_layout =
-            context
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::FRAGMENT,
-                            ty: wgpu::BindingType::Texture {
-                                multisampled: false,
-                                view_dimension: wgpu::TextureViewDimension::D2,
-                                sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::FRAGMENT,
-                            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                            count: None,
-                        },
-                    ],
-                    label: Some("texture_bind_group_layout"),
-                });
-
-        let diffuse_bind_group = context
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: &texture_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
-                    },
-                ],
-                label: Some("diffuse_bind_group"),
-            });
-
         let depth_texture_view = texture::Texture::create_depth_texture(
             &context.device,
             &context.surface_config,
@@ -436,48 +389,12 @@ impl<'a>
                 label: None,
             });
 
-        let (vertices, indices) = get_box_vertecies(
-            0,
-            Vec3::new(0.0, 0.0, 0.0),
-            Vec3::new(1.0, 1.0, 1.0),
-            Vec3::new(0.0, 0.0, 0.0),
-            Vec4::new(0.0, 1.0, 1.0, 1.0),
-        );
-
-        /* let mut vertices = Vec::new();
-        let mut indices = Vec::new();
-        let mut indices_count: u32 = 0;
-        for x in -5..5 {
-            for y in -8..8 {
-                for z in -5..5 {
-                    let (mut vertices_temp, mut indices_temp) = get_box_vertecies(
-                        indices_count,
-                        Vec3::new(x as f32, y as f32, z as f32),
-                        Vec3::new(0.9, 0.9, 0.9),
-                     camera_uniform.update_view_proj(&camera);   Vec3::new(0.0, 0.0, 0.0)
-                    );
-                    indices_count += 24;
-                    vertices.append(&mut vertices_temp);
-                    indices.append(&mut indices_temp);
-                }
-            }
-        } */
-
         let vertex_buffer = context
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(&vertices),
+                contents: &[],
                 usage: wgpu::BufferUsages::VERTEX,
-            });
-
-        let num_indices = vertices.len() as u32;
-        let index_buffer = context
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(&indices),
-                usage: wgpu::BufferUsages::INDEX,
             });
 
         let mut camera = OrbitCamera::new(
@@ -488,23 +405,22 @@ impl<'a>
             context.window.inner_size().width as f32 / context.window.inner_size().height as f32,
         );
         camera.bounds.min_distance = Some(1.1);
+        camera.bounds.min_pitch = -std::f32::consts::FRAC_PI_2 + 0.1;
+        camera.bounds.max_pitch = std::f32::consts::FRAC_PI_2 - 0.1;
+        camera.handle_orientation(crate::environment::view::Orientation::Default);
 
         camera_uniform.update_view_proj(&camera);
 
-        let camera_controller = camera_controller::CameraController::new(0.01, -2.0);
+        let camera_controller = camera_controller::CameraController::new(0.01, -2.0, 0.1);
 
         let render_state = RenderState {
             vertex_buffer,
-            index_buffer,
-            num_indices,
+            num_indices: 0,
 
             depth_texture_view,
 
             camera,
             camera_controller,
-
-            diffuse_bind_group,
-            diffuse_texture,
 
             camera_viewport: None,
             camera_uniform,
@@ -528,11 +444,7 @@ impl<'a>
                 .device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("Render Pipeline Layout"),
-                    bind_group_layouts: &[
-                        &texture_bind_group_layout,
-                        &camera_bind_group_layout,
-                        &light_bind_group_layout,
-                    ],
+                    bind_group_layouts: &[&camera_bind_group_layout, &light_bind_group_layout],
                     push_constant_ranges: &[],
                 });
 

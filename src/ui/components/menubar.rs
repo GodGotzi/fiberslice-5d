@@ -1,6 +1,14 @@
 use egui::Ui;
+use nfde::DialogResult;
+use nfde::FilterableDialogBuilder;
+use nfde::Nfd;
+use nfde::SingleFileDialogBuilder;
 
 use crate::config;
+use crate::model::gcode;
+use crate::model::gcode::DisplaySettings;
+use crate::model::gcode::MeshSettings;
+use crate::render;
 use crate::ui::boundary::Boundary;
 use crate::ui::Component;
 use crate::ui::UiState;
@@ -51,31 +59,66 @@ impl Component for Menubar {
     }
 }
 
-fn file_button(ui: &mut Ui, _shared_state: &(UiState, GlobalState<RootEvent>)) {
+fn file_button(ui: &mut Ui, (_ui_state, global_state): &(UiState, GlobalState<RootEvent>)) {
     ui.menu_button("File", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
 
+        let mesh_settings = MeshSettings {};
+        let display_settings = DisplaySettings {
+            diameter: 0.45,
+            horizontal: 0.425,
+            vertical: 0.325,
+        };
+
         //let manipulator = gui_context.manipulator.clone();
         //let context = gui_context.context.clone();
 
-        /*
+        let global_state = global_state.clone();
 
-        build_sub_menu(ui, "Load GCode", || load_gcode(data));
-        build_sub_menu(ui, "Import Intersection Object", || {
-            import_intersection_object(data)
+        build_sub_menu(ui, "Load GCode", || {
+            tokio::spawn(async move {
+                // let path = nfd::open_file_dialog(Some("gcode"),
+                let nfd = Nfd::new().unwrap();
+                let result = nfd.open_file().add_filter("Gcode", "gcode").unwrap().show();
+
+                match result {
+                    DialogResult::Ok(path) => {
+                        let content = std::fs::read_to_string(&path).unwrap();
+                        let gcode: gcode::GCode = gcode::parser::parse_content(&content).unwrap();
+
+                        let part = gcode::PrintPart::from_gcode(
+                            (content.lines(), gcode),
+                            &mesh_settings,
+                            &display_settings,
+                        );
+
+                        global_state
+                            .proxy
+                            .send_event(RootEvent::RenderEvent(
+                                render::RenderEvent::AddGCodeToolpath(part),
+                            ))
+                            .unwrap();
+                    }
+                    _ => {
+                        println!("No file selected")
+                    }
+                }
+            });
         });
+        // build_sub_menu(ui, "Import Intersection Object", || {
+        //    import_intersection_object(data)
+        // });
 
         ui.separator();
 
-        build_sub_menu(ui, "Save As", || save_as_gcode(data));
+        // build_sub_menu(ui, "Save As", || save_as_gcode(data));
 
-        build_sub_menu(ui, "Save", || save_gcode(data));
+        // build_sub_menu(ui, "Save", || save_gcode(data));
 
         ui.separator();
 
-        build_sub_menu(ui, "Exit", || exit(data));
-        */
+        // build_sub_menu(ui, "Exit", || exit(data));
     });
 }
 

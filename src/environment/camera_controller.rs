@@ -9,15 +9,18 @@ use crate::render::camera::OrbitCamera;
 pub struct CameraController {
     pub rotate_speed: f32,
     pub zoom_speed: f32,
+    pub move_speed: f32,
+
     is_drag_rotate: bool,
     is_drag_move: bool,
 }
 
 impl CameraController {
-    pub fn new(rotate_speed: f32, zoom_speed: f32) -> Self {
+    pub fn new(rotate_speed: f32, zoom_speed: f32, move_speed: f32) -> Self {
         Self {
             rotate_speed,
             zoom_speed,
+            move_speed,
             is_drag_rotate: false,
             is_drag_move: false,
         }
@@ -64,15 +67,14 @@ impl CameraController {
                         camera.add_pitch(delta.1 as f32 * self.rotate_speed);
                         window.request_redraw();
                     } else if self.is_drag_move {
-                        camera.target.x -= delta.0 as f32 * 0.01 * camera.yaw.cos();
-                        camera.eye.x -= delta.0 as f32 * 0.01 * camera.yaw.cos();
+                        let direction = (camera.target - camera.eye).normalize();
+                        let right = direction.cross(camera.up).normalize();
+                        let up = right.cross(direction).normalize();
 
-                        camera.target.z -= delta.1 as f32 * 0.01 * camera.yaw.sin();
-                        camera.eye.z -= delta.1 as f32 * 0.01 * camera.yaw.sin();
+                        let move_amount = right * delta.0 as f32 + up * delta.1 as f32;
 
-                        // camera.target.y += delta.1 as f32 * self.rotate_speed;
-                        // camera.eye.y += delta.1 as f32 * self.rotate_speed;
-                        // camera.target.z += delta.1 as f32;
+                        camera.eye += move_amount * self.move_speed;
+                        camera.target += move_amount * self.move_speed;
 
                         window.request_redraw();
                     }

@@ -1,8 +1,6 @@
-use glam::{Mat4, Vec3};
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::prelude::*;
+use glam::{vec3, Mat4, Vec3};
 
-use crate::render::camera::Camera;
+use crate::{geometry::BoundingBox, render::camera::Camera};
 
 /// An [OrbitCamera] only permits rotation of the eye on a spherical shell around a target.
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -40,6 +38,9 @@ pub struct OrbitCamera {
 
     /// The far clipping plane of the camera.
     pub zfar: f32,
+
+    /// The bounding box of the objects the camera should view.
+    pub view_box: BoundingBox,
 }
 
 impl Camera for OrbitCamera {
@@ -73,6 +74,7 @@ impl OrbitCamera {
             fovy: std::f32::consts::PI / 2.0,
             znear: 0.1,
             zfar: 1000.0,
+            view_box: BoundingBox::new(vec3(1.0, 1.0, 2.0), vec3(-1.0, -1.0, 0.0)),
         };
         camera.update();
         camera
@@ -88,6 +90,14 @@ impl OrbitCamera {
             self.bounds.min_distance.unwrap_or(f32::EPSILON),
             self.bounds.max_distance.unwrap_or(f32::MAX),
         );
+        self.update();
+    }
+
+    pub fn set_best_distance(&mut self, bounding_box: &BoundingBox) {
+        let bounding_box_diagonal = bounding_box.diagonal();
+        let half_diagonal = bounding_box_diagonal.length() / 2.0;
+        let half_fov = self.fovy / 2.0;
+        self.distance = half_diagonal / half_fov.tan();
         self.update();
     }
 
@@ -147,7 +157,8 @@ impl OrbitCamera {
 
     /// Updates the camera after changing `distance`, `pitch` or `yaw`.
     fn update(&mut self) {
-        self.eye = calculate_cartesian_eye_position(self.pitch, self.yaw, self.distance);
+        self.eye =
+            calculate_cartesian_eye_position(self.pitch, self.yaw, self.distance) + self.target;
     }
 }
 

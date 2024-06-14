@@ -5,9 +5,8 @@
     Please refer to the terms and conditions stated therein.
 */
 
-use log::LevelFilter;
-use model::gcode::{self, parser, DisplaySettings, GCode, MeshSettings, PrintPart};
-use nfde::{DialogResult, FilterableDialogBuilder, Nfd, SingleFileDialogBuilder};
+use egui::ahash::HashMap;
+use log::{info, LevelFilter};
 use settings::tree::QuickSettings;
 use std::{sync::Arc, time::Instant};
 
@@ -18,6 +17,7 @@ mod config;
 mod control;
 mod environment;
 mod error;
+mod geometry;
 mod model;
 mod picking;
 mod prelude;
@@ -34,6 +34,13 @@ use winit::{
     error::EventLoopError,
     event_loop::{EventLoopBuilder, EventLoopProxy},
 };
+
+lazy_static::lazy_static! {
+    pub static ref CONFIG: HashMap<String, toml::Value> = {
+        let content = include_str!("../config.toml");
+        toml::from_str(content).unwrap()
+    };
+}
 
 #[derive(Debug, Clone)]
 pub enum RootEvent {
@@ -64,18 +71,15 @@ async fn main() -> Result<(), EventLoopError> {
     #[cfg(debug_assertions)]
     simple_logging::log_to_file("app.log", LevelFilter::Info).unwrap();
 
+    const VERSION: &str = env!("CARGO_PKG_VERSION");
+    info!("Starting up version {}", VERSION);
+
     let event_loop = EventLoopBuilder::<RootEvent>::with_user_event()
         .build()
         .unwrap();
     let window = Arc::new(window::build_window(&event_loop).unwrap());
 
     // let settings = SharedMut::from_inner(settings::Settings { diameter: 0.45 });
-    let mesh_settings = MeshSettings {};
-    let display_settings = DisplaySettings {
-        diameter: 0.45,
-        horizontal: 0.425,
-        vertical: 0.325,
-    };
 
     let mut wgpu_context = WgpuContext::new(window.clone()).unwrap();
 
@@ -87,47 +91,6 @@ async fn main() -> Result<(), EventLoopError> {
     // let mut environment_adapter = environment::EnvironmentAdapter::from_context(&wgpu_context);
 
     let proxy = event_loop.create_proxy();
-
-    let nfd = Nfd::new().unwrap();
-    let result = nfd.open_file().add_filter("Gcode", "gcode").unwrap().show();
-
-    match result {
-        DialogResult::Ok(path) => {
-            let content = std::fs::read_to_string(path).unwrap();
-            let gcode: gcode::GCode = gcode::parser::parse_content(&content).unwrap();
-
-            let workpiece = gcode::PrintPart::from_gcode(
-                (content.lines(), gcode),
-                &mesh_settings,
-                &display_settings,
-            );
-
-            proxy
-                .send_event(RootEvent::RenderEvent(
-                    render::RenderEvent::UpdateVertexBuffer(workpiece.vertices()),
-                ))
-                .unwrap();
-
-            /*
-                        let mut cpu_model = Gm::new(
-                Mesh::new(context, &cpu_mesh.0),
-                PhysicalMaterial::new(context, &CpuMaterial::default()),
-            );
-
-            if let Some(vec) = cpu_mesh.1 {
-                cpu_model.set_transformation(Mat4::from_translation(Vector3::new(
-                    -vec.x, -vec.y, -vec.z,
-                )));
-            }
-
-            cpu_model
-
-             */
-        }
-        _ => {
-            println!("No file selected")
-        }
-    }
 
     let mut global_state = GlobalState {
         proxy,

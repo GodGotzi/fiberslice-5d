@@ -5,7 +5,6 @@ use winit::{event::Event, window::Window};
 
 pub use crate::error::Error;
 
-pub mod event;
 pub mod shared;
 pub mod wrap;
 
@@ -106,10 +105,6 @@ impl WgpuContext<'_> {
             surface_format,
         })
     }
-
-    pub fn aspect(&self) -> f32 {
-        self.surface_config.width as f32 / self.surface_config.height as f32
-    }
 }
 
 pub trait FrameHandle<'a, E, T, C> {
@@ -127,5 +122,6 @@ pub trait Adapter<'a, WinitE, S: Sized, T, C, E: Debug + Clone>:
 {
     fn from_context(wgpu_context: &WgpuContext) -> (S, Self);
 
+    #[allow(dead_code)]
     fn get_adapter_description(&self) -> String;
 }

@@ -15,12 +15,13 @@ pub mod visual;
 
 use std::sync::atomic::AtomicBool;
 
+use egui_toast::ToastOptions;
 use egui_wgpu_backend::ScreenDescriptor;
 use egui_winit_platform::{Platform, PlatformDescriptor};
 use screen::Screen;
 
 use egui::{FontDefinitions, InnerResponse, Pos2, Rect, Visuals};
-use visual::customize_look_and_feel;
+use winit::event::WindowEvent;
 
 use crate::{
     environment::view::Mode,
@@ -31,7 +32,12 @@ use crate::{
 use self::boundary::Boundary;
 
 #[derive(Debug, Clone)]
-pub enum UiEvent {}
+pub enum UiEvent {
+    ShowInfo(String),
+    ShowSuccess(String),
+    ShowError(String),
+    OpenPopup,
+}
 
 #[derive(Debug, Clone)]
 pub struct UiState {
@@ -122,15 +128,17 @@ impl<'a> FrameHandle<'a, RootEvent, Option<UiUpdateOutput>, GlobalState<RootEven
 
         self.update(event, start_time, wgpu_context);
 
-        if let winit::event::Event::WindowEvent { event, .. } = event {
-            if event == &winit::event::WindowEvent::RedrawRequested {
+        match event {
+            winit::event::Event::WindowEvent {
+                event: WindowEvent::RedrawRequested,
+                ..
+            } => {
                 self.platform.begin_frame();
 
                 self.platform.context().style_mut(|style| {
                     catppuccin_egui::set_style_theme(style, catppuccin_egui::MOCHA);
                 });
 
-                println!("Theme set to Macchiato");
                 self.screen.show(
                     &self.platform.context(),
                     &(self.state.clone(), global_state),
@@ -164,6 +172,53 @@ impl<'a> FrameHandle<'a, RootEvent, Option<UiUpdateOutput>, GlobalState<RootEven
                     viewport,
                 }));
             }
+            winit::event::Event::UserEvent(RootEvent::UiEvent(event)) => match event {
+                UiEvent::ShowInfo(message) => {
+                    self.screen.add_toast(egui_toast::Toast {
+                        kind: egui_toast::ToastKind::Info,
+                        text: message.into(),
+                        options: ToastOptions::default()
+                            .duration_in_seconds(5.0)
+                            .show_progress(true),
+                    });
+
+                    wgpu_context.window.request_redraw();
+                }
+                UiEvent::ShowSuccess(message) => {
+                    self.screen.add_toast(egui_toast::Toast {
+                        kind: egui_toast::ToastKind::Success,
+                        text: message.into(),
+                        options: ToastOptions::default()
+                            .duration_in_seconds(5.0)
+                            .show_progress(false),
+                    });
+
+                    wgpu_context.window.request_redraw();
+                }
+                UiEvent::ShowError(message) => {
+                    self.screen.add_toast(egui_toast::Toast {
+                        kind: egui_toast::ToastKind::Error,
+                        text: message.into(),
+                        options: ToastOptions::default()
+                            .duration_in_seconds(5.0)
+                            .show_progress(true),
+                    });
+
+                    wgpu_context.window.request_redraw();
+                }
+                UiEvent::OpenPopup => {
+                    self.screen.add_toast(egui_toast::Toast {
+                        kind: egui_toast::ToastKind::Info,
+                        text: "Popup opened".into(),
+                        options: ToastOptions::default()
+                            .duration_in_seconds(5.0)
+                            .show_progress(true),
+                    });
+
+                    wgpu_context.window.request_redraw();
+                }
+            },
+            _ => {}
         }
 
         Ok(None)
@@ -222,6 +277,7 @@ pub enum Theme {
 pub trait Component: Send + Sync {
     fn show(&mut self, ctx: &egui::Context, shared_state: &(UiState, GlobalState<RootEvent>));
 
+    #[allow(dead_code)]
     fn get_enabled_mut(&mut self) -> &mut bool;
 
     fn get_boundary(&self) -> &Boundary;
@@ -230,6 +286,7 @@ pub trait Component: Send + Sync {
 pub trait InnerComponent: Send + Sync {
     fn show(&mut self, ui: &mut egui::Ui, shared_state: &(UiState, GlobalState<RootEvent>));
 
+    #[allow(dead_code)]
     fn get_enabled_mut(&mut self) -> &mut bool;
 }
 
