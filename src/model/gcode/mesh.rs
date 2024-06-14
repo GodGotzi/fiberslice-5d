@@ -29,13 +29,8 @@ impl ProfileCross {
 
         let vertical = direction.cross(horizontal);
 
-        // info!("Direction: {:?}", direction);
-
         let normal_vertical = vertical.normalize();
         let normal_horizontal = horizontal.normalize();
-
-        info!("Normal Horizontal: {:?}", normal_horizontal);
-        info!("Normal Vertical: {:?}", normal_vertical);
 
         Self {
             up: vertical.normalize().direct_mul(&vec3(
@@ -136,12 +131,7 @@ impl Mesh for Cuboid {
     }
 
     fn to_vertices_flipped(&self) -> Vertices {
-        let mut vertices = Vec::new();
-
-        vertices.extend_from_slice(&self.profile_start.to_vertices_flipped());
-        vertices.extend_from_slice(&self.profile_end.to_vertices());
-
-        vertices
+        panic!("Not implemented")
     }
 }
 
@@ -181,12 +171,7 @@ impl Mesh for CuboidConnection {
     }
 
     fn to_vertices_flipped(&self) -> Vertices {
-        let mut vertices = Vec::new();
-
-        vertices.extend_from_slice(&self.profile_start.to_vertices_flipped());
-        vertices.extend_from_slice(&self.profile_end.to_vertices());
-
-        vertices
+        panic!("Not implemented")
     }
 }
 

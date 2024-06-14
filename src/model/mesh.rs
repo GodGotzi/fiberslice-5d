@@ -2,7 +2,9 @@ pub type Vertices = Vec<glam::Vec3>;
 
 pub trait Mesh {
     fn to_vertices(&self) -> Vertices;
-    fn to_vertices_flipped(&self) -> Vertices;
+    fn to_vertices_flipped(&self) -> Vertices {
+        panic!("Not implemented")
+    }
 }
 
 pub trait WithOffset {
