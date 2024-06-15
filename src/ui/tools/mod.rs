@@ -1,6 +1,4 @@
-use std::fmt::format;
-
-use egui::ImageSource;
+use egui::{Color32, ImageSource};
 
 use crate::{GlobalState, RootEvent};
 
@@ -56,9 +54,18 @@ impl Component for CameraControlTool<'_> {
         (_ui_state, global_state): &(UiState, GlobalState<RootEvent>),
     ) {
         if self.state.enabled {
+            let mut frame = egui::Frame::window(&ctx.style());
+            frame.fill = Color32::from_rgba_premultiplied(
+                frame.fill.r(),
+                frame.fill.g(),
+                frame.fill.b(),
+                220,
+            );
+
             egui::Window::new("Camera Controls")
                 .open(&mut self.state.enabled)
                 .collapsible(false)
+                .frame(frame)
                 .show(ctx, |ui| {
                     global_state.camera_controller.write_with_fn(|controller| {
                         ui.horizontal(|ui| {

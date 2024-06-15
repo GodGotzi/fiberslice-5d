@@ -7,10 +7,7 @@ use vertex::Vertex;
 use wgpu::util::DeviceExt;
 
 use crate::{
-    environment::{camera_controller, HandleOrientation},
-    model::gcode::PrintPart,
-    prelude::*,
-    ui::UiUpdateOutput,
+    environment::HandleOrientation, model::gcode::PrintPart, prelude::*, ui::UiUpdateOutput,
     GlobalState, RootEvent,
 };
 
