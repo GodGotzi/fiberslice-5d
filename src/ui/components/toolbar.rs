@@ -1,4 +1,4 @@
-use egui::ImageButton;
+use egui::{Button, ImageButton, Layout, RichText};
 use egui::{Context, SidePanel};
 
 use crate::config;
@@ -65,12 +65,17 @@ impl<'a> Component for Toolbar<'a> {
                 .resizable(false)
                 .default_width(config::gui::TOOLBAR_W)
                 .show(ctx, |ui| {
+                    ui.separator();
+
                     for tool in self.tools.iter_mut() {
                         let button = config::gui::TOOL_TOGGLE_BUTTON;
 
-                        let icon = tool.get_icon();
+                        // let icon = tool.get_icon();
 
-                        let image_button = ImageButton::new(icon).frame(true);
+                        let image_button = Button::new(RichText::new(tool.get_icon()).size(35.0))
+                            .frame(true)
+                            .selected(*tool.get_enabled())
+                            .rounding(5.0);
 
                         ui.allocate_ui(
                             [button.size.0 + button.border, button.size.1 + button.border].into(),
@@ -80,10 +85,22 @@ impl<'a> Component for Toolbar<'a> {
 
                                 if response.clicked() {
                                     *tool.get_enabled() = !*tool.get_enabled();
+                                } else if response.hovered() {
+                                    egui::popup::show_tooltip(
+                                        ui.ctx(),
+                                        egui::Id::new(format!("popup-{}", tool.get_popup_string())),
+                                        |ui| {
+                                            ui.label(tool.get_popup_string());
+                                        },
+                                    );
                                 }
                             },
                         );
+
+                        ui.add_space(5.0);
                     }
+
+                    ui.with_layout(Layout::bottom_up(egui::Align::Center), |ui| ui.separator());
                 })
                 .response
                 .into();

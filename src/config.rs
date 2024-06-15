@@ -24,8 +24,8 @@ pub mod gui {
     pub const TOOLBAR_W: f32 = 50.0;
 
     pub const TOOL_TOGGLE_BUTTON: DecoradedButton = DecoradedButton {
-        border: 5.,
-        size: (30., 30.),
+        border: 15.,
+        size: (45., 45.),
     };
 
     pub const ORIENATION_BUTTON: DecoradedButton = DecoradedButton {

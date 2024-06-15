@@ -61,17 +61,21 @@ impl Screen {
             .show(ctx, shared_state);
 
         toolbar::Toolbar::with_state(&mut self.toolbar_state)
-            .with_tools(&mut [&mut self.tools.camera_tool])
+            .with_tools(&mut [
+                &mut self.tools.gcode_tool,
+                &mut self.tools.camera_tool,
+                #[cfg(debug_assertions)]
+                &mut self.tools.profile_tool,
+            ])
             .show(ctx, shared_state);
 
         modebar::Modebar::with_state(&mut self.modebar_state).show(ctx, shared_state);
 
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
             addons::Addons::with_state(&mut self.addons_state).show(ui, shared_state);
-
-            self.tools.show(ctx, shared_state)
         });
 
+        self.tools.show(ctx, shared_state);
         self.toasts.show(ctx);
     }
 

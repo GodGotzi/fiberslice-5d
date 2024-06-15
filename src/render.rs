@@ -86,7 +86,7 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, Option<UiUpdateOutp
         wgpu_context: &WgpuContext,
         (state, ui_output): (GlobalState<RootEvent>, Option<UiUpdateOutput>),
     ) -> Result<(), Error> {
-        puffin::profile_function!();
+        puffin::profile_function!("Render handle_frame");
 
         let pointer_in_use = state
             .ui_state

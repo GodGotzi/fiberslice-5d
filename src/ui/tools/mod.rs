@@ -1,4 +1,4 @@
-use egui::{Color32, ImageSource};
+use egui::Color32;
 
 use crate::{GlobalState, RootEvent};
 
@@ -7,23 +7,36 @@ use super::{Component, UiState};
 #[derive(Debug, Default)]
 pub struct Tools {
     pub camera_tool: CameraToolState,
+    pub gcode_tool: GCodeToolState,
+
+    #[cfg(debug_assertions)]
+    pub profile_tool: ProfilerState,
 }
 
 impl Tools {
     pub fn show(&mut self, ctx: &egui::Context, shared_state: &(UiState, GlobalState<RootEvent>)) {
         CameraControlTool::with_state(&mut self.camera_tool).show(ctx, shared_state);
+        GCodeTool::with_state(&mut self.gcode_tool).show(ctx, shared_state);
+
+        #[cfg(debug_assertions)]
+        Profiler::with_state(&mut self.profile_tool).show(ctx, shared_state);
     }
 }
 
 pub trait ToolState {
     fn get_enabled(&mut self) -> &mut bool;
 
-    fn get_icon(&self) -> ImageSource<'static>;
+    fn get_popup_string(&self) -> &str {
+        ""
+    }
+
+    fn get_icon(&self) -> &str;
 }
 
 #[derive(Debug, Default)]
 pub struct CameraToolState {
     enabled: bool,
+    anchored: bool,
 }
 
 impl ToolState for CameraToolState {
@@ -31,8 +44,12 @@ impl ToolState for CameraToolState {
         &mut self.enabled
     }
 
-    fn get_icon(&self) -> ImageSource<'static> {
-        egui::include_image!("../assets/orientation_default_30x30.png")
+    fn get_popup_string(&self) -> &str {
+        "Camera"
+    }
+
+    fn get_icon(&self) -> &str {
+        "📷"
     }
 }
 
@@ -65,8 +82,13 @@ impl Component for CameraControlTool<'_> {
             egui::Window::new("Camera Controls")
                 .open(&mut self.state.enabled)
                 .collapsible(false)
+                .movable(!self.state.anchored)
                 .frame(frame)
                 .show(ctx, |ui| {
+                    if ui.button("⚓").clicked() {
+                        self.state.anchored = !self.state.anchored;
+                    }
+
                     global_state.camera_controller.write_with_fn(|controller| {
                         ui.horizontal(|ui| {
                             ui.label(format!("{:20}", "Rotate Speed"));
@@ -102,6 +124,128 @@ impl Component for CameraControlTool<'_> {
                             }
                         });
                     });
+                });
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct GCodeToolState {
+    enabled: bool,
+    anchored: bool,
+}
+
+impl ToolState for GCodeToolState {
+    fn get_enabled(&mut self) -> &mut bool {
+        &mut self.enabled
+    }
+
+    fn get_popup_string(&self) -> &str {
+        "GCode"
+    }
+
+    fn get_icon(&self) -> &str {
+        "📄"
+    }
+}
+
+pub struct GCodeTool<'a> {
+    state: &'a mut GCodeToolState,
+}
+
+impl<'a> GCodeTool<'a> {
+    pub fn with_state(state: &'a mut GCodeToolState) -> Self {
+        Self { state }
+    }
+}
+
+impl Component for GCodeTool<'_> {
+    fn show(
+        &mut self,
+        ctx: &egui::Context,
+        (_ui_state, global_state): &(UiState, GlobalState<RootEvent>),
+    ) {
+        if self.state.enabled {
+            let mut frame = egui::Frame::window(&ctx.style());
+            frame.fill = Color32::from_rgba_premultiplied(
+                frame.fill.r(),
+                frame.fill.g(),
+                frame.fill.b(),
+                220,
+            );
+
+            egui::Window::new("GCode")
+                .open(&mut self.state.enabled)
+                .movable(!self.state.anchored)
+                .collapsible(false)
+                .frame(frame)
+                .show(ctx, |ui| {
+                    if ui.button("⚓").clicked() {
+                        self.state.anchored = !self.state.anchored;
+                    }
+
+                    ui.label("GCode");
+                });
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct ProfilerState {
+    enabled: bool,
+    anchored: bool,
+}
+
+impl ToolState for ProfilerState {
+    fn get_enabled(&mut self) -> &mut bool {
+        &mut self.enabled
+    }
+
+    fn get_popup_string(&self) -> &str {
+        "Profile"
+    }
+
+    fn get_icon(&self) -> &str {
+        "📊"
+    }
+}
+
+pub struct Profiler<'a> {
+    state: &'a mut ProfilerState,
+}
+
+impl<'a> Profiler<'a> {
+    pub fn with_state(state: &'a mut ProfilerState) -> Self {
+        Self { state }
+    }
+}
+
+impl Component for Profiler<'_> {
+    fn show(
+        &mut self,
+        ctx: &egui::Context,
+        (_ui_state, global_state): &(UiState, GlobalState<RootEvent>),
+    ) {
+        if self.state.enabled {
+            let mut frame = egui::Frame::window(&ctx.style());
+            frame.fill = Color32::from_rgba_premultiplied(
+                frame.fill.r(),
+                frame.fill.g(),
+                frame.fill.b(),
+                220,
+            );
+
+            egui::Window::new("Profile")
+                .open(&mut self.state.enabled)
+                .movable(!self.state.anchored)
+                .collapsible(false)
+                .frame(frame)
+                .show(ctx, |ui| {
+                    if ui.button("⚓").clicked() {
+                        self.state.anchored = !self.state.anchored;
+                    }
+
+                    puffin_egui::profiler_ui(ui);
                 });
         }
     }

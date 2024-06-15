@@ -70,6 +70,8 @@ async fn main() -> Result<(), EventLoopError> {
     let server_addr = format!("127.0.0.1:{}", puffin_http::DEFAULT_PORT);
     let _puffin_server = puffin_http::Server::new(&server_addr).unwrap();
     eprintln!("Run this to view profiling data:  puffin_viewer {server_addr}");
+
+    #[cfg(debug_assertions)]
     puffin::set_scopes_on(true);
 
     #[cfg(debug_assertions)]
@@ -120,6 +122,7 @@ async fn main() -> Result<(), EventLoopError> {
             } => match winit_event {
                 winit::event::WindowEvent::RedrawRequested => {
                     global_state.ctx.begin_frame();
+                    puffin::GlobalProfiler::lock().new_frame();
                 }
                 winit::event::WindowEvent::Resized(size) => {
                     resize_surface(&mut wgpu_context, size);
