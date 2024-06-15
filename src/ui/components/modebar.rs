@@ -2,33 +2,56 @@ use egui_extras::Size;
 use egui_grid::GridBuilder;
 
 use crate::environment::view::Mode;
-use crate::prelude::UnparallelSharedMut;
 use crate::ui::boundary::Boundary;
-use crate::ui::{Component, UiState};
+use crate::ui::{Component, ComponentState, UiState};
 use crate::{config, GlobalState, RootEvent};
 
-pub struct Modebar {
+pub struct ModebarState {
+    enabled: bool,
     boundary: Boundary,
-    enabled: UnparallelSharedMut<bool>,
 }
 
-impl Modebar {
+impl ModebarState {
     pub fn new() -> Self {
         Self {
+            enabled: true,
             boundary: Boundary::zero(),
-            enabled: UnparallelSharedMut::from_inner(true),
         }
     }
 }
 
-impl Component for Modebar {
+impl ComponentState for ModebarState {
+    fn get_boundary(&self) -> Boundary {
+        self.boundary
+    }
+
+    fn get_enabled(&mut self) -> &mut bool {
+        &mut self.enabled
+    }
+
+    fn get_name(&self) -> &str {
+        "Modebar"
+    }
+}
+
+pub struct Modebar<'a> {
+    state: &'a mut ModebarState,
+}
+
+impl<'a> Modebar<'a> {
+    pub fn with_state(state: &'a mut ModebarState) -> Self {
+        Self { state }
+    }
+}
+
+impl<'a> Component for Modebar<'a> {
     fn show(
         &mut self,
         ctx: &egui::Context,
         (ui_state, _global_state): &(UiState, GlobalState<RootEvent>),
     ) {
-        if *self.enabled.inner().borrow() {
-            self.boundary = egui::TopBottomPanel::bottom("modebar")
+        if self.state.enabled {
+            self.state.boundary = egui::TopBottomPanel::bottom("modebar")
                 .default_height(config::gui::MODEBAR_H)
                 .show(ctx, |ui: &mut egui::Ui| {
                     egui::menu::bar(ui, |ui| {
@@ -81,13 +104,5 @@ impl Component for Modebar {
                 .response
                 .into();
         }
-    }
-
-    fn get_boundary(&self) -> &Boundary {
-        &self.boundary
-    }
-
-    fn get_enabled(&self) -> UnparallelSharedMut<bool> {
-        self.enabled.clone()
     }
 }

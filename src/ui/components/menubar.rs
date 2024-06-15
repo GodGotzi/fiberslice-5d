@@ -8,40 +8,71 @@ use crate::config;
 use crate::model::gcode;
 use crate::model::gcode::DisplaySettings;
 use crate::model::gcode::MeshSettings;
-use crate::prelude::UnparallelSharedMut;
 use crate::render;
+use crate::ui;
 use crate::ui::boundary::Boundary;
 use crate::ui::Component;
+use crate::ui::ComponentState;
 use crate::ui::UiState;
 use crate::GlobalState;
 use crate::RootEvent;
 
-pub struct Menubar {
-    //enabled: bool,
+pub struct MenubarState {
+    enabled: bool,
     boundary: Boundary,
-    enabled: UnparallelSharedMut<bool>,
 }
 
-impl Menubar {
+impl MenubarState {
     pub fn new() -> Self {
         Self {
+            enabled: true,
             boundary: Boundary::zero(),
-            enabled: UnparallelSharedMut::from_inner(true),
         }
     }
 }
 
-impl Component for Menubar {
+impl ComponentState for MenubarState {
+    fn get_boundary(&self) -> Boundary {
+        self.boundary
+    }
+
+    fn get_enabled(&mut self) -> &mut bool {
+        &mut self.enabled
+    }
+}
+
+pub struct Menubar<'a> {
+    state: &'a mut MenubarState,
+
+    component_states: &'a mut [&'a mut dyn ComponentState],
+}
+
+impl<'a> Menubar<'a> {
+    pub fn with_state(state: &'a mut MenubarState) -> Self {
+        Self {
+            state,
+            component_states: &mut [],
+        }
+    }
+
+    pub fn with_component_states(
+        mut self,
+        component_states: &'a mut [&'a mut dyn ComponentState],
+    ) -> Self {
+        self.component_states = component_states;
+        self
+    }
+}
+
+impl<'a> Component for Menubar<'a> {
     fn show(&mut self, ctx: &egui::Context, shared_state: &(UiState, GlobalState<RootEvent>)) {
-        if *self.enabled.inner().borrow() {
-            self.boundary = egui::TopBottomPanel::top("menubar")
+        if self.state.enabled {
+            self.state.boundary = egui::TopBottomPanel::top("menubar")
                 .default_height(config::gui::MENUBAR_H)
                 .show(ctx, |ui: &mut Ui| {
                     egui::menu::bar(ui, |ui| {
                         file_button(ui, shared_state);
-                        edit_button(ui, shared_state);
-                        window_button(ui, shared_state);
-                        view_button(ui, shared_state);
+                        self.window_button(ui, shared_state);
                         //settings_button(ui, data);
                         help_button(ui, shared_state);
                     });
@@ -50,13 +81,28 @@ impl Component for Menubar {
                 .into();
         }
     }
+}
 
-    fn get_boundary(&self) -> &Boundary {
-        &self.boundary
-    }
+impl<'a> Menubar<'a> {
+    fn window_button(&mut self, ui: &mut Ui, _shared_state: &(UiState, GlobalState<RootEvent>)) {
+        ui.menu_button("Window", |ui| {
+            ui.set_min_width(220.0);
+            ui.style_mut().wrap = Some(false);
 
-    fn get_enabled(&self) -> UnparallelSharedMut<bool> {
-        self.enabled.clone()
+            /*
+                        ui.checkbox(
+                &mut data.borrow_mut_ui_state().components.addons.enabled,
+                "Addons",
+            );
+            ui.separator();
+            */
+
+            for component_state in self.component_states.iter_mut() {
+                let name = component_state.get_name().to_string();
+
+                ui.checkbox(component_state.get_enabled(), name);
+            }
+        });
     }
 }
 
@@ -75,9 +121,9 @@ fn file_button(ui: &mut Ui, (_ui_state, global_state): &(UiState, GlobalState<Ro
         //let manipulator = gui_context.manipulator.clone();
         //let context = gui_context.context.clone();
 
-        let global_state = global_state.clone();
+        let global_state_cloned = global_state.clone();
 
-        build_sub_menu(ui, "Load GCode", || {
+        build_sub_menu(ui, "Import GCode", |_ui| {
             tokio::spawn(async move {
                 // let path = nfd::open_file_dialog(Some("gcode"),
                 let nfd = Nfd::new().unwrap();
@@ -94,7 +140,7 @@ fn file_button(ui: &mut Ui, (_ui_state, global_state): &(UiState, GlobalState<Ro
                             &display_settings,
                         );
 
-                        global_state
+                        global_state_cloned
                             .proxy
                             .send_event(RootEvent::RenderEvent(
                                 render::RenderEvent::AddGCodeToolpath(part),
@@ -107,65 +153,16 @@ fn file_button(ui: &mut Ui, (_ui_state, global_state): &(UiState, GlobalState<Ro
                 }
             });
         });
-        // build_sub_menu(ui, "Import Intersection Object", || {
-        //    import_intersection_object(data)
-        // });
 
-        ui.separator();
+        build_sub_menu(ui, "Import Intersection Object", |_ui| {});
 
-        // build_sub_menu(ui, "Save As", || save_as_gcode(data));
+        build_sub_menu(ui, "Save As", |_ui| {});
 
-        // build_sub_menu(ui, "Save", || save_gcode(data));
+        build_sub_menu(ui, "Save", |_ui| {});
 
-        ui.separator();
-
-        // build_sub_menu(ui, "Exit", || exit(data));
-    });
-}
-
-fn edit_button(ui: &mut Ui, _shared_state: &(UiState, GlobalState<RootEvent>)) {
-    ui.menu_button("Edit", |ui| {
-        ui.set_min_width(220.0);
-        ui.style_mut().wrap = Some(false);
-    });
-}
-
-fn window_button(ui: &mut Ui, _shared_state: &(UiState, GlobalState<RootEvent>)) {
-    ui.menu_button("Window", |ui| {
-        ui.set_min_width(220.0);
-        ui.style_mut().wrap = Some(false);
-
-        /*
-        ui.checkbox(
-            &mut data.borrow_mut_ui_state().components.addons.enabled,
-            "Addons",
-        );
-        ui.separator();
-
-        ui.checkbox(
-            &mut data.borrow_mut_ui_state().components.modebar.enabled,
-            "ModeBar",
-        );
-        ui.checkbox(
-            &mut data.borrow_mut_ui_state().components.toolbar.enabled,
-            "ToolBar",
-        );
-        ui.checkbox(
-            &mut data.borrow_mut_ui_state().components.taskbar.enabled,
-            "TaskBar",
-        );
-        ui.checkbox(
-            &mut data.borrow_mut_ui_state().components.settingsbar.enabled,
-            "Settings",
-        );
-        */
-    });
-}
-
-fn view_button(ui: &mut Ui, _shared_state: &(UiState, GlobalState<RootEvent>)) {
-    ui.menu_button("View", |ui| {
-        ui.set_min_width(220.0);
-        ui.style_mut().wrap = Some(false);
+        build_sub_menu(ui, "Exit", |_ui| {
+            global_state.proxy.send_event(RootEvent::Exit).unwrap();
+        });
     });
 }
 
@@ -173,11 +170,17 @@ fn help_button(ui: &mut Ui, _shared_state: &(UiState, GlobalState<RootEvent>)) {
     ui.menu_button("Help", |ui| {
         ui.set_min_width(220.0);
         ui.style_mut().wrap = Some(false);
+
+        if ui.button("About").hovered() {
+            egui::popup::show_tooltip(ui.ctx(), egui::Id::new("menubar-about-popup"), |ui| {
+                ui.label("This is a special slicer for placing fibers in gcode.");
+            });
+        }
     });
 }
 
-fn build_sub_menu(ui: &mut Ui, title: &str, action: impl FnOnce()) {
+fn build_sub_menu(ui: &mut Ui, title: &str, action: impl FnOnce(&mut Ui)) {
     if ui.button(title).clicked() {
-        action();
+        action(ui);
     }
 }

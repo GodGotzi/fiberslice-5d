@@ -6,6 +6,7 @@ use winit::{
 
 use crate::render::camera::OrbitCamera;
 
+#[derive(Debug)]
 pub struct CameraController {
     pub rotate_speed: f32,
     pub zoom_speed: f32,

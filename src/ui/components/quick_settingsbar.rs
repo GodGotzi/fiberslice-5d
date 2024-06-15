@@ -30,7 +30,7 @@ impl TabbedSettings {
     pub fn show(
         &mut self,
         ui: &mut egui::Ui,
-        (ui_state, global_state): &(UiState, GlobalState<RootEvent>),
+        (_ui_state, global_state): &(UiState, GlobalState<RootEvent>),
         side_view: &mut Settingsbar,
     ) {
         ui.horizontal(|ui| {
@@ -62,7 +62,7 @@ impl TabbedSettings {
                     // Cells are represented as they were allocated
                     grid.cell(|ui| {
                         ui.selectable_value(
-                            &mut side_view.open_panel,
+                            &mut side_view.state.open_panel,
                             SettingsPanel::Fiber,
                             "Fiber",
                         );
@@ -74,7 +74,7 @@ impl TabbedSettings {
                     });
                     grid.cell(|ui| {
                         ui.selectable_value(
-                            &mut side_view.open_panel,
+                            &mut side_view.state.open_panel,
                             SettingsPanel::TopologyOptimization,
                             "Topology",
                         );
@@ -85,25 +85,29 @@ impl TabbedSettings {
                         });
                     });
                     grid.cell(|ui| {
-                        ui.selectable_value(&mut side_view.open_panel, SettingsPanel::View, "View");
+                        ui.selectable_value(
+                            &mut side_view.state.open_panel,
+                            SettingsPanel::View,
+                            "View",
+                        );
                     });
                     grid.cell(|ui| {
                         ui.vertical(|ui| {
-                            if side_view.open_panel != SettingsPanel::Fiber {
+                            if side_view.state.open_panel != SettingsPanel::Fiber {
                                 ui.separator();
                             }
                         });
                     });
                     grid.cell(|ui| {
                         ui.vertical(|ui| {
-                            if side_view.open_panel != SettingsPanel::TopologyOptimization {
+                            if side_view.state.open_panel != SettingsPanel::TopologyOptimization {
                                 ui.separator();
                             }
                         });
                     });
                     grid.cell(|ui| {
                         ui.vertical(|ui| {
-                            if side_view.open_panel != SettingsPanel::View {
+                            if side_view.state.open_panel != SettingsPanel::View {
                                 ui.separator();
                             }
                         });
@@ -113,7 +117,7 @@ impl TabbedSettings {
 
         //ui.add_space(20.0);
 
-        match side_view.open_panel {
+        match side_view.state.open_panel {
             SettingsPanel::Fiber => {
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
@@ -158,31 +162,56 @@ impl TabbedSettings {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Settingsbar {
-    open_panel: SettingsPanel,
-
+#[derive(Debug)]
+pub struct SettingsbarState {
+    enabled: bool,
     boundary: Boundary,
-    enabled: UnparallelSharedMut<bool>,
+
+    open_panel: SettingsPanel,
 }
 
-impl Settingsbar {
+impl SettingsbarState {
     pub fn new() -> Self {
         Self {
-            open_panel: SettingsPanel::Fiber,
-
+            enabled: true,
             boundary: Boundary::zero(),
-            enabled: UnparallelSharedMut::from_inner(true),
+
+            open_panel: SettingsPanel::Fiber,
         }
     }
 }
 
-impl Component for Settingsbar {
+impl ComponentState for SettingsbarState {
+    fn get_boundary(&self) -> Boundary {
+        self.boundary
+    }
+
+    fn get_enabled(&mut self) -> &mut bool {
+        &mut self.enabled
+    }
+
+    fn get_name(&self) -> &str {
+        "Settingsbar"
+    }
+}
+
+#[derive(Debug)]
+pub struct Settingsbar<'a> {
+    state: &'a mut SettingsbarState,
+}
+
+impl<'a> Settingsbar<'a> {
+    pub fn with_state(state: &'a mut SettingsbarState) -> Self {
+        Self { state }
+    }
+}
+
+impl<'a> Component for Settingsbar<'a> {
     fn show(&mut self, ctx: &egui::Context, shared_state: &(UiState, GlobalState<RootEvent>)) {
         let mut tabbed_view = TabbedSettings::init();
 
-        if *self.enabled.inner().borrow() {
-            self.boundary = Boundary::from(
+        if self.state.enabled {
+            self.state.boundary = Boundary::from(
                 egui::SidePanel::right("settingsbar")
                     .resizable(true)
                     .default_width(config::gui::default::SETTINGSBAR_W)
@@ -222,13 +251,5 @@ impl Component for Settingsbar {
                     .response,
             );
         }
-    }
-
-    fn get_boundary(&self) -> &Boundary {
-        &self.boundary
-    }
-
-    fn get_enabled(&self) -> UnparallelSharedMut<bool> {
-        self.enabled.clone()
     }
 }

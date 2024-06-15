@@ -1,50 +1,41 @@
 use super::*;
-use components::{addons, menubar, modebar, quick_settingsbar, taskbar, toolbar};
+use components::{
+    addons,
+    menubar::{self, MenubarState},
+    modebar::{self, ModebarState},
+    quick_settingsbar, taskbar,
+    toolbar::{self, ToolBarState},
+};
 use egui::{Align2, Margin};
 use egui_toast::Toasts;
 
 pub struct Screen {
     toasts: Toasts,
 
-    windows: windows::Windows,
-    addons: addons::Addons,
+    tools: tools::Tools,
+    addons_state: addons::AddonsState,
 
-    quick_settings: quick_settingsbar::Settingsbar,
-    menubar: menubar::Menubar,
-    taskbar: taskbar::Taskbar,
-    modebar: modebar::Modebar,
-    toolbar: toolbar::Toolbar,
-
-    enabled: Vec<UnparallelSharedMut<bool>>,
+    quick_settings_state: quick_settingsbar::SettingsbarState,
+    menubar_state: MenubarState,
+    taskbar_state: taskbar::TaskbarState,
+    modebar_state: ModebarState,
+    toolbar_state: ToolBarState,
 }
 
 impl Screen {
     pub fn new() -> Self {
-        let mut screen = Self {
-            windows: windows::Windows::default(),
+        Self {
+            tools: tools::Tools::default(),
             toasts: Toasts::new()
                 .anchor(Align2::CENTER_TOP, (0.0, 10.0))
                 .direction(egui::Direction::TopDown),
-            addons: addons::Addons::new(),
-            quick_settings: quick_settingsbar::Settingsbar::new(),
-            menubar: menubar::Menubar::new(),
-            taskbar: taskbar::Taskbar::new(),
-            modebar: modebar::Modebar::new(),
-            toolbar: toolbar::Toolbar::new(),
-
-            enabled: Vec::new(),
-        };
-
-        screen.enabled = vec![
-            screen.addons.get_enabled(),
-            screen.taskbar.get_enabled(),
-            screen.menubar.get_enabled(),
-            screen.toolbar.get_enabled(),
-            screen.modebar.get_enabled(),
-            screen.quick_settings.get_enabled(),
-        ];
-
-        screen
+            addons_state: addons::AddonsState::new(),
+            quick_settings_state: quick_settingsbar::SettingsbarState::new(),
+            menubar_state: MenubarState::new(),
+            taskbar_state: taskbar::TaskbarState::new(),
+            modebar_state: ModebarState::new(),
+            toolbar_state: ToolBarState::new(),
+        }
     }
 
     pub fn show(&mut self, ctx: &egui::Context, shared_state: &(UiState, GlobalState<RootEvent>)) {
@@ -54,20 +45,31 @@ impl Screen {
             ..Default::default()
         };
 
-        self.menubar.show(ctx, shared_state);
+        menubar::Menubar::with_state(&mut self.menubar_state)
+            .with_component_states(&mut [
+                &mut self.addons_state,
+                &mut self.quick_settings_state,
+                &mut self.taskbar_state,
+                &mut self.modebar_state,
+                &mut self.toolbar_state,
+            ])
+            .show(ctx, shared_state);
 
-        self.taskbar.show(ctx, shared_state);
+        taskbar::Taskbar::with_state(&mut self.taskbar_state).show(ctx, shared_state);
 
-        self.quick_settings.show(ctx, shared_state);
+        quick_settingsbar::Settingsbar::with_state(&mut self.quick_settings_state)
+            .show(ctx, shared_state);
 
-        self.toolbar.show(ctx, shared_state);
+        toolbar::Toolbar::with_state(&mut self.toolbar_state)
+            .with_tools(&mut [&mut self.tools.camera_tool])
+            .show(ctx, shared_state);
 
-        self.modebar.show(ctx, shared_state);
+        modebar::Modebar::with_state(&mut self.modebar_state).show(ctx, shared_state);
 
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
-            self.addons.show(ui, shared_state);
+            addons::Addons::with_state(&mut self.addons_state).show(ui, shared_state);
 
-            self.windows.show(ctx, shared_state)
+            self.tools.show(ctx, shared_state)
         });
 
         self.toasts.show(ctx);
@@ -79,19 +81,18 @@ impl Screen {
 
     pub fn construct_viewport(&self, wgpu_context: &WgpuContext) -> (f32, f32, f32, f32) {
         let height = wgpu_context.surface_config.height as f32
-            - self.taskbar.get_boundary().get_height()
-            - self.modebar.get_boundary().get_height()
-            - self.menubar.get_boundary().get_height();
+            - self.taskbar_state.get_boundary().get_height()
+            - self.modebar_state.get_boundary().get_height()
+            - self.menubar_state.get_boundary().get_height();
 
-        let viewport = (
-            self.toolbar.get_boundary().get_width(),
-            self.taskbar.get_boundary().get_height() + self.modebar.get_boundary().get_height(),
+        (
+            self.toolbar_state.get_boundary().get_width(),
+            self.taskbar_state.get_boundary().get_height()
+                + self.modebar_state.get_boundary().get_height(),
             wgpu_context.surface_config.width as f32
-                - self.toolbar.get_boundary().get_width()
-                - self.quick_settings.get_boundary().get_width(),
+                - self.toolbar_state.get_boundary().get_width()
+                - self.quick_settings_state.get_boundary().get_width(),
             height,
-        );
-
-        viewport
+        )
     }
 }

@@ -6,6 +6,7 @@
 */
 
 use egui::ahash::HashMap;
+use environment::camera_controller;
 use log::{info, LevelFilter};
 use settings::tree::QuickSettings;
 use std::{sync::Arc, time::Instant};
@@ -47,6 +48,7 @@ pub enum RootEvent {
     UiEvent(ui::UiEvent),
     PickingEvent(picking::PickingEvent),
     RenderEvent(render::RenderEvent),
+    Exit,
 }
 
 #[derive(Debug, Clone)]
@@ -57,6 +59,8 @@ pub struct GlobalState<T: 'static> {
     pub fiber_settings: SharedMut<QuickSettings>,
     pub topology_settings: SharedMut<QuickSettings>,
     pub view_settings: SharedMut<QuickSettings>,
+
+    pub camera_controller: SharedMut<camera_controller::CameraController>,
 
     pub ctx: GlobalContext,
 }
@@ -98,6 +102,11 @@ async fn main() -> Result<(), EventLoopError> {
         fiber_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
         topology_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
         view_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
+
+        camera_controller: SharedMut::from_inner(camera_controller::CameraController::new(
+            0.01, -2.0, 0.1,
+        )),
+
         ctx: GlobalContext::default(),
     };
 
@@ -105,11 +114,10 @@ async fn main() -> Result<(), EventLoopError> {
 
     let start_time = Instant::now();
     event_loop.run(move |event, loop_target| {
-        if let winit::event::Event::WindowEvent {
-            event: winit_event, ..
-        } = event.clone()
-        {
-            match winit_event {
+        match event.clone() {
+            winit::event::Event::WindowEvent {
+                event: winit_event, ..
+            } => match winit_event {
                 winit::event::WindowEvent::RedrawRequested => {
                     global_state.ctx.begin_frame();
                 }
@@ -131,7 +139,11 @@ async fn main() -> Result<(), EventLoopError> {
                 _ => {
                     window.request_redraw();
                 }
+            },
+            winit::event::Event::UserEvent(RootEvent::Exit) => {
+                loop_target.exit();
             }
+            _ => {}
         }
 
         let ui_output = ui_adapter

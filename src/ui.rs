@@ -9,27 +9,24 @@ pub mod api;
 pub mod boundary;
 pub mod components;
 pub mod screen;
-pub mod windows;
+pub mod tools;
 
 mod icon;
 pub mod visual;
 
-use std::{cell::RefCell, rc::Rc, sync::atomic::AtomicBool};
+use std::sync::atomic::AtomicBool;
 
 use egui_toast::ToastOptions;
 use egui_wgpu_backend::ScreenDescriptor;
 use egui_winit_platform::{Platform, PlatformDescriptor};
 use screen::Screen;
 
-use egui::{FontDefinitions, InnerResponse, Pos2, Rect, Visuals};
+use egui::{FontDefinitions, InnerResponse, Pos2, Rect, Ui, Visuals};
 use winit::event::WindowEvent;
 
 use crate::{
     environment::view::Mode,
-    prelude::{
-        Adapter, Error, FrameHandle, Shared, UnparallelShared, UnparallelSharedMut, WgpuContext,
-        WrappedSharedMut,
-    },
+    prelude::{Adapter, Error, FrameHandle, Shared, WgpuContext, WrappedSharedMut},
     GlobalState, RootEvent,
 };
 
@@ -77,6 +74,17 @@ impl UiState {
             });
         });
     }
+}
+
+pub fn ui_temp_mut<T>(
+    ui: &mut Ui,
+    temp_value: T,
+    get_dest: impl Fn(&mut Ui) -> &mut T,
+    add_contents: impl FnOnce(&mut Ui),
+) {
+    let old_value = std::mem::replace(get_dest(ui), temp_value);
+    add_contents(ui);
+    let _ = std::mem::replace(get_dest(ui), old_value);
 }
 
 pub struct UiUpdateOutput {
@@ -141,6 +149,8 @@ impl<'a> FrameHandle<'a, RootEvent, Option<UiUpdateOutput>, GlobalState<RootEven
 
                 self.platform.context().style_mut(|style| {
                     catppuccin_egui::set_style_theme(style, catppuccin_egui::MOCHA);
+                    style.visuals.popup_shadow = egui::epaint::Shadow::NONE;
+                    style.visuals.window_shadow = egui::epaint::Shadow::NONE;
                 });
 
                 self.screen.show(
@@ -278,18 +288,22 @@ pub enum Theme {
     Dark,
 }
 
+pub trait ComponentState {
+    fn get_boundary(&self) -> Boundary;
+
+    fn get_enabled(&mut self) -> &mut bool;
+
+    fn get_name(&self) -> &str {
+        "Component"
+    }
+}
+
 pub trait Component {
     fn show(&mut self, ctx: &egui::Context, shared_state: &(UiState, GlobalState<RootEvent>));
-
-    fn get_boundary(&self) -> &Boundary;
-
-    fn get_enabled(&self) -> UnparallelSharedMut<bool>;
 }
 
 pub trait InnerComponent {
     fn show(&mut self, ui: &mut egui::Ui, shared_state: &(UiState, GlobalState<RootEvent>));
-
-    fn get_enabled(&self) -> UnparallelSharedMut<bool>;
 }
 
 pub trait AllocateInnerUiRect {

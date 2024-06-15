@@ -1,30 +1,53 @@
-use crate::prelude::UnparallelSharedMut;
 use crate::ui::boundary::Boundary;
-use crate::ui::{Component, Theme, UiState};
+use crate::ui::{Component, ComponentState, Theme, UiState};
 use crate::{config, GlobalState, RootEvent};
 
-pub struct Taskbar {
+pub struct TaskbarState {
+    enabled: bool,
     boundary: Boundary,
-    enabled: UnparallelSharedMut<bool>,
 }
 
-impl Taskbar {
+impl TaskbarState {
     pub fn new() -> Self {
         Self {
+            enabled: true,
             boundary: Boundary::zero(),
-            enabled: UnparallelSharedMut::from_inner(true),
         }
     }
 }
 
-impl Component for Taskbar {
+impl ComponentState for TaskbarState {
+    fn get_boundary(&self) -> Boundary {
+        self.boundary
+    }
+
+    fn get_enabled(&mut self) -> &mut bool {
+        &mut self.enabled
+    }
+
+    fn get_name(&self) -> &str {
+        "Taskbar"
+    }
+}
+
+pub struct Taskbar<'a> {
+    state: &'a mut TaskbarState,
+}
+
+impl<'a> Taskbar<'a> {
+    pub fn with_state(state: &'a mut TaskbarState) -> Self {
+        Self { state }
+    }
+}
+
+impl<'a> Component for Taskbar<'a> {
     fn show(
         &mut self,
         ctx: &egui::Context,
         (ui_state, global_state): &(UiState, GlobalState<RootEvent>),
     ) {
-        if *self.enabled.inner().borrow() {
-            self.boundary = egui::TopBottomPanel::bottom("taskbar")
+        if self.state.enabled {
+            self.state.boundary = egui::TopBottomPanel::bottom("taskbar")
                 .default_height(config::gui::TASKBAR_H)
                 .show(ctx, |ui: &mut egui::Ui| {
                     egui::menu::bar(ui, |ui| {
@@ -40,14 +63,6 @@ impl Component for Taskbar {
                 .response
                 .into();
         }
-    }
-
-    fn get_boundary(&self) -> &Boundary {
-        &self.boundary
-    }
-
-    fn get_enabled(&self) -> UnparallelSharedMut<bool> {
-        self.enabled.clone()
     }
 }
 

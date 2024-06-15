@@ -10,8 +10,9 @@ use egui_xml::load_layout;
 use orientation::OrientationAddon;
 
 use crate::config::gui::shaded_color;
-use crate::ui::InnerComponent;
-use crate::ui::{AllocateInnerUiRect, UiState};
+use crate::ui::boundary::Boundary;
+use crate::ui::{ui_temp_mut, AllocateInnerUiRect, UiState};
+use crate::ui::{ComponentState, InnerComponent};
 use crate::{GlobalState, RootEvent};
 
 pub mod orientation {
@@ -110,13 +111,37 @@ pub mod orientation {
     }
 }
 
-pub struct Addons {
+pub struct AddonsState {
     enabled: bool,
 }
 
-impl Addons {
+impl AddonsState {
     pub fn new() -> Self {
         Self { enabled: true }
+    }
+}
+
+impl ComponentState for AddonsState {
+    fn get_boundary(&self) -> Boundary {
+        Boundary::zero()
+    }
+
+    fn get_enabled(&mut self) -> &mut bool {
+        &mut self.enabled
+    }
+
+    fn get_name(&self) -> &str {
+        "Addons"
+    }
+}
+
+pub struct Addons<'a> {
+    state: &'a mut AddonsState,
+}
+
+impl<'a> Addons<'a> {
+    pub fn with_state(state: &'a mut AddonsState) -> Self {
+        Self { state }
     }
 
     fn show_orientation(&mut self, ui: &mut Ui, shared_state: &(UiState, GlobalState<RootEvent>)) {
@@ -141,9 +166,16 @@ impl Addons {
                         ui_state.time_stamp.write_with_fn(|time_stamp| {
                             ui.spacing_mut().slider_width = ui.available_width();
 
-                            let slider = egui::Slider::new(time_stamp, 0..=120)
-                                .orientation(egui::SliderOrientation::Horizontal);
-                            ui.add_sized(ui.available_size(), slider);
+                            ui_temp_mut(
+                                ui,
+                                ui.available_width(),
+                                |ui| &mut ui.spacing_mut().slider_width,
+                                |ui| {
+                                    let slider = egui::Slider::new(time_stamp, 0..=120)
+                                        .orientation(egui::SliderOrientation::Horizontal);
+                                    ui.add_sized(ui.available_size(), slider);
+                                },
+                            );
                         });
                     },
                 );
@@ -181,11 +213,16 @@ impl Addons {
                     ),
                     |ui| {
                         ui_state.layer_max.write_with_fn(|layer_max| {
-                            ui.spacing_mut().slider_width = ui.available_height();
-
-                            let slider = egui::Slider::new(layer_max, 0..=120)
-                                .orientation(egui::SliderOrientation::Vertical);
-                            ui.add_sized(ui.available_size(), slider);
+                            ui_temp_mut(
+                                ui,
+                                ui.available_height(),
+                                |ui| &mut ui.spacing_mut().slider_width,
+                                |ui| {
+                                    let slider = egui::Slider::new(layer_max, 0..=120)
+                                        .orientation(egui::SliderOrientation::Vertical);
+                                    ui.add_sized(ui.available_size(), slider);
+                                },
+                            );
                         });
                     },
                 );
@@ -235,9 +272,9 @@ impl Addons {
     }
 }
 
-impl InnerComponent for Addons {
+impl<'a> InnerComponent for Addons<'a> {
     fn show(&mut self, ui: &mut Ui, shared_state: &(UiState, GlobalState<RootEvent>)) {
-        if self.enabled {
+        if self.state.enabled {
             let available_size = ui.available_size();
 
             load_layout!(

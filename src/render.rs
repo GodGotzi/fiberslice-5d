@@ -34,7 +34,6 @@ struct RenderState {
     depth_texture_view: wgpu::TextureView,
 
     camera: OrbitCamera,
-    camera_controller: camera_controller::CameraController,
 
     camera_viewport: Option<(f32, f32, f32, f32)>,
     camera_uniform: camera::CameraUniform,
@@ -98,12 +97,14 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, Option<UiUpdateOutp
             .inner()
             .load(std::sync::atomic::Ordering::Relaxed);
 
-        self.render_state.camera_controller.process_events(
-            event,
-            &wgpu_context.window,
-            &mut self.render_state.camera,
-            pointer_in_use,
-        );
+        state.camera_controller.write_with_fn(|controller| {
+            controller.process_events(
+                event,
+                &wgpu_context.window,
+                &mut self.render_state.camera,
+                pointer_in_use,
+            );
+        });
 
         match event {
             winit::event::Event::WindowEvent { event, .. } => {
@@ -411,8 +412,6 @@ impl<'a>
 
         camera_uniform.update_view_proj(&camera);
 
-        let camera_controller = camera_controller::CameraController::new(0.01, -2.0, 0.1);
-
         let render_state = RenderState {
             vertex_buffer,
             num_indices: 0,
@@ -420,7 +419,6 @@ impl<'a>
             depth_texture_view,
 
             camera,
-            camera_controller,
 
             camera_viewport: None,
             camera_uniform,
