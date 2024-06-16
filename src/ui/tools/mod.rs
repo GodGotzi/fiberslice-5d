@@ -4,6 +4,8 @@ use crate::{GlobalState, RootEvent};
 
 use super::{Component, UiState};
 
+mod debug;
+
 #[derive(Debug, Default)]
 pub struct Tools {
     pub camera_tool: CameraToolState,
@@ -11,6 +13,9 @@ pub struct Tools {
 
     #[cfg(debug_assertions)]
     pub profile_tool: ProfilerState,
+
+    #[cfg(debug_assertions)]
+    pub debug_tool: debug::DebugToolState,
 }
 
 impl Tools {
@@ -20,6 +25,9 @@ impl Tools {
 
         #[cfg(debug_assertions)]
         Profiler::with_state(&mut self.profile_tool).show(ctx, shared_state);
+
+        #[cfg(debug_assertions)]
+        debug::DebugTool::with_state(&mut self.debug_tool).show(ctx, shared_state);
     }
 }
 

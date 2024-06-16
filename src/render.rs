@@ -4,6 +4,7 @@ use buffer::{DynamicBuffer, RenderBuffers};
 use camera::{CameraUniform, OrbitCamera};
 use glam::Vec3;
 use light::LightUniform;
+use pollster::FutureExt;
 use vertex::Vertex;
 use wgpu::util::DeviceExt;
 
@@ -24,6 +25,7 @@ const MSAA_SAMPLE_COUNT: u32 = 1;
 pub enum RenderEvent {
     CameraOrientationChanged(crate::environment::view::Orientation),
     AddGCodeToolpath(PrintPart),
+    DebugVertex,
 }
 
 struct RenderState {
@@ -281,6 +283,17 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, Option<UiUpdateOutp
 
                     wgpu_context.window.request_redraw();
                 }
+                RenderEvent::DebugVertex => {
+                    self.render_buffers.paths.change(
+                        &wgpu_context.queue,
+                        buffer::BufferRange::Full,
+                        |vertex| {
+                            vertex.color[3] = 0.7;
+                        },
+                    );
+
+                    wgpu_context.window.request_redraw();
+                }
             },
             _ => {}
         }
@@ -452,11 +465,16 @@ impl<'a>
                         module: &shader,
                         entry_point: "fs_main",
                         targets: &[Some(wgpu::ColorTargetState {
-                            format: context.surface_config.format,
+                            format: context.surface_format,
                             blend: Some(wgpu::BlendState {
-                                color: wgpu::BlendComponent::REPLACE,
-                                alpha: wgpu::BlendComponent::REPLACE,
+                                color: wgpu::BlendComponent {
+                                    src_factor: wgpu::BlendFactor::SrcAlpha,
+                                    dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                                    operation: wgpu::BlendOperation::Add,
+                                },
+                                alpha: wgpu::BlendComponent::OVER,
                             }),
+
                             write_mask: wgpu::ColorWrites::ALL,
                         })],
                         compilation_options: wgpu::PipelineCompilationOptions::default(),

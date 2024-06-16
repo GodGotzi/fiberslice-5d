@@ -9,16 +9,22 @@ const MAX_WIDGETS_VERTICES: usize = 1000;
 const MAX_ENV_VERTICES: usize = 1000;
 
 pub struct RenderBuffers {
-    pub paths: DynamicBuffer,
-    pub widgets: DynamicBuffer,
-    pub env: DynamicBuffer,
+    pub paths: DynamicBuffer<Vertex>,
+    pub widgets: DynamicBuffer<Vertex>,
+    pub env: DynamicBuffer<Vertex>,
+}
+
+pub enum BufferRange {
+    Full,
+    OffsetFull(usize),
+    Range(std::ops::Range<usize>),
 }
 
 impl RenderBuffers {
     pub fn new(device: &wgpu::Device) -> Self {
-        let paths = DynamicBuffer::new_init::<Vertex>(&[], "Paths", device);
-        let widgets = DynamicBuffer::new::<Vertex>(MAX_WIDGETS_VERTICES, "Widgets", device, 0..0);
-        let env = DynamicBuffer::new::<Vertex>(MAX_ENV_VERTICES, "Environment", device, 0..0);
+        let paths = DynamicBuffer::<Vertex>::new_init(&[], "Paths", device);
+        let widgets = DynamicBuffer::<Vertex>::new(MAX_WIDGETS_VERTICES, "Widgets", device, 0..0);
+        let env = DynamicBuffer::<Vertex>::new(MAX_ENV_VERTICES, "Environment", device, 0..0);
 
         Self {
             paths,
@@ -38,51 +44,49 @@ impl RenderBuffers {
     }
 }
 
-pub struct DynamicBuffer {
+pub struct DynamicBuffer<T> {
     inner: wgpu::Buffer,
+    vertices: Vec<T>,
     render_range: std::ops::Range<u32>,
 }
 
-impl DynamicBuffer {
-    pub fn new<T>(
-        size: usize,
-        label: &str,
-        device: &wgpu::Device,
-        range: std::ops::Range<u32>,
-    ) -> Self
+impl<T: bytemuck::Pod + bytemuck::Zeroable> DynamicBuffer<T> {
+    pub fn new(size: usize, label: &str, device: &wgpu::Device, range: std::ops::Range<u32>) -> Self
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
     {
         let inner = device.create_buffer(&BufferDescriptor {
             label: Some(label),
             size: (size * std::mem::size_of::<T>()) as BufferAddress,
-            usage: wgpu::BufferUsages::VERTEX,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
         Self {
             inner,
+            vertices: Vec::with_capacity(size),
             render_range: range,
         }
     }
 
-    pub fn new_init<T>(data: &[T], label: &str, device: &wgpu::Device) -> Self
+    pub fn new_init(data: &[T], label: &str, device: &wgpu::Device) -> Self
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
     {
         let inner = device.create_buffer_init(&BufferInitDescriptor {
             label: Some(label),
             contents: bytemuck::cast_slice(data),
-            usage: wgpu::BufferUsages::VERTEX,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
 
         Self {
             inner,
+            vertices: data.to_vec(),
             render_range: 0..data.len() as u32,
         }
     }
 
-    pub fn renew<T>(&mut self, size: usize, label: &str, device: &wgpu::Device)
+    pub fn renew(&mut self, size: usize, label: &str, device: &wgpu::Device)
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
     {
@@ -91,14 +95,15 @@ impl DynamicBuffer {
         self.inner = device.create_buffer(&BufferDescriptor {
             label: Some(label),
             size: (size * std::mem::size_of::<T>()) as BufferAddress,
-            usage: wgpu::BufferUsages::VERTEX,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
+        self.vertices = Vec::with_capacity(size);
         self.render_range = 0..size as u32;
     }
 
-    pub fn renew_init<T>(&mut self, data: &[T], label: &str, device: &wgpu::Device)
+    pub fn renew_init(&mut self, data: &[T], label: &str, device: &wgpu::Device)
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
     {
@@ -107,63 +112,53 @@ impl DynamicBuffer {
         self.inner = device.create_buffer_init(&BufferInitDescriptor {
             label: Some(label),
             contents: bytemuck::cast_slice(data),
-            usage: wgpu::BufferUsages::VERTEX,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
 
+        self.vertices = data.to_vec();
         self.render_range = 0..data.len() as u32;
     }
 
-    pub fn write<T>(&self, queue: &wgpu::Queue, offset: BufferAddress, data: &[T])
+    pub fn write(&mut self, queue: &wgpu::Queue, offset: BufferAddress, data: &[T])
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
     {
-        queue.write_buffer(&self.inner, offset, bytemuck::cast_slice(data));
+        self.vertices.splice(
+            offset as usize..(offset as usize + data.len()),
+            data.iter().cloned(),
+        );
+
+        queue.write_buffer(&self.inner, 0, bytemuck::cast_slice(&self.vertices));
     }
 
-    pub fn change<SS, T>(
-        &self,
-        queue: &wgpu::Queue,
-        device: &wgpu::Device,
-        range: SS,
-        change: impl Fn(&mut T),
-    ) where
-        SS: std::ops::RangeBounds<BufferAddress>,
-        T: bytemuck::Pod + bytemuck::Zeroable,
-    {
-        pollster::block_on(async {
-            let offset = match range.start_bound() {
-                std::ops::Bound::Included(offset) => *offset,
-                std::ops::Bound::Excluded(offset) => offset + 1,
-                std::ops::Bound::Unbounded => 0,
-            };
+    pub fn change(&mut self, queue: &wgpu::Queue, range: BufferRange, change: impl Fn(&mut T)) {
+        match range {
+            BufferRange::Full => {
+                for i in 0..self.vertices.len() {
+                    change(&mut self.vertices[i]);
+                }
+            }
+            BufferRange::OffsetFull(offset) => {
+                for i in offset..self.vertices.len() {
+                    change(&mut self.vertices[i]);
+                }
+            }
+            BufferRange::Range(range) => {
+                for i in range.clone() {
+                    change(&mut self.vertices[i]);
+                }
+            }
+        }
 
-            let mut data = self.read(device, range).await;
-
-            data.iter_mut().for_each(change);
-
-            queue.write_buffer(&self.inner, offset, bytemuck::cast_slice(&data));
-        });
+        queue.write_buffer(&self.inner, 0, bytemuck::cast_slice(&self.vertices));
     }
 
-    pub async fn read<SS, T>(&self, device: &wgpu::Device, range: SS) -> Vec<T>
-    where
-        SS: std::ops::RangeBounds<BufferAddress>,
-        T: bytemuck::Pod + bytemuck::Zeroable,
-    {
-        let (sender, receiver) = futures_channel::oneshot::channel();
-
-        let slice = self.inner.slice(range);
-        slice.map_async(wgpu::MapMode::Read, |res| {
-            let _ = sender.send(res);
-        });
-        device.poll(wgpu::Maintain::Wait);
-
-        receiver
-            .await
-            .expect("Failed to read buffer")
-            .expect("Failed to read buffer");
-
-        bytemuck::cast_slice(&slice.get_mapped_range()).to_vec()
+    pub fn read(&self, range: BufferRange) -> Option<&[T]> {
+        match range {
+            BufferRange::Full => Some(&self.vertices),
+            BufferRange::OffsetFull(offset) => Some(&self.vertices[offset..]),
+            BufferRange::Range(range) => Some(&self.vertices[range]),
+        }
     }
 
     pub fn update_range(&mut self, range: std::ops::Range<u32>) {

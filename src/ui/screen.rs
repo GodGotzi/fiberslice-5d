@@ -66,6 +66,8 @@ impl Screen {
                 &mut self.tools.camera_tool,
                 #[cfg(debug_assertions)]
                 &mut self.tools.profile_tool,
+                #[cfg(debug_assertions)]
+                &mut self.tools.debug_tool,
             ])
             .show(ctx, shared_state);
 

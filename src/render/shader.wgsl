@@ -68,6 +68,5 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let specular_color = light.color.xyz * specular_strength;
 
     let result = (ambient_color + diffuse_color + specular_color) * in.color.xyz;
-
     return vec4<f32>(result, in.color.a);
 }
