@@ -1,58 +1,7 @@
 use crate::geometry::BoundingBox; // Importing the BoundingBox struct from the geometry module in the crate
 
 use super::{queue::HitBoxQueueEntry, queue::HitboxQueue, ray::Ray}; // Importing the Ray struct from the ray module in the super namespace
-
-// Definition of the HitBoxRoot struct with Debug and Default traits
-#[derive(Debug, Default)]
-pub struct HitBoxRoot {
-    hitboxes: Vec<HitboxNode>, // Vector of HitboxNode
-}
-
-// Implementation of methods for HitBoxRoot
-impl HitBoxRoot {
-    // Method to add a hitbox to the hitboxes vector
-    pub fn add_hitbox(&mut self, hitbox: HitboxNode) {
-        self.hitboxes.push(hitbox);
-    }
-}
-
-// Function to check if a ray hits a hitbox node, returning an optional usize
-fn check_hit(hitbox: &HitboxNode, ray: &Ray) -> Option<usize> {
-    let mut queue = HitboxQueue::new(); // Creating a new HitboxQueue
-
-    let distance = ray.closest_distance_box(&hitbox.bounding_box());
-    if let Some(distance) = distance {
-        queue.push(HitBoxQueueEntry { hitbox, distance });
-    }
-
-    while let Some(HitBoxQueueEntry { hitbox, .. }) = queue.pop() {
-        match hitbox {
-            // If hitbox is a ParentBox, check if the ray intersects the bounding box
-            HitboxNode::ParentBox {
-                inner_hitboxes,
-                bounding_box,
-            } => {
-                if ray.intersects_box(bounding_box) {
-                    // If it intersects, recursively check inner hitboxes
-                    for hitbox in inner_hitboxes {
-                        let distance = ray.closest_distance_box(&hitbox.bounding_box());
-                        if let Some(distance) = distance {
-                            queue.push(HitBoxQueueEntry { hitbox, distance });
-                        }
-                    }
-                }
-            }
-            // If hitbox is a Box, check if the ray intersects its bounding box
-            HitboxNode::Box { boundind_box, id } => {
-                if ray.intersects_box(boundind_box) {
-                    return Some(*id);
-                }
-            }
-        }
-    }
-
-    None
-}
+                                                                    // Function to check if a ray hits a hitbox node, returning an optional usize
 
 // Definition of the HitboxNode enum with Debug trait
 #[derive(Debug)]
@@ -106,8 +55,8 @@ impl HitboxNode {
     // Method to get the bounding box of a hitbox node
     pub fn bounding_box(&self) -> BoundingBox {
         match self {
-            HitboxNode::ParentBox { bounding_box, .. } => bounding_box.clone(),
-            HitboxNode::Box { boundind_box, .. } => boundind_box.clone(),
+            HitboxNode::ParentBox { bounding_box, .. } => *bounding_box,
+            HitboxNode::Box { boundind_box, .. } => *boundind_box,
         }
     }
 
@@ -118,6 +67,50 @@ impl HitboxNode {
             HitboxNode::Box { boundind_box, .. } => boundind_box,
         }
     }
+
+    fn check_hit(&self, ray: &Ray) -> Option<usize> {
+        if !ray.intersects_box(&self.bounding_box()) {
+            return None;
+        }
+
+        let mut queue = HitboxQueue::new(); // Creating a new HitboxQueue
+
+        let distance = ray.closest_distance_box(&self.bounding_box());
+        if let Some(distance) = distance {
+            queue.push(HitBoxQueueEntry {
+                hitbox: self,
+                distance,
+            });
+        }
+
+        while let Some(HitBoxQueueEntry { hitbox, .. }) = queue.pop() {
+            match hitbox {
+                // If hitbox is a ParentBox, check if the ray intersects the bounding box
+                HitboxNode::ParentBox {
+                    inner_hitboxes,
+                    bounding_box,
+                } => {
+                    if ray.intersects_box(bounding_box) {
+                        // If it intersects, recursively check inner hitboxes
+                        for hitbox in inner_hitboxes {
+                            let distance = ray.closest_distance_box(&hitbox.bounding_box());
+                            if let Some(distance) = distance {
+                                queue.push(HitBoxQueueEntry { hitbox, distance });
+                            }
+                        }
+                    }
+                }
+                // If hitbox is a Box, check if the ray intersects its bounding box
+                HitboxNode::Box { boundind_box, id } => {
+                    if ray.intersects_box(boundind_box) {
+                        return Some(*id);
+                    }
+                }
+            }
+        }
+
+        None
+    }
 }
 
 // Test function for hitbox functionality
@@ -126,7 +119,7 @@ pub fn test_hitbox() {
     use glam::vec3;
     use glam::Vec3;
 
-    let mut root = HitBoxRoot::default(); // Creating a default HitBoxRoot
+    let mut root = HitboxNode::parent_box(BoundingBox::default()); // Creating a default HitBoxRoot
 
     let box_ = HitboxNode::box_(
         BoundingBox::new(vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0)), // Creating a bounding box with specific dimensions
@@ -140,7 +133,7 @@ pub fn test_hitbox() {
         direction: Vec3::new(1.0, 1.0, 1.0),
     };
 
-    let hit = check_hit(&root.hitboxes[0], &ray); // Checking if the ray hits the box
+    let hit = root.check_hit(&ray); // Checking if the ray hits the box
 
     assert_eq!(hit, Some(30)); // Asserting that the hit id is 30
 }
@@ -151,9 +144,7 @@ pub fn test_hitbox_parent() {
     use glam::vec3;
     use glam::Vec3; // Importing Vec3 from glam crate
 
-    let now = std::time::Instant::now(); // Creating a new Instant
-
-    let mut root = HitBoxRoot::default(); // Creating a default HitBoxRoot
+    let mut root = HitboxNode::parent_box(BoundingBox::default()); // Creating a default HitBoxRoot
 
     let mut parent =
         HitboxNode::parent_box(BoundingBox::new(vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0))); // Creating a parent box with specific dimensions
@@ -172,10 +163,7 @@ pub fn test_hitbox_parent() {
         direction: Vec3::new(1.0, 1.0, 1.0),
     };
 
-    let hit = check_hit(&root.hitboxes[0], &ray); // Checking if the ray hits any of the boxes
+    let hit = root.check_hit(&ray); // Checking if the ray hits any of the boxes
 
     assert_eq!(hit, Some(30)); // Asserting that the hit id is 30
-
-    println!("Time: {:?}", now.elapsed()); // Printing the elapsed time
-    assert!(false)
 }

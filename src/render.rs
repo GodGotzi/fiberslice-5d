@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+use buffer::{DynamicBuffer, RenderBuffers};
 use camera::{CameraUniform, OrbitCamera};
 use glam::Vec3;
 use light::LightUniform;
@@ -11,6 +12,7 @@ use crate::{
     GlobalState, RootEvent,
 };
 
+pub mod buffer;
 pub mod camera;
 pub mod light;
 pub mod texture;
@@ -25,7 +27,6 @@ pub enum RenderEvent {
 }
 
 struct RenderState {
-    vertex_buffer: wgpu::Buffer,
     num_indices: u32,
 
     depth_texture_view: wgpu::TextureView,
@@ -73,6 +74,7 @@ pub struct RenderAdapter {
 
     egui_rpass: egui_wgpu_backend::RenderPass,
 
+    render_buffers: RenderBuffers,
     render_state: RenderState,
 }
 
@@ -184,10 +186,8 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, Option<UiUpdateOutp
                                 &[],
                             );
                             render_pass.set_bind_group(1, &self.render_state.light_bind_group, &[]);
-                            render_pass
-                                .set_vertex_buffer(0, self.render_state.vertex_buffer.slice(..));
 
-                            render_pass.draw(0..self.render_state.num_indices, 0..1);
+                            self.render_buffers.render(&mut render_pass);
                         }
 
                         self.egui_rpass
@@ -264,17 +264,10 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, Option<UiUpdateOutp
                 RenderEvent::AddGCodeToolpath(part) => {
                     let vertices = part.vertices();
 
-                    let vertex_buffer =
-                        wgpu_context
-                            .device
-                            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                                label: Some("Vertex Buffer"),
-                                contents: bytemuck::cast_slice(&vertices),
-                                usage: wgpu::BufferUsages::VERTEX,
-                            });
+                    self.render_buffers
+                        .paths
+                        .renew_init(&vertices, "Paths", &wgpu_context.device);
 
-                    self.render_state.vertex_buffer = vertex_buffer;
-                    self.render_state.num_indices = vertices.len() as u32;
                     self.render_state
                         .camera
                         .set_best_distance(&part.bounding_box);
@@ -387,14 +380,6 @@ impl<'a>
                 label: None,
             });
 
-        let vertex_buffer = context
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: &[],
-                usage: wgpu::BufferUsages::VERTEX,
-            });
-
         let mut camera = OrbitCamera::new(
             2.0,
             1.5,
@@ -410,7 +395,6 @@ impl<'a>
         camera_uniform.update_view_proj(&camera);
 
         let render_state = RenderState {
-            vertex_buffer,
             num_indices: 0,
 
             depth_texture_view,
@@ -433,6 +417,8 @@ impl<'a>
                 label: Some("Shader"),
                 source: wgpu::ShaderSource::Wgsl(include_str!("render/shader.wgsl").into()),
             });
+
+        let render_buffers = RenderBuffers::new(&context.device);
 
         let render_pipeline_layout =
             context
@@ -514,6 +500,8 @@ impl<'a>
                 multisampled_framebuffer,
 
                 egui_rpass,
+
+                render_buffers,
                 render_state,
             },
         )

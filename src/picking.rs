@@ -2,6 +2,7 @@ use tokio::task::JoinHandle;
 use winit::event::{DeviceEvent, ElementState, WindowEvent};
 
 use crate::{
+    geometry::BoundingBox,
     prelude::{Adapter, Error, FrameHandle, SharedMut, WgpuContext},
     GlobalState, RootEvent,
 };
@@ -17,7 +18,7 @@ pub enum PickingEvent {
 
 #[derive(Debug, Clone)]
 pub struct PickingState {
-    hitbox: SharedMut<hitbox::HitBoxRoot>,
+    hitbox: SharedMut<hitbox::HitboxNode>,
 
     is_drag_left: bool,
     is_drag_right: bool,
@@ -107,7 +108,7 @@ impl<'a>
 {
     fn from_context(_wgpu_context: &WgpuContext) -> (PickingState, Self) {
         let state = PickingState {
-            hitbox: SharedMut::from_inner(hitbox::HitBoxRoot::default()),
+            hitbox: SharedMut::from_inner(hitbox::HitboxNode::parent_box(BoundingBox::default())),
 
             is_drag_left: false,
             is_drag_right: false,
