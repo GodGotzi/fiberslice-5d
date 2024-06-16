@@ -78,7 +78,7 @@ impl From<&GCode> for RawPath {
             });
 
             toolpath_average += modul_average;
-            toolpath_box.expand(virtual_box);
+            toolpath_box.expand(&virtual_box);
         }
 
         let center_mass = toolpath_average.divide_average();

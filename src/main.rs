@@ -91,6 +91,8 @@ async fn main() -> Result<(), EventLoopError> {
 
     let mut render_adapter = render::RenderAdapter::from_context(&wgpu_context).1;
 
+    let mut picking_adapter = picking::PickingAdapter::from_context(&wgpu_context).1;
+
     let (ui_state, mut ui_adapter) = ui::UiAdapter::from_context(&wgpu_context);
 
     // let mut picking_adapter = picking::PickingAdapter::from_context(&wgpu_context);
@@ -152,6 +154,17 @@ async fn main() -> Result<(), EventLoopError> {
         let ui_output = ui_adapter
             .handle_frame(&event, start_time, &wgpu_context, global_state.clone())
             .unwrap();
+
+        if let Some(ui_output) = ui_output.as_ref() {
+            picking_adapter
+                .handle_frame(
+                    &event,
+                    start_time,
+                    &wgpu_context,
+                    (global_state.clone(), ui_output.viewport),
+                )
+                .unwrap();
+        }
 
         render_adapter
             .handle_frame(

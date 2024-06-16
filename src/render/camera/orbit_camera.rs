@@ -74,7 +74,7 @@ impl OrbitCamera {
             fovy: std::f32::consts::PI / 2.0,
             znear: 0.1,
             zfar: 1000.0,
-            view_box: BoundingBox::new(vec3(1.0, 1.0, 2.0), vec3(-1.0, -1.0, 0.0)),
+            view_box: BoundingBox::new(vec3(-1.0, -1.0, 0.0), vec3(1.0, 1.0, 2.0)),
         };
         camera.update();
         camera
