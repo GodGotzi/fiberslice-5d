@@ -90,21 +90,17 @@ impl HitboxNode {
                     inner_hitboxes,
                     bounding_box,
                 } => {
-                    if ray.intersects_box(bounding_box) {
-                        // If it intersects, recursively check inner hitboxes
-                        for hitbox in inner_hitboxes {
-                            let distance = ray.closest_distance_box(&hitbox.bounding_box());
-                            if let Some(distance) = distance {
-                                queue.push(HitBoxQueueEntry { hitbox, distance });
-                            }
+                    // If it intersects, recursively check inner hitboxes
+                    for hitbox in inner_hitboxes {
+                        let distance = ray.closest_distance_box(&hitbox.bounding_box());
+                        if let Some(distance) = distance {
+                            queue.push(HitBoxQueueEntry { hitbox, distance });
                         }
                     }
                 }
                 // If hitbox is a Box, check if the ray intersects its bounding box
-                HitboxNode::Box { boundind_box, id } => {
-                    if ray.intersects_box(boundind_box) {
-                        return Some(*id);
-                    }
+                HitboxNode::Box { id, .. } => {
+                    return Some(*id);
                 }
             }
         }
