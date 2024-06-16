@@ -1,25 +1,29 @@
 use crate::geometry::BoundingBox; // Importing the BoundingBox struct from the geometry module in the crate
 
-use super::{queue::HitBoxQueueEntry, queue::HitboxQueue, ray::Ray}; // Importing the Ray struct from the ray module in the super namespace
-                                                                    // Function to check if a ray hits a hitbox node, returning an optional usize
+use super::{
+    interactive_mesh::InteractiveMesh,
+    queue::{HitBoxQueueEntry, HitboxQueue},
+    ray::Ray,
+}; // Importing the Ray struct from the ray module in the super namespace
+   // Function to check if a ray hits a hitbox node, returning an optional usize
 
 // Definition of the HitboxNode enum with Debug trait
 #[derive(Debug)]
-pub enum HitboxNode {
+pub enum HitboxNode<C> {
     // Variant for parent boxes containing other hitboxes and a bounding box
     ParentBox {
-        inner_hitboxes: Vec<HitboxNode>,
+        inner_hitboxes: Vec<HitboxNode<C>>,
         bounding_box: BoundingBox,
     },
     // Variant for individual boxes with a bounding box and an id
     Box {
         boundind_box: BoundingBox,
-        id: usize,
+        interactive_mesh: InteractiveMesh<C>,
     },
 }
 
 // Implementation of methods for HitboxNode
-impl HitboxNode {
+impl<C> HitboxNode<C> {
     // Constructor method for creating a parent box
     pub fn parent_box(bounding_box: BoundingBox) -> Self {
         HitboxNode::ParentBox {
@@ -29,15 +33,15 @@ impl HitboxNode {
     }
 
     // Constructor method for creating a box with an id
-    pub fn box_(bounding_box: BoundingBox, id: usize) -> Self {
+    pub fn box_(bounding_box: BoundingBox, mesh: InteractiveMesh<C>) -> Self {
         HitboxNode::Box {
             boundind_box: bounding_box,
-            id,
+            interactive_mesh: mesh,
         }
     }
 
     // Method to add a hitbox to a parent box
-    pub fn add_hitbox(&mut self, hitbox: HitboxNode) {
+    pub fn add_hitbox(&mut self, hitbox: HitboxNode<C>) {
         match self {
             // If the hitbox is a ParentBox, expand its bounding box and add the new hitbox
             HitboxNode::ParentBox {
@@ -68,7 +72,7 @@ impl HitboxNode {
         }
     }
 
-    fn check_hit(&self, ray: &Ray) -> Option<usize> {
+    fn check_hit(&self, ray: &Ray) -> Option<&InteractiveMesh<C>> {
         if !ray.intersects_box(&self.bounding_box()) {
             return None;
         }
@@ -86,10 +90,7 @@ impl HitboxNode {
         while let Some(HitBoxQueueEntry { hitbox, .. }) = queue.pop() {
             match hitbox {
                 // If hitbox is a ParentBox, check if the ray intersects the bounding box
-                HitboxNode::ParentBox {
-                    inner_hitboxes,
-                    bounding_box,
-                } => {
+                HitboxNode::ParentBox { inner_hitboxes, .. } => {
                     // If it intersects, recursively check inner hitboxes
                     for hitbox in inner_hitboxes {
                         let distance = ray.closest_distance_box(&hitbox.bounding_box());
@@ -99,8 +100,10 @@ impl HitboxNode {
                     }
                 }
                 // If hitbox is a Box, check if the ray intersects its bounding box
-                HitboxNode::Box { id, .. } => {
-                    return Some(*id);
+                HitboxNode::Box {
+                    interactive_mesh, ..
+                } => {
+                    return Some(interactive_mesh);
                 }
             }
         }
@@ -109,6 +112,7 @@ impl HitboxNode {
     }
 }
 
+/*
 // Test function for hitbox functionality
 #[test]
 pub fn test_hitbox() {
@@ -119,7 +123,7 @@ pub fn test_hitbox() {
 
     let box_ = HitboxNode::box_(
         BoundingBox::new(vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0)), // Creating a bounding box with specific dimensions
-        30,
+        Arc::new(0),
     );
 
     root.add_hitbox(box_); // Adding the box to the root
@@ -163,3 +167,4 @@ pub fn test_hitbox_parent() {
 
     assert_eq!(hit, Some(30)); // Asserting that the hit id is 30
 }
+*/

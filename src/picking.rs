@@ -1,13 +1,16 @@
+use std::sync::Arc;
+
 use tokio::task::JoinHandle;
 use winit::event::{DeviceEvent, ElementState, WindowEvent};
 
 use crate::{
     geometry::BoundingBox,
-    prelude::{Adapter, Error, FrameHandle, SharedMut, WgpuContext},
+    prelude::{Adapter, Error, FrameHandle, Shared, SharedMut, WgpuContext},
     GlobalState, RootEvent,
 };
 
 mod hitbox;
+mod interactive_mesh;
 mod queue;
 mod ray;
 
@@ -16,9 +19,14 @@ pub enum PickingEvent {
     Select,
 }
 
+pub trait Pickable: std::fmt::Debug {
+    fn hover(&self, state: GlobalState<RootEvent>);
+    fn select(&self, state: GlobalState<RootEvent>);
+}
+
 #[derive(Debug, Clone)]
 pub struct PickingState {
-    hitbox: SharedMut<hitbox::HitboxNode>,
+    hitbox: SharedMut<hitbox::HitboxNode<Shared<Box<dyn Pickable>>>>,
 
     is_drag_left: bool,
     is_drag_right: bool,
@@ -43,12 +51,9 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, (f32, f32, f32, f32
         let pointer_in_use = state
             .ui_state
             .pointer_in_use
-            .inner()
             .load(std::sync::atomic::Ordering::Relaxed);
 
         if !pointer_in_use {
-            println!("PickingAdapter: Pointer not in use");
-
             match event {
                 winit::event::Event::WindowEvent {
                     event: WindowEvent::MouseInput { button, state, .. },
@@ -58,7 +63,7 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, (f32, f32, f32, f32
                         self.state.is_drag_left = *state == ElementState::Pressed;
                     }
                     winit::event::MouseButton::Right => {
-                        self.state.is_drag_left = *state == ElementState::Pressed;
+                        self.state.is_drag_right = *state == ElementState::Pressed;
                     }
                     _ => (),
                 },
@@ -86,7 +91,7 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, (f32, f32, f32, f32
                     self.state.is_drag_left = *state == ElementState::Pressed;
                 }
                 winit::event::MouseButton::Right => {
-                    self.state.is_drag_left = *state == ElementState::Pressed;
+                    self.state.is_drag_right = *state == ElementState::Pressed;
                 }
                 _ => (),
             }

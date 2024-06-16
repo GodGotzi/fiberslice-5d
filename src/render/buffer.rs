@@ -14,10 +14,23 @@ pub struct RenderBuffers {
     pub env: DynamicBuffer<Vertex>,
 }
 
+#[allow(dead_code)]
 pub enum BufferRange {
     Full,
     OffsetFull(usize),
     Range(std::ops::Range<usize>),
+}
+
+#[derive(Debug)]
+pub struct BufferLocation {
+    pub offset: BufferAddress,
+    pub size: BufferAddress,
+}
+
+impl From<BufferLocation> for BufferRange {
+    fn from(location: BufferLocation) -> Self {
+        BufferRange::Range(location.offset as usize..(location.offset + location.size) as usize)
+    }
 }
 
 impl RenderBuffers {
@@ -128,6 +141,7 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable> DynamicBuffer<T> {
             data.iter().cloned(),
         );
 
+        // TODO optimize only write the changed vertices
         queue.write_buffer(&self.inner, 0, bytemuck::cast_slice(&self.vertices));
     }
 
@@ -150,6 +164,7 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable> DynamicBuffer<T> {
             }
         }
 
+        // TODO optimize only write the changed vertices
         queue.write_buffer(&self.inner, 0, bytemuck::cast_slice(&self.vertices));
     }
 

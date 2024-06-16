@@ -47,30 +47,7 @@ impl<T: std::fmt::Debug> SharedMut<T> {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct Shared<T> {
-    inner: Arc<T>,
-}
-
-impl<T> Clone for Shared<T> {
-    fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-        }
-    }
-}
-
-impl<T> Shared<T> {
-    pub fn from_inner(inner: T) -> Self {
-        Self {
-            inner: Arc::new(inner),
-        }
-    }
-
-    pub fn inner(&self) -> &T {
-        &self.inner
-    }
-}
+pub type Shared<T> = Arc<T>;
 
 #[derive(Debug)]
 pub struct UnparallelShared<T> {

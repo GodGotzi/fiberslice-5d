@@ -1,6 +1,6 @@
 use glam::Vec3;
 
-use crate::{environment::view, geometry::BoundingBox};
+use crate::geometry::BoundingBox;
 
 pub struct Ray {
     pub origin: Vec3,
@@ -17,6 +17,7 @@ impl Ray {
         todo!();
     }
 
+    #[allow(dead_code)]
     pub fn intersects_box(&self, bounding_box: &BoundingBox) -> bool {
         let inv_direction = 1.0 / self.direction;
 
@@ -46,6 +47,7 @@ impl Ray {
         tmin <= tmax
     }
 
+    #[allow(dead_code)]
     pub fn closest_distance_box(&self, bounding_box: &BoundingBox) -> Option<f32> {
         // check if ray origin is inside the bounding box
         if bounding_box.contains(self.origin) {
@@ -77,6 +79,7 @@ impl Ray {
         min
     }
 
+    #[allow(dead_code)]
     fn intersection_plane(&self, plane: Vec3, point: Vec3) -> Vec3 {
         let d = self.direction.dot(plane);
         if d == 0.0 {
@@ -86,15 +89,6 @@ impl Ray {
         let t = (point - self.origin).dot(plane) / d;
         self.origin + self.direction * t
     }
-}
-
-fn project_point_onto_line(point: Vec3, line_point: Vec3, line_direction: Vec3) -> Vec3 {
-    let v = point - line_point;
-
-    let dot = line_direction.dot(line_direction);
-
-    let d = line_direction.dot(v) / dot;
-    line_point + line_direction * d
 }
 
 #[test]

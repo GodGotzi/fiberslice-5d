@@ -1,10 +1,9 @@
 use std::time::Instant;
 
-use buffer::{DynamicBuffer, RenderBuffers};
+use buffer::RenderBuffers;
 use camera::{CameraUniform, OrbitCamera};
 use glam::Vec3;
 use light::LightUniform;
-use pollster::FutureExt;
 use vertex::Vertex;
 use wgpu::util::DeviceExt;
 
@@ -80,22 +79,34 @@ pub struct RenderAdapter {
     render_state: RenderState,
 }
 
-impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, Option<UiUpdateOutput>)>
-    for RenderAdapter
+impl
+    FrameHandle<
+        '_,
+        RootEvent,
+        (),
+        (
+            GlobalState<RootEvent>,
+            Option<UiUpdateOutput>,
+            (f32, f32, f32, f32),
+        ),
+    > for RenderAdapter
 {
     fn handle_frame(
         &mut self,
         event: &winit::event::Event<RootEvent>,
         _start_time: std::time::Instant,
         wgpu_context: &WgpuContext,
-        (state, ui_output): (GlobalState<RootEvent>, Option<UiUpdateOutput>),
+        (state, ui_output, viewport): (
+            GlobalState<RootEvent>,
+            Option<UiUpdateOutput>,
+            (f32, f32, f32, f32),
+        ),
     ) -> Result<(), Error> {
         puffin::profile_function!("Render handle_frame");
 
         let pointer_in_use = state
             .ui_state
             .pointer_in_use
-            .inner()
             .load(std::sync::atomic::Ordering::Relaxed);
 
         state.camera_controller.write_with_fn(|controller| {
@@ -167,7 +178,6 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, Option<UiUpdateOutp
                             paint_jobs,
                             tdelta,
                             screen_descriptor,
-                            viewport,
                         } = ui_output.unwrap();
 
                         if viewport != self.render_state.camera_viewport.unwrap_or_default() {
@@ -303,8 +313,18 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, Option<UiUpdateOutp
 }
 
 impl<'a>
-    Adapter<'a, RootEvent, (), (), (GlobalState<RootEvent>, Option<UiUpdateOutput>), RenderEvent>
-    for RenderAdapter
+    Adapter<
+        'a,
+        RootEvent,
+        (),
+        (),
+        (
+            GlobalState<RootEvent>,
+            Option<UiUpdateOutput>,
+            (f32, f32, f32, f32),
+        ),
+        RenderEvent,
+    > for RenderAdapter
 {
     fn from_context(context: &WgpuContext) -> ((), Self) {
         let depth_texture_view = texture::Texture::create_depth_texture(

@@ -151,27 +151,25 @@ async fn main() -> Result<(), EventLoopError> {
             _ => {}
         }
 
-        let ui_output = ui_adapter
+        let (ui_output, viewport) = ui_adapter
             .handle_frame(&event, start_time, &wgpu_context, global_state.clone())
             .unwrap();
 
-        if let Some(ui_output) = ui_output.as_ref() {
-            picking_adapter
-                .handle_frame(
-                    &event,
-                    start_time,
-                    &wgpu_context,
-                    (global_state.clone(), ui_output.viewport),
-                )
-                .unwrap();
-        }
+        picking_adapter
+            .handle_frame(
+                &event,
+                start_time,
+                &wgpu_context,
+                (global_state.clone(), viewport),
+            )
+            .unwrap();
 
         render_adapter
             .handle_frame(
                 &event,
                 start_time,
                 &wgpu_context,
-                (global_state.clone(), ui_output),
+                (global_state.clone(), ui_output, viewport),
             )
             .unwrap();
 

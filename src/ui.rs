@@ -53,7 +53,7 @@ pub struct UiState {
 impl Default for UiState {
     fn default() -> Self {
         Self {
-            pointer_in_use: Shared::from_inner(AtomicBool::new(false)),
+            pointer_in_use: Shared::new(AtomicBool::new(false)),
             theme: WrappedSharedMut::from_inner(Option::Some(Theme::Light)),
             mode: WrappedSharedMut::from_inner(Mode::Prepare),
 
@@ -91,7 +91,6 @@ pub struct UiUpdateOutput {
     pub paint_jobs: Vec<egui::ClippedPrimitive>,
     pub tdelta: egui::TexturesDelta,
     pub screen_descriptor: ScreenDescriptor,
-    pub viewport: (f32, f32, f32, f32),
 }
 
 pub struct UiAdapter {
@@ -121,21 +120,28 @@ impl UiAdapter {
             }
         };
 
-        self.state.pointer_in_use.inner().store(
+        self.state.pointer_in_use.store(
             self.platform.context().is_using_pointer() || !is_pointer_over_viewport,
             std::sync::atomic::Ordering::Relaxed,
         );
     }
 }
 
-impl<'a> FrameHandle<'a, RootEvent, Option<UiUpdateOutput>, GlobalState<RootEvent>> for UiAdapter {
+impl<'a>
+    FrameHandle<
+        'a,
+        RootEvent,
+        (Option<UiUpdateOutput>, (f32, f32, f32, f32)),
+        GlobalState<RootEvent>,
+    > for UiAdapter
+{
     fn handle_frame(
         &'a mut self,
         event: &winit::event::Event<RootEvent>,
         start_time: std::time::Instant,
         wgpu_context: &WgpuContext,
         global_state: GlobalState<RootEvent>,
-    ) -> Result<Option<UiUpdateOutput>, Error> {
+    ) -> Result<(Option<UiUpdateOutput>, (f32, f32, f32, f32)), Error> {
         puffin::profile_function!();
 
         self.update(event, start_time, wgpu_context);
@@ -179,12 +185,14 @@ impl<'a> FrameHandle<'a, RootEvent, Option<UiUpdateOutput>, GlobalState<RootEven
                     wgpu_context.window.request_redraw();
                 }
 
-                return Ok(Some(UiUpdateOutput {
-                    paint_jobs,
-                    tdelta,
-                    screen_descriptor,
+                return Ok((
+                    Some(UiUpdateOutput {
+                        paint_jobs,
+                        tdelta,
+                        screen_descriptor,
+                    }),
                     viewport,
-                }));
+                ));
             }
             winit::event::Event::UserEvent(RootEvent::UiEvent(event)) => match event {
                 UiEvent::ShowInfo(message) => {
@@ -235,12 +243,19 @@ impl<'a> FrameHandle<'a, RootEvent, Option<UiUpdateOutput>, GlobalState<RootEven
             _ => {}
         }
 
-        Ok(None)
+        Ok((None, self.screen.construct_viewport(wgpu_context)))
     }
 }
 
-impl<'a> Adapter<'a, RootEvent, UiState, Option<UiUpdateOutput>, GlobalState<RootEvent>, UiEvent>
-    for UiAdapter
+impl<'a>
+    Adapter<
+        'a,
+        RootEvent,
+        UiState,
+        (Option<UiUpdateOutput>, (f32, f32, f32, f32)),
+        GlobalState<RootEvent>,
+        UiEvent,
+    > for UiAdapter
 {
     fn from_context(context: &WgpuContext) -> (UiState, Self) {
         let platform = Platform::new(PlatformDescriptor {
