@@ -46,13 +46,13 @@ impl Ray {
         tmin <= tmax
     }
 
-    pub fn closest_distance_box(&self, bounding_box: &BoundingBox) -> f32 {
+    pub fn closest_distance_box(&self, bounding_box: &BoundingBox) -> Option<f32> {
         // check if ray origin is inside the bounding box
         if bounding_box.contains(self.origin) {
-            return 0.0;
+            return Some(0.0);
         }
 
-        let mut min = f32::MAX;
+        let mut min = None;
 
         for (direction, plane, (a, b, c, d)) in bounding_box.faces_with_edges() {
             let intersection = self.intersection_plane(direction, plane);
@@ -68,8 +68,8 @@ impl Ray {
                 && intersection.z >= min_face.z
             {
                 let distance = (intersection - self.origin).length();
-                if min > distance {
-                    min = distance;
+                if min.unwrap_or(f32::MAX) > distance || min.is_none() {
+                    min = Some(distance);
                 }
             }
         }
@@ -107,7 +107,7 @@ fn test_ray() {
     let bounding_box = BoundingBox::new(Vec3::new(-1.0, -1.0, -1.0), Vec3::new(1.0, 1.0, 1.0));
 
     assert!(ray.intersects_box(&bounding_box));
-    assert_eq!(ray.closest_distance_box(&bounding_box), 0.0);
+    assert_eq!(ray.closest_distance_box(&bounding_box), Some(0.0));
 }
 
 #[test]
@@ -120,7 +120,7 @@ fn test_ray2() {
     let bounding_box = BoundingBox::new(Vec3::new(2.0, 60.0, 2.0), Vec3::new(300.0, 300.0, 300.0));
 
     // assert!(ray.intersects_box(&bounding_box));
-    assert_eq!(ray.closest_distance_box(&bounding_box), 73.484695);
+    assert_eq!(ray.closest_distance_box(&bounding_box), Some(73.484695));
 }
 
 #[test]
@@ -133,5 +133,5 @@ fn test_ray3() {
     let bounding_box = BoundingBox::new(Vec3::new(2.0, 2.0, 2.0), Vec3::new(300.0, 300.0, 300.0));
 
     assert!(ray.intersects_box(&bounding_box));
-    assert_eq!(ray.closest_distance_box(&bounding_box), 3.4641016);
+    assert_eq!(ray.closest_distance_box(&bounding_box), Some(3.4641016));
 }

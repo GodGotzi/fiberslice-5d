@@ -21,8 +21,9 @@ fn check_hit(hitbox: &HitboxNode, ray: &Ray) -> Option<usize> {
     let mut queue = HitboxQueue::new(); // Creating a new HitboxQueue
 
     let distance = ray.closest_distance_box(&hitbox.bounding_box());
-
-    queue.push(HitBoxQueueEntry { hitbox, distance });
+    if let Some(distance) = distance {
+        queue.push(HitBoxQueueEntry { hitbox, distance });
+    }
 
     while let Some(HitBoxQueueEntry { hitbox, .. }) = queue.pop() {
         match hitbox {
@@ -35,7 +36,9 @@ fn check_hit(hitbox: &HitboxNode, ray: &Ray) -> Option<usize> {
                     // If it intersects, recursively check inner hitboxes
                     for hitbox in inner_hitboxes {
                         let distance = ray.closest_distance_box(&hitbox.bounding_box());
-                        queue.push(HitBoxQueueEntry { hitbox, distance });
+                        if let Some(distance) = distance {
+                            queue.push(HitBoxQueueEntry { hitbox, distance });
+                        }
                     }
                 }
             }
