@@ -1,6 +1,6 @@
 use crate::{geometry::BoundingBox, picking::Pickable, render::buffer::BufferLocation};
 
-use super::{buffer::RenderBuffers, vertex::Vertex, Shared};
+use super::{buffer::BufferType, vertex::Vertex, Shared};
 
 #[derive(Debug, Clone)]
 pub enum TempMesh {
@@ -42,6 +42,22 @@ pub enum MeshHandle {
     },
 }
 
-pub fn load_mesh(buffers: &mut RenderBuffers, mesh: TempMesh) {
-    todo!()
+pub trait MeshKit {
+    fn upload(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        location: BufferLocation,
+        mesh: TempMesh,
+    ) -> Option<MeshHandle>;
+
+    fn upload_renew(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        location: BufferLocation,
+        mesh: TempMesh,
+    ) -> Option<MeshHandle>;
+
+    fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, handle: &MeshHandle);
 }

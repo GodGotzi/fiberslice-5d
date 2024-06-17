@@ -3,7 +3,7 @@ use wgpu::{
     BufferAddress, BufferDescriptor,
 };
 
-use super::vertex::Vertex;
+use super::{mesh::MeshKit, vertex::Vertex};
 
 const MAX_WIDGETS_VERTICES: usize = 1000;
 const MAX_ENV_VERTICES: usize = 1000;
@@ -62,6 +62,45 @@ impl RenderBuffers {
         render_pass.draw(self.paths.render_range.clone(), 0..1);
         render_pass.draw(self.widgets.render_range.clone(), 0..1);
         render_pass.draw(self.env.render_range.clone(), 0..1);
+    }
+}
+
+impl MeshKit for RenderBuffers {
+    fn upload(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        location: BufferLocation,
+        mesh: super::mesh::TempMesh,
+    ) -> Option<super::mesh::MeshHandle> {
+        match &location.buffer_type {
+            BufferType::Paths => self.paths.upload(device, queue, location, mesh),
+            BufferType::Widgets => self.widgets.upload(device, queue, location, mesh),
+            BufferType::Env => self.env.upload(device, queue, location, mesh),
+        }
+    }
+
+    fn upload_renew(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        location: BufferLocation,
+        mesh: super::mesh::TempMesh,
+    ) -> Option<super::mesh::MeshHandle> {
+        match &location.buffer_type {
+            BufferType::Paths => self.paths.upload_renew(device, queue, location, mesh),
+            BufferType::Widgets => self.widgets.upload_renew(device, queue, location, mesh),
+            BufferType::Env => self.env.upload_renew(device, queue, location, mesh),
+        }
+    }
+
+    fn update(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        handle: &super::mesh::MeshHandle,
+    ) {
+        todo!()
     }
 }
 
@@ -186,5 +225,70 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable> DynamicBuffer<T> {
 
     pub fn update_range(&mut self, range: std::ops::Range<u32>) {
         self.render_range = range;
+    }
+}
+
+impl MeshKit for DynamicBuffer<Vertex> {
+    fn upload(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        location: BufferLocation,
+        mesh: super::mesh::TempMesh,
+    ) -> Option<super::mesh::MeshHandle> {
+        match mesh {
+            super::mesh::TempMesh::Static {
+                vertices,
+                sub_meshes,
+            } => {
+                self.renew_init(&vertices, "Static Mesh", device);
+            }
+            super::mesh::TempMesh::Interactive {
+                vertices,
+                sub_meshes,
+                raw_box,
+                context,
+            } => {
+                self.renew_init(&vertices, "Interactive Mesh", device);
+            }
+        }
+
+        None
+    }
+
+    fn upload_renew(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        location: BufferLocation,
+        mesh: super::mesh::TempMesh,
+    ) -> Option<super::mesh::MeshHandle> {
+        match mesh {
+            super::mesh::TempMesh::Static {
+                vertices,
+                sub_meshes,
+            } => {
+                self.renew_init(&vertices, "Static Mesh", device);
+            }
+            super::mesh::TempMesh::Interactive {
+                vertices,
+                sub_meshes,
+                raw_box,
+                context,
+            } => {
+                self.renew_init(&vertices, "Interactive Mesh", device);
+            }
+        }
+
+        None
+    }
+
+    fn update(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        handle: &super::mesh::MeshHandle,
+    ) {
+        todo!()
     }
 }
