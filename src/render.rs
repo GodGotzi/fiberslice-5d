@@ -15,6 +15,7 @@ use crate::{
 pub mod buffer;
 pub mod camera;
 pub mod light;
+pub mod mesh;
 pub mod texture;
 pub mod vertex;
 

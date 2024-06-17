@@ -8,6 +8,13 @@ use super::vertex::Vertex;
 const MAX_WIDGETS_VERTICES: usize = 1000;
 const MAX_ENV_VERTICES: usize = 1000;
 
+#[derive(Debug, Clone, Copy)]
+pub enum BufferType {
+    Paths,
+    Widgets,
+    Env,
+}
+
 pub struct RenderBuffers {
     pub paths: DynamicBuffer<Vertex>,
     pub widgets: DynamicBuffer<Vertex>,
@@ -21,10 +28,11 @@ pub enum BufferRange {
     Range(std::ops::Range<usize>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BufferLocation {
     pub offset: BufferAddress,
     pub size: BufferAddress,
+    pub buffer_type: BufferType,
 }
 
 impl From<BufferLocation> for BufferRange {

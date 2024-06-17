@@ -5,28 +5,28 @@ use winit::event::{DeviceEvent, ElementState, WindowEvent};
 
 use crate::{
     geometry::BoundingBox,
-    prelude::{Adapter, Error, FrameHandle, Shared, SharedMut, WgpuContext},
+    prelude::{Adapter, Error, FrameHandle, SharedMut, WgpuContext},
+    render::mesh::MeshHandle,
     GlobalState, RootEvent,
 };
 
 mod hitbox;
-mod interactive_mesh;
 mod queue;
 mod ray;
 
 #[derive(Debug, Clone)]
 pub enum PickingEvent {
-    Select,
+    AddInteractiveMesh(MeshHandle),
 }
 
-pub trait Pickable: std::fmt::Debug {
+pub trait Pickable: std::fmt::Debug + Send + Sync {
     fn hover(&self, state: GlobalState<RootEvent>);
     fn select(&self, state: GlobalState<RootEvent>);
 }
 
 #[derive(Debug, Clone)]
 pub struct PickingState {
-    hitbox: SharedMut<hitbox::HitboxNode<Shared<Box<dyn Pickable>>>>,
+    hitbox: SharedMut<hitbox::HitboxNode>,
 
     is_drag_left: bool,
     is_drag_right: bool,
@@ -78,6 +78,11 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, (f32, f32, f32, f32
                     if self.state.is_drag_right {
                         println!("PickingAdapter: Dragging Right Click");
                     }
+                }
+                winit::event::Event::UserEvent(RootEvent::PickingEvent(
+                    PickingEvent::AddInteractiveMesh(handle),
+                )) => {
+                    println!("PickingAdapter: Adding Interactive Mesh");
                 }
                 _ => (),
             }

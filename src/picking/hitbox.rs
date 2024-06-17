@@ -1,7 +1,6 @@
-use crate::geometry::BoundingBox; // Importing the BoundingBox struct from the geometry module in the crate
+use crate::{geometry::BoundingBox, render::mesh::MeshHandle}; // Importing the BoundingBox struct from the geometry module in the crate
 
 use super::{
-    interactive_mesh::InteractiveMesh,
     queue::{HitBoxQueueEntry, HitboxQueue},
     ray::Ray,
 }; // Importing the Ray struct from the ray module in the super namespace
@@ -9,21 +8,21 @@ use super::{
 
 // Definition of the HitboxNode enum with Debug trait
 #[derive(Debug)]
-pub enum HitboxNode<C> {
+pub enum HitboxNode {
     // Variant for parent boxes containing other hitboxes and a bounding box
     ParentBox {
-        inner_hitboxes: Vec<HitboxNode<C>>,
+        inner_hitboxes: Vec<HitboxNode>,
         bounding_box: BoundingBox,
     },
     // Variant for individual boxes with a bounding box and an id
     Box {
         boundind_box: BoundingBox,
-        interactive_mesh: InteractiveMesh<C>,
+        interactive_mesh: MeshHandle,
     },
 }
 
 // Implementation of methods for HitboxNode
-impl<C> HitboxNode<C> {
+impl HitboxNode {
     // Constructor method for creating a parent box
     pub fn parent_box(bounding_box: BoundingBox) -> Self {
         HitboxNode::ParentBox {
@@ -33,7 +32,7 @@ impl<C> HitboxNode<C> {
     }
 
     // Constructor method for creating a box with an id
-    pub fn box_(bounding_box: BoundingBox, mesh: InteractiveMesh<C>) -> Self {
+    pub fn box_(bounding_box: BoundingBox, mesh: MeshHandle) -> Self {
         HitboxNode::Box {
             boundind_box: bounding_box,
             interactive_mesh: mesh,
@@ -41,7 +40,7 @@ impl<C> HitboxNode<C> {
     }
 
     // Method to add a hitbox to a parent box
-    pub fn add_hitbox(&mut self, hitbox: HitboxNode<C>) {
+    pub fn add_hitbox(&mut self, hitbox: HitboxNode) {
         match self {
             // If the hitbox is a ParentBox, expand its bounding box and add the new hitbox
             HitboxNode::ParentBox {
@@ -72,7 +71,7 @@ impl<C> HitboxNode<C> {
         }
     }
 
-    fn check_hit(&self, ray: &Ray) -> Option<&InteractiveMesh<C>> {
+    fn check_hit(&self, ray: &Ray) -> Option<&MeshHandle> {
         if !ray.intersects_box(&self.bounding_box()) {
             return None;
         }
