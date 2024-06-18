@@ -105,13 +105,13 @@ impl<'a>
             proj,
             eye,
             viewport,
-        } = camera_result;
+        } = *camera_result;
 
         match event {
             winit::event::Event::WindowEvent { event, .. } => {
                 match event {
                     winit::event::WindowEvent::RedrawRequested => {
-                        self.render_state.update(wgpu_context, *view * *proj, *eye);
+                        self.render_state.update(wgpu_context, proj * view, eye);
 
                         let now = Instant::now();
 
@@ -169,7 +169,7 @@ impl<'a>
                             screen_descriptor,
                         } = ui_output.unwrap();
 
-                        let (x, y, width, height) = *viewport;
+                        let (x, y, width, height) = viewport;
 
                         if width > 0.0 && height > 0.0 {
                             render_pass.set_viewport(x, y, width, height, 0.0, 1.0);

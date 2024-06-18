@@ -80,7 +80,9 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, &CameraResult)> for
                     }
 
                     match button {
-                        winit::event::MouseButton::Left => {}
+                        winit::event::MouseButton::Left => {
+                            self.state.is_drag_left = *state == ElementState::Pressed;
+                        }
                         winit::event::MouseButton::Right => {
                             self.state.is_drag_right = *state == ElementState::Pressed;
                         }
