@@ -66,41 +66,54 @@ impl RenderBuffers {
 }
 
 impl MeshKit for RenderBuffers {
-    fn upload(
+    fn write_mesh(
         &mut self,
-        device: &wgpu::Device,
         queue: &wgpu::Queue,
-        location: BufferLocation,
-        mesh: super::mesh::TempMesh,
+        mesh: super::mesh::CpuMesh,
     ) -> Option<super::mesh::MeshHandle> {
-        match &location.buffer_type {
-            BufferType::Paths => self.paths.upload(device, queue, location, mesh),
-            BufferType::Widgets => self.widgets.upload(device, queue, location, mesh),
-            BufferType::Env => self.env.upload(device, queue, location, mesh),
+        match &mesh.location().buffer_type {
+            BufferType::Paths => self.paths.write_mesh(queue, mesh),
+            BufferType::Widgets => self.widgets.write_mesh(queue, mesh),
+            BufferType::Env => self.env.write_mesh(queue, mesh),
         }
     }
 
-    fn upload_renew(
+    fn init_mesh(
         &mut self,
         device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        location: BufferLocation,
-        mesh: super::mesh::TempMesh,
+        mesh: super::mesh::CpuMesh,
     ) -> Option<super::mesh::MeshHandle> {
-        match &location.buffer_type {
-            BufferType::Paths => self.paths.upload_renew(device, queue, location, mesh),
-            BufferType::Widgets => self.widgets.upload_renew(device, queue, location, mesh),
-            BufferType::Env => self.env.upload_renew(device, queue, location, mesh),
+        match &mesh.location().buffer_type {
+            BufferType::Paths => self.paths.init_mesh(device, mesh),
+            BufferType::Widgets => self.widgets.init_mesh(device, mesh),
+            BufferType::Env => self.env.init_mesh(device, mesh),
         }
     }
 
-    fn update(
+    fn update_mesh(
         &mut self,
-        device: &wgpu::Device,
         queue: &wgpu::Queue,
         handle: &super::mesh::MeshHandle,
+        vertices: &[Vertex],
     ) {
-        todo!()
+        match handle.location().buffer_type {
+            BufferType::Paths => self.paths.update_mesh(queue, handle, vertices),
+            BufferType::Widgets => self.widgets.update_mesh(queue, handle, vertices),
+            BufferType::Env => self.env.update_mesh(queue, handle, vertices),
+        }
+    }
+
+    fn change_mesh(
+        &mut self,
+        queue: &wgpu::Queue,
+        handle: &super::mesh::MeshHandle,
+        change: impl Fn(&mut Vertex),
+    ) {
+        match handle.location().buffer_type {
+            BufferType::Paths => self.paths.change_mesh(queue, handle, change),
+            BufferType::Widgets => self.widgets.change_mesh(queue, handle, change),
+            BufferType::Env => self.env.change_mesh(queue, handle, change),
+        }
     }
 }
 
@@ -146,6 +159,7 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable> DynamicBuffer<T> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn renew(&mut self, size: usize, label: &str, device: &wgpu::Device)
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
@@ -215,6 +229,7 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable> DynamicBuffer<T> {
         queue.write_buffer(&self.inner, 0, bytemuck::cast_slice(&self.vertices));
     }
 
+    #[allow(dead_code)]
     pub fn read(&self, range: BufferRange) -> Option<&[T]> {
         match range {
             BufferRange::Full => Some(&self.vertices),
@@ -222,73 +237,70 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable> DynamicBuffer<T> {
             BufferRange::Range(range) => Some(&self.vertices[range]),
         }
     }
-
-    pub fn update_range(&mut self, range: std::ops::Range<u32>) {
-        self.render_range = range;
-    }
 }
 
 impl MeshKit for DynamicBuffer<Vertex> {
-    fn upload(
+    fn write_mesh(
         &mut self,
-        device: &wgpu::Device,
         queue: &wgpu::Queue,
-        location: BufferLocation,
-        mesh: super::mesh::TempMesh,
+        mesh: super::mesh::CpuMesh,
     ) -> Option<super::mesh::MeshHandle> {
-        match mesh {
-            super::mesh::TempMesh::Static {
-                vertices,
-                sub_meshes,
+        match &mesh {
+            super::mesh::CpuMesh::Static {
+                vertices, location, ..
             } => {
-                self.renew_init(&vertices, "Static Mesh", device);
+                self.write(queue, location.offset, vertices);
             }
-            super::mesh::TempMesh::Interactive {
-                vertices,
-                sub_meshes,
-                raw_box,
-                context,
+            super::mesh::CpuMesh::Interactive {
+                vertices, location, ..
             } => {
-                self.renew_init(&vertices, "Interactive Mesh", device);
+                self.write(queue, location.offset, vertices);
             }
         }
 
-        None
+        Some(mesh.into())
     }
 
-    fn upload_renew(
+    fn init_mesh(
         &mut self,
         device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        location: BufferLocation,
-        mesh: super::mesh::TempMesh,
+        mesh: super::mesh::CpuMesh,
     ) -> Option<super::mesh::MeshHandle> {
-        match mesh {
-            super::mesh::TempMesh::Static {
-                vertices,
-                sub_meshes,
-            } => {
-                self.renew_init(&vertices, "Static Mesh", device);
+        match &mesh {
+            super::mesh::CpuMesh::Static { vertices, .. } => {
+                self.renew_init(vertices, "Static Mesh", device);
             }
-            super::mesh::TempMesh::Interactive {
-                vertices,
-                sub_meshes,
-                raw_box,
-                context,
-            } => {
-                self.renew_init(&vertices, "Interactive Mesh", device);
+            super::mesh::CpuMesh::Interactive { vertices, .. } => {
+                self.renew_init(vertices, "Interactive Mesh", device);
             }
         }
 
-        None
+        Some(mesh.into())
     }
 
-    fn update(
+    fn update_mesh(
         &mut self,
-        device: &wgpu::Device,
         queue: &wgpu::Queue,
         handle: &super::mesh::MeshHandle,
+        vertices: &[Vertex],
     ) {
-        todo!()
+        self.write(queue, handle.location().offset, vertices);
+    }
+
+    fn change_mesh(
+        &mut self,
+        queue: &wgpu::Queue,
+        handle: &super::mesh::MeshHandle,
+        change: impl Fn(&mut Vertex),
+    ) {
+        let location = handle.location();
+
+        self.change(
+            queue,
+            BufferRange::Range(
+                location.offset as usize..(location.offset + location.size) as usize,
+            ),
+            change,
+        )
     }
 }

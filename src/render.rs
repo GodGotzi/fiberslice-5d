@@ -1,19 +1,20 @@
 use std::time::Instant;
 
 use buffer::RenderBuffers;
-use camera::{CameraUniform, OrbitCamera};
-use glam::Vec3;
+use glam::{Mat4, Vec3};
 use light::LightUniform;
 use vertex::Vertex;
 use wgpu::util::DeviceExt;
 
 use crate::{
-    environment::HandleOrientation, model::gcode::PrintPart, prelude::*, ui::UiUpdateOutput,
+    camera::{self, CameraResult, CameraUniform},
+    model::gcode::PrintPart,
+    prelude::*,
+    ui::UiUpdateOutput,
     GlobalState, RootEvent,
 };
 
 pub mod buffer;
-pub mod camera;
 pub mod light;
 pub mod mesh;
 pub mod texture;
@@ -23,19 +24,13 @@ const MSAA_SAMPLE_COUNT: u32 = 1;
 
 #[derive(Debug, Clone)]
 pub enum RenderEvent {
-    CameraOrientationChanged(crate::environment::view::Orientation),
     AddGCodeToolpath(PrintPart),
     DebugVertex,
 }
 
 struct RenderState {
-    num_indices: u32,
-
     depth_texture_view: wgpu::TextureView,
 
-    camera: OrbitCamera,
-
-    camera_viewport: Option<(f32, f32, f32, f32)>,
     camera_uniform: camera::CameraUniform,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
@@ -46,8 +41,8 @@ struct RenderState {
 }
 
 impl RenderState {
-    fn update(&mut self, wgpu_context: &WgpuContext) {
-        self.camera_uniform.update_view_proj(&self.camera);
+    fn update(&mut self, wgpu_context: &WgpuContext, view_proj: Mat4, eye: Vec3) {
+        self.camera_uniform.update_view_proj(view_proj, eye);
 
         wgpu_context.queue.write_buffer(
             &self.camera_buffer,
@@ -80,50 +75,43 @@ pub struct RenderAdapter {
     render_state: RenderState,
 }
 
-impl
+impl<'a>
     FrameHandle<
-        '_,
+        'a,
         RootEvent,
         (),
         (
             GlobalState<RootEvent>,
             Option<UiUpdateOutput>,
-            (f32, f32, f32, f32),
+            &CameraResult,
         ),
     > for RenderAdapter
 {
     fn handle_frame(
-        &mut self,
+        &'a mut self,
         event: &winit::event::Event<RootEvent>,
         _start_time: std::time::Instant,
         wgpu_context: &WgpuContext,
-        (state, ui_output, viewport): (
+        (state, ui_output, camera_result): (
             GlobalState<RootEvent>,
             Option<UiUpdateOutput>,
-            (f32, f32, f32, f32),
+            &CameraResult,
         ),
     ) -> Result<(), Error> {
         puffin::profile_function!("Render handle_frame");
 
-        let pointer_in_use = state
-            .ui_state
-            .pointer_in_use
-            .load(std::sync::atomic::Ordering::Relaxed);
-
-        state.camera_controller.write_with_fn(|controller| {
-            controller.process_events(
-                event,
-                &wgpu_context.window,
-                &mut self.render_state.camera,
-                pointer_in_use,
-            );
-        });
+        let CameraResult {
+            view,
+            proj,
+            eye,
+            viewport,
+        } = camera_result;
 
         match event {
             winit::event::Event::WindowEvent { event, .. } => {
                 match event {
                     winit::event::WindowEvent::RedrawRequested => {
-                        self.render_state.update(wgpu_context);
+                        self.render_state.update(wgpu_context, *view * *proj, *eye);
 
                         let now = Instant::now();
 
@@ -181,12 +169,7 @@ impl
                             screen_descriptor,
                         } = ui_output.unwrap();
 
-                        if viewport != self.render_state.camera_viewport.unwrap_or_default() {
-                            self.render_state.camera_viewport = Some(viewport);
-                            self.render_state.camera.aspect = viewport.2 / viewport.3;
-                        }
-
-                        let (x, y, width, height) = viewport;
+                        let (x, y, width, height) = *viewport;
 
                         if width > 0.0 && height > 0.0 {
                             render_pass.set_viewport(x, y, width, height, 0.0, 1.0);
@@ -271,9 +254,6 @@ impl
                 }
             }
             winit::event::Event::UserEvent(RootEvent::RenderEvent(event)) => match event {
-                RenderEvent::CameraOrientationChanged(orientation) => {
-                    self.render_state.camera.handle_orientation(*orientation);
-                }
                 RenderEvent::AddGCodeToolpath(part) => {
                     let vertices = part.vertices();
 
@@ -281,9 +261,12 @@ impl
                         .paths
                         .renew_init(&vertices, "Paths", &wgpu_context.device);
 
-                    self.render_state
-                        .camera
-                        .set_best_distance(&part.bounding_box);
+                    state
+                        .proxy
+                        .send_event(RootEvent::CameraEvent(
+                            camera::CameraEvent::UpdatePreferredDistance(part.bounding_box),
+                        ))
+                        .unwrap();
 
                     state
                         .proxy
@@ -322,7 +305,7 @@ impl<'a>
         (
             GlobalState<RootEvent>,
             Option<UiUpdateOutput>,
-            (f32, f32, f32, f32),
+            &CameraResult,
         ),
         RenderEvent,
     > for RenderAdapter
@@ -335,7 +318,7 @@ impl<'a>
             "depth_texture",
         );
 
-        let mut camera_uniform = CameraUniform::default();
+        let camera_uniform = CameraUniform::default();
 
         let camera_buffer = context
             .device
@@ -414,28 +397,9 @@ impl<'a>
                 label: None,
             });
 
-        let mut camera = OrbitCamera::new(
-            2.0,
-            1.5,
-            1.25,
-            Vec3::new(0.0, 0.0, 0.0),
-            context.window.inner_size().width as f32 / context.window.inner_size().height as f32,
-        );
-        camera.bounds.min_distance = Some(1.1);
-        camera.bounds.min_pitch = -std::f32::consts::FRAC_PI_2 + 0.1;
-        camera.bounds.max_pitch = std::f32::consts::FRAC_PI_2 - 0.1;
-        camera.handle_orientation(crate::environment::view::Orientation::Default);
-
-        camera_uniform.update_view_proj(&camera);
-
         let render_state = RenderState {
-            num_indices: 0,
-
             depth_texture_view,
 
-            camera,
-
-            camera_viewport: None,
             camera_uniform,
             camera_buffer,
             camera_bind_group,

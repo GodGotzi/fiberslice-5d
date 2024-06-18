@@ -1,6 +1,7 @@
 use glam::{vec3, Mat4, Vec3};
 
-use crate::{geometry::BoundingBox, render::camera::Camera};
+use super::Camera;
+use crate::geometry::BoundingBox;
 
 /// An [OrbitCamera] only permits rotation of the eye on a spherical shell around a target.
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -44,10 +45,10 @@ pub struct OrbitCamera {
 }
 
 impl Camera for OrbitCamera {
-    fn build_view_projection_matrix(&self) -> Mat4 {
+    fn build_view_proj_matrix(&self) -> (Mat4, Mat4) {
         let view = Mat4::look_at_lh(self.eye, self.target, self.up);
         let proj = Mat4::perspective_lh(self.fovy, self.aspect, self.znear, self.zfar);
-        proj * view
+        (view, proj)
     }
 }
 
@@ -93,7 +94,7 @@ impl OrbitCamera {
         self.update();
     }
 
-    pub fn set_best_distance(&mut self, bounding_box: &BoundingBox) {
+    pub fn set_preferred_distance(&mut self, bounding_box: &BoundingBox) {
         let bounding_box_diagonal = bounding_box.diagonal();
         let half_diagonal = bounding_box_diagonal.length() / 2.0;
         let half_fov = self.fovy / 2.0;

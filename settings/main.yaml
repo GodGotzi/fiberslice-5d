@@ -1,15 +1,6 @@
 extruder: !Branch
   weight: 2
   children:
-    size: !Branch
-      weight: 0
-      children:
-        nozzle_diameter: !Value
-          weight: 0
-          value: !Float 0.4
-          description: Nozzle Diameter
-          unit: mm
-      description: Nozzle Diameter
     layer_height_limits: !Branch
       weight: 0
       children:
@@ -27,30 +18,15 @@ extruder: !Branch
     retraction: !Branch
       weight: 0
       children:
-        wipe_while_retracting: !Value
+        retract_amount_before_wipe: !Value
           weight: 0
-          value: !Bool true
-          description: Wipe While Retracting
-          unit: null
-        deretract_speed: !Value
-          weight: 0
-          value: !Float 25.0
-          description: Deretract Speed
-          unit: mm/s
-        retract_restart_extra: !Value
-          weight: 0
-          value: !Float 0.0
-          description: Retract Restart Extra
+          value: !Float 80.0
+          description: Retract Amount Before Wipe
           unit: mm
         lift_z: !Value
           weight: 0
           value: !Float 0.2
           description: Lift Z
-          unit: mm
-        length: !Value
-          weight: 0
-          value: !Float 0.8
-          description: Length
           unit: mm
         minimum_travel: !Value
           weight: 0
@@ -62,17 +38,41 @@ extruder: !Branch
           value: !Float 35.0
           description: Retract Speed
           unit: mm/s
+        wipe_while_retracting: !Value
+          weight: 0
+          value: !Bool true
+          description: Wipe While Retracting
+          unit: null
+        deretract_speed: !Value
+          weight: 0
+          value: !Float 25.0
+          description: Deretract Speed
+          unit: mm/s
+        length: !Value
+          weight: 0
+          value: !Float 0.8
+          description: Length
+          unit: mm
+        retract_restart_extra: !Value
+          weight: 0
+          value: !Float 0.0
+          description: Retract Restart Extra
+          unit: mm
         retract_on_layer_change: !Value
           weight: 0
           value: !Bool true
           description: Retract on Layer Change
           unit: null
-        retract_amount_before_wipe: !Value
-          weight: 0
-          value: !Float 80.0
-          description: Retract Amount Before Wipe
-          unit: mm
       description: Deretract Speed
+    size: !Branch
+      weight: 0
+      children:
+        nozzle_diameter: !Value
+          weight: 0
+          value: !Float 0.4
+          description: Nozzle Diameter
+          unit: mm
+      description: Nozzle Diameter
   description: Extruder
 machine_limits: !Branch
   weight: 1
@@ -80,6 +80,11 @@ machine_limits: !Branch
     max_feedrates: !Branch
       weight: 0
       children:
+        x: !Value
+          weight: 0
+          value: !Float 200.0
+          description: Movement X
+          unit: mm/s
         e: !Value
           weight: 0
           value: !Float 25.0
@@ -95,36 +100,7 @@ machine_limits: !Branch
           value: !Float 200.0
           description: Movement Y
           unit: mm/s
-        x: !Value
-          weight: 0
-          value: !Float 200.0
-          description: Movement X
-          unit: mm/s
       description: Max Feedrates
-    jerk_limits: !Branch
-      weight: 0
-      children:
-        e: !Value
-          weight: 0
-          value: !Float 10.0
-          description: Extruder
-          unit: mm/s
-        x: !Value
-          weight: 0
-          value: !Float 8.0
-          description: Movement X
-          unit: mm/s
-        z: !Value
-          weight: 0
-          value: !Float 2.0
-          description: Movement Z
-          unit: mm/s
-        y: !Value
-          weight: 0
-          value: !Float 8.0
-          description: Movement Y
-          unit: mm/s
-      description: Jerk Limits
     max_acceleration: !Branch
       weight: 0
       children:
@@ -138,17 +114,41 @@ machine_limits: !Branch
           value: !Float 200.0
           description: Movement Z
           unit: mm/s^2
-        y: !Value
-          weight: 0
-          value: !Float 2500.0
-          description: Movement Y
-          unit: mm/s^2
         x: !Value
           weight: 0
           value: !Float 2500.0
           description: Movement X
           unit: mm/s^2
+        y: !Value
+          weight: 0
+          value: !Float 2500.0
+          description: Movement Y
+          unit: mm/s^2
       description: Max Acceleration
+    jerk_limits: !Branch
+      weight: 0
+      children:
+        z: !Value
+          weight: 0
+          value: !Float 2.0
+          description: Movement Z
+          unit: mm/s
+        y: !Value
+          weight: 0
+          value: !Float 8.0
+          description: Movement Y
+          unit: mm/s
+        x: !Value
+          weight: 0
+          value: !Float 8.0
+          description: Movement X
+          unit: mm/s
+        e: !Value
+          weight: 0
+          value: !Float 10.0
+          description: Extruder
+          unit: mm/s
+      description: Jerk Limits
   description: Machine Limits
 general: !Branch
   weight: 0

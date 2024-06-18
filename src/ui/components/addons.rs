@@ -10,6 +10,7 @@ use egui_xml::load_layout;
 use orientation::OrientationAddon;
 
 use crate::config::gui::shaded_color;
+use crate::prelude::Mode;
 use crate::ui::boundary::Boundary;
 use crate::ui::{ui_temp_mut, AllocateInnerUiRect, UiState};
 use crate::ui::{ComponentState, InnerComponent};
@@ -22,13 +23,13 @@ pub mod orientation {
     use strum::{EnumCount, IntoEnumIterator};
 
     use crate::{
+        camera::CameraEvent,
         config::{self, gui::shaded_color},
-        render::RenderEvent,
         ui::{icon::get_orientation_asset, UiState},
         GlobalState, RootEvent,
     };
 
-    use crate::environment::view::Orientation;
+    use crate::camera::Orientation;
 
     pub struct OrientationAddon<'a> {
         shared_state: &'a (UiState, GlobalState<RootEvent>),
@@ -86,8 +87,8 @@ pub mod orientation {
                                 if response.clicked() {
                                     global_state
                                         .proxy
-                                        .send_event(crate::RootEvent::RenderEvent(
-                                            RenderEvent::CameraOrientationChanged(orientation),
+                                        .send_event(crate::RootEvent::CameraEvent(
+                                            CameraEvent::CameraOrientationChanged(orientation),
                                         ))
                                         .unwrap();
                                 }
@@ -156,7 +157,7 @@ impl<'a> Addons<'a> {
         let shaded_color = shaded_color(ui.visuals().dark_mode);
 
         ui_state.mode.read_with_fn(|mode| match mode {
-            crate::environment::view::Mode::Preview => {
+            Mode::Preview => {
                 ui.allocate_ui_in_rect(
                     Rect::from_two_pos(
                         Pos2::new(ui.available_width() * 0.25, 0.0),
@@ -180,8 +181,8 @@ impl<'a> Addons<'a> {
                     },
                 );
             }
-            crate::environment::view::Mode::Prepare => {}
-            crate::environment::view::Mode::ForceAnalytics => {
+            Mode::Prepare => {}
+            Mode::ForceAnalytics => {
                 ui.allocate_ui_in_rect(
                     Rect::from_two_pos(
                         Pos2::new(ui.available_width() * 0.25, 0.0),
@@ -205,7 +206,7 @@ impl<'a> Addons<'a> {
         (ui_state, _global_state): &(UiState, GlobalState<RootEvent>),
     ) {
         ui_state.mode.read_with_fn(|mode| match mode {
-            crate::environment::view::Mode::Preview => {
+            Mode::Preview => {
                 ui.allocate_ui_in_rect(
                     Rect::from_two_pos(
                         Pos2::new(0.0, ui.available_height() * 0.25),
@@ -227,8 +228,8 @@ impl<'a> Addons<'a> {
                     },
                 );
             }
-            crate::environment::view::Mode::Prepare => {}
-            crate::environment::view::Mode::ForceAnalytics => {}
+            Mode::Prepare => {}
+            Mode::ForceAnalytics => {}
         });
     }
 
@@ -240,8 +241,8 @@ impl<'a> Addons<'a> {
         let shaded_color = shaded_color(ui.visuals().dark_mode);
 
         ui_state.mode.read_with_fn(|mode| match mode {
-            crate::environment::view::Mode::Preview => {}
-            crate::environment::view::Mode::Prepare => {
+            Mode::Preview => {}
+            Mode::Prepare => {
                 ui.allocate_ui_in_rect(
                     Rect::from_two_pos(
                         Pos2::new(0.0, ui.available_height() * 0.25),
@@ -253,7 +254,7 @@ impl<'a> Addons<'a> {
                     },
                 );
             }
-            crate::environment::view::Mode::ForceAnalytics => {
+            Mode::ForceAnalytics => {
                 ui.allocate_ui_in_rect(
                     Rect::from_two_pos(
                         Pos2::new(0.0, ui.available_height() * 0.25),

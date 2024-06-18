@@ -1,6 +1,6 @@
 use egui::ImageSource;
 
-use crate::environment::view::Orientation;
+use crate::camera::Orientation;
 
 pub fn get_orientation_asset(orientation: Orientation) -> ImageSource<'static> {
     match orientation {

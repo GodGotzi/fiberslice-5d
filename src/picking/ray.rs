@@ -14,6 +14,7 @@ impl Ray {
         view: glam::Mat4,
         projection: glam::Mat4,
     ) -> Self {
+        println!("Not implemented");
         todo!();
     }
 

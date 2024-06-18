@@ -71,7 +71,7 @@ impl HitboxNode {
         }
     }
 
-    fn check_hit(&self, ray: &Ray) -> Option<&MeshHandle> {
+    pub fn check_hit(&self, ray: &Ray) -> Option<&MeshHandle> {
         if !ray.intersects_box(&self.bounding_box()) {
             return None;
         }
@@ -108,6 +108,15 @@ impl HitboxNode {
         }
 
         None
+    }
+}
+
+impl From<MeshHandle> for HitboxNode {
+    fn from(mesh: MeshHandle) -> Self {
+        match &mesh {
+            MeshHandle::Static { .. } => panic!("Static mesh cannot be converted to hitbox"),
+            MeshHandle::Interactive { raw_box, .. } => HitboxNode::box_(*raw_box, mesh),
+        }
     }
 }
 

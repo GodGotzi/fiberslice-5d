@@ -11,9 +11,12 @@ pub mod wrap;
 pub use shared::*;
 pub use wrap::*;
 
+pub type Viewport = (f32, f32, f32, f32);
+
 #[derive(Debug, Clone)]
 pub struct GlobalContext {
     pub frame_time: f32,
+    pub mouse_position: Option<(f32, f32)>,
     last_frame_time: std::time::Instant,
 }
 
@@ -22,6 +25,7 @@ impl Default for GlobalContext {
         Self {
             frame_time: 0.0,
             last_frame_time: std::time::Instant::now(),
+            mouse_position: None,
         }
     }
 }
@@ -124,4 +128,21 @@ pub trait Adapter<'a, WinitE, S: Sized, T, C, E: Debug + Clone>:
 
     #[allow(dead_code)]
     fn get_adapter_description(&self) -> String;
+}
+
+use strum_macros::{EnumCount, EnumIter};
+
+#[derive(Debug, Clone, Copy, EnumCount, EnumIter)]
+pub enum TransformationMode {
+    Translate,
+    Rotate,
+    Scale,
+    PlaceOnFace,
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub enum Mode {
+    Preview,
+    Prepare,
+    ForceAnalytics,
 }

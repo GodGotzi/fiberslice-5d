@@ -1,7 +1,7 @@
 use egui_extras::Size;
 use egui_grid::GridBuilder;
 
-use crate::environment::view::Mode;
+use crate::prelude::Mode;
 use crate::ui::boundary::Boundary;
 use crate::ui::{Component, ComponentState, UiState};
 use crate::{config, GlobalState, RootEvent};

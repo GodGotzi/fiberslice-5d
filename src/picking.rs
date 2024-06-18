@@ -1,9 +1,8 @@
-use std::sync::Arc;
-
 use tokio::task::JoinHandle;
 use winit::event::{DeviceEvent, ElementState, WindowEvent};
 
 use crate::{
+    camera::CameraResult,
     geometry::BoundingBox,
     prelude::{Adapter, Error, FrameHandle, SharedMut, WgpuContext},
     render::mesh::MeshHandle,
@@ -38,35 +37,56 @@ pub struct PickingAdapter {
     state: PickingState,
 }
 
-impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, (f32, f32, f32, f32))>
-    for PickingAdapter
-{
+impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, &CameraResult)> for PickingAdapter {
     fn handle_frame(
         &mut self,
         event: &winit::event::Event<RootEvent>,
-        start_time: std::time::Instant,
-        wgpu_context: &WgpuContext,
-        (state, viewport): (GlobalState<RootEvent>, (f32, f32, f32, f32)),
+        _start_time: std::time::Instant,
+        _wgpu_context: &WgpuContext,
+        (global_state, camera_result): (GlobalState<RootEvent>, &CameraResult),
     ) -> Result<(), Error> {
-        let pointer_in_use = state
+        let pointer_in_use = global_state
             .ui_state
             .pointer_in_use
             .load(std::sync::atomic::Ordering::Relaxed);
 
         if !pointer_in_use {
+            let CameraResult {
+                view,
+                proj,
+                viewport,
+                ..
+            } = camera_result;
+
             match event {
                 winit::event::Event::WindowEvent {
                     event: WindowEvent::MouseInput { button, state, .. },
                     ..
-                } => match button {
-                    winit::event::MouseButton::Left => {
-                        self.state.is_drag_left = *state == ElementState::Pressed;
+                } => {
+                    if let Some((_x, _y)) = global_state.ctx.mouse_position {
+
+                        /*
+                                                let ray = ray::Ray::from_view(*viewport, (x, y), *view, *proj);
+                        self.state.hitbox.read_with_fn(|root| {
+                            println!("PickingAdapter: Checking Hit");
+
+                            let hit = root.check_hit(&ray);
+
+                            if let Some(handle) = hit {
+                                println!("PickingAdapter: Hit: {:?}", handle);
+                            }
+                        });
+                        */
                     }
-                    winit::event::MouseButton::Right => {
-                        self.state.is_drag_right = *state == ElementState::Pressed;
+
+                    match button {
+                        winit::event::MouseButton::Left => {}
+                        winit::event::MouseButton::Right => {
+                            self.state.is_drag_right = *state == ElementState::Pressed;
+                        }
+                        _ => (),
                     }
-                    _ => (),
-                },
+                }
                 winit::event::Event::DeviceEvent {
                     event: DeviceEvent::MouseMotion { delta },
                     ..
@@ -82,6 +102,11 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, (f32, f32, f32, f32
                 winit::event::Event::UserEvent(RootEvent::PickingEvent(
                     PickingEvent::AddInteractiveMesh(handle),
                 )) => {
+                    self.state.hitbox.write_with_fn(|root| {
+                        let hitbox = handle.clone().into();
+
+                        root.add_hitbox(hitbox);
+                    });
                     println!("PickingAdapter: Adding Interactive Mesh");
                 }
                 _ => (),
@@ -107,14 +132,8 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, (f32, f32, f32, f32
 }
 
 impl<'a>
-    Adapter<
-        'a,
-        RootEvent,
-        PickingState,
-        (),
-        (GlobalState<RootEvent>, (f32, f32, f32, f32)),
-        PickingEvent,
-    > for PickingAdapter
+    Adapter<'a, RootEvent, PickingState, (), (GlobalState<RootEvent>, &CameraResult), PickingEvent>
+    for PickingAdapter
 {
     fn from_context(_wgpu_context: &WgpuContext) -> (PickingState, Self) {
         let state = PickingState {

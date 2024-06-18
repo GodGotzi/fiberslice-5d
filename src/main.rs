@@ -6,7 +6,6 @@
 */
 
 use egui::ahash::HashMap;
-use environment::camera_controller;
 use log::{info, LevelFilter};
 use settings::tree::QuickSettings;
 use std::{sync::Arc, time::Instant};
@@ -14,9 +13,9 @@ use std::{sync::Arc, time::Instant};
 use prelude::{Adapter, FrameHandle, GlobalContext, SharedMut, WgpuContext};
 
 mod api;
+mod camera;
 mod config;
 mod control;
-mod environment;
 mod error;
 mod geometry;
 mod model;
@@ -48,6 +47,7 @@ pub enum RootEvent {
     UiEvent(ui::UiEvent),
     PickingEvent(picking::PickingEvent),
     RenderEvent(render::RenderEvent),
+    CameraEvent(camera::CameraEvent),
     Exit,
 }
 
@@ -60,7 +60,7 @@ pub struct GlobalState<T: 'static> {
     pub topology_settings: SharedMut<QuickSettings>,
     pub view_settings: SharedMut<QuickSettings>,
 
-    pub camera_controller: SharedMut<camera_controller::CameraController>,
+    pub camera_controller: SharedMut<camera::camera_controller::CameraController>,
 
     pub ctx: GlobalContext,
 }
@@ -93,6 +93,8 @@ async fn main() -> Result<(), EventLoopError> {
 
     let mut picking_adapter = picking::PickingAdapter::from_context(&wgpu_context).1;
 
+    let mut camera_adapter = camera::CameraAdapter::from_context(&wgpu_context).1;
+
     let (ui_state, mut ui_adapter) = ui::UiAdapter::from_context(&wgpu_context);
 
     // let mut picking_adapter = picking::PickingAdapter::from_context(&wgpu_context);
@@ -107,10 +109,7 @@ async fn main() -> Result<(), EventLoopError> {
         topology_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
         view_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
 
-        camera_controller: SharedMut::from_inner(camera_controller::CameraController::new(
-            0.01, -2.0, 0.1,
-        )),
-
+        camera_controller: SharedMut::from_inner(camera::CameraController::new(0.01, -2.0, 0.1)),
         ctx: GlobalContext::default(),
     };
 
@@ -141,6 +140,10 @@ async fn main() -> Result<(), EventLoopError> {
                 winit::event::WindowEvent::CloseRequested => {
                     loop_target.exit();
                 }
+                winit::event::WindowEvent::CursorMoved { position, .. } => {
+                    global_state.ctx.mouse_position = Some((position.x as f32, position.y as f32));
+                    window.request_redraw();
+                }
                 _ => {
                     window.request_redraw();
                 }
@@ -155,7 +158,7 @@ async fn main() -> Result<(), EventLoopError> {
             .handle_frame(&event, start_time, &wgpu_context, global_state.clone())
             .unwrap();
 
-        picking_adapter
+        let camera_result = camera_adapter
             .handle_frame(
                 &event,
                 start_time,
@@ -169,7 +172,16 @@ async fn main() -> Result<(), EventLoopError> {
                 &event,
                 start_time,
                 &wgpu_context,
-                (global_state.clone(), ui_output, viewport),
+                (global_state.clone(), ui_output, &camera_result),
+            )
+            .unwrap();
+
+        picking_adapter
+            .handle_frame(
+                &event,
+                start_time,
+                &wgpu_context,
+                (global_state.clone(), &camera_result),
             )
             .unwrap();
 

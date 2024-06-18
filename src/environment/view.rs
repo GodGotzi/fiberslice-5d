@@ -8,17 +8,6 @@
 use macros::NumEnum;
 use strum_macros::{EnumCount, EnumIter};
 
-#[allow(dead_code)]
-#[derive(Debug, Clone, Copy, NumEnum, EnumCount, EnumIter)] //maybe performance bit worse
-pub enum Orientation {
-    Default,
-    Diagonal,
-    Top,
-    Left,
-    Right,
-    Front,
-}
-
 #[derive(Debug, Clone, Copy, EnumCount, EnumIter)]
 pub enum TransformationMode {
     Translate,

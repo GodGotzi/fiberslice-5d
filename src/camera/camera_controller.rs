@@ -4,7 +4,7 @@ use winit::{
     window::Window,
 };
 
-use crate::render::camera::OrbitCamera;
+use super::OrbitCamera;
 
 #[derive(Debug)]
 pub struct CameraController {

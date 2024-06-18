@@ -1,31 +1,53 @@
 use crate::{geometry::BoundingBox, picking::Pickable, render::buffer::BufferLocation};
 
-use super::{buffer::BufferType, vertex::Vertex, Shared};
+use super::{vertex::Vertex, Shared};
 
 #[derive(Debug, Clone)]
-pub enum TempMesh {
+pub enum CpuMesh {
     Static {
         vertices: Vec<Vertex>,
-        sub_meshes: Vec<SubTempMesh>,
+        sub_meshes: Vec<CpuSubMesh>,
+        location: BufferLocation,
     },
     Interactive {
         vertices: Vec<Vertex>,
-        sub_meshes: Vec<SubTempMesh>,
+        sub_meshes: Vec<CpuSubMesh>,
+        location: BufferLocation,
         raw_box: BoundingBox,
         context: Shared<Box<dyn Pickable>>,
     },
 }
 
+impl CpuMesh {
+    pub fn location(&self) -> &BufferLocation {
+        match self {
+            Self::Static { location, .. } => location,
+            Self::Interactive { location, .. } => location,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
-pub enum SubTempMesh {
+pub enum CpuSubMesh {
     Static {
-        sub_meshes: Vec<SubTempMesh>,
+        sub_meshes: Vec<CpuSubMesh>,
+        location: BufferLocation,
     },
     Interactive {
-        sub_meshes: Vec<SubTempMesh>,
+        sub_meshes: Vec<CpuSubMesh>,
+        location: BufferLocation,
         raw_box: BoundingBox,
         context: Shared<Box<dyn Pickable>>,
     },
+}
+
+impl CpuSubMesh {
+    pub fn location(&self) -> &BufferLocation {
+        match self {
+            Self::Static { location, .. } => location,
+            Self::Interactive { location, .. } => location,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -42,22 +64,90 @@ pub enum MeshHandle {
     },
 }
 
+impl MeshHandle {
+    pub fn location(&self) -> &BufferLocation {
+        match self {
+            Self::Static { location, .. } => location,
+            Self::Interactive { location, .. } => location,
+        }
+    }
+}
+
+impl From<CpuMesh> for MeshHandle {
+    fn from(mesh: CpuMesh) -> Self {
+        match mesh {
+            CpuMesh::Static {
+                sub_meshes,
+                location,
+                ..
+            } => Self::Static {
+                location,
+                sub_meshes: sub_meshes
+                    .into_iter()
+                    .map(|sub_mesh| sub_mesh.into())
+                    .collect(),
+            },
+            CpuMesh::Interactive {
+                sub_meshes,
+                location,
+                raw_box,
+                context,
+                ..
+            } => Self::Interactive {
+                location,
+                sub_meshes: sub_meshes
+                    .into_iter()
+                    .map(|sub_mesh| sub_mesh.into())
+                    .collect(),
+                raw_box,
+                context,
+            },
+        }
+    }
+}
+
+impl From<CpuSubMesh> for MeshHandle {
+    fn from(mesh: CpuSubMesh) -> Self {
+        match mesh {
+            CpuSubMesh::Static {
+                sub_meshes,
+                location,
+            } => Self::Static {
+                location,
+                sub_meshes: sub_meshes
+                    .into_iter()
+                    .map(|sub_mesh| sub_mesh.into())
+                    .collect(),
+            },
+            CpuSubMesh::Interactive {
+                sub_meshes,
+                location,
+                raw_box,
+                context,
+            } => Self::Interactive {
+                location,
+                sub_meshes: sub_meshes
+                    .into_iter()
+                    .map(|sub_mesh| sub_mesh.into())
+                    .collect(),
+                raw_box,
+                context,
+            },
+        }
+    }
+}
+
 pub trait MeshKit {
-    fn upload(
-        &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        location: BufferLocation,
-        mesh: TempMesh,
-    ) -> Option<MeshHandle>;
+    fn write_mesh(&mut self, queue: &wgpu::Queue, mesh: CpuMesh) -> Option<MeshHandle>;
 
-    fn upload_renew(
-        &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        location: BufferLocation,
-        mesh: TempMesh,
-    ) -> Option<MeshHandle>;
+    fn init_mesh(&mut self, device: &wgpu::Device, mesh: CpuMesh) -> Option<MeshHandle>;
 
-    fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, handle: &MeshHandle);
+    fn update_mesh(&mut self, queue: &wgpu::Queue, handle: &MeshHandle, vertices: &[Vertex]);
+
+    fn change_mesh(
+        &mut self,
+        queue: &wgpu::Queue,
+        handle: &MeshHandle,
+        change: impl Fn(&mut Vertex),
+    );
 }
