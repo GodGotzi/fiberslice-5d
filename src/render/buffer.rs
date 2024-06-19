@@ -56,12 +56,13 @@ impl RenderBuffers {
 
     pub fn render<'a, 'b: 'a>(&'b self, render_pass: &'a mut wgpu::RenderPass<'b>) {
         render_pass.set_vertex_buffer(0, self.paths.inner.slice(..));
-        render_pass.set_vertex_buffer(1, self.widgets.inner.slice(..));
-        render_pass.set_vertex_buffer(2, self.env.inner.slice(..));
-
         render_pass.draw(self.paths.render_range.clone(), 0..1);
-        render_pass.draw(self.widgets.render_range.clone(), 1..2);
-        render_pass.draw(self.env.render_range.clone(), 2..3);
+
+        render_pass.set_vertex_buffer(0, self.widgets.inner.slice(..));
+        render_pass.draw(self.widgets.render_range.clone(), 0..1);
+
+        render_pass.set_vertex_buffer(0, self.env.inner.slice(..));
+        render_pass.draw(self.env.render_range.clone(), 0..1);
     }
 }
 
@@ -124,7 +125,7 @@ pub struct DynamicBuffer<T> {
 }
 
 impl<T: bytemuck::Pod + bytemuck::Zeroable> DynamicBuffer<T> {
-    pub fn new(size: usize, label: &str, device: &wgpu::Device, range: std::ops::Range<u32>) -> Self
+    pub fn new(size: usize, label: &str, device: &wgpu::Device) -> Self
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
     {
@@ -138,7 +139,7 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable> DynamicBuffer<T> {
         Self {
             inner,
             vertices: Vec::with_capacity(size),
-            render_range: range,
+            render_range: 0..size as u32,
         }
     }
 

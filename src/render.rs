@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{sync::Arc, time::Instant};
 
 use buffer::{BufferLocation, RenderBuffers};
 use glam::{Mat4, Vec3};
@@ -9,7 +9,7 @@ use wgpu::util::DeviceExt;
 
 use crate::{
     camera::{self, CameraResult, CameraUniform},
-    model::gcode::PrintPart,
+    model::gcode::{PrintPart, TestContext},
     prelude::*,
     ui::UiUpdateOutput,
     GlobalState, RootEvent,
@@ -272,6 +272,24 @@ impl<'a>
 
                     state
                         .proxy
+                        .send_event(RootEvent::PickingEvent(
+                            crate::picking::PickingEvent::AddInteractiveMesh(
+                                mesh::MeshHandle::Interactive {
+                                    location: BufferLocation {
+                                        offset: 0,
+                                        size: 1,
+                                        buffer_type: buffer::BufferType::Paths,
+                                    },
+                                    sub_meshes: Vec::new(),
+                                    raw_box: part.bounding_box,
+                                    context: Arc::new(Box::new(TestContext {})),
+                                },
+                            ),
+                        ))
+                        .unwrap();
+
+                    state
+                        .proxy
                         .send_event(RootEvent::UiEvent(crate::ui::UiEvent::ShowSuccess(
                             "Gcode loaded".to_string(),
                         )))
@@ -285,11 +303,9 @@ impl<'a>
                         CpuMesh::Interactive { vertices, .. } => vertices,
                     };
 
-                    self.render_buffers.widgets.renew_init(
-                        vertices,
-                        "Widgets",
-                        &wgpu_context.device,
-                    );
+                    self.render_buffers
+                        .env
+                        .renew_init(vertices, "Env", &wgpu_context.device);
 
                     wgpu_context.window.request_redraw();
                 }

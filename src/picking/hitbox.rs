@@ -73,8 +73,11 @@ impl HitboxNode {
 
     pub fn check_hit(&self, ray: &Ray) -> Option<&MeshHandle> {
         if !ray.intersects_box(&self.bounding_box()) {
+            println!("Ray does not intersect bounding box");
             return None;
         }
+
+        println!("Ray intersects bounding box");
 
         let mut queue = HitboxQueue::new(); // Creating a new HitboxQueue
 
@@ -106,6 +109,8 @@ impl HitboxNode {
                 }
             }
         }
+
+        println!("Ray does not intersect any hitbox");
 
         None
     }

@@ -1,8 +1,8 @@
-use std::{collections::HashMap, fmt::Debug, str::Lines};
+use std::{collections::HashMap, fmt::Debug, ops::Bound, str::Lines};
 
 use glam::Vec3;
 
-use crate::render::vertex::Vertex;
+use crate::{picking::Pickable, render::vertex::Vertex};
 
 use self::{
     instruction::{InstructionModul, InstructionType},
@@ -117,6 +117,14 @@ impl PrintPart {
             layers.entry(layer).or_default().push(model);
         }
 
+        let mut box_ = BoundingBox::new(
+            raw_path.virtual_box.min - raw_path.center_mass,
+            raw_path.virtual_box.max - raw_path.center_mass,
+        );
+
+        std::mem::swap(&mut box_.min.y, &mut box_.min.z);
+        std::mem::swap(&mut box_.max.y, &mut box_.max.z);
+
         let wire_model = WireModel::new(lines);
 
         Self {
@@ -125,7 +133,7 @@ impl PrintPart {
             layers,
 
             center_mass: raw_path.center_mass,
-            bounding_box: raw_path.virtual_box,
+            bounding_box: box_,
         }
     }
 
@@ -150,6 +158,19 @@ pub fn compute_normals(raw_vertices: &[Vec3], vertices: &mut [Vertex]) {
         vertices[i].normal = normal.to_array();
         vertices[i + 1].normal = normal.to_array();
         vertices[i + 2].normal = normal.to_array();
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct TestContext {}
+
+impl Pickable for TestContext {
+    fn hover(&self, state: crate::GlobalState<crate::RootEvent>) {
+        println!("Hovering")
+    }
+
+    fn select(&self, state: crate::GlobalState<crate::RootEvent>) {
+        println!("Selecting")
     }
 }
 
