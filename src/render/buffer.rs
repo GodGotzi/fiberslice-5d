@@ -44,8 +44,8 @@ impl From<BufferLocation> for BufferRange {
 impl RenderBuffers {
     pub fn new(device: &wgpu::Device) -> Self {
         let paths = DynamicBuffer::<Vertex>::new_init(&[], "Paths", device);
-        let widgets = DynamicBuffer::<Vertex>::new(MAX_WIDGETS_VERTICES, "Widgets", device, 0..0);
-        let env = DynamicBuffer::<Vertex>::new(MAX_ENV_VERTICES, "Environment", device, 0..0);
+        let widgets = DynamicBuffer::<Vertex>::new_init(&[], "Widgets", device);
+        let env = DynamicBuffer::<Vertex>::new_init(&[], "Env", device);
 
         Self {
             paths,
@@ -60,8 +60,8 @@ impl RenderBuffers {
         render_pass.set_vertex_buffer(2, self.env.inner.slice(..));
 
         render_pass.draw(self.paths.render_range.clone(), 0..1);
-        render_pass.draw(self.widgets.render_range.clone(), 0..1);
-        render_pass.draw(self.env.render_range.clone(), 0..1);
+        render_pass.draw(self.widgets.render_range.clone(), 1..2);
+        render_pass.draw(self.env.render_range.clone(), 2..3);
     }
 }
 

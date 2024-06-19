@@ -1,8 +1,9 @@
 use std::time::Instant;
 
-use buffer::RenderBuffers;
+use buffer::{BufferLocation, RenderBuffers};
 use glam::{Mat4, Vec3};
 use light::LightUniform;
+use mesh::{CpuMesh, MeshKit};
 use vertex::Vertex;
 use wgpu::util::DeviceExt;
 
@@ -25,6 +26,7 @@ const MSAA_SAMPLE_COUNT: u32 = 1;
 #[derive(Debug, Clone)]
 pub enum RenderEvent {
     AddGCodeToolpath(PrintPart),
+    LoadMesh(CpuMesh),
     DebugVertex,
 }
 
@@ -277,6 +279,21 @@ impl<'a>
 
                     wgpu_context.window.request_redraw();
                 }
+                RenderEvent::LoadMesh(mesh) => {
+                    let vertices = match mesh {
+                        CpuMesh::Static { vertices, .. } => vertices,
+                        CpuMesh::Interactive { vertices, .. } => vertices,
+                    };
+
+                    self.render_buffers.widgets.renew_init(
+                        vertices,
+                        "Widgets",
+                        &wgpu_context.device,
+                    );
+
+                    wgpu_context.window.request_redraw();
+                }
+
                 RenderEvent::DebugVertex => {
                     self.render_buffers.paths.change(
                         &wgpu_context.queue,

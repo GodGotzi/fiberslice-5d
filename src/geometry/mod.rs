@@ -1,5 +1,7 @@
 use glam::Vec3;
 
+use crate::model::mesh::Mesh;
+
 #[derive(Debug, Clone, Copy)]
 pub struct BoundingBox {
     pub max: Vec3,

@@ -1,11 +1,20 @@
+use glam::vec3;
 use tokio::task::JoinHandle;
 use winit::event::{DeviceEvent, ElementState, WindowEvent};
 
 use crate::{
     camera::CameraResult,
     geometry::BoundingBox,
+    model::{
+        gcode::mesh::{CuboidConnection, ProfileCross},
+        mesh::{Mesh, WithOffset},
+    },
     prelude::{Adapter, Error, FrameHandle, SharedMut, WgpuContext},
-    render::mesh::MeshHandle,
+    render::{
+        buffer::BufferLocation,
+        mesh::{CpuMesh, MeshHandle},
+        vertex::Vertex,
+    },
     GlobalState, RootEvent,
 };
 
@@ -55,40 +64,76 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, &CameraResult)> for
                 view,
                 proj,
                 viewport,
-                ..
-            } = camera_result;
+                eye,
+            } = *camera_result;
 
             match event {
                 winit::event::Event::WindowEvent {
                     event: WindowEvent::MouseInput { button, state, .. },
                     ..
-                } => {
-                    if let Some((_x, _y)) = global_state.ctx.mouse_position {
-
-                        /*
-                                                let ray = ray::Ray::from_view(*viewport, (x, y), *view, *proj);
-                        self.state.hitbox.read_with_fn(|root| {
-                            println!("PickingAdapter: Checking Hit");
-
-                            let hit = root.check_hit(&ray);
-
-                            if let Some(handle) = hit {
-                                println!("PickingAdapter: Hit: {:?}", handle);
-                            }
-                        });
-                        */
+                } => match button {
+                    winit::event::MouseButton::Left => {
+                        self.state.is_drag_left = *state == ElementState::Pressed;
                     }
+                    winit::event::MouseButton::Right => {
+                        if let Some((x, y)) = global_state.ctx.mouse_position {
+                            let ray = ray::Ray::from_view(viewport, (x, y), view, proj, eye);
 
-                    match button {
-                        winit::event::MouseButton::Left => {
-                            self.state.is_drag_left = *state == ElementState::Pressed;
+                            let profile = ProfileCross::from_direction(
+                                ray.direction,
+                                (100.0 / 2.0, 100.0 / 2.0),
+                            );
+
+                            let profile_start = profile.with_offset(ray.origin);
+                            let profile_end =
+                                profile.with_offset(ray.origin + ray.direction.normalize() * 100.0);
+
+                            let vertices: Vec<Vertex> =
+                                CuboidConnection::from_profiles(profile_start, profile_end)
+                                    .to_vertices()
+                                    .into_iter()
+                                    .map(|vec| Vertex {
+                                        position: vec.to_array(),
+                                        tex_coords: [0.0, 0.0],
+                                        normal: [0.0, 0.0, 1.0],
+                                        color: [1.0, 0.0, 0.0, 1.0],
+                                    })
+                                    .collect();
+
+                            let size = vertices.len();
+
+                            let mesh = CpuMesh::Static {
+                                vertices,
+                                sub_meshes: Vec::new(),
+                                location: BufferLocation {
+                                    offset: 0,
+                                    size: size as u64,
+                                    buffer_type: crate::render::buffer::BufferType::Widgets,
+                                },
+                            };
+
+                            global_state
+                                .proxy
+                                .send_event(RootEvent::RenderEvent(
+                                    crate::render::RenderEvent::LoadMesh(mesh),
+                                ))
+                                .unwrap();
+
+                            self.state.hitbox.read_with_fn(|root| {
+                                println!("PickingAdapter: Checking Hit");
+
+                                let hit = root.check_hit(&ray);
+
+                                if let Some(handle) = hit {
+                                    println!("PickingAdapter: Hit: {:?}", handle);
+                                }
+                            });
                         }
-                        winit::event::MouseButton::Right => {
-                            self.state.is_drag_right = *state == ElementState::Pressed;
-                        }
-                        _ => (),
+
+                        self.state.is_drag_right = *state == ElementState::Pressed;
                     }
-                }
+                    _ => (),
+                },
                 winit::event::Event::DeviceEvent {
                     event: DeviceEvent::MouseMotion { delta },
                     ..
