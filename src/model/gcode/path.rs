@@ -109,7 +109,6 @@ fn compute_modul(
             current_movements.add_movements(movements);
 
             let current_point = current_movements.to_vec3(vec3(0.0, 0.0, 0.0));
-            virtual_box.expand_point(current_point);
 
             if current_point == last_point {
                 continue;
@@ -126,6 +125,8 @@ fn compute_modul(
                         instruction_average.add((current_point + last_point) / 2.0);
                     }
                 }
+
+                virtual_box.expand_point(current_point);
             }
 
             points.push(Line {

@@ -9,7 +9,11 @@ use wgpu::util::DeviceExt;
 
 use crate::{
     camera::{self, CameraResult, CameraUniform},
-    model::gcode::{PrintPart, TestContext},
+    geometry::SelectBox,
+    model::{
+        gcode::{compute_normals, PrintPart, TestContext},
+        mesh::Mesh,
+    },
     prelude::*,
     ui::UiUpdateOutput,
     GlobalState, RootEvent,
@@ -257,7 +261,33 @@ impl<'a>
             }
             winit::event::Event::UserEvent(RootEvent::RenderEvent(event)) => match event {
                 RenderEvent::AddGCodeToolpath(part) => {
-                    let vertices = part.vertices();
+                    let mut vertices = part.vertices();
+
+                    let box_vertices = SelectBox::from(part.bounding_box).to_vertices();
+
+                    let mut vertex_box = box_vertices
+                        .iter()
+                        .map(|vertex| Vertex {
+                            position: vertex.to_array(),
+                            tex_coords: [0.0, 0.0],
+                            normal: [0.0, 0.0, 0.0],
+                            color: [0.0, 0.0, 1.0, 1.0],
+                        })
+                        .collect::<Vec<Vertex>>();
+
+                    compute_normals(&box_vertices, &mut vertex_box);
+
+                    vertices.extend_from_slice(&vertex_box);
+
+                    for i in (0..vertex_box.len()).step_by(3) {
+                        let v0 = vertex_box[i];
+                        let v1 = vertex_box[i + 1];
+                        let v2 = vertex_box[i + 2];
+
+                        vertices.push(v2);
+                        vertices.push(v1);
+                        vertices.push(v0);
+                    }
 
                     self.render_buffers
                         .paths
