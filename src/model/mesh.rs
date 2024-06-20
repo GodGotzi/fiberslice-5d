@@ -7,6 +7,10 @@ pub trait Mesh {
     }
 }
 
+pub trait Lines {
+    fn to_lines(&self) -> Vertices;
+}
+
 pub trait WithOffset {
     fn with_offset(&self, offset: glam::Vec3) -> Self;
 }

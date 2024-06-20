@@ -1,6 +1,6 @@
 use glam::{vec3, Vec3};
 
-use crate::model::mesh::Mesh;
+use crate::model::mesh::{Lines, Mesh};
 
 #[derive(Debug, Clone, Copy)]
 pub struct BoundingBox {
@@ -154,9 +154,9 @@ pub struct SelectBox {
 }
 
 impl From<BoundingBox> for SelectBox {
-    fn from(mut box_: BoundingBox) -> Self {
-        box_.expand_point(box_.max + Vec3::new(2.0, 2.0, 2.0));
-        box_.expand_point(box_.min + Vec3::new(-2.0, -2.0, -2.0));
+    fn from(box_: BoundingBox) -> Self {
+        // box_.expand_point(box_.max + Vec3::new(2.0, 2.0, 2.0));
+        // box_.expand_point(box_.min + Vec3::new(-2.0, -2.0, -2.0));
 
         Self { box_ }
     }
@@ -433,6 +433,41 @@ impl Mesh for SelectBox {
                 self.box_.min.y,
                 self.box_.min.z,
             ),
+        ]
+    }
+}
+
+impl Lines for SelectBox {
+    fn to_lines(&self) -> crate::model::mesh::Vertices {
+        vec![
+            vec3(self.box_.min.x, self.box_.min.y, self.box_.min.z),
+            vec3(self.box_.max.x, self.box_.min.y, self.box_.min.z),
+            vec3(self.box_.min.x, self.box_.min.y, self.box_.min.z),
+            vec3(self.box_.min.x, self.box_.max.y, self.box_.min.z),
+            vec3(self.box_.min.x, self.box_.min.y, self.box_.min.z),
+            vec3(self.box_.min.x, self.box_.min.y, self.box_.max.z),
+            vec3(self.box_.max.x, self.box_.max.y, self.box_.max.z),
+            vec3(self.box_.min.x, self.box_.max.y, self.box_.max.z),
+            vec3(self.box_.max.x, self.box_.max.y, self.box_.max.z),
+            vec3(self.box_.max.x, self.box_.min.y, self.box_.max.z),
+            vec3(self.box_.max.x, self.box_.max.y, self.box_.max.z),
+            vec3(self.box_.max.x, self.box_.max.y, self.box_.min.z),
+            vec3(self.box_.max.x, self.box_.min.y, self.box_.min.z),
+            vec3(self.box_.max.x, self.box_.min.y, self.box_.max.z),
+            vec3(self.box_.min.x, self.box_.max.y, self.box_.min.z),
+            vec3(self.box_.max.x, self.box_.max.y, self.box_.min.z),
+            vec3(self.box_.min.x, self.box_.max.y, self.box_.min.z),
+            vec3(self.box_.min.x, self.box_.max.y, self.box_.max.z),
+            vec3(self.box_.min.x, self.box_.max.y, self.box_.max.z),
+            vec3(self.box_.max.x, self.box_.max.y, self.box_.max.z),
+            vec3(self.box_.max.x, self.box_.min.y, self.box_.min.z),
+            vec3(self.box_.max.x, self.box_.max.y, self.box_.min.z),
+            vec3(self.box_.max.x, self.box_.min.y, self.box_.min.z),
+            vec3(self.box_.max.x, self.box_.min.y, self.box_.max.z),
+            vec3(self.box_.min.x, self.box_.min.y, self.box_.max.z),
+            vec3(self.box_.max.x, self.box_.min.y, self.box_.max.z),
+            vec3(self.box_.min.x, self.box_.min.y, self.box_.max.z),
+            vec3(self.box_.min.x, self.box_.max.y, self.box_.max.z),
         ]
     }
 }

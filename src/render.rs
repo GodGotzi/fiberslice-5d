@@ -5,14 +5,14 @@ use glam::{Mat4, Vec3};
 use light::LightUniform;
 use mesh::{CpuMesh, MeshKit};
 use vertex::Vertex;
-use wgpu::util::DeviceExt;
+use wgpu::{util::DeviceExt, VertexBufferLayout};
 
 use crate::{
     camera::{self, CameraResult, CameraUniform},
     geometry::SelectBox,
     model::{
         gcode::{compute_normals, PrintPart, TestContext},
-        mesh::Mesh,
+        mesh::{Lines, Mesh},
     },
     prelude::*,
     ui::UiUpdateOutput,
@@ -72,7 +72,6 @@ impl RenderState {
 }
 
 pub struct RenderAdapter {
-    render_pipeline: wgpu::RenderPipeline,
     multisampled_framebuffer: wgpu::TextureView,
 
     egui_rpass: egui_wgpu_backend::RenderPass,
@@ -180,8 +179,8 @@ impl<'a>
                         if width > 0.0 && height > 0.0 {
                             render_pass.set_viewport(x, y, width, height, 0.0, 1.0);
                             // render_pass.set_scissor_rect(x as u32, y as u32, width as , height);
+                            // render_pass.set_pipeline(&self.render_pipeline);
 
-                            render_pass.set_pipeline(&self.render_pipeline);
                             render_pass.set_bind_group(
                                 0,
                                 &self.render_state.camera_bind_group,
@@ -261,7 +260,7 @@ impl<'a>
             }
             winit::event::Event::UserEvent(RootEvent::RenderEvent(event)) => match event {
                 RenderEvent::AddGCodeToolpath(part) => {
-                    let mut vertices = part.vertices();
+                    let vertices = part.vertices();
 
                     let box_vertices = SelectBox::from(part.bounding_box).to_vertices();
 
@@ -277,17 +276,26 @@ impl<'a>
 
                     compute_normals(&box_vertices, &mut vertex_box);
 
-                    vertices.extend_from_slice(&vertex_box);
+                    let line_vertices = SelectBox::from(part.bounding_box)
+                        .to_lines()
+                        .iter()
+                        .map(|vertex| Vertex {
+                            position: vertex.to_array(),
+                            tex_coords: [0.0, 0.0],
+                            normal: [0.0, 0.0, 0.0],
+                            color: [0.0, 0.0, 1.0, 1.0],
+                        })
+                        .collect::<Vec<Vertex>>();
 
-                    for i in (0..vertex_box.len()).step_by(3) {
-                        let v0 = vertex_box[i];
-                        let v1 = vertex_box[i + 1];
-                        let v2 = vertex_box[i + 2];
+                    self.render_buffers.widgets.renew_init(
+                        &vertex_box,
+                        "Widgets",
+                        &wgpu_context.device,
+                    );
 
-                        vertices.push(v2);
-                        vertices.push(v1);
-                        vertices.push(v0);
-                    }
+                    self.render_buffers
+                        .env
+                        .renew_init(&line_vertices, "Env", &wgpu_context.device);
 
                     self.render_buffers
                         .paths
@@ -479,8 +487,6 @@ impl<'a>
                 source: wgpu::ShaderSource::Wgsl(include_str!("render/shader.wgsl").into()),
             });
 
-        let render_buffers = RenderBuffers::new(&context.device);
-
         let render_pipeline_layout =
             context
                 .device
@@ -490,68 +496,14 @@ impl<'a>
                     push_constant_ranges: &[],
                 });
 
+        let render_buffers = RenderBuffers::new(context, render_pipeline_layout, shader);
+
         let multisampled_framebuffer = texture::Texture::create_multisampled_framebuffer(
             &context.device,
             &context.surface_config,
             MSAA_SAMPLE_COUNT,
             "multisampled_framebuffer",
         );
-
-        let render_pipeline =
-            context
-                .device
-                .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some("Render Pipeline"),
-                    layout: Some(&render_pipeline_layout),
-                    vertex: wgpu::VertexState {
-                        module: &shader,
-                        entry_point: "vs_main",
-                        buffers: &[Vertex::desc()],
-                        compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    },
-                    fragment: Some(wgpu::FragmentState {
-                        module: &shader,
-                        entry_point: "fs_main",
-                        targets: &[Some(wgpu::ColorTargetState {
-                            format: context.surface_format,
-                            blend: Some(wgpu::BlendState {
-                                color: wgpu::BlendComponent {
-                                    src_factor: wgpu::BlendFactor::SrcAlpha,
-                                    dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                                    operation: wgpu::BlendOperation::Add,
-                                },
-                                alpha: wgpu::BlendComponent::OVER,
-                            }),
-
-                            write_mask: wgpu::ColorWrites::ALL,
-                        })],
-                        compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    }),
-                    primitive: wgpu::PrimitiveState {
-                        topology: wgpu::PrimitiveTopology::TriangleList,
-                        strip_index_format: None,
-                        front_face: wgpu::FrontFace::Cw,
-                        cull_mode: Some(wgpu::Face::Back),
-                        // Requires Features::NON_FILL_POLYGON_MODE
-                        polygon_mode: wgpu::PolygonMode::Fill,
-                        // Requires Features::DEPTH_CLIP_CONTROL
-                        unclipped_depth: false,
-                        // Requires Features::CONSERVATIVE_RASTERIZATION
-                        conservative: false,
-                    },
-                    depth_stencil: Some(wgpu::DepthStencilState {
-                        format: wgpu::TextureFormat::Depth32Float,
-                        depth_write_enabled: true,
-                        depth_compare: wgpu::CompareFunction::Less,
-                        stencil: wgpu::StencilState::default(),
-                        bias: wgpu::DepthBiasState::default(),
-                    }),
-                    multisample: wgpu::MultisampleState {
-                        count: MSAA_SAMPLE_COUNT,
-                        ..Default::default()
-                    },
-                    multiview: None,
-                });
 
         let egui_rpass = egui_wgpu_backend::RenderPass::new(
             &context.device,
@@ -562,7 +514,6 @@ impl<'a>
         (
             (),
             RenderAdapter {
-                render_pipeline,
                 multisampled_framebuffer,
 
                 egui_rpass,
