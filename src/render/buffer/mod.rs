@@ -305,6 +305,7 @@ pub struct DynamicBuffer<T> {
     inner: wgpu::Buffer,
     vertices: Vec<T>,
     render_range: std::ops::Range<u32>,
+    label: String,
 }
 
 impl<T: bytemuck::Pod + bytemuck::Zeroable> DynamicBuffer<T> {
@@ -323,6 +324,7 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable> DynamicBuffer<T> {
             inner,
             vertices: Vec::with_capacity(size),
             render_range: 0..size as u32,
+            label: label.to_string(),
         }
     }
 
@@ -340,18 +342,19 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable> DynamicBuffer<T> {
             inner,
             vertices: data.to_vec(),
             render_range: 0..data.len() as u32,
+            label: label.to_string(),
         }
     }
 
     #[allow(dead_code)]
-    pub fn renew(&mut self, size: usize, label: &str, device: &wgpu::Device)
+    pub fn renew(&mut self, size: usize, device: &wgpu::Device)
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
     {
         self.inner.destroy();
 
         self.inner = device.create_buffer(&BufferDescriptor {
-            label: Some(label),
+            label: Some(&self.label),
             size: (size * std::mem::size_of::<T>()) as BufferAddress,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
@@ -361,14 +364,14 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable> DynamicBuffer<T> {
         self.render_range = 0..size as u32;
     }
 
-    pub fn renew_init(&mut self, data: &[T], label: &str, device: &wgpu::Device)
+    pub fn renew_init(&mut self, data: &[T], device: &wgpu::Device)
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
     {
         self.inner.destroy();
 
         self.inner = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some(label),
+            label: Some(&self.label),
             contents: bytemuck::cast_slice(data),
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
@@ -414,11 +417,11 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable> DynamicBuffer<T> {
     }
 
     #[allow(dead_code)]
-    pub fn read(&self, range: BufferRange) -> Option<&[T]> {
+    pub fn read(&self, range: BufferRange) -> &[T] {
         match range {
-            BufferRange::Full => Some(&self.vertices),
-            BufferRange::OffsetFull(offset) => Some(&self.vertices[offset..]),
-            BufferRange::Range(range) => Some(&self.vertices[range]),
+            BufferRange::Full => &self.vertices,
+            BufferRange::OffsetFull(offset) => &self.vertices[offset..],
+            BufferRange::Range(range) => &self.vertices[range],
         }
     }
 }
@@ -452,10 +455,10 @@ impl MeshKit for DynamicBuffer<Vertex> {
     ) -> Option<super::mesh::MeshHandle> {
         match &mesh {
             super::mesh::CpuMesh::Static { vertices, .. } => {
-                self.renew_init(vertices, "Static Mesh", device);
+                self.renew_init(vertices, device);
             }
             super::mesh::CpuMesh::Interactive { vertices, .. } => {
-                self.renew_init(vertices, "Interactive Mesh", device);
+                self.renew_init(vertices, device);
             }
         }
 

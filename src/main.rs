@@ -117,7 +117,6 @@ async fn main() -> Result<(), EventLoopError> {
 
     let start_time = Instant::now();
     event_loop.run(move |event, loop_target| {
-        // println!("{:?}", event);
         match event.clone() {
             winit::event::Event::WindowEvent {
                 event: winit_event, ..

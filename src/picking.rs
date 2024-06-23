@@ -1,4 +1,3 @@
-use glam::vec3;
 use tokio::task::JoinHandle;
 use winit::event::{DeviceEvent, ElementState, WindowEvent};
 

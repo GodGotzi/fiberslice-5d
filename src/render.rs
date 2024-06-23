@@ -3,9 +3,9 @@ use std::{sync::Arc, time::Instant};
 use buffer::{BufferLocation, RenderBuffers};
 use glam::{Mat4, Vec3};
 use light::LightUniform;
-use mesh::{CpuMesh, MeshKit};
+use mesh::CpuMesh;
 use vertex::Vertex;
-use wgpu::{util::DeviceExt, VertexBufferLayout};
+use wgpu::util::DeviceExt;
 
 use crate::{
     camera::{self, CameraResult, CameraUniform},
@@ -287,19 +287,17 @@ impl<'a>
                         })
                         .collect::<Vec<Vertex>>();
 
-                    self.render_buffers.widgets.renew_init(
-                        &vertex_box,
-                        "Widgets",
-                        &wgpu_context.device,
-                    );
+                    self.render_buffers
+                        .widgets
+                        .renew_init(&vertex_box, &wgpu_context.device);
 
                     self.render_buffers
                         .env
-                        .renew_init(&line_vertices, "Env", &wgpu_context.device);
+                        .renew_init(&line_vertices, &wgpu_context.device);
 
                     self.render_buffers
                         .paths
-                        .renew_init(&vertices, "Paths", &wgpu_context.device);
+                        .renew_init(&vertices, &wgpu_context.device);
 
                     state
                         .proxy
@@ -343,7 +341,7 @@ impl<'a>
 
                     self.render_buffers
                         .env
-                        .renew_init(vertices, "Env", &wgpu_context.device);
+                        .renew_init(vertices, &wgpu_context.device);
 
                     wgpu_context.window.request_redraw();
                 }
