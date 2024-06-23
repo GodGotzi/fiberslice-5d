@@ -7,9 +7,6 @@ use super::{mesh::MeshKit, vertex::Vertex, WgpuContext};
 
 pub mod layout;
 
-const MAX_WIDGETS_VERTICES: usize = 1000;
-const MAX_ENV_VERTICES: usize = 1000;
-
 #[derive(Debug, Clone, Copy)]
 pub enum BufferType {
     Paths,
@@ -309,6 +306,7 @@ pub struct DynamicBuffer<T> {
 }
 
 impl<T: bytemuck::Pod + bytemuck::Zeroable> DynamicBuffer<T> {
+    #[allow(dead_code)]
     pub fn new(size: usize, label: &str, device: &wgpu::Device) -> Self
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
@@ -389,8 +387,13 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable> DynamicBuffer<T> {
             data.iter().cloned(),
         );
 
-        // TODO optimize only write the changed vertices
-        queue.write_buffer(&self.inner, 0, bytemuck::cast_slice(&self.vertices));
+        let offset_bytes = offset as usize * std::mem::size_of::<T>();
+
+        queue.write_buffer(
+            &self.inner,
+            offset_bytes as u64,
+            bytemuck::cast_slice(&self.vertices),
+        );
     }
 
     pub fn change(&mut self, queue: &wgpu::Queue, range: BufferRange, change: impl Fn(&mut T)) {
@@ -399,21 +402,34 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable> DynamicBuffer<T> {
                 for i in 0..self.vertices.len() {
                     change(&mut self.vertices[i]);
                 }
+
+                queue.write_buffer(&self.inner, 0, bytemuck::cast_slice(&self.vertices));
             }
             BufferRange::OffsetFull(offset) => {
                 for i in offset..self.vertices.len() {
                     change(&mut self.vertices[i]);
                 }
+
+                queue.write_buffer(
+                    &self.inner,
+                    offset as u64,
+                    bytemuck::cast_slice(&self.vertices[offset..]),
+                );
             }
             BufferRange::Range(range) => {
                 for i in range.clone() {
                     change(&mut self.vertices[i]);
                 }
+
+                let offset_bytes = range.start * std::mem::size_of::<T>();
+
+                queue.write_buffer(
+                    &self.inner,
+                    offset_bytes as u64,
+                    bytemuck::cast_slice(&self.vertices[range]),
+                );
             }
         }
-
-        // TODO optimize only write the changed vertices
-        queue.write_buffer(&self.inner, 0, bytemuck::cast_slice(&self.vertices));
     }
 
     #[allow(dead_code)]
