@@ -3,6 +3,7 @@ use std::{sync::Arc, time::Instant};
 use buffer::{BufferLocation, RenderBuffers};
 use glam::{Mat4, Vec3};
 use light::LightUniform;
+use log::info;
 use mesh::CpuMesh;
 use vertex::Vertex;
 use wgpu::util::DeviceExt;
@@ -11,8 +12,8 @@ use crate::{
     camera::{self, CameraResult, CameraUniform},
     geometry::SelectBox,
     model::{
-        gcode::{compute_normals, PrintPart, TestContext},
-        mesh::{Lines, Mesh},
+        gcode::{compute_normals, mesh::ProfileCross, PrintPart, TestContext},
+        mesh::{Lines, Mesh, WithOffset},
     },
     prelude::*,
     ui::UiUpdateOutput,
@@ -276,28 +277,57 @@ impl<'a>
 
                     compute_normals(&box_vertices, &mut vertex_box);
 
-                    let line_vertices = SelectBox::from(part.bounding_box)
-                        .to_lines()
-                        .iter()
-                        .map(|vertex| Vertex {
-                            position: vertex.to_array(),
-                            tex_coords: [0.0, 0.0],
-                            normal: [0.0, 0.0, 0.0],
-                            color: [0.0, 0.0, 1.0, 1.0],
-                        })
-                        .collect::<Vec<Vertex>>();
+                    let line_vertices = SelectBox::from(part.bounding_box).to_lines();
 
-                    self.render_buffers
-                        .widgets
-                        .renew_init(&vertex_box, &wgpu_context.device);
+                    let start_profile = ProfileCross::from_direction(
+                        line_vertices[0] - line_vertices[1],
+                        (1.0, 1.0),
+                    )
+                    .with_offset(line_vertices[0]);
+
+                    let end_profile = ProfileCross::from_direction(
+                        line_vertices[0] - line_vertices[1],
+                        (1.0, 1.0),
+                    )
+                    .with_offset(line_vertices[1]);
+
+                    info!("Start: {:?}, end: {:?}", line_vertices[0], line_vertices[1]);
+
+                    info!("Result: {:?}", start_profile);
+                    info!("Result: {:?}", end_profile);
+
+                    let line_vertices = vec![
+                        line_vertices[0],
+                        line_vertices[1],
+                        line_vertices[0],
+                        start_profile.left,
+                        line_vertices[0],
+                        start_profile.right,
+                        line_vertices[1],
+                        end_profile.left,
+                        line_vertices[1],
+                        end_profile.right,
+                    ]
+                    .into_iter()
+                    .map(|vec| Vertex {
+                        position: vec.to_array(),
+                        tex_coords: [0.0, 0.0],
+                        normal: [0.0, 0.0, 0.0],
+                        color: [0.0, 0.0, 1.0, 1.0],
+                    })
+                    .collect::<Vec<Vertex>>();
+
+                    //self.render_buffers
+                    //    .widgets
+                    //    .renew_init(&vertex_box, &wgpu_context.device);
 
                     self.render_buffers
                         .env
                         .renew_init(&line_vertices, &wgpu_context.device);
 
-                    self.render_buffers
-                        .paths
-                        .renew_init(&vertices, &wgpu_context.device);
+                    //self.render_buffers
+                    //    .paths
+                    //    .renew_init(&vertices, &wgpu_context.device);
 
                     state
                         .proxy

@@ -29,30 +29,11 @@ impl ProfileCross {
 
         let vertical = direction.cross(horizontal);
 
-        let normal_vertical = vertical.normalize();
-        let normal_horizontal = horizontal.normalize();
-
         Self {
-            up: vertical.normalize().direct_mul(&vec3(
-                vertical_radius,
-                vertical_radius,
-                vertical_radius,
-            )),
-            down: vertical.normalize().direct_mul(&vec3(
-                -vertical_radius,
-                -vertical_radius,
-                -vertical_radius,
-            )),
-            left: horizontal.normalize().direct_mul(&vec3(
-                horizontal_radius,
-                horizontal_radius,
-                horizontal_radius,
-            )),
-            right: horizontal.normalize().direct_mul(&vec3(
-                -horizontal_radius,
-                -horizontal_radius,
-                -horizontal_radius,
-            )),
+            up: vertical.normalize() * vertical_radius,
+            down: vertical.normalize() * -vertical_radius,
+            left: horizontal.normalize() * horizontal_radius,
+            right: horizontal.normalize() * -horizontal_radius,
         }
     }
 }
