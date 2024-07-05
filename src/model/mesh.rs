@@ -1,5 +1,6 @@
 pub type Vertices = Vec<glam::Vec3>;
 
+// TODO add const number of vertices
 pub trait Mesh {
     fn to_vertices(&self) -> Vertices;
     fn to_vertices_flipped(&self) -> Vertices {
