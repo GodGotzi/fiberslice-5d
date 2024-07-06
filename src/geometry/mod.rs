@@ -1,4 +1,5 @@
 use glam::{vec3, Vec3};
+use mesh::WireMesh;
 
 use crate::model::mesh::{Lines, Mesh};
 
@@ -164,15 +165,15 @@ impl From<BoundingBox> for SelectBox {
     }
 }
 
-impl Mesh for SelectBox {
-    fn to_vertices(&self) -> Vec<Vec3> {
+impl crate::geometry::mesh::Mesh<72> for SelectBox {
+    fn to_triangle_vertices(&self) -> [glam::Vec3; 72] {
         let corner_expansion = 0.2
             * (self.box_.min.x - self.box_.max.x)
                 .abs()
                 .min((self.box_.min.y - self.box_.max.y).abs())
                 .min((self.box_.min.z - self.box_.max.z).abs());
 
-        vec![
+        [
             vec3(self.box_.min.x, self.box_.min.y, self.box_.min.z),
             vec3(
                 self.box_.min.x,
@@ -441,9 +442,9 @@ impl Mesh for SelectBox {
     }
 }
 
-impl Lines for SelectBox {
-    fn to_lines(&self) -> crate::model::mesh::Vertices {
-        vec![
+impl WireMesh<28> for SelectBox {
+    fn to_wire_vertices(&self) -> [glam::Vec3; 28] {
+        [
             vec3(self.box_.min.x, self.box_.min.y, self.box_.min.z),
             vec3(self.box_.max.x, self.box_.min.y, self.box_.min.z),
             vec3(self.box_.min.x, self.box_.min.y, self.box_.min.z),

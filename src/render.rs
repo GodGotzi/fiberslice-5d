@@ -9,11 +9,11 @@ use wgpu::util::DeviceExt;
 
 use crate::{
     camera::{self, CameraResult, CameraUniform},
-    geometry::SelectBox,
-    model::{
-        gcode::{compute_normals, PrintPart, TestContext},
-        mesh::{Lines, Mesh},
+    geometry::{
+        mesh::{Mesh, WireMesh},
+        SelectBox,
     },
+    model::gcode::{compute_normals, PrintPart, TestContext},
     prelude::*,
     ui::UiUpdateOutput,
     GlobalState, RootEvent,
@@ -262,7 +262,7 @@ impl<'a>
                 RenderEvent::AddGCodeToolpath(part) => {
                     let vertices = part.vertices();
 
-                    let box_vertices = SelectBox::from(part.bounding_box).to_vertices();
+                    let box_vertices = SelectBox::from(part.bounding_box).to_triangle_vertices();
 
                     let mut vertex_box = box_vertices
                         .iter()
@@ -277,7 +277,7 @@ impl<'a>
                     compute_normals(&box_vertices, &mut vertex_box);
 
                     let line_vertices = SelectBox::from(part.bounding_box)
-                        .to_lines()
+                        .to_wire_vertices()
                         .iter()
                         .map(|vertex| Vertex {
                             position: vertex.to_array(),
