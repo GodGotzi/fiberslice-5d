@@ -165,6 +165,16 @@ impl From<BoundingBox> for SelectBox {
     }
 }
 
+impl SelectBox {
+    pub const fn traingle_vertex_count() -> usize {
+        72
+    }
+
+    pub const fn wire_vertex_count() -> usize {
+        28
+    }
+}
+
 impl crate::geometry::mesh::Mesh<72> for SelectBox {
     fn to_triangle_vertices(&self) -> [glam::Vec3; 72] {
         let corner_expansion = 0.2

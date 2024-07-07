@@ -11,7 +11,7 @@ use crate::{
     prelude::{Adapter, Error, FrameHandle, SharedMut, WgpuContext},
     render::{
         buffer::BufferLocation,
-        mesh::{CpuMesh, MeshHandle},
+        model::{MeshHandle, Model},
         vertex::Vertex,
     },
     GlobalState, RootEvent,
@@ -100,14 +100,10 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, &CameraResult)> for
 
                             let size = vertices.len();
 
-                            let mesh = CpuMesh::Static {
+                            let mesh = Model::Static {
                                 vertices,
                                 sub_meshes: Vec::new(),
-                                location: BufferLocation {
-                                    offset: 0,
-                                    size: size as u64,
-                                    buffer_type: crate::render::buffer::BufferType::Widgets,
-                                },
+                                location: BufferLocation { offset: 0, size },
                             };
 
                             global_state

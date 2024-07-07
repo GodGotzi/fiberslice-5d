@@ -1,4 +1,4 @@
-use crate::{geometry::BoundingBox, render::mesh::MeshHandle}; // Importing the BoundingBox struct from the geometry module in the crate
+use crate::{geometry::BoundingBox, render::model::MeshHandle}; // Importing the BoundingBox struct from the geometry module in the crate
 
 use super::{
     queue::{HitBoxQueueEntry, HitboxQueue},

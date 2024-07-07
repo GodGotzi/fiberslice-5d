@@ -1,10 +1,18 @@
 /// A vertex is a single point. A geometry is typically composed of multiple vertecies.
+use bytemuck::Zeroable;
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
     pub position: [f32; 3],
     pub normal: [f32; 3],
     pub color: [f32; 4],
+}
+
+impl Default for Vertex {
+    fn default() -> Self {
+        Self::zeroed()
+    }
 }
 
 impl Vertex {

@@ -1,9 +1,13 @@
 use std::{sync::Arc, time::Instant};
 
-use buffer::{BufferLocation, RenderBuffers};
+use buffer::{
+    alloc::BufferDynamicAllocator,
+    layout::{wire::WireAllocator, WidgetAllocator},
+    BufferLocation, DynamicBuffer,
+};
 use glam::{Mat4, Vec3};
 use light::LightUniform;
-use mesh::CpuMesh;
+use model::Model;
 use vertex::Vertex;
 use wgpu::util::DeviceExt;
 
@@ -21,7 +25,7 @@ use crate::{
 
 pub mod buffer;
 pub mod light;
-pub mod mesh;
+pub mod model;
 pub mod texture;
 pub mod vertex;
 
@@ -30,7 +34,7 @@ const MSAA_SAMPLE_COUNT: u32 = 1;
 #[derive(Debug, Clone)]
 pub enum RenderEvent {
     AddGCodeToolpath(PrintPart),
-    LoadMesh(CpuMesh<Vertex>),
+    LoadMesh(Model<Vertex>),
     DebugVertex,
 }
 
@@ -77,6 +81,11 @@ pub struct RenderAdapter {
     egui_rpass: egui_wgpu_backend::RenderPass,
 
     render_buffers: RenderBuffers,
+
+    wire_buffer: DynamicBuffer<Vertex, WireAllocator>,
+    widget_buffer: DynamicBuffer<Vertex, WidgetAllocator>,
+    main_buffer: DynamicBuffer<Vertex, BufferDynamicAllocator>,
+
     render_state: RenderState,
 }
 
@@ -188,7 +197,14 @@ impl<'a>
                             );
                             render_pass.set_bind_group(1, &self.render_state.light_bind_group, &[]);
 
-                            self.render_buffers.render(&mut render_pass);
+                            render_pass.set_pipeline(&self.render_buffers.triangle_back_cull);
+                            self.main_buffer.render(&mut render_pass);
+
+                            render_pass.set_pipeline(&self.render_buffers.triangle_no_cull);
+                            self.widget_buffer.render(&mut render_pass);
+
+                            render_pass.set_pipeline(&self.render_buffers.line);
+                            self.wire_buffer.render(&mut render_pass);
                         }
 
                         self.egui_rpass
@@ -285,17 +301,14 @@ impl<'a>
                         })
                         .collect::<Vec<Vertex>>();
 
-                    self.render_buffers
-                        .widgets
-                        .renew_init(&vertex_box, &wgpu_context.device);
+                    self.main_buffer
+                        .allocate_init(&wgpu_context.device, "entity-1", &vertices);
 
-                    self.render_buffers
-                        .env
-                        .renew_init(&line_vertices, &wgpu_context.device);
+                    self.wire_buffer
+                        .write(&wgpu_context.queue, "select_box", &line_vertices);
 
-                    self.render_buffers
-                        .paths
-                        .renew_init(&vertices, &wgpu_context.device);
+                    self.widget_buffer
+                        .write(&wgpu_context.queue, "select_box", &vertex_box);
 
                     state
                         .proxy
@@ -308,12 +321,8 @@ impl<'a>
                         .proxy
                         .send_event(RootEvent::PickingEvent(
                             crate::picking::PickingEvent::AddInteractiveMesh(
-                                mesh::MeshHandle::Interactive {
-                                    location: BufferLocation {
-                                        offset: 0,
-                                        size: 1,
-                                        buffer_type: buffer::BufferType::Paths,
-                                    },
+                                model::MeshHandle::Interactive {
+                                    location: BufferLocation { offset: 0, size: 1 },
                                     sub_meshes: Vec::new(),
                                     raw_box: part.bounding_box,
                                     context: Arc::new(Box::new(TestContext {})),
@@ -333,8 +342,8 @@ impl<'a>
                 }
                 RenderEvent::LoadMesh(mesh) => {
                     let vertices = match mesh {
-                        CpuMesh::Static { vertices, .. } => vertices,
-                        CpuMesh::Interactive { vertices, .. } => vertices,
+                        Model::Static { vertices, .. } => vertices,
+                        Model::Interactive { vertices, .. } => vertices,
                     };
 
                     self.render_buffers
@@ -507,6 +516,16 @@ impl<'a>
             MSAA_SAMPLE_COUNT,
         );
 
+        let widget_buffer = DynamicBuffer::new(WidgetAllocator, "Widget Buffer", &context.device);
+
+        let wire_buffer = DynamicBuffer::new(WireAllocator, "Wire Buffer", &context.device);
+
+        let main_buffer = DynamicBuffer::new(
+            BufferDynamicAllocator::default(),
+            "Main Buffer",
+            &context.device,
+        );
+
         (
             (),
             RenderAdapter {
@@ -515,6 +534,11 @@ impl<'a>
                 egui_rpass,
 
                 render_buffers,
+
+                wire_buffer,
+                widget_buffer,
+                main_buffer,
+
                 render_state,
             },
         )
@@ -522,5 +546,219 @@ impl<'a>
 
     fn get_adapter_description(&self) -> String {
         "RenderAdapter".to_string()
+    }
+}
+
+pub struct RenderBuffers {
+    pub paths: buffer::RawDynamicBuffer<Vertex>,
+    pub widgets: buffer::RawDynamicBuffer<Vertex>,
+    pub env: buffer::RawDynamicBuffer<Vertex>,
+
+    triangle_back_cull: wgpu::RenderPipeline,
+    triangle_no_cull: wgpu::RenderPipeline,
+    line: wgpu::RenderPipeline,
+}
+
+impl RenderBuffers {
+    pub fn new(
+        wgpu_context: &WgpuContext,
+        render_pipeline_layout: wgpu::PipelineLayout,
+        shader: wgpu::ShaderModule,
+    ) -> Self {
+        let paths =
+            buffer::RawDynamicBuffer::<Vertex>::new_init(&[], "Paths", &wgpu_context.device);
+        let widgets =
+            buffer::RawDynamicBuffer::<Vertex>::new_init(&[], "Widgets", &wgpu_context.device);
+        let env = buffer::RawDynamicBuffer::<Vertex>::new_init(&[], "Env", &wgpu_context.device);
+
+        let triangle_back_cull =
+            wgpu_context
+                .device
+                .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some("Render Pipeline"),
+                    layout: Some(&render_pipeline_layout),
+                    vertex: wgpu::VertexState {
+                        module: &shader,
+                        entry_point: "vs_main",
+                        buffers: &[Vertex::desc()],
+                        compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    },
+                    fragment: Some(wgpu::FragmentState {
+                        module: &shader,
+                        entry_point: "fs_main",
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: wgpu_context.surface_format,
+                            blend: Some(wgpu::BlendState {
+                                color: wgpu::BlendComponent {
+                                    src_factor: wgpu::BlendFactor::SrcAlpha,
+                                    dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                                    operation: wgpu::BlendOperation::Add,
+                                },
+                                alpha: wgpu::BlendComponent::OVER,
+                            }),
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                        compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    }),
+                    primitive: wgpu::PrimitiveState {
+                        topology: wgpu::PrimitiveTopology::TriangleList,
+                        strip_index_format: None,
+                        front_face: wgpu::FrontFace::Cw,
+                        cull_mode: Some(wgpu::Face::Back),
+                        // Requires Features::NON_FILL_POLYGON_MODE
+                        polygon_mode: wgpu::PolygonMode::Fill,
+                        // Requires Features::DEPTH_CLIP_CONTROL
+                        unclipped_depth: false,
+                        // Requires Features::CONSERVATIVE_RASTERIZATION
+                        conservative: false,
+                    },
+                    depth_stencil: Some(wgpu::DepthStencilState {
+                        format: wgpu::TextureFormat::Depth32Float,
+                        depth_write_enabled: true,
+                        depth_compare: wgpu::CompareFunction::Less,
+                        stencil: wgpu::StencilState::default(),
+                        bias: wgpu::DepthBiasState::default(),
+                    }),
+                    multisample: wgpu::MultisampleState {
+                        count: 1,
+                        ..Default::default()
+                    },
+                    multiview: None,
+                });
+
+        let triangle_no_cull =
+            wgpu_context
+                .device
+                .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some("Render Pipeline"),
+                    layout: Some(&render_pipeline_layout),
+                    vertex: wgpu::VertexState {
+                        module: &shader,
+                        entry_point: "vs_main",
+                        buffers: &[Vertex::desc()],
+                        compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    },
+                    fragment: Some(wgpu::FragmentState {
+                        module: &shader,
+                        entry_point: "fs_main",
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: wgpu_context.surface_format,
+                            blend: Some(wgpu::BlendState {
+                                color: wgpu::BlendComponent {
+                                    src_factor: wgpu::BlendFactor::SrcAlpha,
+                                    dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                                    operation: wgpu::BlendOperation::Add,
+                                },
+                                alpha: wgpu::BlendComponent::OVER,
+                            }),
+
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                        compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    }),
+                    primitive: wgpu::PrimitiveState {
+                        topology: wgpu::PrimitiveTopology::TriangleList,
+                        strip_index_format: None,
+                        front_face: wgpu::FrontFace::Cw,
+                        cull_mode: None,
+                        // Requires Features::NON_FILL_POLYGON_MODE
+                        polygon_mode: wgpu::PolygonMode::Fill,
+                        // Requires Features::DEPTH_CLIP_CONTROL
+                        unclipped_depth: false,
+                        // Requires Features::CONSERVATIVE_RASTERIZATION
+                        conservative: false,
+                    },
+                    depth_stencil: Some(wgpu::DepthStencilState {
+                        format: wgpu::TextureFormat::Depth32Float,
+                        depth_write_enabled: true,
+                        depth_compare: wgpu::CompareFunction::Less,
+                        stencil: wgpu::StencilState::default(),
+                        bias: wgpu::DepthBiasState::default(),
+                    }),
+                    multisample: wgpu::MultisampleState {
+                        count: 1,
+                        ..Default::default()
+                    },
+                    multiview: None,
+                });
+
+        let line = wgpu_context
+            .device
+            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("Render Pipeline"),
+                layout: Some(&render_pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: "vs_main",
+                    buffers: &[Vertex::desc()],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: "fs_main",
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: wgpu_context.surface_format,
+                        blend: Some(wgpu::BlendState {
+                            color: wgpu::BlendComponent {
+                                src_factor: wgpu::BlendFactor::SrcAlpha,
+                                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                                operation: wgpu::BlendOperation::Add,
+                            },
+                            alpha: wgpu::BlendComponent::OVER,
+                        }),
+
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::LineList,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Cw,
+                    cull_mode: None,
+                    // Requires Features::NON_FILL_POLYGON_MODE
+                    polygon_mode: wgpu::PolygonMode::Fill,
+                    // Requires Features::DEPTH_CLIP_CONTROL
+                    unclipped_depth: false,
+                    // Requires Features::CONSERVATIVE_RASTERIZATION
+                    conservative: false,
+                },
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: wgpu::TextureFormat::Depth32Float,
+                    depth_write_enabled: true,
+                    depth_compare: wgpu::CompareFunction::Less,
+                    stencil: wgpu::StencilState::default(),
+                    bias: wgpu::DepthBiasState::default(),
+                }),
+                multisample: wgpu::MultisampleState {
+                    count: 1,
+                    ..Default::default()
+                },
+                multiview: None,
+            });
+
+        Self {
+            paths,
+            widgets,
+            env,
+
+            triangle_back_cull,
+            triangle_no_cull,
+            line,
+        }
+    }
+
+    pub fn render<'a, 'b: 'a>(&'b self, render_pass: &'a mut wgpu::RenderPass<'b>) {
+        render_pass.set_pipeline(&self.triangle_back_cull);
+        render_pass.set_vertex_buffer(0, self.paths.inner.slice(..));
+        render_pass.draw(self.paths.render_range.clone(), 0..1);
+
+        render_pass.set_pipeline(&self.triangle_no_cull);
+        render_pass.set_vertex_buffer(0, self.widgets.inner.slice(..));
+        render_pass.draw(self.widgets.render_range.clone(), 0..1);
+
+        render_pass.set_pipeline(&self.line);
+        render_pass.set_vertex_buffer(0, self.env.inner.slice(..));
+        render_pass.draw(self.env.render_range.clone(), 0..1);
     }
 }
