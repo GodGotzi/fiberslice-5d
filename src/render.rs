@@ -30,7 +30,7 @@ const MSAA_SAMPLE_COUNT: u32 = 1;
 #[derive(Debug, Clone)]
 pub enum RenderEvent {
     AddGCodeToolpath(PrintPart),
-    LoadMesh(CpuMesh),
+    LoadMesh(CpuMesh<Vertex>),
     DebugVertex,
 }
 
@@ -268,7 +268,6 @@ impl<'a>
                         .iter()
                         .map(|vertex| Vertex {
                             position: vertex.to_array(),
-                            tex_coords: [0.0, 0.0],
                             normal: [0.0, 0.0, 0.0],
                             color: [0.0, 0.0, 1.0, 1.0],
                         })
@@ -281,7 +280,6 @@ impl<'a>
                         .iter()
                         .map(|vertex| Vertex {
                             position: vertex.to_array(),
-                            tex_coords: [0.0, 0.0],
                             normal: [0.0, 0.0, 0.0],
                             color: [0.0, 0.0, 1.0, 1.0],
                         })

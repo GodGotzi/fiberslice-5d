@@ -93,7 +93,6 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, &CameraResult)> for
                             .into_iter()
                             .map(|vec| Vertex {
                                 position: vec.to_array(),
-                                tex_coords: [0.0, 0.0],
                                 normal: [0.0, 0.0, 1.0],
                                 color: [1.0, 0.0, 0.0, 1.0],
                             })

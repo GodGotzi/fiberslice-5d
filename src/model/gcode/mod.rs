@@ -96,7 +96,6 @@ impl PrintPart {
                 .iter()
                 .map(|v| Vertex {
                     position: v.to_array(),
-                    tex_coords: [0.0, 0.0],
                     normal: v.normalize().to_array(),
                     color: [
                         color.r as f32,

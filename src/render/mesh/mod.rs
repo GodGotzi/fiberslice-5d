@@ -3,14 +3,14 @@ use crate::{geometry::BoundingBox, picking::Pickable, render::buffer::BufferLoca
 use super::{vertex::Vertex, Shared};
 
 #[derive(Debug, Clone)]
-pub enum CpuMesh {
+pub enum CpuMesh<T: bytemuck::Pod + bytemuck::Zeroable + Clone> {
     Static {
-        vertices: Vec<Vertex>,
+        vertices: Vec<T>,
         sub_meshes: Vec<CpuSubMesh>,
         location: BufferLocation,
     },
     Interactive {
-        vertices: Vec<Vertex>,
+        vertices: Vec<T>,
         sub_meshes: Vec<CpuSubMesh>,
         location: BufferLocation,
         raw_box: BoundingBox,
@@ -18,13 +18,17 @@ pub enum CpuMesh {
     },
 }
 
-impl CpuMesh {
+impl<T: bytemuck::Pod + bytemuck::Zeroable + Clone> CpuMesh<T> {
     pub fn location(&self) -> &BufferLocation {
         match self {
             Self::Static { location, .. } => location,
             Self::Interactive { location, .. } => location,
         }
     }
+}
+
+pub trait CpuMeshTrait {
+    fn vertices(&self) -> &Vec<Vertex>;
 }
 
 #[derive(Debug, Clone)]
@@ -73,8 +77,8 @@ impl MeshHandle {
     }
 }
 
-impl From<CpuMesh> for MeshHandle {
-    fn from(mesh: CpuMesh) -> Self {
+impl<T: bytemuck::Pod + bytemuck::Zeroable + Clone> From<CpuMesh<T>> for MeshHandle {
+    fn from(mesh: CpuMesh<T>) -> Self {
         match mesh {
             CpuMesh::Static {
                 sub_meshes,
@@ -137,10 +141,10 @@ impl From<CpuSubMesh> for MeshHandle {
     }
 }
 
-pub trait MeshKit {
-    fn write_mesh(&mut self, queue: &wgpu::Queue, mesh: CpuMesh) -> Option<MeshHandle>;
+pub trait MeshKit<T: bytemuck::Pod + bytemuck::Zeroable + Clone> {
+    fn write_mesh(&mut self, queue: &wgpu::Queue, mesh: CpuMesh<T>) -> Option<MeshHandle>;
 
-    fn init_mesh(&mut self, device: &wgpu::Device, mesh: CpuMesh) -> Option<MeshHandle>;
+    fn init_mesh(&mut self, device: &wgpu::Device, mesh: CpuMesh<T>) -> Option<MeshHandle>;
 
     fn update_mesh(&mut self, queue: &wgpu::Queue, handle: &MeshHandle, vertices: &[Vertex]);
 

@@ -246,11 +246,11 @@ impl RenderBuffers {
     }
 }
 
-impl MeshKit for RenderBuffers {
+impl MeshKit<Vertex> for RenderBuffers {
     fn write_mesh(
         &mut self,
         queue: &wgpu::Queue,
-        mesh: super::CpuMesh,
+        mesh: super::CpuMesh<Vertex>,
     ) -> Option<super::mesh::MeshHandle> {
         match &mesh.location().buffer_type {
             BufferType::Paths => self.paths.write_mesh(queue, mesh),
@@ -262,7 +262,7 @@ impl MeshKit for RenderBuffers {
     fn init_mesh(
         &mut self,
         device: &wgpu::Device,
-        mesh: super::mesh::CpuMesh,
+        mesh: super::mesh::CpuMesh<Vertex>,
     ) -> Option<super::mesh::MeshHandle> {
         match &mesh.location().buffer_type {
             BufferType::Paths => self.paths.init_mesh(device, mesh),
@@ -442,11 +442,11 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable> DynamicBuffer<T> {
     }
 }
 
-impl MeshKit for DynamicBuffer<Vertex> {
+impl MeshKit<Vertex> for DynamicBuffer<Vertex> {
     fn write_mesh(
         &mut self,
         queue: &wgpu::Queue,
-        mesh: super::mesh::CpuMesh,
+        mesh: super::mesh::CpuMesh<Vertex>,
     ) -> Option<super::mesh::MeshHandle> {
         match &mesh {
             super::mesh::CpuMesh::Static {
@@ -467,7 +467,7 @@ impl MeshKit for DynamicBuffer<Vertex> {
     fn init_mesh(
         &mut self,
         device: &wgpu::Device,
-        mesh: super::mesh::CpuMesh,
+        mesh: super::mesh::CpuMesh<Vertex>,
     ) -> Option<super::mesh::MeshHandle> {
         match &mesh {
             super::mesh::CpuMesh::Static { vertices, .. } => {
