@@ -78,32 +78,23 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, &CameraResult)> for
                         if let Some((x, y)) = global_state.ctx.mouse_position {
                             let ray = ray::Ray::from_view(viewport, (x, y), view, proj, eye);
 
-                            let profile =
-                                ProfileCross::from_direction(ray.direction, (1.0 / 2.0, 1.0 / 2.0));
-
-                            let profile_start = profile.with_offset(ray.origin);
-                            let profile_end = profile
-                                .with_offset(ray.origin + (ray.direction.normalize() * -600.0));
-
-                            let vertices: Vec<Vertex> = CuboidConnection::from_profiles(
-                                profile_end.clone(),
-                                profile_start.clone(),
-                            )
-                            .to_vertices()
-                            .into_iter()
-                            .map(|vec| Vertex {
-                                position: vec.to_array(),
-                                normal: [0.0, 0.0, 1.0],
+                            let vertex_start = Vertex {
+                                position: ray.origin.to_array(),
+                                normal: ray.direction.to_array(),
                                 color: [1.0, 0.0, 0.0, 1.0],
-                            })
-                            .collect();
+                            };
 
-                            let size = vertices.len();
+                            let vertex_end = Vertex {
+                                position: (ray.origin + (ray.direction.normalize() * -600.0))
+                                    .to_array(),
+                                normal: ray.direction.to_array(),
+                                color: [1.0, 0.0, 0.0, 1.0],
+                            };
 
                             let mesh = Model::Static {
-                                vertices,
+                                vertices: vec![vertex_start, vertex_end, vertex_start, vertex_end],
                                 sub_meshes: Vec::new(),
-                                location: BufferLocation { offset: 0, size },
+                                location: BufferLocation { offset: 0, size: 2 },
                             };
 
                             global_state
