@@ -303,8 +303,12 @@ impl<'a>
                         })
                         .collect::<Vec<Vertex>>();
 
-                    self.main_buffer
-                        .allocate_init(&wgpu_context.device, "entity-1", &vertices);
+                    self.main_buffer.allocate_init(
+                        &wgpu_context.device,
+                        &wgpu_context.queue,
+                        "entity-1",
+                        &vertices,
+                    );
 
                     self.wire_buffer
                         .write(&wgpu_context.queue, "select_box", &line_vertices);
