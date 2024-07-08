@@ -58,7 +58,7 @@ impl HitboxNode {
                 inner_hitboxes,
                 _box,
             } => {
-                _box.expand(&hitbox.bounding_box());
+                _box.expand(hitbox.bounding_box());
                 inner_hitboxes.push(hitbox);
             }
             // If the hitbox is a Box, do nothing
