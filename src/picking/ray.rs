@@ -1,9 +1,5 @@
 use glam::Vec3;
 
-use crate::geometry::BoundingBox;
-
-pub const EPSILON: f32 = 0.0001;
-
 pub struct Ray {
     pub origin: Vec3,
     pub direction: Vec3,
@@ -49,40 +45,6 @@ impl Ray {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn closest_distance_box(&self, bounding_box: &BoundingBox) -> Option<f32> {
-        // check if ray origin is inside the bounding box
-        if bounding_box.contains(self.origin) {
-            return Some(0.0);
-        }
-
-        let mut min = None;
-
-        for (plane_dir, (a, b, c, d)) in bounding_box.faces_with_edges() {
-            let intersection = self.intersection_plane(plane_dir, a);
-
-            let max_face = a.max(b).max(c).max(d);
-            let min_face = a.min(b).min(c).min(d);
-
-            // check if the intersection point is inside the face with epsilon
-            if (max_face.x + EPSILON) >= intersection.x
-                && intersection.x >= (min_face.x - EPSILON)
-                && (max_face.y + EPSILON) >= intersection.y
-                && intersection.y >= (min_face.y - EPSILON)
-                && (max_face.z + EPSILON) >= intersection.z
-                && intersection.z >= (min_face.z - EPSILON)
-            {
-                let distance = (intersection - self.origin).length();
-                if min.unwrap_or(f32::MAX) > distance || min.is_none() {
-                    min = Some(distance);
-                }
-            }
-        }
-
-        min
-    }
-
-    #[allow(dead_code)]
     pub fn intersection_plane(&self, plane: Vec3, point: Vec3) -> Vec3 {
         let d = plane.dot(self.direction);
         if d.abs() > f32::EPSILON {
@@ -93,46 +55,3 @@ impl Ray {
         }
     }
 }
-
-/*
-
-#[test]
-fn test_ray() {
-    let ray = Ray {
-        origin: Vec3::new(0.0, 0.0, 0.0),
-        direction: Vec3::new(1.0, 1.0, 1.0),
-    };
-
-    let bounding_box = BoundingBox::new(Vec3::new(-1.0, -1.0, -1.0), Vec3::new(1.0, 1.0, 1.0));
-
-    assert!(ray.intersects_box(&bounding_box));
-    assert_eq!(ray.closest_distance_box(&bounding_box), Some(0.0));
-}
-
-#[test]
-fn test_ray2() {
-    let ray = Ray {
-        origin: Vec3::new(0.0, 0.0, 0.0),
-        direction: Vec3::new(1.0, 2.0, 1.0),
-    };
-
-    let bounding_box = BoundingBox::new(Vec3::new(2.0, 60.0, 2.0), Vec3::new(300.0, 300.0, 300.0));
-
-    // assert!(ray.intersects_box(&bounding_box));
-    assert_eq!(ray.closest_distance_box(&bounding_box), Some(73.484695));
-}
-
-#[test]
-fn test_ray3() {
-    let ray = Ray {
-        origin: Vec3::new(0.0, 0.0, 0.0),
-        direction: Vec3::new(1.0, 1.0, 1.0),
-    };
-
-    let bounding_box = BoundingBox::new(Vec3::new(2.0, 2.0, 2.0), Vec3::new(300.0, 300.0, 300.0));
-
-    assert!(ray.intersects_box(&bounding_box));
-    assert_eq!(ray.closest_distance_box(&bounding_box), Some(3.4641016));
-}
-
-*/

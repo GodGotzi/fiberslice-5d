@@ -1,7 +1,7 @@
 use glam::{vec3, Vec3};
 use mesh::WireMesh;
 
-use crate::picking::{hitbox::Hitbox, ray::EPSILON};
+use crate::picking::hitbox::Hitbox;
 
 pub mod mesh;
 
@@ -162,6 +162,8 @@ impl Hitbox for BoundingBox {
 
             let max_face = a.max(b).max(c).max(d);
             let min_face = a.min(b).min(c).min(d);
+
+            const EPSILON: f32 = 0.0001;
 
             // check if the intersection point is inside the face with epsilon
             if (max_face.x + EPSILON) >= intersection.x
