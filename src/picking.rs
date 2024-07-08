@@ -4,10 +4,6 @@ use winit::event::{DeviceEvent, ElementState, WindowEvent};
 use crate::{
     camera::CameraResult,
     geometry::BoundingBox,
-    model::{
-        gcode::mesh::{CuboidConnection, ProfileCross},
-        mesh::{Mesh, WithOffset},
-    },
     prelude::{Adapter, Error, FrameHandle, SharedMut, WgpuContext},
     render::{
         buffer::BufferLocation,
@@ -17,9 +13,9 @@ use crate::{
     GlobalState, RootEvent,
 };
 
-mod hitbox;
+pub mod hitbox;
 mod queue;
-mod ray;
+pub mod ray;
 
 #[derive(Debug, Clone)]
 pub enum PickingEvent {
@@ -169,7 +165,9 @@ impl<'a>
 {
     fn from_context(_wgpu_context: &WgpuContext) -> (PickingState, Self) {
         let state = PickingState {
-            hitbox: SharedMut::from_inner(hitbox::HitboxNode::parent_box(BoundingBox::default())),
+            hitbox: SharedMut::from_inner(hitbox::HitboxNode::parent_box(
+                Box::<BoundingBox>::default(),
+            )),
 
             is_drag_left: false,
             is_drag_right: false,

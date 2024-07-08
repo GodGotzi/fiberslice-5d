@@ -16,6 +16,7 @@ mod api;
 mod camera;
 mod config;
 mod control;
+mod env;
 mod error;
 mod geometry;
 mod model;

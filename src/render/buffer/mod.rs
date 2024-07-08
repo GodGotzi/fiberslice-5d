@@ -1,7 +1,4 @@
-use std::time::Instant;
-
 use alloc::BufferAllocation;
-use log::info;
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     BufferAddress, BufferDescriptor, Device, Queue,
@@ -29,6 +26,7 @@ impl From<BufferLocation> for BufferRange {
     }
 }
 
+#[derive(Debug)]
 pub struct RawDynamicBuffer {
     pub(super) inner: wgpu::Buffer,
     pub(super) render_range: std::ops::Range<u32>,
@@ -205,6 +203,7 @@ impl RawDynamicBuffer {
     }
 }
 
+#[derive(Debug)]
 pub struct DynamicBuffer<T, L> {
     inner: RawDynamicBuffer,
     allocater: Box<L>,

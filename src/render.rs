@@ -35,6 +35,7 @@ const MSAA_SAMPLE_COUNT: u32 = 1;
 pub enum RenderEvent {
     AddGCodeToolpath(PrintPart),
     LoadMesh(Model<Vertex>),
+    Debug(String, Vec<Vec3>),
     DebugVertex,
 }
 
@@ -87,6 +88,8 @@ pub struct RenderAdapter {
     wire_buffer: DynamicBuffer<Vertex, WireAllocator>,
     widget_buffer: DynamicBuffer<Vertex, WidgetAllocator>,
     main_buffer: DynamicBuffer<Vertex, BufferDynamicAllocator>,
+
+    debug_buffer: DynamicBuffer<Vertex, BufferDynamicAllocator>,
 
     render_state: RenderState,
 }
@@ -207,6 +210,7 @@ impl<'a>
 
                             render_pass.set_pipeline(&self.wire_pipline);
                             self.wire_buffer.render(&mut render_pass);
+                            self.debug_buffer.render(&mut render_pass);
                         }
 
                         self.egui_rpass
@@ -360,7 +364,27 @@ impl<'a>
 
                     wgpu_context.window.request_redraw();
                 }
+                RenderEvent::Debug(name, vertices) => {
+                    let data = vertices
+                        .iter()
+                        .map(|v| Vertex {
+                            position: v.to_array(),
+                            normal: [0.0, 0.0, 0.0],
+                            color: [1.0, 0.0, 0.0, 1.0],
+                        })
+                        .collect::<Vec<Vertex>>();
 
+                    // compute_normals(vertices, &mut data);
+
+                    self.debug_buffer.allocate_init(
+                        name,
+                        &data,
+                        &wgpu_context.device,
+                        &wgpu_context.queue,
+                    );
+
+                    wgpu_context.window.request_redraw();
+                }
                 RenderEvent::DebugVertex => {
                     wgpu_context.window.request_redraw();
                 }
@@ -524,6 +548,12 @@ impl<'a>
             &context.device,
         );
 
+        let debug_buffer = DynamicBuffer::new(
+            BufferDynamicAllocator::default(),
+            "Debug Buffer",
+            &context.device,
+        );
+
         (
             (),
             RenderAdapter {
@@ -556,6 +586,7 @@ impl<'a>
                 wire_buffer,
                 widget_buffer,
                 main_buffer,
+                debug_buffer,
 
                 render_state,
             },

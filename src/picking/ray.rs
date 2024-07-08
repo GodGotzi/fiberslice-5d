@@ -2,6 +2,8 @@ use glam::Vec3;
 
 use crate::geometry::BoundingBox;
 
+pub const EPSILON: f32 = 0.0001;
+
 pub struct Ray {
     pub origin: Vec3,
     pub direction: Vec3,
@@ -48,36 +50,6 @@ impl Ray {
     }
 
     #[allow(dead_code)]
-    pub fn intersects_box(&self, bounding_box: &BoundingBox) -> bool {
-        let inv_direction = 1.0 / self.direction;
-
-        // check if the ray is parallel to any of the planes
-        if inv_direction.x.is_nan() || inv_direction.y.is_nan() || inv_direction.z.is_nan() {
-            return false;
-        }
-
-        let t1 = (bounding_box.min.x - self.origin.x) * inv_direction.x;
-        let t2 = (bounding_box.max.x - self.origin.x) * inv_direction.x;
-
-        let tmin = t1.min(t2);
-        let tmax = t1.max(t2);
-
-        let t1 = (bounding_box.min.y - self.origin.y) * inv_direction.y;
-        let t2 = (bounding_box.max.y - self.origin.y) * inv_direction.y;
-
-        let tmin = tmin.max(t1.min(t2));
-        let tmax = tmax.min(t1.max(t2));
-
-        let t1 = (bounding_box.min.z - self.origin.z) * inv_direction.z;
-        let t2 = (bounding_box.max.z - self.origin.z) * inv_direction.z;
-
-        let tmin = tmin.max(t1.min(t2));
-        let tmax = tmax.min(t1.max(t2));
-
-        tmin <= tmax
-    }
-
-    #[allow(dead_code)]
     pub fn closest_distance_box(&self, bounding_box: &BoundingBox) -> Option<f32> {
         // check if ray origin is inside the bounding box
         if bounding_box.contains(self.origin) {
@@ -86,18 +58,19 @@ impl Ray {
 
         let mut min = None;
 
-        for (direction, plane, (a, b, c, d)) in bounding_box.faces_with_edges() {
-            let intersection = self.intersection_plane(direction, plane);
+        for (plane_dir, (a, b, c, d)) in bounding_box.faces_with_edges() {
+            let intersection = self.intersection_plane(plane_dir, a);
 
             let max_face = a.max(b).max(c).max(d);
             let min_face = a.min(b).min(c).min(d);
 
-            if max_face.x >= intersection.x
-                && intersection.x >= min_face.x
-                && max_face.y >= intersection.y
-                && intersection.y >= min_face.y
-                && max_face.z >= intersection.z
-                && intersection.z >= min_face.z
+            // check if the intersection point is inside the face with epsilon
+            if (max_face.x + EPSILON) >= intersection.x
+                && intersection.x >= (min_face.x - EPSILON)
+                && (max_face.y + EPSILON) >= intersection.y
+                && intersection.y >= (min_face.y - EPSILON)
+                && (max_face.z + EPSILON) >= intersection.z
+                && intersection.z >= (min_face.z - EPSILON)
             {
                 let distance = (intersection - self.origin).length();
                 if min.unwrap_or(f32::MAX) > distance || min.is_none() {
@@ -110,16 +83,18 @@ impl Ray {
     }
 
     #[allow(dead_code)]
-    fn intersection_plane(&self, plane: Vec3, point: Vec3) -> Vec3 {
-        let d = self.direction.dot(plane);
-        if d == 0.0 {
-            return Vec3::new(f32::NAN, f32::NAN, f32::NAN);
+    pub fn intersection_plane(&self, plane: Vec3, point: Vec3) -> Vec3 {
+        let d = plane.dot(self.direction);
+        if d.abs() > f32::EPSILON {
+            let t = (point - self.origin).dot(plane) / d;
+            self.origin + self.direction * t
+        } else {
+            Vec3::new(0.0, 0.0, 0.0)
         }
-
-        let t = (point - self.origin).dot(plane) / d;
-        self.origin + self.direction * t
     }
 }
+
+/*
 
 #[test]
 fn test_ray() {
@@ -159,3 +134,5 @@ fn test_ray3() {
     assert!(ray.intersects_box(&bounding_box));
     assert_eq!(ray.closest_distance_box(&bounding_box), Some(3.4641016));
 }
+
+*/

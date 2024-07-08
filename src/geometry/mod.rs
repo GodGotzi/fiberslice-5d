@@ -1,7 +1,7 @@
 use glam::{vec3, Vec3};
 use mesh::WireMesh;
 
-use crate::model::mesh::{Lines, Mesh};
+use crate::picking::{hitbox::Hitbox, ray::EPSILON};
 
 pub mod mesh;
 
@@ -86,11 +86,10 @@ impl BoundingBox {
         ]
     }
 
-    pub fn faces_with_edges(&self) -> [(Vec3, Vec3, (Vec3, Vec3, Vec3, Vec3)); 6] {
+    pub fn faces_with_edges(&self) -> [(Vec3, (Vec3, Vec3, Vec3, Vec3)); 6] {
         [
             (
                 Vec3::new(1.0, 0.0, 0.0),
-                self.max,
                 (
                     Vec3::new(self.max.x, self.max.y, self.max.z),
                     Vec3::new(self.max.x, self.min.y, self.max.z),
@@ -100,7 +99,6 @@ impl BoundingBox {
             ),
             (
                 Vec3::new(-1.0, 0.0, 0.0),
-                self.min,
                 (
                     Vec3::new(self.min.x, self.max.y, self.max.z),
                     Vec3::new(self.min.x, self.min.y, self.max.z),
@@ -110,7 +108,6 @@ impl BoundingBox {
             ),
             (
                 Vec3::new(0.0, 1.0, 0.0),
-                self.max,
                 (
                     Vec3::new(self.max.x, self.max.y, self.max.z),
                     Vec3::new(self.min.x, self.max.y, self.max.z),
@@ -120,7 +117,6 @@ impl BoundingBox {
             ),
             (
                 Vec3::new(0.0, -1.0, 0.0),
-                self.min,
                 (
                     Vec3::new(self.max.x, self.min.y, self.max.z),
                     Vec3::new(self.min.x, self.min.y, self.max.z),
@@ -130,7 +126,6 @@ impl BoundingBox {
             ),
             (
                 Vec3::new(0.0, 0.0, 1.0),
-                self.max,
                 (
                     Vec3::new(self.max.x, self.max.y, self.max.z),
                     Vec3::new(self.min.x, self.max.y, self.max.z),
@@ -140,7 +135,6 @@ impl BoundingBox {
             ),
             (
                 Vec3::new(0.0, 0.0, -1.0),
-                self.min,
                 (
                     Vec3::new(self.max.x, self.max.y, self.min.z),
                     Vec3::new(self.min.x, self.max.y, self.min.z),
@@ -150,6 +144,69 @@ impl BoundingBox {
             ),
         ]
     }
+}
+
+impl Hitbox for BoundingBox {
+    fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
+        if self.contains(ray.origin) {
+            println!("PickingAdapter: Ray origin is inside the bounding box");
+            return Some(0.0);
+        }
+
+        println!("PickingAdapter: Ray origin is outside the bounding box");
+
+        let mut min = None;
+
+        for (plane_dir, (a, b, c, d)) in self.faces_with_edges() {
+            let intersection = ray.intersection_plane(plane_dir, a);
+
+            let max_face = a.max(b).max(c).max(d);
+            let min_face = a.min(b).min(c).min(d);
+
+            // check if the intersection point is inside the face with epsilon
+            if (max_face.x + EPSILON) >= intersection.x
+                && intersection.x >= (min_face.x - EPSILON)
+                && (max_face.y + EPSILON) >= intersection.y
+                && intersection.y >= (min_face.y - EPSILON)
+                && (max_face.z + EPSILON) >= intersection.z
+                && intersection.z >= (min_face.z - EPSILON)
+            {
+                let distance = (intersection - ray.origin).length();
+                if min.unwrap_or(f32::MAX) > distance || min.is_none() {
+                    min = Some(distance);
+                }
+            }
+        }
+
+        min
+    }
+
+    fn expand(&mut self, _box: &Box<dyn Hitbox>) {
+        self.min = self.min.min(_box.min());
+        self.max = self.max.max(_box.max());
+    }
+
+    fn min(&self) -> Vec3 {
+        self.min
+    }
+
+    fn max(&self) -> Vec3 {
+        self.max
+    }
+}
+
+pub struct Quad {
+    pub min: Vec3,
+    pub max: Vec3,
+}
+
+pub struct SlimBox {
+    front: Quad,
+    back: Quad,
+    left: Quad,
+    right: Quad,
+    top: Quad,
+    bottom: Quad,
 }
 
 pub struct SelectBox {
