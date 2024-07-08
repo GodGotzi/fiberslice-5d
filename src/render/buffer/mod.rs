@@ -1,4 +1,7 @@
+use std::time::Instant;
+
 use alloc::BufferAllocation;
+use log::info;
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     BufferAddress, BufferDescriptor, Device, Queue,
@@ -35,7 +38,6 @@ pub struct RawDynamicBuffer {
 }
 
 impl RawDynamicBuffer {
-    #[allow(dead_code)]
     pub fn new<T>(size: usize, label: &str, device: &wgpu::Device) -> Self
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
@@ -58,6 +60,7 @@ impl RawDynamicBuffer {
         }
     }
 
+    #[allow(dead_code)]
     pub fn new_init<T>(data: &[T], label: &str, device: &wgpu::Device) -> Self
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
@@ -80,7 +83,7 @@ impl RawDynamicBuffer {
     }
 
     #[allow(dead_code)]
-    pub fn allocate_data<T>(&mut self, size: usize, device: &wgpu::Device, queue: &wgpu::Queue)
+    pub fn allocate<T>(&mut self, size: usize, device: &wgpu::Device, queue: &wgpu::Queue)
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
     {
@@ -110,7 +113,7 @@ impl RawDynamicBuffer {
         self.render_range = 0..self.size as u32;
     }
 
-    pub fn add_data<T>(&mut self, data: &[T], device: &wgpu::Device, queue: &wgpu::Queue)
+    pub fn append<T>(&mut self, data: &[T], device: &wgpu::Device, queue: &wgpu::Queue)
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
     {
@@ -140,6 +143,54 @@ impl RawDynamicBuffer {
 
         self.size += data.len() as BufferAddress;
         self.render_range = 0..self.size as u32;
+    }
+
+    pub fn free<T>(
+        &mut self,
+        offset: usize,
+        size: usize,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) where
+        T: bytemuck::Pod + bytemuck::Zeroable,
+    {
+        let now = Instant::now();
+        let old_bytes = self.size * std::mem::size_of::<T>() as BufferAddress;
+
+        let buffer = device.create_buffer(&BufferDescriptor {
+            label: Some(&self.label),
+            size: old_bytes - (size * std::mem::size_of::<T>()) as BufferAddress,
+            usage: wgpu::BufferUsages::VERTEX
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let byte_offset = offset * std::mem::size_of::<T>();
+        let byte_size_to_free = size * std::mem::size_of::<T>();
+
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Buffer Copy Encoder"),
+        });
+        encoder.copy_buffer_to_buffer(&self.inner, 0, &buffer, 0, byte_offset as BufferAddress);
+        encoder.copy_buffer_to_buffer(
+            &self.inner,
+            (byte_offset + byte_size_to_free) as BufferAddress,
+            &buffer,
+            byte_offset as BufferAddress,
+            old_bytes - (byte_offset + byte_size_to_free) as BufferAddress,
+        );
+
+        queue.submit(std::iter::once(encoder.finish()));
+
+        self.inner.destroy();
+
+        self.inner = buffer;
+
+        self.size -= size as BufferAddress;
+        self.render_range = 0..self.size as u32;
+
+        info!("Freeing took: {:?}", now.elapsed());
     }
 
     pub fn write<T>(&mut self, queue: &wgpu::Queue, offset: usize, data: &[T])
@@ -198,49 +249,50 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable, L: alloc::BufferAlloc<T>> DynamicBuf
 }
 
 impl<T: bytemuck::Pod + bytemuck::Zeroable, L: alloc::BufferDynamicAlloc<T>> DynamicBuffer<T, L> {
+    #[allow(dead_code)]
     pub fn allocate(
         &mut self,
-        device: &Device,
-        queue: &Queue,
         id: &str,
         size: usize,
+        device: &Device,
+        queue: &Queue,
     ) -> &BufferAllocation
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
     {
         self.allocater.allocate(id, size);
 
-        self.inner
-            .add_data(&vec![T::zeroed(); self.allocater.size()], device, queue);
+        self.inner.allocate::<T>(size, device, queue);
 
         self.allocater.get(id).unwrap()
     }
 
     pub fn allocate_init(
         &mut self,
-        device: &Device,
-        queue: &Queue,
         id: &str,
         data: &[T],
+        device: &Device,
+        queue: &Queue,
     ) -> &BufferAllocation
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
     {
         self.allocater.allocate(id, data.len());
 
-        self.inner.add_data(data, device, queue);
+        self.inner.append(data, device, queue);
 
         self.allocater.get(id).unwrap()
     }
 
-    pub fn free(&mut self, device: &Device, queue: &Queue, id: &str) {
-        /*
-                if let Some(allocation) = self.allocater.get(id) {
-            let mut current_data: Vec<T> = self.inner.read(BufferRange::Full).to_vec();
-            current_data.drain(allocation.offset..(allocation.offset + allocation.size));
+    pub fn free(&mut self, id: &str, device: &Device, queue: &Queue) {
+        if let Some(allocation) = self.allocater.get(id) {
+            // let mut current_data: Vec<T> = self.inner.read(BufferRange::Full).to_vec();
+            // current_data.drain(allocation.offset..(allocation.offset + allocation.size));
 
-            self.inner.renew_init(&current_data, device, queue);
+            // self.inner.renew_init(&current_data, device, queue);
+
+            self.inner
+                .free::<T>(allocation.offset, allocation.size, device, queue);
         }
-        */
     }
 }

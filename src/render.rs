@@ -303,11 +303,14 @@ impl<'a>
                         })
                         .collect::<Vec<Vertex>>();
 
+                    self.main_buffer
+                        .free("entity-1", &wgpu_context.device, &wgpu_context.queue);
+
                     self.main_buffer.allocate_init(
-                        &wgpu_context.device,
-                        &wgpu_context.queue,
                         "entity-1",
                         &vertices,
+                        &wgpu_context.device,
+                        &wgpu_context.queue,
                     );
 
                     self.wire_buffer
