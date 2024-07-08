@@ -154,7 +154,6 @@ impl RawDynamicBuffer {
     ) where
         T: bytemuck::Pod + bytemuck::Zeroable,
     {
-        let now = Instant::now();
         let old_bytes = self.size * std::mem::size_of::<T>() as BufferAddress;
 
         let buffer = device.create_buffer(&BufferDescriptor {
@@ -189,8 +188,6 @@ impl RawDynamicBuffer {
 
         self.size -= size as BufferAddress;
         self.render_range = 0..self.size as u32;
-
-        info!("Freeing took: {:?}", now.elapsed());
     }
 
     pub fn write<T>(&mut self, queue: &wgpu::Queue, offset: usize, data: &[T])
