@@ -258,21 +258,21 @@ impl Mesh<12> for PathConnectionMesh {
     fn to_triangle_vertices(&self) -> [Vertex; 12] {
         construct_triangle_vertices(
             [
-                self.profile_start.up,
-                self.profile_end.right,
                 self.profile_start.right,
+                self.profile_end.right,
+                self.profile_start.up,
                 // asdasd
                 self.profile_start.down,
                 self.profile_start.right,
                 self.profile_end.right,
                 // asdasd
+                self.profile_start.left,
+                self.profile_end.left,
                 self.profile_start.down,
-                self.profile_end.left,
-                self.profile_start.left,
                 // asdasd
-                self.profile_start.up,
-                self.profile_start.left,
                 self.profile_end.left,
+                self.profile_start.left,
+                self.profile_start.up,
             ],
             self.color.unwrap_or(Vec4::new(0.0, 0.0, 0.0, 1.0)),
         )

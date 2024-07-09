@@ -77,7 +77,7 @@ impl PrintPart {
 
             lines.extend(modul.lines.clone());
 
-            let (mut modul_vertices, model) = modul.to_vertices(display_settings);
+            let (modul_vertices, model) = modul.to_vertices(display_settings);
 
             bounding_box.expand(model.borrow().hitbox().unwrap());
             models.push(model);

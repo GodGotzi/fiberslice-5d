@@ -76,7 +76,7 @@ impl WgpuContext<'_> {
             &wgpu::DeviceDescriptor {
                 required_features: wgpu::Features::default(),
                 required_limits: wgpu::Limits {
-                    max_buffer_size: 1024 * 1024 * 1024,
+                    max_buffer_size: u32::MAX as u64,
                     ..Default::default()
                 },
                 label: None,
