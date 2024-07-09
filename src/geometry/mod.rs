@@ -40,23 +40,13 @@ impl BoundingBox {
     }
 
     pub fn expand(&mut self, other: &Self) {
-        self.max.x = self.max.x.max(other.max.x);
-        self.max.y = self.max.y.max(other.max.y);
-        self.max.z = self.max.z.max(other.max.z);
-
-        self.min.x = self.min.x.min(other.min.x);
-        self.min.y = self.min.y.min(other.min.y);
-        self.min.z = self.min.z.min(other.min.z);
+        self.min = self.min.min(other.min);
+        self.max = self.max.max(other.max);
     }
 
     pub fn expand_point(&mut self, point: Vec3) {
-        self.max.x = self.max.x.max(point.x);
-        self.max.y = self.max.y.max(point.y);
-        self.max.z = self.max.z.max(point.z);
-
-        self.min.x = self.min.x.min(point.x);
-        self.min.y = self.min.y.min(point.y);
-        self.min.z = self.min.z.min(point.z);
+        self.min = self.min.min(point);
+        self.max = self.max.max(point);
     }
 
     pub fn contains(&self, point: Vec3) -> bool {
