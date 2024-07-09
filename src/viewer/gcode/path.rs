@@ -2,9 +2,7 @@ use std::collections::HashMap;
 
 use glam::{vec3, Vec3};
 
-use crate::{
-    api::math::Average, geometry::BoundingBox, model::mesh::Mesh, slicer::print_type::PrintType,
-};
+use crate::{api::math::Average, geometry::BoundingBox, slicer::print_type::PrintType};
 
 use super::{instruction::InstructionType, movement, state::State, GCode};
 
@@ -18,16 +16,6 @@ pub struct Line {
 impl Line {
     pub fn direction(&self) -> Vec3 {
         self.end - self.start
-    }
-}
-
-impl Mesh for Line {
-    fn to_vertices(&self) -> crate::model::mesh::Vertices {
-        vec![self.start, self.end]
-    }
-
-    fn to_vertices_flipped(&self) -> crate::model::mesh::Vertices {
-        vec![self.end, self.start]
     }
 }
 

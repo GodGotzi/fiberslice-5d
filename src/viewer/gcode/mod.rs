@@ -1,8 +1,8 @@
-use std::{collections::HashMap, fmt::Debug, ops::Bound, str::Lines};
+use std::{collections::HashMap, fmt::Debug, str::Lines};
 
 use glam::Vec3;
 
-use crate::{geometry::SelectBox, picking::Pickable, render::vertex::Vertex};
+use crate::{picking::Pickable, render::vertex::Vertex};
 
 use self::{
     instruction::{InstructionModul, InstructionType},
@@ -12,8 +12,6 @@ use self::{
 };
 
 use crate::geometry::BoundingBox;
-
-use super::mesh::Mesh;
 
 pub mod instruction;
 pub mod mesh;

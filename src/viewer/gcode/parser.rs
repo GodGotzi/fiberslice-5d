@@ -78,7 +78,7 @@ fn compute_instruction(
 
             compute_parameters(parameters, &mut child_instructions, &mut movements, index)?;
 
-            let instruction = crate::model::gcode::instruction::Instruction::new(
+            let instruction = super::instruction::Instruction::new(
                 main_instruction,
                 child_instructions,
                 movements,

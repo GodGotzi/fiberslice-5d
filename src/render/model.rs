@@ -1,6 +1,9 @@
-use crate::{geometry::BoundingBox, picking::Pickable, render::buffer::BufferLocation};
+use crate::{
+    picking::{hitbox::Hitbox, Pickable},
+    render::buffer::BufferLocation,
+};
 
-use super::Shared;
+use super::{Shared, SharedMut};
 
 #[derive(Debug, Clone)]
 pub enum Model<T: bytemuck::Pod + bytemuck::Zeroable + Clone> {
@@ -13,7 +16,7 @@ pub enum Model<T: bytemuck::Pod + bytemuck::Zeroable + Clone> {
         vertices: Vec<T>,
         sub_meshes: Vec<SubModel>,
         location: BufferLocation,
-        raw_box: BoundingBox,
+        raw_box: SharedMut<Box<dyn Hitbox>>,
         context: Shared<Box<dyn Pickable>>,
     },
 }
@@ -36,7 +39,7 @@ pub enum SubModel {
     Interactive {
         sub_meshes: Vec<SubModel>,
         location: BufferLocation,
-        raw_box: BoundingBox,
+        raw_box: SharedMut<Box<dyn Hitbox>>,
         context: Shared<Box<dyn Pickable>>,
     },
 }
@@ -59,7 +62,7 @@ pub enum MeshHandle {
     Interactive {
         location: BufferLocation,
         sub_meshes: Vec<MeshHandle>,
-        raw_box: BoundingBox,
+        raw_box: SharedMut<Box<dyn Hitbox>>,
         context: Shared<Box<dyn Pickable>>,
     },
 }

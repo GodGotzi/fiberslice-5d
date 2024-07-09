@@ -19,7 +19,6 @@ mod control;
 mod env;
 mod error;
 mod geometry;
-mod model;
 mod picking;
 mod prelude;
 mod render;
@@ -28,7 +27,7 @@ mod shortcut;
 mod slicer;
 mod tools;
 mod ui;
-
+mod viewer;
 mod window;
 
 use winit::{

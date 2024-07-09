@@ -5,15 +5,14 @@ use nfde::Nfd;
 use nfde::SingleFileDialogBuilder;
 
 use crate::config;
-use crate::model::gcode;
-use crate::model::gcode::DisplaySettings;
-use crate::model::gcode::MeshSettings;
 use crate::render;
-use crate::ui;
 use crate::ui::boundary::Boundary;
 use crate::ui::Component;
 use crate::ui::ComponentState;
 use crate::ui::UiState;
+use crate::viewer::gcode;
+use crate::viewer::gcode::DisplaySettings;
+use crate::viewer::gcode::MeshSettings;
 use crate::GlobalState;
 use crate::RootEvent;
 

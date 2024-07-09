@@ -17,9 +17,9 @@ use crate::{
         mesh::{Mesh, WireMesh},
         SelectBox,
     },
-    model::gcode::{compute_normals, PrintPart, TestContext},
     prelude::*,
     ui::UiUpdateOutput,
+    viewer::gcode::{compute_normals, PrintPart, TestContext},
     GlobalState, RootEvent,
 };
 
@@ -337,7 +337,7 @@ impl<'a>
                                 model::MeshHandle::Interactive {
                                     location: BufferLocation { offset: 0, size: 1 },
                                     sub_meshes: Vec::new(),
-                                    raw_box: part.bounding_box,
+                                    raw_box: SharedMut::from_inner(Box::new(part.bounding_box)),
                                     context: Arc::new(Box::new(TestContext {})),
                                 },
                             ),

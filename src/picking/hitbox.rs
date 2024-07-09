@@ -1,15 +1,15 @@
 use glam::Vec3;
 
-use crate::render::model::MeshHandle; // Importing the BoundingBox struct from the geometry module in the crate
+use crate::{prelude::SharedMut, render::model::MeshHandle}; // Importing the BoundingBox struct from the geometry module in the crate
 
 use super::{
     queue::{HitBoxQueueEntry, HitboxQueue},
     ray::Ray,
 };
 
-pub trait Hitbox: std::fmt::Debug {
+pub trait Hitbox: std::fmt::Debug + Send + Sync {
     fn check_hit(&self, ray: &Ray) -> Option<f32>;
-    fn expand(&mut self, _box: &Box<dyn Hitbox>);
+    fn expand(&mut self, _box: &SharedMut<Box<dyn Hitbox>>);
     fn min(&self) -> Vec3;
     fn max(&self) -> Vec3;
 }
@@ -23,11 +23,11 @@ pub enum HitboxNode {
     // Variant for parent boxes containing other hitboxes and a bounding box
     ParentBox {
         inner_hitboxes: Vec<HitboxNode>,
-        _box: Box<dyn Hitbox>,
+        _box: SharedMut<Box<dyn Hitbox>>,
     },
     // Variant for individual boxes with a bounding box and an id
     Box {
-        _box: Box<dyn Hitbox>,
+        _box: SharedMut<Box<dyn Hitbox>>,
         interactive_mesh: MeshHandle,
     },
 }
@@ -35,7 +35,7 @@ pub enum HitboxNode {
 // Implementation of methods for HitboxNode
 impl HitboxNode {
     // Constructor method for creating a parent box
-    pub fn parent_box(_box: Box<dyn Hitbox>) -> Self {
+    pub fn parent_box(_box: SharedMut<Box<dyn Hitbox>>) -> Self {
         HitboxNode::ParentBox {
             inner_hitboxes: Vec::new(),
             _box,
@@ -43,7 +43,7 @@ impl HitboxNode {
     }
 
     // Constructor method for creating a box with an id
-    pub fn box_(_box: Box<dyn Hitbox>, mesh: MeshHandle) -> Self {
+    pub fn box_(_box: SharedMut<Box<dyn Hitbox>>, mesh: MeshHandle) -> Self {
         HitboxNode::Box {
             interactive_mesh: mesh,
             _box,
@@ -58,7 +58,7 @@ impl HitboxNode {
                 inner_hitboxes,
                 _box,
             } => {
-                _box.expand(hitbox.bounding_box());
+                _box.write().expand(hitbox._box());
                 inner_hitboxes.push(hitbox);
             }
             // If the hitbox is a Box, do nothing
@@ -67,7 +67,7 @@ impl HitboxNode {
     }
 
     // Method to get the bounding box of a hitbox node
-    pub fn bounding_box(&self) -> &Box<dyn Hitbox> {
+    pub fn _box(&self) -> &SharedMut<Box<dyn Hitbox>> {
         match self {
             HitboxNode::ParentBox { _box, .. } => _box,
             HitboxNode::Box { _box, .. } => _box,
@@ -77,7 +77,7 @@ impl HitboxNode {
     pub fn check_hit(&self, ray: &Ray) -> Option<&MeshHandle> {
         let mut queue = HitboxQueue::new(); // Creating a new HitboxQueue
 
-        let distance = self.bounding_box().check_hit(ray);
+        let distance = self._box().read().check_hit(ray);
         if let Some(distance) = distance {
             queue.push(HitBoxQueueEntry {
                 hitbox: self,
@@ -91,7 +91,7 @@ impl HitboxNode {
                 HitboxNode::ParentBox { inner_hitboxes, .. } => {
                     // If it intersects, recursively check inner hitboxes
                     for hitbox in inner_hitboxes {
-                        let distance = self.bounding_box().check_hit(ray);
+                        let distance = self._box().read().check_hit(ray);
                         if let Some(distance) = distance {
                             queue.push(HitBoxQueueEntry { hitbox, distance });
                         }
@@ -116,7 +116,7 @@ impl From<MeshHandle> for HitboxNode {
     fn from(mesh: MeshHandle) -> Self {
         match &mesh {
             MeshHandle::Static { .. } => panic!("Static mesh cannot be converted to hitbox"),
-            MeshHandle::Interactive { raw_box, .. } => HitboxNode::box_(Box::new(*raw_box), mesh),
+            MeshHandle::Interactive { raw_box, .. } => HitboxNode::box_(raw_box.clone(), mesh),
         }
     }
 }
