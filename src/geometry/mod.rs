@@ -5,6 +5,12 @@ use crate::picking::hitbox::Hitbox;
 
 pub mod mesh;
 
+pub struct QuadFace {
+    pub normal: Vec3,
+    pub min: Vec3,
+    pub max: Vec3,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct BoundingBox {
     pub max: Vec3,
@@ -62,86 +68,38 @@ impl BoundingBox {
             && point.z <= self.max.z
     }
 
-    pub fn corners(&self) -> [Vec3; 8] {
+    pub fn faces(&self) -> [QuadFace; 6] {
         [
-            Vec3::new(self.min.x, self.min.y, self.min.z),
-            Vec3::new(self.min.x, self.min.y, self.max.z),
-            Vec3::new(self.min.x, self.max.y, self.min.z),
-            Vec3::new(self.min.x, self.max.y, self.max.z),
-            Vec3::new(self.max.x, self.min.y, self.min.z),
-            Vec3::new(self.max.x, self.min.y, self.max.z),
-            Vec3::new(self.max.x, self.max.y, self.min.z),
-            Vec3::new(self.max.x, self.max.y, self.max.z),
-        ]
-    }
-
-    pub fn planes(&self) -> [(Vec3, Vec3); 6] {
-        [
-            (Vec3::new(1.0, 0.0, 0.0), self.max),
-            (Vec3::new(-1.0, 0.0, 0.0), self.min),
-            (Vec3::new(0.0, 1.0, 0.0), self.max),
-            (Vec3::new(0.0, -1.0, 0.0), self.min),
-            (Vec3::new(0.0, 0.0, 1.0), self.max),
-            (Vec3::new(0.0, 0.0, -1.0), self.min),
-        ]
-    }
-
-    pub fn faces_with_edges(&self) -> [(Vec3, (Vec3, Vec3, Vec3, Vec3)); 6] {
-        [
-            (
-                Vec3::new(1.0, 0.0, 0.0),
-                (
-                    Vec3::new(self.max.x, self.max.y, self.max.z),
-                    Vec3::new(self.max.x, self.min.y, self.max.z),
-                    Vec3::new(self.max.x, self.min.y, self.min.z),
-                    Vec3::new(self.max.x, self.max.y, self.min.z),
-                ),
-            ),
-            (
-                Vec3::new(-1.0, 0.0, 0.0),
-                (
-                    Vec3::new(self.min.x, self.max.y, self.max.z),
-                    Vec3::new(self.min.x, self.min.y, self.max.z),
-                    Vec3::new(self.min.x, self.min.y, self.min.z),
-                    Vec3::new(self.min.x, self.max.y, self.min.z),
-                ),
-            ),
-            (
-                Vec3::new(0.0, 1.0, 0.0),
-                (
-                    Vec3::new(self.max.x, self.max.y, self.max.z),
-                    Vec3::new(self.min.x, self.max.y, self.max.z),
-                    Vec3::new(self.min.x, self.max.y, self.min.z),
-                    Vec3::new(self.max.x, self.max.y, self.min.z),
-                ),
-            ),
-            (
-                Vec3::new(0.0, -1.0, 0.0),
-                (
-                    Vec3::new(self.max.x, self.min.y, self.max.z),
-                    Vec3::new(self.min.x, self.min.y, self.max.z),
-                    Vec3::new(self.min.x, self.min.y, self.min.z),
-                    Vec3::new(self.max.x, self.min.y, self.min.z),
-                ),
-            ),
-            (
-                Vec3::new(0.0, 0.0, 1.0),
-                (
-                    Vec3::new(self.max.x, self.max.y, self.max.z),
-                    Vec3::new(self.min.x, self.max.y, self.max.z),
-                    Vec3::new(self.min.x, self.min.y, self.max.z),
-                    Vec3::new(self.max.x, self.min.y, self.max.z),
-                ),
-            ),
-            (
-                Vec3::new(0.0, 0.0, -1.0),
-                (
-                    Vec3::new(self.max.x, self.max.y, self.min.z),
-                    Vec3::new(self.min.x, self.max.y, self.min.z),
-                    Vec3::new(self.min.x, self.min.y, self.min.z),
-                    Vec3::new(self.max.x, self.min.y, self.min.z),
-                ),
-            ),
+            QuadFace {
+                normal: Vec3::new(1.0, 0.0, 0.0),
+                max: Vec3::new(self.max.x, self.max.y, self.max.z),
+                min: Vec3::new(self.max.x, self.min.y, self.min.z),
+            },
+            QuadFace {
+                normal: Vec3::new(-1.0, 0.0, 0.0),
+                max: Vec3::new(self.min.x, self.max.y, self.max.z),
+                min: Vec3::new(self.min.x, self.min.y, self.min.z),
+            },
+            QuadFace {
+                normal: Vec3::new(0.0, 1.0, 0.0),
+                max: Vec3::new(self.max.x, self.max.y, self.max.z),
+                min: Vec3::new(self.min.x, self.max.y, self.min.z),
+            },
+            QuadFace {
+                normal: Vec3::new(0.0, -1.0, 0.0),
+                max: Vec3::new(self.max.x, self.min.y, self.max.z),
+                min: Vec3::new(self.min.x, self.min.y, self.min.z),
+            },
+            QuadFace {
+                normal: Vec3::new(0.0, 0.0, 1.0),
+                max: Vec3::new(self.max.x, self.max.y, self.max.z),
+                min: Vec3::new(self.min.x, self.min.y, self.max.z),
+            },
+            QuadFace {
+                normal: Vec3::new(0.0, 0.0, -1.0),
+                max: Vec3::new(self.max.x, self.max.y, self.min.z),
+                min: Vec3::new(self.min.x, self.min.y, self.min.z),
+            },
         ]
     }
 }
@@ -149,19 +107,18 @@ impl BoundingBox {
 impl Hitbox for BoundingBox {
     fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
         if self.contains(ray.origin) {
-            println!("PickingAdapter: Ray origin is inside the bounding box");
             return Some(0.0);
         }
 
-        println!("PickingAdapter: Ray origin is outside the bounding box");
-
         let mut min = None;
 
-        for (plane_dir, (a, b, c, d)) in self.faces_with_edges() {
-            let intersection = ray.intersection_plane(plane_dir, a);
-
-            let max_face = a.max(b).max(c).max(d);
-            let min_face = a.min(b).min(c).min(d);
+        for QuadFace {
+            normal,
+            min: min_face,
+            max: max_face,
+        } in self.faces()
+        {
+            let intersection = ray.intersection_plane(normal, min_face);
 
             const EPSILON: f32 = 0.0001;
 
@@ -195,20 +152,6 @@ impl Hitbox for BoundingBox {
     fn max(&self) -> Vec3 {
         self.max
     }
-}
-
-pub struct Quad {
-    pub min: Vec3,
-    pub max: Vec3,
-}
-
-pub struct SlimBox {
-    front: Quad,
-    back: Quad,
-    left: Quad,
-    right: Quad,
-    top: Quad,
-    bottom: Quad,
 }
 
 pub struct SelectBox {
