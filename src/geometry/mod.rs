@@ -355,7 +355,7 @@ impl crate::geometry::mesh::Mesh<72> for SelectBox {
                     self.box_.min.z,
                 ),
             ],
-            Vec4::new(0.0, 1.0, 0.0, 1.0),
+            Vec4::new(0.0, 0.0, 0.0, 1.0),
         )
     }
 }

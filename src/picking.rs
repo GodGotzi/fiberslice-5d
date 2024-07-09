@@ -80,7 +80,7 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, &CameraResult)> for
                                 let hit = root.check_hit(&ray);
 
                                 if let Some(handle) = hit {
-                                    println!("PickingAdapter: Hit: {:?}", handle);
+                                    println!("PickingAdapter: Hit");
                                 }
                             });
                         }

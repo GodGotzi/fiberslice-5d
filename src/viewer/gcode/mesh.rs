@@ -3,14 +3,14 @@ use glam::{Vec3, Vec4};
 use crate::{
     geometry::{
         mesh::{construct_triangle_vertices, Mesh},
-        QuadFace,
+        BoundingHitbox, QuadFace, SelectBox,
     },
     picking::hitbox::Hitbox,
-    prelude::SharedMut,
-    render::vertex::Vertex,
+    prelude::{Shared, SharedMut},
+    render::{buffer::BufferLocation, model::SubModel, vertex::Vertex},
 };
 
-use super::{path::PathModul, DisplaySettings};
+use super::{path::PathModul, DisplaySettings, TestContext};
 
 #[derive(Debug, Clone)]
 pub struct ProfileCross {
@@ -280,15 +280,18 @@ impl Mesh<12> for PathConnectionMesh {
 }
 
 impl PathModul {
-    pub(super) fn to_vertices(&self, settings: &DisplaySettings) -> (Vec<Vertex>, Vec<usize>) {
+    pub(super) fn to_vertices(&self, settings: &DisplaySettings) -> (Vec<Vertex>, SubModel) {
         let mut vertices = Vec::new();
         let mut offsets: Vec<usize> = Vec::new();
+        let mut sub_models = Vec::new();
 
         let color = self
             .state
             .print_type
             .as_ref()
             .unwrap_or(&crate::slicer::print_type::PrintType::Unknown);
+
+        let mut bounding_box: Box<dyn Hitbox> = Box::<BoundingHitbox>::default();
 
         let mut last_cross: Option<ProfileCross> = None;
 
@@ -325,11 +328,37 @@ impl PathModul {
                     vertices.extend_from_slice(&profile_start_mesh.to_triangle_vertices_flipped());
                 }
 
+                let path_mesh = PathMesh::from_profiles(profile_start, profile_end.clone())
+                    .with_color(color.into());
+
+                let path_mesh_vertices = path_mesh.to_triangle_vertices();
+
+                vertices.extend_from_slice(&path_mesh_vertices);
+
+                let path_hitbox = PathHitbox::from(path_mesh);
+
                 vertices.extend_from_slice(
-                    &PathMesh::from_profiles(profile_start, profile_end.clone())
-                        .with_color(color.into())
+                    &SelectBox::from(BoundingHitbox::new(path_hitbox.min(), path_hitbox.max()))
                         .to_triangle_vertices(),
                 );
+
+                let hitbox: SharedMut<Box<dyn Hitbox>> =
+                    SharedMut::from_inner(Box::new(path_hitbox));
+
+                bounding_box.expand(&hitbox);
+
+                let sub_model = SubModel::Interactive {
+                    sub_meshes: Vec::new(),
+                    location: BufferLocation {
+                        offset: vertices.len(),
+                        size: path_mesh_vertices.len(),
+                    },
+                    raw_box: hitbox,
+                    context: Shared::new(Box::new(TestContext {})),
+                };
+
+                sub_models.push(sub_model);
+
                 last_cross = Some(profile_end);
             } else if let Some(last) = last_cross.take() {
                 vertices.extend_from_slice(
@@ -342,7 +371,17 @@ impl PathModul {
             }
         }
 
-        (vertices, offsets)
+        let model = SubModel::Interactive {
+            sub_meshes: sub_models,
+            location: BufferLocation {
+                offset: 0,
+                size: vertices.len(),
+            },
+            raw_box: SharedMut::from_inner(bounding_box),
+            context: Shared::new(Box::new(TestContext {})),
+        };
+
+        (vertices, model)
     }
 }
 

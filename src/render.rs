@@ -282,55 +282,66 @@ impl<'a>
             }
             winit::event::Event::UserEvent(RootEvent::RenderEvent(event)) => match event {
                 RenderEvent::AddGCodeToolpath(part) => {
-                    let vertices = part.vertices();
+                    if let Model::Interactive {
+                        vertices,
+                        sub_meshes,
+                        location,
+                        raw_box,
+                        context,
+                    } = &part.model
+                    {
+                        let box_vertices =
+                            SelectBox::from(part.bounding_box).to_triangle_vertices();
 
-                    let box_vertices = SelectBox::from(part.bounding_box).to_triangle_vertices();
+                        let line_vertices = SelectBox::from(part.bounding_box).to_wire_vertices();
 
-                    let line_vertices = SelectBox::from(part.bounding_box).to_wire_vertices();
+                        self.main_buffer.free(
+                            "entity-1",
+                            &wgpu_context.device,
+                            &wgpu_context.queue,
+                        );
 
-                    self.main_buffer
-                        .free("entity-1", &wgpu_context.device, &wgpu_context.queue);
+                        self.main_buffer.allocate_init(
+                            "entity-1",
+                            vertices,
+                            &wgpu_context.device,
+                            &wgpu_context.queue,
+                        );
 
-                    self.main_buffer.allocate_init(
-                        "entity-1",
-                        &vertices,
-                        &wgpu_context.device,
-                        &wgpu_context.queue,
-                    );
+                        self.wire_buffer
+                            .write(&wgpu_context.queue, "select_box", &line_vertices);
 
-                    self.wire_buffer
-                        .write(&wgpu_context.queue, "select_box", &line_vertices);
+                        self.widget_buffer
+                            .write(&wgpu_context.queue, "select_box", &box_vertices);
 
-                    self.widget_buffer
-                        .write(&wgpu_context.queue, "select_box", &box_vertices);
+                        state
+                            .proxy
+                            .send_event(RootEvent::CameraEvent(
+                                camera::CameraEvent::UpdatePreferredDistance(part.bounding_box),
+                            ))
+                            .unwrap();
 
-                    state
-                        .proxy
-                        .send_event(RootEvent::CameraEvent(
-                            camera::CameraEvent::UpdatePreferredDistance(part.bounding_box),
-                        ))
-                        .unwrap();
+                        state
+                            .proxy
+                            .send_event(RootEvent::PickingEvent(
+                                crate::picking::PickingEvent::AddInteractiveMesh(
+                                    model::MeshHandle::Interactive {
+                                        location: BufferLocation { offset: 0, size: 1 },
+                                        sub_meshes: Vec::new(),
+                                        raw_box: SharedMut::from_inner(Box::new(part.bounding_box)),
+                                        context: Arc::new(Box::new(TestContext {})),
+                                    },
+                                ),
+                            ))
+                            .unwrap();
 
-                    state
-                        .proxy
-                        .send_event(RootEvent::PickingEvent(
-                            crate::picking::PickingEvent::AddInteractiveMesh(
-                                model::MeshHandle::Interactive {
-                                    location: BufferLocation { offset: 0, size: 1 },
-                                    sub_meshes: Vec::new(),
-                                    raw_box: SharedMut::from_inner(Box::new(part.bounding_box)),
-                                    context: Arc::new(Box::new(TestContext {})),
-                                },
-                            ),
-                        ))
-                        .unwrap();
-
-                    state
-                        .proxy
-                        .send_event(RootEvent::UiEvent(crate::ui::UiEvent::ShowSuccess(
-                            "Gcode loaded".to_string(),
-                        )))
-                        .unwrap();
+                        state
+                            .proxy
+                            .send_event(RootEvent::UiEvent(crate::ui::UiEvent::ShowSuccess(
+                                "Gcode loaded".to_string(),
+                            )))
+                            .unwrap();
+                    }
 
                     wgpu_context.window.request_redraw();
                 }

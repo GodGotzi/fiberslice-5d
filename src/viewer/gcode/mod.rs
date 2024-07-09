@@ -1,8 +1,12 @@
-use std::{collections::HashMap, fmt::Debug, str::Lines};
+use std::{borrow::Borrow, collections::HashMap, fmt::Debug, str::Lines};
 
 use glam::Vec3;
 
-use crate::{picking::Pickable, render::vertex::Vertex};
+use crate::{
+    picking::{hitbox::Hitbox, Pickable},
+    prelude::{Shared, SharedMut},
+    render::{buffer::BufferLocation, model::Model, vertex::Vertex},
+};
 
 use self::{
     instruction::{InstructionModul, InstructionType},
@@ -26,7 +30,6 @@ pub type GCode = Vec<InstructionModul>;
 #[derive(Debug, Clone)]
 pub struct ModulModel {
     pub mesh: Vec<Vertex>,
-    pub child_offsets: Vec<usize>,
     pub state: PrintState,
     range: (usize, usize),
 }
@@ -44,8 +47,8 @@ pub struct MeshSettings {}
 pub struct PrintPart {
     raw: GCodeRaw,
     wire_model: WireModel,
-    pub layers: HashMap<usize, LayerModel>,
 
+    pub model: Model<Vertex>,
     pub center_mass: Vec3,
     pub bounding_box: BoundingHitbox,
 }
@@ -62,6 +65,11 @@ impl PrintPart {
 
         let mut layers: HashMap<usize, LayerModel> = HashMap::new();
 
+        let mut models = Vec::new();
+        let mut bounding_box: Box<dyn Hitbox> = Box::<BoundingHitbox>::default();
+
+        let mut vertices = Vec::new();
+
         for modul in raw_path.moduls {
             let layer = modul.state.layer.unwrap_or(0);
             let state = modul.state.clone();
@@ -69,23 +77,18 @@ impl PrintPart {
 
             lines.extend(modul.lines.clone());
 
-            let (mut vertices, child_offsets) = modul.to_vertices(display_settings);
+            let (mut modul_vertices, model) = modul.to_vertices(display_settings);
 
-            // translate vertices
-            for vertex in vertices.iter_mut() {
-                vertex.position[0] -= raw_path.center_mass.x;
-                vertex.position[1] -= raw_path.center_mass.y;
-                vertex.position[2] -= raw_path.center_mass.z;
-            }
+            bounding_box.expand(model.borrow().hitbox().unwrap());
+            models.push(model);
 
-            let model = ModulModel {
-                mesh: vertices,
-                child_offsets,
-                state,
-                range,
-            };
+            vertices.extend(modul_vertices);
+        }
 
-            layers.entry(layer).or_default().push(model);
+        for vertex in vertices.iter_mut() {
+            vertex.position[0] -= raw_path.center_mass.x;
+            vertex.position[1] -= raw_path.center_mass.y;
+            vertex.position[2] -= raw_path.center_mass.z;
         }
 
         let box_ = BoundingHitbox::new(
@@ -95,37 +98,22 @@ impl PrintPart {
 
         let wire_model = WireModel::new(lines);
 
+        let size = vertices.len();
+
         Self {
             raw: raw.map(|s| s.to_string()).collect(),
             wire_model,
-            layers,
+            model: Model::Interactive {
+                vertices,
+                sub_meshes: models,
+                location: BufferLocation { offset: 0, size },
+                raw_box: SharedMut::from_inner(bounding_box),
+                context: Shared::new(Box::new(TestContext {})),
+            },
 
             center_mass: raw_path.center_mass,
             bounding_box: box_,
         }
-    }
-
-    pub fn vertices(&self) -> Vec<Vertex> {
-        self.layers
-            .values()
-            .flat_map(|layer| layer.iter())
-            .flat_map(|modul| modul.mesh.iter())
-            .cloned()
-            .collect()
-    }
-}
-
-pub fn compute_normals(vertices: &mut [Vertex]) {
-    for i in (0..vertices.len()).step_by(3) {
-        let v0 = Vec3::from_array(vertices[i].position);
-        let v1 = Vec3::from_array(vertices[i + 1].position);
-        let v2 = Vec3::from_array(vertices[i + 2].position);
-
-        let normal = (v1 - v0).cross(v2 - v0).normalize();
-
-        vertices[i].normal = normal.to_array();
-        vertices[i + 1].normal = normal.to_array();
-        vertices[i + 2].normal = normal.to_array();
     }
 }
 

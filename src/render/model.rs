@@ -51,6 +51,13 @@ impl SubModel {
             Self::Interactive { location, .. } => location,
         }
     }
+
+    pub fn hitbox(&self) -> Option<&SharedMut<Box<dyn Hitbox>>> {
+        match self {
+            Self::Static { .. } => None,
+            Self::Interactive { raw_box, .. } => Some(raw_box),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -77,7 +84,7 @@ impl MeshHandle {
 }
 
 impl<T: bytemuck::Pod + bytemuck::Zeroable + Clone> Model<T> {
-    fn into_handle(self, offset: usize) -> MeshHandle {
+    pub fn into_handle(self, offset: usize) -> MeshHandle {
         match self {
             Self::Static {
                 sub_meshes,
