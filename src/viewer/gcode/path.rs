@@ -17,6 +17,14 @@ impl Line {
     pub fn direction(&self) -> Vec3 {
         self.end - self.start
     }
+
+    pub fn into_flipped_yz(&self) -> Line {
+        Line {
+            start: vec3(self.start.x, self.start.z, self.start.y),
+            end: vec3(self.end.x, self.end.z, self.end.y),
+            print: self.print,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -96,11 +104,11 @@ fn compute_modul(
 
         for instruction in instructions {
             let movements = instruction.movements();
-            let last_point = current_movements.to_vec3(vec3(0.0, 0.0, 0.0));
+            let last_point = current_movements.to_flipped_vec3(vec3(0.0, 0.0, 0.0));
 
             current_movements.add_movements(movements);
 
-            let current_point = current_movements.to_vec3(vec3(0.0, 0.0, 0.0));
+            let current_point = current_movements.to_flipped_vec3(vec3(0.0, 0.0, 0.0));
 
             if current_point == last_point {
                 continue;

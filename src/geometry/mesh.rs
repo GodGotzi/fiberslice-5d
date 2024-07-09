@@ -10,38 +10,28 @@ pub trait Mesh<const V: usize> {
     }
 }
 
-pub fn construct_triangle(a: Vec3, b: Vec3, c: Vec3, color: Vec4) -> [Vertex; 3] {
-    let normal = (-(b - a).cross(c - a).normalize()).to_array();
-    let color = color.to_array();
-
-    [
-        Vertex {
-            position: a.to_array(),
-            color,
-            normal,
-        },
-        Vertex {
-            position: b.to_array(),
-            color,
-            normal,
-        },
-        Vertex {
-            position: c.to_array(),
-            color,
-            normal,
-        },
-    ]
-}
-
 pub fn construct_triangle_vertices<const T: usize>(raw: [Vec3; T], color: Vec4) -> [Vertex; T] {
     let mut vertices = [Vertex::default(); T];
+    let color = color.to_array();
 
-    for index in (0..vertices.len()).step_by(3) {
-        let triangle = construct_triangle(raw[index], raw[index + 1], raw[index + 2], color);
+    for i in (0..vertices.len()).step_by(3) {
+        let v0 = raw[i];
+        let v1 = raw[i + 1];
+        let v2 = raw[i + 2];
 
-        vertices[index] = triangle[0];
-        vertices[index + 1] = triangle[1];
-        vertices[index + 2] = triangle[2];
+        let normal = (v1 - v0).cross(v2 - v0).normalize();
+
+        vertices[i].position = v0.to_array();
+        vertices[i + 1].position = v1.to_array();
+        vertices[i + 2].position = v2.to_array();
+
+        vertices[i].color = color;
+        vertices[i + 1].color = color;
+        vertices[i + 2].color = color;
+
+        vertices[i].normal = normal.to_array();
+        vertices[i + 1].normal = normal.to_array();
+        vertices[i + 2].normal = normal.to_array();
     }
 
     vertices

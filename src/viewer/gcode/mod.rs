@@ -34,8 +34,6 @@ pub struct ModulModel {
 pub type LayerModel = Vec<ModulModel>;
 
 pub struct DisplaySettings {
-    pub diameter: f32,
-
     pub horizontal: f32,
     pub vertical: f32,
 }
@@ -80,11 +78,6 @@ impl PrintPart {
                 vertex.position[2] -= raw_path.center_mass.z;
             }
 
-            vertices.iter_mut().for_each(|vertex| {
-                let pos = vertex.position;
-                vertex.position = [pos[0], pos[2], pos[1]];
-            });
-
             let model = ModulModel {
                 mesh: vertices,
                 child_offsets,
@@ -95,13 +88,10 @@ impl PrintPart {
             layers.entry(layer).or_default().push(model);
         }
 
-        let mut box_ = BoundingHitbox::new(
+        let box_ = BoundingHitbox::new(
             raw_path.virtual_box.min - raw_path.center_mass,
             raw_path.virtual_box.max - raw_path.center_mass,
         );
-
-        std::mem::swap(&mut box_.min.y, &mut box_.min.z);
-        std::mem::swap(&mut box_.max.y, &mut box_.max.z);
 
         let wire_model = WireModel::new(lines);
 
@@ -122,6 +112,20 @@ impl PrintPart {
             .flat_map(|modul| modul.mesh.iter())
             .cloned()
             .collect()
+    }
+}
+
+pub fn compute_normals(vertices: &mut [Vertex]) {
+    for i in (0..vertices.len()).step_by(3) {
+        let v0 = Vec3::from_array(vertices[i].position);
+        let v1 = Vec3::from_array(vertices[i + 1].position);
+        let v2 = Vec3::from_array(vertices[i + 2].position);
+
+        let normal = (v1 - v0).cross(v2 - v0).normalize();
+
+        vertices[i].normal = normal.to_array();
+        vertices[i + 1].normal = normal.to_array();
+        vertices[i + 2].normal = normal.to_array();
     }
 }
 

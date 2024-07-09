@@ -112,13 +112,9 @@ fn file_button(ui: &mut Ui, (_ui_state, global_state): &(UiState, GlobalState<Ro
 
         let mesh_settings = MeshSettings {};
         let display_settings = DisplaySettings {
-            diameter: 0.45,
-            horizontal: 0.425,
+            horizontal: 0.45,
             vertical: 0.325,
         };
-
-        //let manipulator = gui_context.manipulator.clone();
-        //let context = gui_context.context.clone();
 
         let global_state_cloned = global_state.clone();
 

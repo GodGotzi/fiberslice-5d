@@ -128,33 +128,33 @@ impl Mesh<24> for PathMesh {
         construct_triangle_vertices(
             [
                 // asdasd
-                self.profile_start.up,
-                self.profile_end.up,
                 self.profile_end.right,
-                self.profile_start.right,
-                self.profile_start.up,
-                self.profile_end.right,
-                // asdasd
-                self.profile_start.down,
-                self.profile_end.right,
-                self.profile_end.down,
-                self.profile_start.down,
-                self.profile_start.right,
-                self.profile_end.right,
-                // asdasd
-                self.profile_start.down,
-                self.profile_end.down,
-                self.profile_end.left,
-                self.profile_start.left,
-                self.profile_start.down,
-                self.profile_end.left,
-                // asdasd
-                self.profile_start.up,
-                self.profile_end.left,
                 self.profile_end.up,
                 self.profile_start.up,
-                self.profile_start.left,
+                self.profile_end.right,
+                self.profile_start.up,
+                self.profile_start.right,
+                // asdasd
+                self.profile_end.down,
+                self.profile_end.right,
+                self.profile_start.down,
+                self.profile_end.right,
+                self.profile_start.right,
+                self.profile_start.down,
+                // asdasd
                 self.profile_end.left,
+                self.profile_end.down,
+                self.profile_start.down,
+                self.profile_end.left,
+                self.profile_start.down,
+                self.profile_start.left,
+                // asdasd
+                self.profile_end.up,
+                self.profile_end.left,
+                self.profile_start.up,
+                self.profile_end.left,
+                self.profile_start.left,
+                self.profile_start.up,
             ],
             self.color.unwrap_or(Vec4::new(0.0, 0.0, 0.0, 1.0)),
         )
@@ -293,11 +293,12 @@ impl PathModul {
         let mut last_cross: Option<ProfileCross> = None;
 
         for (index, line) in self.lines.iter().enumerate() {
+            // let line = line.into_flipped_yz();
             let direction = line.direction();
 
             let profile = ProfileCross::from_direction(
                 direction,
-                (settings.horizontal / 2.0, settings.vertical / 2.0),
+                (settings.vertical / 2.0, settings.horizontal / 2.0),
             );
 
             let profile_start = profile.with_offset(line.start);
@@ -309,7 +310,7 @@ impl PathModul {
                 ProfileCrossMesh::from_profile(profile_end.clone()).with_color(color.into());
 
             if index == self.lines.len() - 1 {
-                vertices.extend_from_slice(&profile_end_mesh.to_triangle_vertices_flipped());
+                vertices.extend_from_slice(&profile_end_mesh.to_triangle_vertices());
                 offsets.push(vertices.len());
             }
 
@@ -321,7 +322,7 @@ impl PathModul {
                             .to_triangle_vertices(),
                     );
                 } else {
-                    vertices.extend_from_slice(&profile_start_mesh.to_triangle_vertices());
+                    vertices.extend_from_slice(&profile_start_mesh.to_triangle_vertices_flipped());
                 }
 
                 vertices.extend_from_slice(
@@ -334,7 +335,7 @@ impl PathModul {
                 vertices.extend_from_slice(
                     &ProfileCrossMesh::from_profile(last)
                         .with_color(color.into())
-                        .to_triangle_vertices_flipped(),
+                        .to_triangle_vertices(),
                 );
 
                 offsets.push(vertices.len());

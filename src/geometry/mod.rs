@@ -1,5 +1,5 @@
 use glam::{vec3, Vec3, Vec4};
-use mesh::{construct_triangle, construct_triangle_vertices, construct_wire_vertices, WireMesh};
+use mesh::{construct_triangle_vertices, construct_wire_vertices, WireMesh};
 
 pub mod r#box;
 pub mod mesh;
