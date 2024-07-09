@@ -6,7 +6,7 @@ use strum_macros::{EnumCount, EnumIter};
 use winit::event::WindowEvent;
 
 use crate::{
-    geometry::BoundingBox,
+    geometry::BoundingHitbox,
     prelude::{Adapter, FrameHandle, Viewport},
     GlobalState, RootEvent,
 };
@@ -33,7 +33,7 @@ pub enum Orientation {
 #[derive(Debug, Clone)]
 pub enum CameraEvent {
     CameraOrientationChanged(Orientation),
-    UpdatePreferredDistance(BoundingBox),
+    UpdatePreferredDistance(BoundingHitbox),
 }
 
 pub struct CameraResult {

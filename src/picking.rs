@@ -3,7 +3,7 @@ use winit::event::{DeviceEvent, ElementState, WindowEvent};
 
 use crate::{
     camera::CameraResult,
-    geometry::BoundingBox,
+    geometry::BoundingHitbox,
     prelude::{Adapter, Error, FrameHandle, SharedMut, WgpuContext},
     render::{
         buffer::BufferLocation,
@@ -140,7 +140,7 @@ impl<'a>
     fn from_context(_wgpu_context: &WgpuContext) -> (PickingState, Self) {
         let state = PickingState {
             hitbox: SharedMut::from_inner(hitbox::HitboxNode::parent_box(SharedMut::from_inner(
-                Box::<BoundingBox>::default(),
+                Box::<BoundingHitbox>::default(),
             ))),
 
             is_drag_left: false,

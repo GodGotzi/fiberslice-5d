@@ -11,7 +11,7 @@ use self::{
     state::State,
 };
 
-use crate::geometry::BoundingBox;
+use crate::geometry::BoundingHitbox;
 
 pub mod instruction;
 pub mod mesh;
@@ -49,7 +49,7 @@ pub struct PrintPart {
     pub layers: HashMap<usize, LayerModel>,
 
     pub center_mass: Vec3,
-    pub bounding_box: BoundingBox,
+    pub bounding_box: BoundingHitbox,
 }
 
 impl PrintPart {
@@ -116,7 +116,7 @@ impl PrintPart {
             layers.entry(layer).or_default().push(model);
         }
 
-        let mut box_ = BoundingBox::new(
+        let mut box_ = BoundingHitbox::new(
             raw_path.virtual_box.min - raw_path.center_mass,
             raw_path.virtual_box.max - raw_path.center_mass,
         );

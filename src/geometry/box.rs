@@ -5,23 +5,29 @@ use crate::{picking::hitbox::Hitbox, prelude::SharedMut};
 use super::QuadFace;
 
 #[derive(Debug, Clone, Copy)]
-pub struct BoundingBox {
+pub struct BoundingHitbox {
     pub max: Vec3,
     pub min: Vec3,
+    enabled: bool,
 }
 
-impl Default for BoundingBox {
+impl Default for BoundingHitbox {
     fn default() -> Self {
         Self {
             max: Vec3::new(f32::MIN, f32::MIN, f32::MIN),
             min: Vec3::new(f32::MAX, f32::MAX, f32::MAX),
+            enabled: true,
         }
     }
 }
 
-impl BoundingBox {
+impl BoundingHitbox {
     pub fn new(min: Vec3, max: Vec3) -> Self {
-        Self { max, min }
+        Self {
+            max,
+            min,
+            enabled: true,
+        }
     }
 
     pub fn center(&self) -> Vec3 {
@@ -87,7 +93,7 @@ impl BoundingBox {
     }
 }
 
-impl Hitbox for BoundingBox {
+impl Hitbox for BoundingHitbox {
     fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
         if self.contains(ray.origin) {
             return Some(0.0);
@@ -111,6 +117,14 @@ impl Hitbox for BoundingBox {
     fn expand(&mut self, _box: &SharedMut<Box<dyn Hitbox>>) {
         self.min = self.min.min(_box.read().min());
         self.max = self.max.max(_box.read().max());
+    }
+
+    fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+
+    fn enabled(&self) -> bool {
+        self.enabled
     }
 
     fn min(&self) -> Vec3 {

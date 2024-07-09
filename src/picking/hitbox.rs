@@ -10,6 +10,8 @@ use super::{
 pub trait Hitbox: std::fmt::Debug + Send + Sync {
     fn check_hit(&self, ray: &Ray) -> Option<f32>;
     fn expand(&mut self, _box: &SharedMut<Box<dyn Hitbox>>);
+    fn set_enabled(&mut self, enabled: bool);
+    fn enabled(&self) -> bool;
     fn min(&self) -> Vec3;
     fn max(&self) -> Vec3;
 }

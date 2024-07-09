@@ -195,6 +195,7 @@ impl From<PathMesh> for PathHitbox {
                     .min(val.profile_start.up)
                     .min(val.profile_end.up),
             },
+            enabled: true,
         }
     }
 }
@@ -290,6 +291,7 @@ pub struct PathHitbox {
     north_east: QuadFace,
     south_west: QuadFace,
     south_east: QuadFace,
+    enabled: bool,
 }
 
 impl Hitbox for PathHitbox {
@@ -319,6 +321,14 @@ impl Hitbox for PathHitbox {
     fn expand(&mut self, _box: &SharedMut<Box<dyn Hitbox>>) {
         // Not expandable
         // TODO either figure out how to expand this or remove this method for this type or make it clear that this is not expandable
+    }
+
+    fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+
+    fn enabled(&self) -> bool {
+        self.enabled
     }
 
     fn min(&self) -> Vec3 {

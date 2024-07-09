@@ -4,7 +4,7 @@ use mesh::WireMesh;
 pub mod r#box;
 pub mod mesh;
 
-pub use r#box::BoundingBox;
+pub use r#box::BoundingHitbox;
 
 use crate::{picking::hitbox::Hitbox, prelude::SharedMut};
 
@@ -37,8 +37,15 @@ impl Hitbox for QuadFace {
     }
 
     fn expand(&mut self, _box: &SharedMut<Box<dyn Hitbox>>) {
-        // Not expandable
-        // TODO either figure out how to expand this or remove this method for this type or make it clear that this is not expandable
+        panic!("QuadFace does not have an expand method");
+    }
+
+    fn set_enabled(&mut self, _enabled: bool) {
+        panic!("QuadFace does not have an enabled method");
+    }
+
+    fn enabled(&self) -> bool {
+        panic!("QuadFace does not have an enabled method");
     }
 
     fn min(&self) -> Vec3 {
@@ -51,11 +58,11 @@ impl Hitbox for QuadFace {
 }
 
 pub struct SelectBox {
-    box_: BoundingBox,
+    box_: BoundingHitbox,
 }
 
-impl From<BoundingBox> for SelectBox {
-    fn from(box_: BoundingBox) -> Self {
+impl From<BoundingHitbox> for SelectBox {
+    fn from(box_: BoundingHitbox) -> Self {
         // box_.expand_point(box_.max + Vec3::new(2.0, 2.0, 2.0));
         // box_.expand_point(box_.min + Vec3::new(-2.0, -2.0, -2.0));
 
