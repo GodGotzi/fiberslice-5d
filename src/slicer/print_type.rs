@@ -1,3 +1,4 @@
+use glam::Vec4;
 use strum_macros::EnumString;
 use wgpu::Color;
 
@@ -19,100 +20,128 @@ pub enum PrintType {
     Unknown,
 }
 
-impl PrintType {
-    pub fn get_color(&self) -> Color {
-        //set hard coded colors for now unique to each print type
-        match &self {
-            Self::InternalInfill => Color {
+impl From<PrintType> for Color {
+    fn from(print_type: PrintType) -> Self {
+        match print_type {
+            PrintType::InternalInfill => Color {
                 r: 0.0,
                 g: 0.0,
                 b: 1.0,
                 a: 1.0,
             },
-            Self::SolidInfill | Self::Skin => Color {
+            PrintType::SolidInfill | PrintType::Skin => Color {
                 r: 0.0,
                 g: 1.0,
                 b: 0.0,
                 a: 1.0,
             },
             // Srgba::new(0, 255, 0, 255),
-            Self::BridgeInfill => Color {
+            PrintType::BridgeInfill => Color {
                 r: 1.0,
                 g: 0.0,
                 b: 0.0,
                 a: 1.0,
             },
             // Srgba::new(255, 0, 0, 255),
-            Self::TopSolidInfill => Color {
+            PrintType::TopSolidInfill => Color {
                 r: 130.0 / 255.0,
                 g: 130.0 / 255.0,
                 b: 0.0,
                 a: 1.0,
             },
             // }Srgba::new(130, 130, 0, 255),
-            Self::Skirt => Color {
+            PrintType::Skirt => Color {
                 r: 1.0,
                 g: 0.0,
                 b: 1.0,
                 a: 1.0,
             },
             // }Srgba::new(255, 0, 255, 255),
-            Self::Brim => Color {
+            PrintType::Brim => Color {
                 r: 0.0,
                 g: 1.0,
                 b: 1.0,
                 a: 1.0,
             },
             //Srgba::new(0, 255, 255, 255),
-            Self::Support => Color {
+            PrintType::Support => Color {
                 r: 1.0,
                 g: 1.0,
                 b: 1.0,
                 a: 1.0,
             },
             //}Srgba::new(255, 255, 255, 255),
-            Self::Perimeter => Color {
+            PrintType::Perimeter => Color {
                 r: 1.0,
                 g: 0.0,
                 b: 1.0,
                 a: 1.0,
             },
             // } Srgba::new(255, 0, 255, 255),
-            Self::WallOuter => Color {
+            PrintType::WallOuter => Color {
                 r: 1.0,
                 g: 0.0,
                 b: 0.0,
                 a: 1.0,
             },
             // } Srgba::new(255, 0, 0, 255),
-            Self::WallInner => Color {
+            PrintType::WallInner => Color {
                 r: 1.0,
                 g: 0.0,
                 b: 0.0,
                 a: 1.0,
             },
             // }Srgba::new(255, 0, 0, 255),
-            Self::ExternalPerimeter => Color {
+            PrintType::ExternalPerimeter => Color {
                 r: 1.0,
                 g: 1.0,
                 b: 0.0,
                 a: 1.0,
             },
             // } Srgba::new(255, 255, 0, 255),
-            Self::OverhangPerimeter => Color {
+            PrintType::OverhangPerimeter => Color {
                 r: 0.0,
                 g: 1.0,
                 b: 1.0,
                 a: 1.0,
             },
             // } Srgba::new(0, 255, 255, 255),
-            Self::Unknown => Color {
+            PrintType::Unknown => Color {
                 r: 0.0,
                 g: 0.0,
                 b: 0.0,
                 a: 1.0,
             },
-            // } Srgba::new(0, 0, 0, 255),
         }
+    }
+}
+
+impl From<&PrintType> for Color {
+    fn from(print_type: &PrintType) -> Self {
+        print_type.clone().into()
+    }
+}
+
+impl From<PrintType> for Vec4 {
+    fn from(print_type: PrintType) -> Self {
+        let color: Color = print_type.into();
+        Vec4::new(
+            color.r as f32,
+            color.g as f32,
+            color.b as f32,
+            color.a as f32,
+        )
+    }
+}
+
+impl From<&PrintType> for Vec4 {
+    fn from(print_type: &PrintType) -> Self {
+        let color: Color = print_type.clone().into();
+        Vec4::new(
+            color.r as f32,
+            color.g as f32,
+            color.b as f32,
+            color.a as f32,
+        )
     }
 }

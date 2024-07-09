@@ -1,9 +1,13 @@
-use glam::Vec3;
+use glam::{Vec3, Vec4};
 
 use crate::{
-    geometry::{mesh::Mesh, QuadFace},
+    geometry::{
+        mesh::{construct_triangle_vertices, Mesh},
+        QuadFace,
+    },
     picking::hitbox::Hitbox,
     prelude::SharedMut,
+    render::vertex::Vertex,
 };
 
 use super::{path::PathModul, DisplaySettings};
@@ -49,23 +53,59 @@ impl ProfileCross {
     }
 }
 
-impl Mesh<6> for ProfileCross {
-    fn to_triangle_vertices(&self) -> [glam::Vec3; 6] {
-        [
-            self.up, self.right, self.down, self.up, self.down, self.left,
-        ]
+pub struct ProfileCrossMesh {
+    profile: ProfileCross,
+    color: Option<Vec4>,
+}
+
+impl ProfileCrossMesh {
+    pub fn from_profile(profile: ProfileCross) -> Self {
+        Self {
+            profile,
+            color: None,
+        }
     }
 
-    fn to_triangle_vertices_flipped(&self) -> [glam::Vec3; 6] {
-        [
-            self.up, self.down, self.right, self.up, self.left, self.down,
-        ]
+    pub fn with_color(mut self, color: Vec4) -> Self {
+        self.color = Some(color);
+        self
+    }
+}
+
+impl Mesh<6> for ProfileCrossMesh {
+    fn to_triangle_vertices(&self) -> [Vertex; 6] {
+        construct_triangle_vertices(
+            [
+                self.profile.up,
+                self.profile.right,
+                self.profile.down,
+                self.profile.up,
+                self.profile.down,
+                self.profile.left,
+            ],
+            self.color.unwrap_or(Vec4::new(0.0, 0.0, 0.0, 1.0)),
+        )
+    }
+
+    fn to_triangle_vertices_flipped(&self) -> [Vertex; 6] {
+        construct_triangle_vertices(
+            [
+                self.profile.up,
+                self.profile.down,
+                self.profile.right,
+                self.profile.up,
+                self.profile.left,
+                self.profile.down,
+            ],
+            self.color.unwrap_or(Vec4::new(0.0, 0.0, 0.0, 1.0)),
+        )
     }
 }
 
 pub struct PathMesh {
     profile_start: ProfileCross,
     profile_end: ProfileCross,
+    color: Option<Vec4>,
 }
 
 impl PathMesh {
@@ -73,42 +113,51 @@ impl PathMesh {
         Self {
             profile_start,
             profile_end,
+            color: None,
         }
+    }
+
+    pub fn with_color(mut self, color: Vec4) -> Self {
+        self.color = Some(color);
+        self
     }
 }
 
 impl Mesh<24> for PathMesh {
-    fn to_triangle_vertices(&self) -> [glam::Vec3; 24] {
-        [
-            // asdasd
-            self.profile_start.up,
-            self.profile_end.up,
-            self.profile_end.right,
-            self.profile_start.right,
-            self.profile_start.up,
-            self.profile_end.right,
-            // asdasd
-            self.profile_start.down,
-            self.profile_end.right,
-            self.profile_end.down,
-            self.profile_start.down,
-            self.profile_start.right,
-            self.profile_end.right,
-            // asdasd
-            self.profile_start.down,
-            self.profile_end.down,
-            self.profile_end.left,
-            self.profile_start.left,
-            self.profile_start.down,
-            self.profile_end.left,
-            // asdasd
-            self.profile_start.up,
-            self.profile_end.left,
-            self.profile_end.up,
-            self.profile_start.up,
-            self.profile_start.left,
-            self.profile_end.left,
-        ]
+    fn to_triangle_vertices(&self) -> [Vertex; 24] {
+        construct_triangle_vertices(
+            [
+                // asdasd
+                self.profile_start.up,
+                self.profile_end.up,
+                self.profile_end.right,
+                self.profile_start.right,
+                self.profile_start.up,
+                self.profile_end.right,
+                // asdasd
+                self.profile_start.down,
+                self.profile_end.right,
+                self.profile_end.down,
+                self.profile_start.down,
+                self.profile_start.right,
+                self.profile_end.right,
+                // asdasd
+                self.profile_start.down,
+                self.profile_end.down,
+                self.profile_end.left,
+                self.profile_start.left,
+                self.profile_start.down,
+                self.profile_end.left,
+                // asdasd
+                self.profile_start.up,
+                self.profile_end.left,
+                self.profile_end.up,
+                self.profile_start.up,
+                self.profile_start.left,
+                self.profile_end.left,
+            ],
+            self.color.unwrap_or(Vec4::new(0.0, 0.0, 0.0, 1.0)),
+        )
     }
 }
 
@@ -187,6 +236,7 @@ impl From<PathMesh> for PathHitbox {
 pub struct PathConnectionMesh {
     profile_start: ProfileCross,
     profile_end: ProfileCross,
+    color: Option<Vec4>,
 }
 
 impl PathConnectionMesh {
@@ -194,36 +244,51 @@ impl PathConnectionMesh {
         Self {
             profile_start,
             profile_end,
+            color: None,
         }
+    }
+
+    pub fn with_color(mut self, color: Vec4) -> Self {
+        self.color = Some(color);
+        self
     }
 }
 
 impl Mesh<12> for PathConnectionMesh {
-    fn to_triangle_vertices(&self) -> [glam::Vec3; 12] {
-        [
-            self.profile_start.up,
-            self.profile_end.right,
-            self.profile_start.right,
-            // asdasd
-            self.profile_start.down,
-            self.profile_start.right,
-            self.profile_end.right,
-            // asdasd
-            self.profile_start.down,
-            self.profile_end.left,
-            self.profile_start.left,
-            // asdasd
-            self.profile_start.up,
-            self.profile_start.left,
-            self.profile_end.left,
-        ]
+    fn to_triangle_vertices(&self) -> [Vertex; 12] {
+        construct_triangle_vertices(
+            [
+                self.profile_start.up,
+                self.profile_end.right,
+                self.profile_start.right,
+                // asdasd
+                self.profile_start.down,
+                self.profile_start.right,
+                self.profile_end.right,
+                // asdasd
+                self.profile_start.down,
+                self.profile_end.left,
+                self.profile_start.left,
+                // asdasd
+                self.profile_start.up,
+                self.profile_start.left,
+                self.profile_end.left,
+            ],
+            self.color.unwrap_or(Vec4::new(0.0, 0.0, 0.0, 1.0)),
+        )
     }
 }
 
 impl PathModul {
-    pub(super) fn to_vertices(&self, settings: &DisplaySettings) -> (Vec<Vec3>, Vec<usize>) {
+    pub(super) fn to_vertices(&self, settings: &DisplaySettings) -> (Vec<Vertex>, Vec<usize>) {
         let mut vertices = Vec::new();
         let mut offsets: Vec<usize> = Vec::new();
+
+        let color = self
+            .state
+            .print_type
+            .as_ref()
+            .unwrap_or(&crate::slicer::print_type::PrintType::Unknown);
 
         let mut last_cross: Option<ProfileCross> = None;
 
@@ -238,8 +303,13 @@ impl PathModul {
             let profile_start = profile.with_offset(line.start);
             let profile_end = profile.with_offset(line.end);
 
+            let profile_start_mesh =
+                ProfileCrossMesh::from_profile(profile_start.clone()).with_color(color.into());
+            let profile_end_mesh =
+                ProfileCrossMesh::from_profile(profile_end.clone()).with_color(color.into());
+
             if index == self.lines.len() - 1 {
-                vertices.extend_from_slice(&profile_end.to_triangle_vertices_flipped());
+                vertices.extend_from_slice(&profile_end_mesh.to_triangle_vertices_flipped());
                 offsets.push(vertices.len());
             }
 
@@ -247,19 +317,25 @@ impl PathModul {
                 if let Some(last) = last_cross.take() {
                     vertices.extend_from_slice(
                         &PathConnectionMesh::from_profiles(last, profile_start.clone())
+                            .with_color(color.into())
                             .to_triangle_vertices(),
                     );
                 } else {
-                    vertices.extend_from_slice(&profile_start.to_triangle_vertices());
+                    vertices.extend_from_slice(&profile_start_mesh.to_triangle_vertices());
                 }
 
                 vertices.extend_from_slice(
                     &PathMesh::from_profiles(profile_start, profile_end.clone())
+                        .with_color(color.into())
                         .to_triangle_vertices(),
                 );
                 last_cross = Some(profile_end);
             } else if let Some(last) = last_cross.take() {
-                vertices.extend_from_slice(&last.to_triangle_vertices_flipped());
+                vertices.extend_from_slice(
+                    &ProfileCrossMesh::from_profile(last)
+                        .with_color(color.into())
+                        .to_triangle_vertices_flipped(),
+                );
 
                 offsets.push(vertices.len());
             }

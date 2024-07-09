@@ -71,40 +71,19 @@ impl PrintPart {
 
             lines.extend(modul.lines.clone());
 
-            let (mut raw_vertices, child_offsets) = modul.to_vertices(display_settings);
-
-            let color = state
-                .print_type
-                .as_ref()
-                .unwrap_or(&crate::slicer::print_type::PrintType::Unknown)
-                .get_color();
+            let (mut vertices, child_offsets) = modul.to_vertices(display_settings);
 
             // translate vertices
-            for vertex in raw_vertices.iter_mut() {
-                vertex.x -= raw_path.center_mass.x;
-                vertex.y -= raw_path.center_mass.y;
-                vertex.z -= raw_path.center_mass.z;
+            for vertex in vertices.iter_mut() {
+                vertex.position[0] -= raw_path.center_mass.x;
+                vertex.position[1] -= raw_path.center_mass.y;
+                vertex.position[2] -= raw_path.center_mass.z;
             }
 
-            raw_vertices.iter_mut().for_each(|vertex| {
-                std::mem::swap(&mut vertex.y, &mut vertex.z);
+            vertices.iter_mut().for_each(|vertex| {
+                let pos = vertex.position;
+                vertex.position = [pos[0], pos[2], pos[1]];
             });
-
-            let mut vertices = raw_vertices
-                .iter()
-                .map(|v| Vertex {
-                    position: v.to_array(),
-                    normal: v.normalize().to_array(),
-                    color: [
-                        color.r as f32,
-                        color.g as f32,
-                        color.b as f32,
-                        color.a as f32,
-                    ],
-                })
-                .collect::<Vec<Vertex>>();
-
-            compute_normals(&raw_vertices, &mut vertices);
 
             let model = ModulModel {
                 mesh: vertices,
@@ -143,20 +122,6 @@ impl PrintPart {
             .flat_map(|modul| modul.mesh.iter())
             .cloned()
             .collect()
-    }
-}
-
-pub fn compute_normals(raw_vertices: &[Vec3], vertices: &mut [Vertex]) {
-    for i in (0..vertices.len()).step_by(3) {
-        let v0 = raw_vertices[i];
-        let v1 = raw_vertices[i + 1];
-        let v2 = raw_vertices[i + 2];
-
-        let normal = (v1 - v0).cross(v2 - v0).normalize();
-
-        vertices[i].normal = normal.to_array();
-        vertices[i + 1].normal = normal.to_array();
-        vertices[i + 2].normal = normal.to_array();
     }
 }
 

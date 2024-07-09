@@ -19,7 +19,7 @@ use crate::{
     },
     prelude::*,
     ui::UiUpdateOutput,
-    viewer::gcode::{compute_normals, PrintPart, TestContext},
+    viewer::gcode::{PrintPart, TestContext},
     GlobalState, RootEvent,
 };
 
@@ -286,26 +286,7 @@ impl<'a>
 
                     let box_vertices = SelectBox::from(part.bounding_box).to_triangle_vertices();
 
-                    let mut vertex_box = box_vertices
-                        .iter()
-                        .map(|vertex| Vertex {
-                            position: vertex.to_array(),
-                            normal: [0.0, 0.0, 0.0],
-                            color: [0.0, 0.0, 1.0, 1.0],
-                        })
-                        .collect::<Vec<Vertex>>();
-
-                    compute_normals(&box_vertices, &mut vertex_box);
-
-                    let line_vertices = SelectBox::from(part.bounding_box)
-                        .to_wire_vertices()
-                        .iter()
-                        .map(|vertex| Vertex {
-                            position: vertex.to_array(),
-                            normal: [0.0, 0.0, 0.0],
-                            color: [0.0, 0.0, 1.0, 1.0],
-                        })
-                        .collect::<Vec<Vertex>>();
+                    let line_vertices = SelectBox::from(part.bounding_box).to_wire_vertices();
 
                     self.main_buffer
                         .free("entity-1", &wgpu_context.device, &wgpu_context.queue);
@@ -321,7 +302,7 @@ impl<'a>
                         .write(&wgpu_context.queue, "select_box", &line_vertices);
 
                     self.widget_buffer
-                        .write(&wgpu_context.queue, "select_box", &vertex_box);
+                        .write(&wgpu_context.queue, "select_box", &box_vertices);
 
                     state
                         .proxy
