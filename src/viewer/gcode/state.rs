@@ -4,7 +4,7 @@ use crate::slicer::print_type::PrintType;
 #[allow(clippy::upper_case_acronyms)]
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case, dead_code)]
-pub enum StateField {
+enum StateField {
     LAYER_CHANGE,
     LAYER(usize),
     TYPE(PrintType),
@@ -75,13 +75,13 @@ impl TryFrom<String> for StateField {
 }
 
 #[derive(Debug, Clone)]
-pub struct State {
+pub struct PrintState {
     pub layer: Option<usize>,
     pub print_type: Option<PrintType>,
     pub mesh: Option<String>,
 }
 
-impl State {
+impl PrintState {
     pub fn empty() -> Self {
         Self {
             layer: None,

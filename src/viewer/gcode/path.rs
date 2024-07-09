@@ -4,7 +4,7 @@ use glam::{vec3, Vec3};
 
 use crate::{api::math::Average, geometry::BoundingHitbox, slicer::print_type::PrintType};
 
-use super::{instruction::InstructionType, movement, state::State, GCode};
+use super::{instruction::InstructionType, movement, state::PrintState, GCode};
 
 #[derive(Debug, Clone)]
 pub struct Line {
@@ -23,11 +23,15 @@ impl Line {
 pub struct PathModul {
     pub lines: Vec<Line>,
     pub line_range: (usize, usize),
-    pub state: State,
+    pub state: PrintState,
 }
 
 impl PathModul {
-    pub fn new(points: Vec<Line>, line_range: (usize, usize), state: super::state::State) -> Self {
+    pub fn new(
+        points: Vec<Line>,
+        line_range: (usize, usize),
+        state: super::state::PrintState,
+    ) -> Self {
         Self {
             lines: points,
             line_range,

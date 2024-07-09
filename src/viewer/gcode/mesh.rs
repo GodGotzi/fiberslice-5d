@@ -49,22 +49,6 @@ impl ProfileCross {
     }
 }
 
-/*
-impl Mesh for ProfileCross {
-    fn to_vertices(&self) -> Vertices {
-        vec![
-            self.up, self.right, self.down, self.up, self.down, self.left,
-        ]
-    }
-
-    fn to_vertices_flipped(&self) -> Vertices {
-        vec![
-            self.up, self.down, self.right, self.up, self.left, self.down,
-        ]
-    }
-}
-*/
-
 impl Mesh<6> for ProfileCross {
     fn to_triangle_vertices(&self) -> [glam::Vec3; 6] {
         [

@@ -1,6 +1,6 @@
 use strum_macros::Display;
 
-use super::{movement::Movements, state::State, SourceBuilder};
+use super::{movement::Movements, state::PrintState, SourceBuilder};
 
 #[derive(Debug, Clone, Display, PartialEq)]
 pub enum InstructionType {
@@ -100,7 +100,7 @@ pub struct InstructionModul {
     instructions: Vec<Instruction>,
     start: usize,
     end: Option<usize>,
-    pub state: State,
+    pub state: PrintState,
 }
 
 impl InstructionModul {
@@ -109,11 +109,11 @@ impl InstructionModul {
             instructions: Vec::new(),
             start: 0,
             end: None,
-            state: State::empty(),
+            state: PrintState::empty(),
         }
     }
 
-    pub fn new(start: usize, state: State) -> Self {
+    pub fn new(start: usize, state: PrintState) -> Self {
         Self {
             instructions: Vec::new(),
             start,

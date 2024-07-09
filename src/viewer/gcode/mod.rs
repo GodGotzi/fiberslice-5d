@@ -8,7 +8,7 @@ use self::{
     instruction::{InstructionModul, InstructionType},
     movement::Movements,
     path::{Line, RawPath},
-    state::State,
+    state::PrintState,
 };
 
 use crate::geometry::BoundingHitbox;
@@ -27,7 +27,7 @@ pub type GCode = Vec<InstructionModul>;
 pub struct ModulModel {
     pub mesh: Vec<Vertex>,
     pub child_offsets: Vec<usize>,
-    pub state: State,
+    pub state: PrintState,
     range: (usize, usize),
 }
 
