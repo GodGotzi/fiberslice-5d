@@ -24,7 +24,7 @@ pub trait BufferAlloc<T> {
 
 pub trait BufferDynamicAlloc<T>: BufferAlloc<T> {
     fn allocate(&mut self, id: &str, size: usize) -> usize;
-    fn free(&mut self, id: &str);
+    fn free(&mut self, id: &str) -> Option<BufferAllocation>;
 }
 
 #[derive(Debug, Default)]
@@ -53,7 +53,7 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable> BufferDynamicAlloc<T> for BufferDyna
         offset
     }
 
-    fn free(&mut self, id: &str) {
+    fn free(&mut self, id: &str) -> Option<BufferAllocation> {
         if let Some(remove_packet) = self.packets.remove(id) {
             self.size -= remove_packet.size;
 
@@ -63,6 +63,10 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable> BufferDynamicAlloc<T> for BufferDyna
                     packet.offset -= remove_packet.size;
                 }
             }
+
+            Some(remove_packet)
+        } else {
+            None
         }
     }
 }

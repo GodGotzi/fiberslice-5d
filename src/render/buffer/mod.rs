@@ -1,4 +1,5 @@
 use alloc::BufferAllocation;
+use log::info;
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     BufferAddress, BufferDescriptor, Device, Queue,
@@ -169,7 +170,9 @@ impl RawDynamicBuffer {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Buffer Copy Encoder"),
         });
+
         encoder.copy_buffer_to_buffer(&self.inner, 0, &buffer, 0, byte_offset as BufferAddress);
+
         encoder.copy_buffer_to_buffer(
             &self.inner,
             (byte_offset + byte_size_to_free) as BufferAddress,
@@ -281,12 +284,7 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable, L: alloc::BufferDynamicAlloc<T>> Dyn
     }
 
     pub fn free(&mut self, id: &str, device: &Device, queue: &Queue) {
-        if let Some(allocation) = self.allocater.get(id) {
-            // let mut current_data: Vec<T> = self.inner.read(BufferRange::Full).to_vec();
-            // current_data.drain(allocation.offset..(allocation.offset + allocation.size));
-
-            // self.inner.renew_init(&current_data, device, queue);
-
+        if let Some(allocation) = self.allocater.free(id) {
             self.inner
                 .free::<T>(allocation.offset, allocation.size, device, queue);
         }
