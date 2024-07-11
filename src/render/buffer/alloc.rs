@@ -29,7 +29,7 @@ pub trait BufferDynamicAlloc<T>: BufferAlloc<T> {
 
 #[derive(Debug, Default)]
 pub struct BufferDynamicAllocator {
-    packets: HashMap<String, BufferAllocation>,
+    packets: HashMap<BufferAllocationID, BufferAllocation>,
     pub size: usize,
 }
 
@@ -70,6 +70,8 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable> BufferDynamicAlloc<T> for BufferDyna
         }
     }
 }
+
+pub type BufferAllocationID = String;
 
 #[derive(Debug)]
 pub struct BufferAllocation {

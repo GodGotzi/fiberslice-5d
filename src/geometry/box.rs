@@ -1,6 +1,10 @@
 use glam::Vec3;
 
-use crate::{picking::hitbox::Hitbox, prelude::SharedMut};
+use crate::{
+    model::transform::{Rotate, Scale, Translate},
+    picking::hitbox::Hitbox,
+    prelude::SharedMut,
+};
 
 use super::QuadFace;
 
@@ -90,6 +94,25 @@ impl BoundingHitbox {
                 min: Vec3::new(self.min.x, self.min.y, self.min.z),
             },
         ]
+    }
+}
+
+impl Translate for BoundingHitbox {
+    fn translate(&mut self, translation: Vec3) {
+        self.min += translation;
+        self.max += translation;
+    }
+}
+
+impl Rotate for BoundingHitbox {
+    fn rotate(&mut self, _rotation: glam::Quat) {
+        todo!("Implement rotate for BoundingHitbox")
+    }
+}
+
+impl Scale for BoundingHitbox {
+    fn scale(&mut self, _scale: Vec3) {
+        todo!("Implement scale for BoundingHitbox")
     }
 }
 

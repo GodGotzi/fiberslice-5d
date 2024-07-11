@@ -3,11 +3,15 @@ use glam::{Vec3, Vec4};
 use crate::{
     geometry::{
         mesh::{construct_triangle_vertices, Mesh},
-        BoundingHitbox, QuadFace, SelectBox,
+        BoundingHitbox, QuadFace,
+    },
+    model::{
+        transform::{Rotate, Scale, Translate},
+        Model, ModelContext,
     },
     picking::hitbox::Hitbox,
     prelude::{Shared, SharedMut},
-    render::{buffer::BufferLocation, model::SubModel, vertex::Vertex},
+    render::{buffer::BufferLocation, vertex::Vertex},
 };
 
 use super::{path::PathModul, DisplaySettings, TestContext};
@@ -280,7 +284,7 @@ impl Mesh<12> for PathConnectionMesh {
 }
 
 impl PathModul {
-    pub(super) fn to_vertices(&self, settings: &DisplaySettings) -> (Vec<Vertex>, SubModel) {
+    pub(super) fn to_vertices(&self, settings: &DisplaySettings) -> (Vec<Vertex>, Model<Vertex>) {
         let mut vertices = Vec::new();
         let mut offsets: Vec<usize> = Vec::new();
         let mut sub_models = Vec::new();
@@ -337,24 +341,21 @@ impl PathModul {
 
                 let path_hitbox = PathHitbox::from(path_mesh);
 
-                vertices.extend_from_slice(
-                    &SelectBox::from(BoundingHitbox::new(path_hitbox.min(), path_hitbox.max()))
-                        .to_triangle_vertices(),
-                );
-
                 let hitbox: SharedMut<Box<dyn Hitbox>> =
                     SharedMut::from_inner(Box::new(path_hitbox));
 
                 bounding_box.expand(&hitbox);
 
-                let sub_model = SubModel::Interactive {
-                    sub_meshes: Vec::new(),
+                let sub_model = Model::<Vertex>::Node {
                     location: BufferLocation {
                         offset: vertices.len(),
                         size: path_mesh_vertices.len(),
                     },
-                    raw_box: hitbox,
-                    context: Shared::new(Box::new(TestContext {})),
+                    sub_models: Vec::new(),
+                    ctx: ModelContext::Interactive {
+                        box_: hitbox,
+                        context: Shared::new(Box::new(TestContext {})),
+                    },
                 };
 
                 sub_models.push(sub_model);
@@ -371,14 +372,16 @@ impl PathModul {
             }
         }
 
-        let model = SubModel::Interactive {
-            sub_meshes: sub_models,
+        let model = Model::<Vertex>::Node {
             location: BufferLocation {
                 offset: 0,
                 size: vertices.len(),
             },
-            raw_box: SharedMut::from_inner(bounding_box),
-            context: Shared::new(Box::new(TestContext {})),
+            sub_models,
+            ctx: ModelContext::Interactive {
+                box_: SharedMut::from_inner(bounding_box),
+                context: Shared::new(Box::new(TestContext {})),
+            },
         };
 
         (vertices, model)
@@ -392,6 +395,33 @@ pub struct PathHitbox {
     south_west: QuadFace,
     south_east: QuadFace,
     enabled: bool,
+}
+
+impl Translate for PathHitbox {
+    fn translate(&mut self, translation: Vec3) {
+        self.north_west.translate(translation);
+        self.north_east.translate(translation);
+        self.south_west.translate(translation);
+        self.south_east.translate(translation);
+    }
+}
+
+impl Rotate for PathHitbox {
+    fn rotate(&mut self, rotation: glam::Quat) {
+        self.north_west.rotate(rotation);
+        self.north_east.rotate(rotation);
+        self.south_west.rotate(rotation);
+        self.south_east.rotate(rotation);
+    }
+}
+
+impl Scale for PathHitbox {
+    fn scale(&mut self, scale: Vec3) {
+        self.north_west.scale(scale);
+        self.north_east.scale(scale);
+        self.south_west.scale(scale);
+        self.south_east.scale(scale);
+    }
 }
 
 impl Hitbox for PathHitbox {

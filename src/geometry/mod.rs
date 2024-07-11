@@ -6,13 +6,37 @@ pub mod mesh;
 
 pub use r#box::BoundingHitbox;
 
-use crate::{picking::hitbox::Hitbox, prelude::SharedMut, render::vertex::Vertex};
+use crate::{
+    model::transform::{Rotate, Scale, Translate},
+    picking::hitbox::Hitbox,
+    prelude::SharedMut,
+    render::vertex::Vertex,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct QuadFace {
     pub normal: Vec3,
     pub min: Vec3,
     pub max: Vec3,
+}
+
+impl Translate for QuadFace {
+    fn translate(&mut self, translation: Vec3) {
+        self.min += translation;
+        self.max += translation;
+    }
+}
+
+impl Rotate for QuadFace {
+    fn rotate(&mut self, _rotation: glam::Quat) {
+        todo!("Implement rotate for QuadFace")
+    }
+}
+
+impl Scale for QuadFace {
+    fn scale(&mut self, _scale: Vec3) {
+        todo!("Implement scale for QuadFace")
+    }
 }
 
 impl Hitbox for QuadFace {

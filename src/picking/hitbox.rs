@@ -1,13 +1,20 @@
 use glam::Vec3;
+use log::info;
 
-use crate::{prelude::SharedMut, render::model::MeshHandle}; // Importing the BoundingBox struct from the geometry module in the crate
+use crate::{
+    model::{
+        transform::{Rotate, Scale, Translate},
+        ModelHandle,
+    },
+    prelude::SharedMut,
+}; // Importing the BoundingBox struct from the geometry module in the crate
 
 use super::{
     queue::{HitBoxQueueEntry, HitboxQueue},
     ray::Ray,
 };
 
-pub trait Hitbox: std::fmt::Debug + Send + Sync {
+pub trait Hitbox: std::fmt::Debug + Send + Sync + Translate + Rotate + Scale {
     fn check_hit(&self, ray: &Ray) -> Option<f32>;
     fn expand(&mut self, _box: &SharedMut<Box<dyn Hitbox>>);
     fn set_enabled(&mut self, enabled: bool);
@@ -30,7 +37,7 @@ pub enum HitboxNode {
     // Variant for individual boxes with a bounding box and an id
     Box {
         _box: SharedMut<Box<dyn Hitbox>>,
-        interactive_mesh: MeshHandle,
+        interactive_mesh: ModelHandle,
     },
 }
 
@@ -45,7 +52,7 @@ impl HitboxNode {
     }
 
     // Constructor method for creating a box with an id
-    pub fn box_(_box: SharedMut<Box<dyn Hitbox>>, mesh: MeshHandle) -> Self {
+    pub fn box_(_box: SharedMut<Box<dyn Hitbox>>, mesh: ModelHandle) -> Self {
         HitboxNode::Box {
             interactive_mesh: mesh,
             _box,
@@ -76,11 +83,13 @@ impl HitboxNode {
         }
     }
 
-    pub fn check_hit(&self, ray: &Ray) -> Option<&MeshHandle> {
+    pub fn check_hit(&self, ray: &Ray) -> Option<&ModelHandle> {
         let mut queue = HitboxQueue::new(); // Creating a new HitboxQueue
 
         let distance = self._box().read().check_hit(ray);
         if let Some(distance) = distance {
+            info!("Hit root box");
+
             queue.push(HitBoxQueueEntry {
                 hitbox: self,
                 distance,
@@ -91,6 +100,8 @@ impl HitboxNode {
             match hitbox {
                 // If hitbox is a ParentBox, check if the ray intersects the bounding box
                 HitboxNode::ParentBox { inner_hitboxes, .. } => {
+                    info!("Hit Parent box");
+
                     // If it intersects, recursively check inner hitboxes
                     for hitbox in inner_hitboxes {
                         let distance = self._box().read().check_hit(ray);
@@ -111,15 +122,6 @@ impl HitboxNode {
         println!("Ray does not intersect any hitbox");
 
         None
-    }
-}
-
-impl From<MeshHandle> for HitboxNode {
-    fn from(mesh: MeshHandle) -> Self {
-        match &mesh {
-            MeshHandle::Static { .. } => panic!("Static mesh cannot be converted to hitbox"),
-            MeshHandle::Interactive { raw_box, .. } => HitboxNode::box_(raw_box.clone(), mesh),
-        }
     }
 }
 

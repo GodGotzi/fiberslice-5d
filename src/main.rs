@@ -19,6 +19,7 @@ mod control;
 mod env;
 mod error;
 mod geometry;
+mod model;
 mod picking;
 mod prelude;
 mod render;
@@ -54,6 +55,7 @@ pub enum RootEvent {
 #[derive(Debug, Clone)]
 pub struct GlobalState<T: 'static> {
     pub proxy: EventLoopProxy<T>,
+    pub picking_state: picking::PickingState,
     pub ui_state: ui::UiState,
 
     pub fiber_settings: SharedMut<QuickSettings>,
@@ -91,9 +93,9 @@ async fn main() -> Result<(), EventLoopError> {
 
     let mut render_adapter = render::RenderAdapter::from_context(&wgpu_context).1;
 
-    let mut picking_adapter = picking::PickingAdapter::from_context(&wgpu_context).1;
-
     let mut camera_adapter = camera::CameraAdapter::from_context(&wgpu_context).1;
+
+    let (picking_state, mut picking_adapter) = picking::PickingAdapter::from_context(&wgpu_context);
 
     let (ui_state, mut ui_adapter) = ui::UiAdapter::from_context(&wgpu_context);
 
@@ -104,6 +106,7 @@ async fn main() -> Result<(), EventLoopError> {
 
     let mut global_state = GlobalState {
         proxy,
+        picking_state,
         ui_state,
         fiber_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
         topology_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),

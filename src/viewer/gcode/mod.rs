@@ -3,9 +3,10 @@ use std::{borrow::Borrow, collections::HashMap, fmt::Debug, str::Lines};
 use glam::Vec3;
 
 use crate::{
+    model::{transform::Translate, Model},
     picking::{hitbox::Hitbox, Pickable},
     prelude::{Shared, SharedMut},
-    render::{buffer::BufferLocation, model::Model, vertex::Vertex},
+    render::vertex::Vertex,
 };
 
 use self::{
@@ -63,33 +64,31 @@ impl PrintPart {
 
         let mut lines = Vec::new();
 
-        let mut layers: HashMap<usize, LayerModel> = HashMap::new();
+        // let mut layers: HashMap<usize, LayerModel> = HashMap::new();
 
-        let mut models = Vec::new();
-        let mut bounding_box: Box<dyn Hitbox> = Box::<BoundingHitbox>::default();
-
-        let mut vertices = Vec::new();
+        let mut root = Model::Root {
+            geometry: Vec::new(),
+            sub_models: Vec::new(),
+            ctx: crate::model::ModelContext::Interactive {
+                box_: SharedMut::from_inner(Box::<BoundingHitbox>::default()),
+                context: Shared::new(Box::new(TestContext {})),
+            },
+        };
 
         for modul in raw_path.moduls {
-            let layer = modul.state.layer.unwrap_or(0);
-            let state = modul.state.clone();
-            let range = modul.line_range;
+            // let layer = modul.state.layer.unwrap_or(0);
+            // let state = modul.state.clone();
+            // let range = modul.line_range;
 
             lines.extend(modul.lines.clone());
 
             let (modul_vertices, model) = modul.to_vertices(display_settings);
 
-            bounding_box.expand(model.borrow().hitbox().unwrap());
-            models.push(model);
-
-            vertices.extend(modul_vertices);
+            root.expand(model);
+            root.extend_data(modul_vertices);
         }
 
-        for vertex in vertices.iter_mut() {
-            vertex.position[0] -= raw_path.center_mass.x;
-            vertex.position[1] -= raw_path.center_mass.y;
-            vertex.position[2] -= raw_path.center_mass.z;
-        }
+        root.translate(-raw_path.center_mass);
 
         let box_ = BoundingHitbox::new(
             raw_path.virtual_box.min - raw_path.center_mass,
@@ -98,19 +97,10 @@ impl PrintPart {
 
         let wire_model = WireModel::new(lines);
 
-        let size = vertices.len();
-
         Self {
             raw: raw.map(|s| s.to_string()).collect(),
             wire_model,
-            model: Model::Interactive {
-                vertices,
-                sub_meshes: models,
-                location: BufferLocation { offset: 0, size },
-                raw_box: SharedMut::from_inner(bounding_box),
-                context: Shared::new(Box::new(TestContext {})),
-            },
-
+            model: root,
             center_mass: raw_path.center_mass,
             bounding_box: box_,
         }

@@ -1,13 +1,13 @@
-use std::{sync::Arc, time::Instant};
+use std::time::Instant;
 
+use crate::model::{IntoHandle, Model};
 use buffer::{
     alloc::BufferDynamicAllocator,
     layout::{wire::WireAllocator, WidgetAllocator},
-    BufferLocation, DynamicBuffer,
+    DynamicBuffer,
 };
 use glam::{Mat4, Vec3};
 use light::LightUniform;
-use model::Model;
 use vertex::Vertex;
 use wgpu::util::DeviceExt;
 
@@ -19,13 +19,12 @@ use crate::{
     },
     prelude::*,
     ui::UiUpdateOutput,
-    viewer::gcode::{PrintPart, TestContext},
+    viewer::gcode::PrintPart,
     GlobalState, RootEvent,
 };
 
 pub mod buffer;
 pub mod light;
-pub mod model;
 pub mod texture;
 pub mod vertex;
 
@@ -282,19 +281,7 @@ impl<'a>
             }
             winit::event::Event::UserEvent(RootEvent::RenderEvent(event)) => match event {
                 RenderEvent::AddGCodeToolpath(part) => {
-                    if let Model::Interactive {
-                        vertices,
-                        sub_meshes,
-                        location,
-                        raw_box,
-                        context,
-                    } = &part.model
-                    {
-                        let box_vertices =
-                            SelectBox::from(part.bounding_box).to_triangle_vertices();
-
-                        let line_vertices = SelectBox::from(part.bounding_box).to_wire_vertices();
-
+                    if let Model::Root { geometry, .. } = &part.model {
                         self.main_buffer.free(
                             "entity-1",
                             &wgpu_context.device,
@@ -303,10 +290,17 @@ impl<'a>
 
                         self.main_buffer.allocate_init(
                             "entity-1",
-                            vertices,
+                            geometry,
                             &wgpu_context.device,
                             &wgpu_context.queue,
                         );
+
+                        let handle = part.model.clone().req_handle("entity-1".to_string());
+
+                        let box_vertices =
+                            SelectBox::from(part.bounding_box).to_triangle_vertices();
+
+                        let line_vertices = SelectBox::from(part.bounding_box).to_wire_vertices();
 
                         self.wire_buffer
                             .write(&wgpu_context.queue, "select_box", &line_vertices);
@@ -323,20 +317,6 @@ impl<'a>
 
                         state
                             .proxy
-                            .send_event(RootEvent::PickingEvent(
-                                crate::picking::PickingEvent::AddInteractiveMesh(
-                                    model::MeshHandle::Interactive {
-                                        location: BufferLocation { offset: 0, size: 1 },
-                                        sub_meshes: Vec::new(),
-                                        raw_box: SharedMut::from_inner(Box::new(part.bounding_box)),
-                                        context: Arc::new(Box::new(TestContext {})),
-                                    },
-                                ),
-                            ))
-                            .unwrap();
-
-                        state
-                            .proxy
                             .send_event(RootEvent::UiEvent(crate::ui::UiEvent::ShowSuccess(
                                 "Gcode loaded".to_string(),
                             )))
@@ -347,8 +327,10 @@ impl<'a>
                 }
                 RenderEvent::LoadMesh(mesh) => {
                     let vertices = match mesh {
-                        Model::Static { vertices, .. } => vertices,
-                        Model::Interactive { vertices, .. } => vertices,
+                        Model::Root { geometry, .. } => geometry,
+                        _ => {
+                            panic!("Not a root Model");
+                        }
                     };
 
                     self.wire_buffer

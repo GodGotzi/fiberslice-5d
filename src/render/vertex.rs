@@ -1,6 +1,8 @@
 /// A vertex is a single point. A geometry is typically composed of multiple vertecies.
 use bytemuck::Zeroable;
 
+use crate::model::transform::Translate;
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
@@ -39,5 +41,13 @@ impl Vertex {
                 },
             ],
         }
+    }
+}
+
+impl Translate for Vertex {
+    fn translate(&mut self, translation: glam::Vec3) {
+        self.position[0] += translation.x;
+        self.position[1] += translation.y;
+        self.position[2] += translation.z;
     }
 }

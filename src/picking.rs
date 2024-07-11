@@ -4,12 +4,8 @@ use winit::event::{DeviceEvent, ElementState, WindowEvent};
 use crate::{
     camera::CameraResult,
     geometry::BoundingHitbox,
+    model::ModelHandle,
     prelude::{Adapter, Error, FrameHandle, SharedMut, WgpuContext},
-    render::{
-        buffer::BufferLocation,
-        model::{MeshHandle, Model},
-        vertex::Vertex,
-    },
     GlobalState, RootEvent,
 };
 
@@ -19,7 +15,7 @@ pub mod ray;
 
 #[derive(Debug, Clone)]
 pub enum PickingEvent {
-    AddInteractiveMesh(MeshHandle),
+    AddInteractiveMesh(ModelHandle),
 }
 
 pub trait Pickable: std::fmt::Debug + Send + Sync {
@@ -30,9 +26,16 @@ pub trait Pickable: std::fmt::Debug + Send + Sync {
 #[derive(Debug, Clone)]
 pub struct PickingState {
     hitbox: SharedMut<hitbox::HitboxNode>,
-
     is_drag_left: bool,
     is_drag_right: bool,
+}
+
+impl PickingState {
+    pub fn add_hitbox(&self, hitbox: hitbox::HitboxNode) {
+        self.hitbox.write_with_fn(|root| {
+            root.add_hitbox(hitbox);
+        });
+    }
 }
 
 pub struct PickingAdapter {
@@ -105,9 +108,9 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, &CameraResult)> for
                     PickingEvent::AddInteractiveMesh(handle),
                 )) => {
                     self.state.hitbox.write_with_fn(|root| {
-                        let hitbox = handle.clone().into();
+                        // let hitbox = handle.clone().into();
 
-                        root.add_hitbox(hitbox);
+                        // root.add_hitbox(hitbox);
                     });
                     println!("PickingAdapter: Adding Interactive Mesh");
                 }
