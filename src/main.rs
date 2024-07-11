@@ -212,6 +212,12 @@ async fn main() -> Result<(), EventLoopError> {
             )
             .unwrap();
 
+        global_state
+            .toolpath_server
+            .write()
+            .update(&wgpu_context)
+            .unwrap();
+
         /*
         environment_adapter
             .handle_frame(&event, start_time, &wgpu_context, global_state.clone())
