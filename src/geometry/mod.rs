@@ -1,4 +1,4 @@
-use glam::{vec3, Vec3, Vec4};
+use glam::{vec3, vec4, Vec3, Vec4};
 use mesh::{construct_triangle_vertices, construct_wire_vertices, WireMesh};
 
 pub mod r#box;
@@ -9,7 +9,6 @@ pub use r#box::BoundingHitbox;
 use crate::{
     model::transform::{Rotate, Scale, Translate},
     picking::hitbox::Hitbox,
-    prelude::SharedMut,
     render::vertex::Vertex,
 };
 
@@ -54,13 +53,14 @@ impl Hitbox for QuadFace {
             && intersection.z >= (self.min.z - EPSILON)
         {
             let distance = (intersection - ray.origin).length();
+
             Some(distance)
         } else {
             None
         }
     }
 
-    fn expand(&mut self, _box: &SharedMut<Box<dyn Hitbox>>) {
+    fn expand(&mut self, _box: &dyn Hitbox) {
         panic!("QuadFace does not have an expand method");
     }
 
@@ -83,6 +83,8 @@ impl Hitbox for QuadFace {
 
 pub struct SelectBox {
     box_: BoundingHitbox,
+    triangle_color: Option<Vec4>,
+    wire_color: Option<Vec4>,
 }
 
 impl From<BoundingHitbox> for SelectBox {
@@ -90,11 +92,21 @@ impl From<BoundingHitbox> for SelectBox {
         // box_.expand_point(box_.max + Vec3::new(2.0, 2.0, 2.0));
         // box_.expand_point(box_.min + Vec3::new(-2.0, -2.0, -2.0));
 
-        Self { box_ }
+        Self {
+            box_,
+            triangle_color: None,
+            wire_color: None,
+        }
     }
 }
 
 impl SelectBox {
+    pub fn with_color(mut self, triangle: Vec4, wire: Vec4) -> Self {
+        self.triangle_color = Some(triangle);
+        self.wire_color = Some(wire);
+        self
+    }
+
     pub const fn traingle_vertex_count() -> usize {
         72
     }
@@ -379,7 +391,7 @@ impl crate::geometry::mesh::Mesh<72> for SelectBox {
                     self.box_.min.z,
                 ),
             ],
-            Vec4::new(0.0, 0.0, 0.0, 1.0),
+            self.triangle_color.unwrap_or(vec4(0.0, 0.0, 0.0, 1.0)),
         )
     }
 }
@@ -417,7 +429,7 @@ impl WireMesh<28> for SelectBox {
                 vec3(self.box_.min.x, self.box_.min.y, self.box_.max.z),
                 vec3(self.box_.min.x, self.box_.max.y, self.box_.max.z),
             ],
-            Vec4::new(0.0, 0.0, 0.0, 1.0),
+            self.wire_color.unwrap_or(vec4(0.0, 0.0, 0.0, 1.0)),
         )
     }
 }

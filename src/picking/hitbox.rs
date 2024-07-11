@@ -2,119 +2,98 @@ use glam::Vec3;
 use log::info;
 
 use crate::{
-    model::{
-        transform::{Rotate, Scale, Translate},
-        ModelHandle,
-    },
+    model::transform::{Rotate, Scale, Translate},
     prelude::SharedMut,
 }; // Importing the BoundingBox struct from the geometry module in the crate
 
 use super::{
+    interactive::Pickable,
     queue::{HitBoxQueueEntry, HitboxQueue},
     ray::Ray,
 };
 
 pub trait Hitbox: std::fmt::Debug + Send + Sync + Translate + Rotate + Scale {
     fn check_hit(&self, ray: &Ray) -> Option<f32>;
-    fn expand(&mut self, _box: &SharedMut<Box<dyn Hitbox>>);
+    fn expand(&mut self, _box: &dyn Hitbox);
     fn set_enabled(&mut self, enabled: bool);
     fn enabled(&self) -> bool;
     fn min(&self) -> Vec3;
     fn max(&self) -> Vec3;
 }
 
+pub type PickContext = SharedMut<Box<dyn Pickable>>;
+
 // Importing the Ray struct from the ray module in the super namespace
 // Function to check if a ray hits a hitbox node, returning an optional usize
 
 // Definition of the HitboxNode enum with Debug trait
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum HitboxNode {
     // Variant for parent boxes containing other hitboxes and a bounding box
+    Root {
+        inner_hitboxes: Vec<HitboxNode>,
+    },
     ParentBox {
         inner_hitboxes: Vec<HitboxNode>,
-        _box: SharedMut<Box<dyn Hitbox>>,
+        ctx: PickContext,
     },
     // Variant for individual boxes with a bounding box and an id
     Box {
-        _box: SharedMut<Box<dyn Hitbox>>,
-        interactive_mesh: ModelHandle,
+        ctx: PickContext,
     },
 }
 
 // Implementation of methods for HitboxNode
 impl HitboxNode {
-    // Constructor method for creating a parent box
-    pub fn parent_box(_box: SharedMut<Box<dyn Hitbox>>) -> Self {
-        HitboxNode::ParentBox {
+    pub fn root() -> Self {
+        HitboxNode::Root {
             inner_hitboxes: Vec::new(),
-            _box,
         }
     }
 
-    // Constructor method for creating a box with an id
-    pub fn box_(_box: SharedMut<Box<dyn Hitbox>>, mesh: ModelHandle) -> Self {
-        HitboxNode::Box {
-            interactive_mesh: mesh,
-            _box,
+    pub fn parent_box(ctx: PickContext, inner_hitboxes: Vec<HitboxNode>) -> Self {
+        HitboxNode::ParentBox {
+            inner_hitboxes,
+            ctx,
         }
     }
 
-    // Method to add a hitbox to a parent box
-    pub fn add_hitbox(&mut self, hitbox: HitboxNode) {
+    fn hitbox(&self) -> &dyn Hitbox {
         match self {
-            // If the hitbox is a ParentBox, expand its bounding box and add the new hitbox
-            HitboxNode::ParentBox {
-                inner_hitboxes,
-                _box,
-            } => {
-                _box.write().expand(hitbox._box());
-                inner_hitboxes.push(hitbox);
-            }
-            // If the hitbox is a Box, do nothing
-            HitboxNode::Box { .. } => {}
+            HitboxNode::ParentBox { ctx, .. } => ctx,
+            HitboxNode::Box { ctx } => ctx,
+            HitboxNode::Root { .. } => panic!("Root does not have a hitbox"),
         }
     }
 
-    // Method to get the bounding box of a hitbox node
-    pub fn _box(&self) -> &SharedMut<Box<dyn Hitbox>> {
-        match self {
-            HitboxNode::ParentBox { _box, .. } => _box,
-            HitboxNode::Box { _box, .. } => _box,
-        }
-    }
-
-    pub fn check_hit(&self, ray: &Ray) -> Option<&ModelHandle> {
+    pub fn check_hit(&self, ray: &Ray) -> Option<&PickContext> {
         let mut queue = HitboxQueue::new(); // Creating a new HitboxQueue
 
-        let distance = self._box().read().check_hit(ray);
-        if let Some(distance) = distance {
-            info!("Hit root box");
-
-            queue.push(HitBoxQueueEntry {
-                hitbox: self,
-                distance,
-            });
+        if let HitboxNode::Root { inner_hitboxes } = self {
+            for hitbox in inner_hitboxes {
+                let distance = hitbox.hitbox().check_hit(ray);
+                if let Some(distance) = distance {
+                    queue.push(HitBoxQueueEntry { hitbox, distance });
+                }
+            }
         }
 
         while let Some(HitBoxQueueEntry { hitbox, .. }) = queue.pop() {
             match hitbox {
                 // If hitbox is a ParentBox, check if the ray intersects the bounding box
-                HitboxNode::ParentBox { inner_hitboxes, .. } => {
-                    info!("Hit Parent box");
-
+                HitboxNode::ParentBox { inner_hitboxes, .. }
+                | HitboxNode::Root { inner_hitboxes, .. } => {
                     // If it intersects, recursively check inner hitboxes
                     for hitbox in inner_hitboxes {
-                        let distance = self._box().read().check_hit(ray);
+                        let distance = hitbox.hitbox().check_hit(ray);
                         if let Some(distance) = distance {
                             queue.push(HitBoxQueueEntry { hitbox, distance });
                         }
                     }
                 }
                 // If hitbox is a Box, check if the ray intersects its bounding box
-                HitboxNode::Box {
-                    interactive_mesh, ..
-                } => {
-                    return Some(interactive_mesh);
+                HitboxNode::Box { ctx, .. } => {
+                    return Some(ctx);
                 }
             }
         }
@@ -122,6 +101,25 @@ impl HitboxNode {
         println!("Ray does not intersect any hitbox");
 
         None
+    }
+
+    pub fn add_node(&mut self, node: HitboxNode) {
+        match self {
+            HitboxNode::Root { inner_hitboxes, .. } => {
+                inner_hitboxes.push(node);
+            }
+            HitboxNode::ParentBox {
+                inner_hitboxes,
+                ctx: handle,
+                ..
+            } => {
+                handle.expand(node.hitbox());
+                inner_hitboxes.push(node);
+            }
+            HitboxNode::Box { .. } => {
+                panic!("Cannot add node to a box");
+            }
+        }
     }
 }
 

@@ -7,10 +7,14 @@
 
 use egui::ahash::HashMap;
 use log::{info, LevelFilter};
+use render::buffer::{
+    layout::{wire::WireAllocator, WidgetAllocator},
+    DynamicBuffer,
+};
 use settings::tree::QuickSettings;
 use std::{sync::Arc, time::Instant};
 
-use prelude::{Adapter, FrameHandle, GlobalContext, SharedMut, WgpuContext};
+use prelude::{Adapter, FrameHandle, GlobalContext, Shared, SharedMut, WgpuContext};
 
 mod api;
 mod camera;
@@ -57,6 +61,11 @@ pub struct GlobalState<T: 'static> {
     pub proxy: EventLoopProxy<T>,
     pub picking_state: picking::PickingState,
     pub ui_state: ui::UiState,
+
+    pub toolpath_server: SharedMut<viewer::part_server::ToolpathServer>,
+
+    pub widget_test_buffer: Shared<DynamicBuffer<render::vertex::Vertex, WidgetAllocator>>,
+    pub widget_wire_test_buffer: Shared<DynamicBuffer<render::vertex::Vertex, WireAllocator>>,
 
     pub fiber_settings: SharedMut<QuickSettings>,
     pub topology_settings: SharedMut<QuickSettings>,
@@ -108,6 +117,21 @@ async fn main() -> Result<(), EventLoopError> {
         proxy,
         picking_state,
         ui_state,
+
+        toolpath_server: SharedMut::from_inner(viewer::part_server::ToolpathServer::new(
+            &wgpu_context.device,
+        )),
+
+        widget_test_buffer: Shared::new(DynamicBuffer::new(
+            WidgetAllocator,
+            "Test Widget Buffer",
+            &wgpu_context.device,
+        )),
+        widget_wire_test_buffer: Shared::new(DynamicBuffer::new(
+            WireAllocator,
+            "Test Wire Widget Buffer",
+            &wgpu_context.device,
+        )),
         fiber_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
         topology_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
         view_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),

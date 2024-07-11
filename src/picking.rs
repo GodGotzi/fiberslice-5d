@@ -1,26 +1,21 @@
+use hitbox::HitboxNode;
 use tokio::task::JoinHandle;
 use winit::event::{DeviceEvent, ElementState, WindowEvent};
 
 use crate::{
     camera::CameraResult,
-    geometry::BoundingHitbox,
-    model::ModelHandle,
     prelude::{Adapter, Error, FrameHandle, SharedMut, WgpuContext},
     GlobalState, RootEvent,
 };
 
 pub mod hitbox;
+pub mod interactive;
 mod queue;
 pub mod ray;
 
 #[derive(Debug, Clone)]
 pub enum PickingEvent {
-    AddInteractiveMesh(ModelHandle),
-}
-
-pub trait Pickable: std::fmt::Debug + Send + Sync {
-    fn hover(&self, state: GlobalState<RootEvent>);
-    fn select(&self, state: GlobalState<RootEvent>);
+    AddHitbox(HitboxNode),
 }
 
 #[derive(Debug, Clone)]
@@ -33,7 +28,7 @@ pub struct PickingState {
 impl PickingState {
     pub fn add_hitbox(&self, hitbox: hitbox::HitboxNode) {
         self.hitbox.write_with_fn(|root| {
-            root.add_hitbox(hitbox);
+            root.add_node(hitbox);
         });
     }
 }
@@ -49,7 +44,7 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, &CameraResult)> for
         &mut self,
         event: &winit::event::Event<RootEvent>,
         _start_time: std::time::Instant,
-        _wgpu_context: &WgpuContext,
+        wgpu_context: &WgpuContext,
         (global_state, camera_result): (GlobalState<RootEvent>, &CameraResult),
     ) -> Result<(), Error> {
         let pointer_in_use = global_state
@@ -84,6 +79,7 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, &CameraResult)> for
 
                                 if let Some(handle) = hit {
                                     println!("PickingAdapter: Hit");
+                                    handle.read().picked(&global_state, wgpu_context);
                                 }
                             });
                         }
@@ -101,16 +97,27 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, &CameraResult)> for
                     }
 
                     if self.state.is_drag_right {
-                        println!("PickingAdapter: Dragging Right Click");
+                        if let Some((x, y)) = global_state.ctx.mouse_position {
+                            let ray = ray::Ray::from_view(viewport, (x, y), view, proj, eye);
+
+                            self.state.hitbox.read_with_fn(|root| {
+                                println!("PickingAdapter: Checking Hit");
+
+                                let hit = root.check_hit(&ray);
+
+                                if let Some(handle) = hit {
+                                    println!("PickingAdapter: Hit");
+                                    handle.read().picked(&global_state, wgpu_context);
+                                }
+                            });
+                        }
                     }
                 }
                 winit::event::Event::UserEvent(RootEvent::PickingEvent(
-                    PickingEvent::AddInteractiveMesh(handle),
+                    PickingEvent::AddHitbox(box_),
                 )) => {
                     self.state.hitbox.write_with_fn(|root| {
-                        // let hitbox = handle.clone().into();
-
-                        // root.add_hitbox(hitbox);
+                        root.add_node(box_.clone());
                     });
                     println!("PickingAdapter: Adding Interactive Mesh");
                 }
@@ -142,9 +149,7 @@ impl<'a>
 {
     fn from_context(_wgpu_context: &WgpuContext) -> (PickingState, Self) {
         let state = PickingState {
-            hitbox: SharedMut::from_inner(hitbox::HitboxNode::parent_box(SharedMut::from_inner(
-                Box::<BoundingHitbox>::default(),
-            ))),
+            hitbox: SharedMut::from_inner(hitbox::HitboxNode::root()),
 
             is_drag_left: false,
             is_drag_right: false,

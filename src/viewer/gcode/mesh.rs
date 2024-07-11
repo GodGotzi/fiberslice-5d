@@ -7,14 +7,13 @@ use crate::{
     },
     model::{
         transform::{Rotate, Scale, Translate},
-        Model, ModelContext,
+        TreeObject,
     },
-    picking::hitbox::Hitbox,
-    prelude::{Shared, SharedMut},
+    picking::hitbox::{Hitbox, PickContext},
     render::{buffer::BufferLocation, vertex::Vertex},
 };
 
-use super::{path::PathModul, DisplaySettings, TestContext};
+use super::{path::PathModul, DisplaySettings, PathContext};
 
 #[derive(Debug, Clone)]
 pub struct ProfileCross {
@@ -284,7 +283,10 @@ impl Mesh<12> for PathConnectionMesh {
 }
 
 impl PathModul {
-    pub(super) fn to_vertices(&self, settings: &DisplaySettings) -> (Vec<Vertex>, Model<Vertex>) {
+    pub(super) fn to_vertices(
+        &self,
+        settings: &DisplaySettings,
+    ) -> (Vec<Vertex>, TreeObject<Vertex, PickContext>) {
         let mut vertices = Vec::new();
         let mut offsets: Vec<usize> = Vec::new();
         let mut sub_models = Vec::new();
@@ -341,21 +343,17 @@ impl PathModul {
 
                 let path_hitbox = PathHitbox::from(path_mesh);
 
-                let hitbox: SharedMut<Box<dyn Hitbox>> =
-                    SharedMut::from_inner(Box::new(path_hitbox));
+                bounding_box.expand(&path_hitbox);
 
-                bounding_box.expand(&hitbox);
-
-                let sub_model = Model::<Vertex>::Node {
+                let sub_model = TreeObject::<Vertex, PickContext>::Node {
                     location: BufferLocation {
                         offset: vertices.len(),
                         size: path_mesh_vertices.len(),
                     },
                     sub_models: Vec::new(),
-                    ctx: ModelContext::Interactive {
-                        box_: hitbox,
-                        context: Shared::new(Box::new(TestContext {})),
-                    },
+                    ctx: PickContext::from_inner(Box::new(PathContext {
+                        box_: Box::new(path_hitbox),
+                    })),
                 };
 
                 sub_models.push(sub_model);
@@ -372,16 +370,13 @@ impl PathModul {
             }
         }
 
-        let model = Model::<Vertex>::Node {
+        let model = TreeObject::<Vertex, PickContext>::Node {
             location: BufferLocation {
                 offset: 0,
                 size: vertices.len(),
             },
             sub_models,
-            ctx: ModelContext::Interactive {
-                box_: SharedMut::from_inner(bounding_box),
-                context: Shared::new(Box::new(TestContext {})),
-            },
+            ctx: PickContext::from_inner(Box::new(PathContext { box_: bounding_box })),
         };
 
         (vertices, model)
@@ -448,7 +443,7 @@ impl Hitbox for PathHitbox {
         min
     }
 
-    fn expand(&mut self, _box: &SharedMut<Box<dyn Hitbox>>) {
+    fn expand(&mut self, _box: &dyn Hitbox) {
         // Not expandable
         // TODO either figure out how to expand this or remove this method for this type or make it clear that this is not expandable
     }

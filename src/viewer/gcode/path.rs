@@ -117,8 +117,7 @@ fn compute_modul(
                 continue;
             }
 
-            let print = instruction.instruction_type() == &InstructionType::G1
-                && current_movements.E.is_some_and(|e| e > 0.0);
+            let print = true; // instruction.instruction_type() == &InstructionType::G1 && current_movements.E.is_some_and(|e| e > 0.0);
 
             if print {
                 if let Some(print_type) = instruction_modul.state.print_type.as_ref() {

@@ -1,5 +1,5 @@
 use alloc::BufferAllocation;
-use log::info;
+use parking_lot::Mutex;
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     BufferAddress, BufferDescriptor, Device, Queue,
@@ -191,7 +191,7 @@ impl RawDynamicBuffer {
         self.render_range = 0..self.size as u32;
     }
 
-    pub fn write<T>(&mut self, queue: &wgpu::Queue, offset: usize, data: &[T])
+    pub fn write<T>(&self, queue: &wgpu::Queue, offset: usize, data: &[T])
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
     {
@@ -209,7 +209,7 @@ impl RawDynamicBuffer {
 #[derive(Debug)]
 pub struct DynamicBuffer<T, L> {
     inner: RawDynamicBuffer,
-    allocater: Box<L>,
+    allocater: Mutex<Box<L>>,
     _phantom: std::marker::PhantomData<T>,
 }
 
@@ -228,63 +228,43 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable, L: alloc::BufferAlloc<T>> DynamicBuf
 
         Self {
             inner,
-            allocater: Box::new(allocater),
+            allocater: Mutex::new(Box::new(allocater)),
             _phantom: std::marker::PhantomData,
         }
     }
 
-    pub fn write(&mut self, queue: &wgpu::Queue, id: &str, data: &[T]) -> Option<&BufferAllocation>
+    pub fn write(&self, queue: &wgpu::Queue, id: &str, data: &[T])
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
     {
-        if let Some(allocation) = self.allocater.get(id) {
+        if let Some(allocation) = self.allocater.lock().get(id) {
             self.inner.write(queue, allocation.offset, data);
-
-            Some(allocation)
-        } else {
-            None
         }
     }
 }
 
 impl<T: bytemuck::Pod + bytemuck::Zeroable, L: alloc::BufferDynamicAlloc<T>> DynamicBuffer<T, L> {
     #[allow(dead_code)]
-    pub fn allocate(
-        &mut self,
-        id: &str,
-        size: usize,
-        device: &Device,
-        queue: &Queue,
-    ) -> &BufferAllocation
+    pub fn allocate(&mut self, id: &str, size: usize, device: &Device, queue: &Queue)
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
     {
-        self.allocater.allocate(id, size);
+        self.allocater.lock().allocate(id, size);
 
         self.inner.allocate::<T>(size, device, queue);
-
-        self.allocater.get(id).unwrap()
     }
 
-    pub fn allocate_init(
-        &mut self,
-        id: &str,
-        data: &[T],
-        device: &Device,
-        queue: &Queue,
-    ) -> &BufferAllocation
+    pub fn allocate_init(&mut self, id: &str, data: &[T], device: &Device, queue: &Queue)
     where
         T: bytemuck::Pod + bytemuck::Zeroable,
     {
-        self.allocater.allocate(id, data.len());
+        self.allocater.lock().allocate(id, data.len());
 
         self.inner.append(data, device, queue);
-
-        self.allocater.get(id).unwrap()
     }
 
     pub fn free(&mut self, id: &str, device: &Device, queue: &Queue) {
-        if let Some(allocation) = self.allocater.free(id) {
+        if let Some(allocation) = self.allocater.lock().free(id) {
             self.inner
                 .free::<T>(allocation.offset, allocation.size, device, queue);
         }

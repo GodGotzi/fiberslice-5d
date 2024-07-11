@@ -118,6 +118,8 @@ impl Scale for BoundingHitbox {
 
 impl Hitbox for BoundingHitbox {
     fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
+        // bounding box min max
+
         if self.contains(ray.origin) {
             return Some(0.0);
         }
@@ -134,12 +136,18 @@ impl Hitbox for BoundingHitbox {
             }
         }
 
+        if min.is_some() {
+            println!("Ray intersects bounding box");
+
+            println!("Distance: {:?}", min.unwrap());
+        }
+
         min
     }
 
-    fn expand(&mut self, _box: &SharedMut<Box<dyn Hitbox>>) {
-        self.min = self.min.min(_box.read().min());
-        self.max = self.max.max(_box.read().max());
+    fn expand(&mut self, box_: &dyn Hitbox) {
+        self.min = self.min.min(box_.min());
+        self.max = self.max.max(box_.max());
     }
 
     fn set_enabled(&mut self, enabled: bool) {

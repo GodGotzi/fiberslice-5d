@@ -25,7 +25,9 @@ use egui::{FontDefinitions, InnerResponse, Pos2, Rect, Ui, Visuals};
 use winit::event::WindowEvent;
 
 use crate::{
-    prelude::{Adapter, Error, FrameHandle, Mode, Shared, WgpuContext, WrappedSharedMut},
+    prelude::{
+        Adapter, Error, FrameHandle, Mode, Shared, SharedMut, WgpuContext, WrappedSharedMut,
+    },
     GlobalState, RootEvent,
 };
 

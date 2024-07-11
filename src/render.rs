@@ -1,6 +1,9 @@
 use std::time::Instant;
 
-use crate::model::{IntoHandle, Model};
+use crate::{
+    model::{IntoHandle, TreeObject},
+    picking::hitbox::PickContext,
+};
 use buffer::{
     alloc::BufferDynamicAllocator,
     layout::{wire::WireAllocator, WidgetAllocator},
@@ -8,6 +11,7 @@ use buffer::{
 };
 use glam::{Mat4, Vec3};
 use light::LightUniform;
+use log::info;
 use vertex::Vertex;
 use wgpu::util::DeviceExt;
 
@@ -19,7 +23,7 @@ use crate::{
     },
     prelude::*,
     ui::UiUpdateOutput,
-    viewer::gcode::PrintPart,
+    viewer::gcode::Toolpath,
     GlobalState, RootEvent,
 };
 
@@ -32,8 +36,8 @@ const MSAA_SAMPLE_COUNT: u32 = 1;
 
 #[derive(Debug, Clone)]
 pub enum RenderEvent {
-    AddGCodeToolpath(PrintPart),
-    LoadMesh(Model<Vertex>),
+    AddGCodeToolpath(Toolpath),
+    LoadMesh(TreeObject<Vertex, PickContext>),
     Debug(String, Vec<Vec3>),
     DebugVertex,
 }
@@ -206,9 +210,11 @@ impl<'a>
 
                             render_pass.set_pipeline(&self.no_cull_pipline);
                             self.widget_buffer.render(&mut render_pass);
+                            state.widget_test_buffer.render(&mut render_pass);
 
                             render_pass.set_pipeline(&self.wire_pipline);
                             self.wire_buffer.render(&mut render_pass);
+                            state.widget_wire_test_buffer.render(&mut render_pass);
                             self.debug_buffer.render(&mut render_pass);
                         }
 
@@ -281,7 +287,7 @@ impl<'a>
             }
             winit::event::Event::UserEvent(RootEvent::RenderEvent(event)) => match event {
                 RenderEvent::AddGCodeToolpath(part) => {
-                    if let Model::Root { geometry, .. } = &part.model {
+                    if let TreeObject::Root { geometry, .. } = &part.model {
                         self.main_buffer.free(
                             "entity-1",
                             &wgpu_context.device,
@@ -315,6 +321,10 @@ impl<'a>
                             ))
                             .unwrap();
 
+                        info!("Loaded Gcode box: {:?}", part.bounding_box);
+
+                        state.picking_state.add_hitbox(handle.into());
+
                         state
                             .proxy
                             .send_event(RootEvent::UiEvent(crate::ui::UiEvent::ShowSuccess(
@@ -327,7 +337,7 @@ impl<'a>
                 }
                 RenderEvent::LoadMesh(mesh) => {
                     let vertices = match mesh {
-                        Model::Root { geometry, .. } => geometry,
+                        TreeObject::Root { geometry, .. } => geometry,
                         _ => {
                             panic!("Not a root Model");
                         }

@@ -129,7 +129,8 @@ fn file_button(ui: &mut Ui, (_ui_state, global_state): &(UiState, GlobalState<Ro
                         let content = std::fs::read_to_string(&path).unwrap();
                         let gcode: gcode::GCode = gcode::parser::parse_content(&content).unwrap();
 
-                        let part = gcode::PrintPart::from_gcode(
+                        let part = gcode::Toolpath::from_gcode(
+                            path.to_str().unwrap_or(""),
                             (content.lines(), gcode),
                             &mesh_settings,
                             &display_settings,
