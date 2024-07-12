@@ -122,7 +122,7 @@ impl UiAdapter {
         };
 
         self.state.pointer_in_use.store(
-            self.platform.context().is_using_pointer() || !is_pointer_over_viewport,
+            !is_pointer_over_viewport || self.platform.context().is_using_pointer(),
             std::sync::atomic::Ordering::Relaxed,
         );
     }
@@ -144,6 +144,10 @@ impl<'a>
         global_state: GlobalState<RootEvent>,
     ) -> Result<(Option<UiUpdateOutput>, (f32, f32, f32, f32)), Error> {
         puffin::profile_function!();
+
+        self.state
+            .pointer_in_use
+            .store(false, std::sync::atomic::Ordering::Relaxed);
 
         self.update(event, start_time, wgpu_context);
 

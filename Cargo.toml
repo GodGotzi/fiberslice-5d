@@ -8,8 +8,8 @@ edition = "2021"
 
 [dependencies]
 egui_grid = "0.5.1"
-egui_extras = { version = "0.27.2", features = ["all_loaders"] }
-egui = "0.27.2"
+egui_extras = { version = "0.27", features = ["all_loaders"] }
+egui = "0.27"
 egui_wgpu_backend = "0.29"
 egui_winit_platform = "0.22"
 
@@ -41,7 +41,7 @@ puffin_http = "0.16.0"
 pollster = "0.3.0"
 wgpu = "0.20"
 
-glam = "0.27"
+glam = "0.28"
 bytemuck = "1.7.0"
 catppuccin-egui = { version = "5.1", default-features = false, features = [
     "egui27",
@@ -52,3 +52,4 @@ toml = "0.8.14"
 egui-toast = "0.13.0"
 puffin_egui = "0.27.0"
 futures-channel = "0.3.30"
+egui_code_editor = { git = "https://github.com/GodGotzi/egui_fast_editor.git" }

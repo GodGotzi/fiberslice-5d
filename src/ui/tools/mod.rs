@@ -1,6 +1,10 @@
-use egui::Color32;
+use std::time::Instant;
 
-use crate::{GlobalState, RootEvent};
+use egui::{Color32, RichText, Sense, Widget};
+use egui_code_editor::{highlighting::highlight, CodeEditor, ColorTheme, Syntax};
+use winit::event::ElementState;
+
+use crate::{viewer::GCodeSyntax, GlobalState, RootEvent};
 
 use super::{Component, UiState};
 
@@ -137,10 +141,23 @@ impl Component for CameraControlTool<'_> {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct GCodeToolState {
     enabled: bool,
     anchored: bool,
+    offset: usize,
+    size: usize,
+}
+
+impl Default for GCodeToolState {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            anchored: false,
+            offset: 0,
+            size: 20,
+        }
+    }
 }
 
 impl ToolState for GCodeToolState {
@@ -188,11 +205,55 @@ impl Component for GCodeTool<'_> {
                 .collapsible(false)
                 .frame(frame)
                 .show(ctx, |ui| {
-                    if ui.button("⚓").clicked() {
-                        self.state.anchored = !self.state.anchored;
+                    // if ui.button("⚓").clicked() {
+                    //   self.state.anchored = !self.state.anchored;
+                    // }
+
+                    ui.add_space(10.0);
+
+                    let toolpath_server = global_state.toolpath_server.read();
+                    let focused_toolpath = toolpath_server.get_focused();
+
+                    if let Some(toolpath) = focused_toolpath {
+                        let line_breaks = &toolpath.line_breaks;
+
+                        let selected_offset = if self.state.offset != 0 {
+                            line_breaks.get(self.state.offset - 1).unwrap_or(&0) + 1
+                        } else {
+                            0
+                        };
+                        let selected_end: usize = *line_breaks
+                            .get(self.state.offset + self.state.size - 1)
+                            .unwrap_or(&line_breaks.last().unwrap_or(&0));
+
+                        CodeEditor::default()
+                            .id_source("code editor")
+                            .with_line_range((self.state.offset + 1, self.state.size))
+                            .with_fontsize(14.0)
+                            .with_theme(ColorTheme::GRUVBOX)
+                            .with_syntax(Syntax::gcode())
+                            .vscroll(true)
+                            .with_numlines(true)
+                            .with_view((selected_offset, selected_end - selected_offset))
+                            .show(ui, &toolpath.code);
+
+                        let scroll_delta = ui.ctx().input(|input| input.smooth_scroll_delta.y);
+
+                        if ui.ui_contains_pointer() && self.state.size < line_breaks.len() {
+                            self.state.offset = ((self.state.offset as f32 - scroll_delta).max(0.0)
+                                as usize)
+                                .min(line_breaks.len() - 1);
+
+                            global_state
+                                .ui_state
+                                .pointer_in_use
+                                .store(true, std::sync::atomic::Ordering::Relaxed);
+
+                            println!("Offset: {}", self.state.offset);
+                        }
                     }
 
-                    ui.label("GCode");
+                    // println!("GCodeTool: {:?}", now.elapsed());
                 });
         }
     }

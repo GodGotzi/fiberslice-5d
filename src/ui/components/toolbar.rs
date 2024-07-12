@@ -1,4 +1,4 @@
-use egui::{Button, ImageButton, Layout, RichText};
+use egui::{Button, Layout, RichText};
 use egui::{Context, SidePanel};
 
 use crate::config;

@@ -58,7 +58,7 @@ pub struct MeshSettings {}
 #[derive(Debug, Clone)]
 pub struct Toolpath {
     pub origin_path: String,
-    raw: GCodeRaw,
+    pub raw: GCodeRaw,
     wire_model: WireModel,
     pub model: TreeObject<Vertex, SharedMut<Box<dyn Pickable>>>,
     pub center_mass: Vec3,
@@ -180,13 +180,13 @@ impl Pickable for PathContext {
             SelectBox::from(BoundingHitbox::new(self.min() - 1.0, self.max() + 1.0))
                 .with_color(vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0, 1.0, 1.0, 1.0));
 
-        global_state.widget_test_buffer.write(
+        global_state.widget_test_buffer.write().write(
             &wgpu_context.queue,
             "select_box",
             &select_box.to_triangle_vertices(),
         );
 
-        global_state.widget_wire_test_buffer.write(
+        global_state.widget_wire_test_buffer.write().write(
             &wgpu_context.queue,
             "select_box",
             &select_box.to_wire_vertices(),

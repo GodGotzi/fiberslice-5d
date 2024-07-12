@@ -13,7 +13,7 @@ use glam::{Mat4, Vec3};
 use light::LightUniform;
 use log::info;
 use vertex::Vertex;
-use wgpu::util::DeviceExt;
+use wgpu::{core::device::global, util::DeviceExt};
 
 use crate::{
     camera::{self, CameraResult, CameraUniform},
@@ -167,6 +167,19 @@ impl<'a>
                             },
                         };
 
+                        let UiUpdateOutput {
+                            paint_jobs,
+                            tdelta,
+                            screen_descriptor,
+                        } = ui_output.unwrap();
+
+                        let (x, y, width, height) = viewport;
+
+                        let toolpath_server = state.toolpath_server.read();
+                        let toolpath_server_buffer = toolpath_server.read_buffer();
+                        let global_wdiget_buffer = state.widget_test_buffer.read();
+                        let global_wire_widget_buffer = state.widget_wire_test_buffer.read();
+
                         let mut render_pass =
                             encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                                 label: Some("Render Pass"),
@@ -185,14 +198,6 @@ impl<'a>
                                 occlusion_query_set: None,
                             });
 
-                        let UiUpdateOutput {
-                            paint_jobs,
-                            tdelta,
-                            screen_descriptor,
-                        } = ui_output.unwrap();
-
-                        let (x, y, width, height) = viewport;
-
                         if width > 0.0 && height > 0.0 {
                             render_pass.set_viewport(x, y, width, height, 0.0, 1.0);
                             // render_pass.set_scissor_rect(x as u32, y as u32, width as , height);
@@ -206,15 +211,15 @@ impl<'a>
                             render_pass.set_bind_group(1, &self.render_state.light_bind_group, &[]);
 
                             render_pass.set_pipeline(&self.back_cull_pipline);
-                            self.main_buffer.render(&mut render_pass);
+                            toolpath_server_buffer.render(&mut render_pass);
 
                             render_pass.set_pipeline(&self.no_cull_pipline);
                             self.widget_buffer.render(&mut render_pass);
-                            state.widget_test_buffer.render(&mut render_pass);
+                            global_wdiget_buffer.render(&mut render_pass);
 
                             render_pass.set_pipeline(&self.wire_pipline);
                             self.wire_buffer.render(&mut render_pass);
-                            state.widget_wire_test_buffer.render(&mut render_pass);
+                            global_wire_widget_buffer.render(&mut render_pass);
                             self.debug_buffer.render(&mut render_pass);
                         }
 

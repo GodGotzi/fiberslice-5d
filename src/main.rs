@@ -14,7 +14,7 @@ use render::buffer::{
 use settings::tree::QuickSettings;
 use std::{sync::Arc, time::Instant};
 
-use prelude::{Adapter, FrameHandle, GlobalContext, Shared, SharedMut, WgpuContext};
+use prelude::{Adapter, FrameHandle, GlobalContext, SharedMut, WgpuContext};
 
 mod api;
 mod camera;
@@ -64,8 +64,8 @@ pub struct GlobalState<T: 'static> {
 
     pub toolpath_server: SharedMut<viewer::part_server::ToolpathServer>,
 
-    pub widget_test_buffer: Shared<DynamicBuffer<render::vertex::Vertex, WidgetAllocator>>,
-    pub widget_wire_test_buffer: Shared<DynamicBuffer<render::vertex::Vertex, WireAllocator>>,
+    pub widget_test_buffer: SharedMut<DynamicBuffer<render::vertex::Vertex, WidgetAllocator>>,
+    pub widget_wire_test_buffer: SharedMut<DynamicBuffer<render::vertex::Vertex, WireAllocator>>,
 
     pub fiber_settings: SharedMut<QuickSettings>,
     pub topology_settings: SharedMut<QuickSettings>,
@@ -122,12 +122,12 @@ async fn main() -> Result<(), EventLoopError> {
             &wgpu_context.device,
         )),
 
-        widget_test_buffer: Shared::new(DynamicBuffer::new(
+        widget_test_buffer: SharedMut::from_inner(DynamicBuffer::new(
             WidgetAllocator,
             "Test Widget Buffer",
             &wgpu_context.device,
         )),
-        widget_wire_test_buffer: Shared::new(DynamicBuffer::new(
+        widget_wire_test_buffer: SharedMut::from_inner(DynamicBuffer::new(
             WireAllocator,
             "Test Wire Widget Buffer",
             &wgpu_context.device,
@@ -215,7 +215,7 @@ async fn main() -> Result<(), EventLoopError> {
         global_state
             .toolpath_server
             .write()
-            .update(&wgpu_context)
+            .update(global_state.clone(), &wgpu_context)
             .unwrap();
 
         /*

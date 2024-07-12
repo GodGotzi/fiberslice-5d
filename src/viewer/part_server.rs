@@ -7,13 +7,18 @@ use tokio::{
 };
 
 use crate::{
+    geometry::BoundingHitbox,
     model::{IntoHandle, TreeHandle, TreeObject},
-    picking::hitbox::PickContext,
+    picking::{
+        hitbox::{Hitbox, PickContext},
+        interactive::Pickable,
+    },
     prelude::WgpuContext,
     render::{
         buffer::{alloc::BufferDynamicAllocator, DynamicBuffer},
         vertex::Vertex,
     },
+    GlobalState, RootEvent,
 };
 
 use super::gcode::{self, DisplaySettings, MeshSettings, Toolpath};
@@ -28,7 +33,15 @@ pub enum Error {
 
 #[derive(Debug)]
 pub struct ToolpathHandle {
+    pub code: String,
+    pub line_breaks: Vec<usize>,
     handle: TreeHandle<PickContext>,
+}
+
+impl ToolpathHandle {
+    pub fn code(&self) -> &String {
+        &self.code
+    }
 }
 
 #[derive(Debug)]
@@ -37,6 +50,7 @@ pub struct ToolpathServer {
 
     buffer: DynamicBuffer<Vertex, BufferDynamicAllocator>,
     parts: HashMap<String, ToolpathHandle>,
+    focused: Option<String>,
 }
 
 impl ToolpathServer {
@@ -49,6 +63,7 @@ impl ToolpathServer {
                 device,
             ),
             parts: HashMap::new(),
+            focused: None,
         }
     }
 
@@ -82,7 +97,11 @@ impl ToolpathServer {
         self.queue.push((rx, handle));
     }
 
-    pub fn insert(&mut self, part: Toolpath, wgpu_context: &WgpuContext) -> Result<(), Error> {
+    pub fn insert(
+        &mut self,
+        part: Toolpath,
+        wgpu_context: &WgpuContext,
+    ) -> Result<TreeHandle<crate::prelude::SharedMut<Box<dyn Pickable>>>, Error> {
         let mut name = part.origin_path.to_string();
         let mut counter: u8 = 1;
 
@@ -101,9 +120,25 @@ impl ToolpathServer {
 
         let handle = part.model.req_handle(name.clone());
 
-        self.parts.insert(name, ToolpathHandle { handle });
+        let code = part.raw.join("\n");
 
-        Ok(())
+        let line_breaks = code
+            .char_indices()
+            .filter_map(|(index, c)| if c == '\n' { Some(index) } else { None })
+            .collect::<Vec<usize>>();
+
+        self.parts.insert(
+            name.clone(),
+            ToolpathHandle {
+                code,
+                line_breaks,
+                handle: handle.clone(),
+            },
+        );
+
+        self.focused = Some(name);
+
+        Ok(handle)
     }
 
     pub fn remove(&mut self, name: String, wgpu_context: &WgpuContext) {
@@ -120,7 +155,11 @@ impl ToolpathServer {
         }
     }
 
-    pub fn update(&mut self, wgpu_context: &WgpuContext) -> Result<(), Error> {
+    pub fn update(
+        &mut self,
+        gloabl_state: GlobalState<RootEvent>,
+        wgpu_context: &WgpuContext,
+    ) -> Result<(), Error> {
         if !self.queue.is_empty() {
             let mut results = Vec::new();
 
@@ -135,7 +174,26 @@ impl ToolpathServer {
             });
 
             for toolpath in results {
-                self.insert(toolpath, wgpu_context)?;
+                let handle = self.insert(toolpath, wgpu_context)?;
+
+                gloabl_state
+                    .proxy
+                    .send_event(RootEvent::UiEvent(crate::ui::UiEvent::ShowSuccess(
+                        "Gcode loaded".to_string(),
+                    )))
+                    .unwrap();
+
+                gloabl_state
+                    .proxy
+                    .send_event(RootEvent::CameraEvent(
+                        crate::camera::CameraEvent::UpdatePreferredDistance(BoundingHitbox::new(
+                            handle.min(),
+                            handle.max(),
+                        )),
+                    ))
+                    .unwrap();
+
+                gloabl_state.picking_state.add_hitbox(handle.into());
             }
         }
 
@@ -146,5 +204,20 @@ impl ToolpathServer {
         for (_, handle) in self.queue.drain(..) {
             handle.abort();
         }
+    }
+
+    pub fn get_focused(&self) -> Option<&ToolpathHandle> {
+        if let Some(focused_toolpath) = self
+            .parts
+            .get(self.focused.as_ref().unwrap_or(&"".to_string()))
+        {
+            Some(focused_toolpath)
+        } else {
+            None
+        }
+    }
+
+    pub fn read_buffer(&self) -> &DynamicBuffer<Vertex, BufferDynamicAllocator> {
+        &self.buffer
     }
 }

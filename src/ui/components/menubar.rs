@@ -116,38 +116,18 @@ fn file_button(ui: &mut Ui, (_ui_state, global_state): &(UiState, GlobalState<Ro
             vertical: 0.325,
         };
 
-        let global_state_cloned = global_state.clone();
-
         build_sub_menu(ui, "Import GCode", |_ui| {
-            tokio::spawn(async move {
-                // let path = nfd::open_file_dialog(Some("gcode"),
-                let nfd = Nfd::new().unwrap();
-                let result = nfd.open_file().add_filter("Gcode", "gcode").unwrap().show();
+            let nfd = Nfd::new().unwrap();
+            let result = nfd.open_file().add_filter("Gcode", "gcode").unwrap().show();
 
-                match result {
-                    DialogResult::Ok(path) => {
-                        let content = std::fs::read_to_string(&path).unwrap();
-                        let gcode: gcode::GCode = gcode::parser::parse_content(&content).unwrap();
-
-                        let part = gcode::Toolpath::from_gcode(
-                            path.to_str().unwrap_or(""),
-                            (content.lines(), gcode),
-                            &mesh_settings,
-                            &display_settings,
-                        );
-
-                        global_state_cloned
-                            .proxy
-                            .send_event(RootEvent::RenderEvent(
-                                render::RenderEvent::AddGCodeToolpath(part),
-                            ))
-                            .unwrap();
-                    }
-                    _ => {
-                        println!("No file selected")
-                    }
+            match result {
+                DialogResult::Ok(path) => {
+                    global_state.toolpath_server.write().load(path);
                 }
-            });
+                _ => {
+                    println!("No file selected")
+                }
+            }
         });
 
         build_sub_menu(ui, "Import Intersection Object", |_ui| {});
