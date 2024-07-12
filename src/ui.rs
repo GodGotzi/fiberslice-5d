@@ -10,6 +10,7 @@ pub mod boundary;
 pub mod components;
 pub mod screen;
 pub mod tools;
+pub mod widgets;
 
 mod icon;
 pub mod visual;
@@ -110,21 +111,6 @@ impl UiAdapter {
         self.platform.handle_event(event);
         self.platform
             .update_time(start_time.elapsed().as_secs_f64());
-
-        let (x, y, width, height) = self.screen.construct_viewport(wgpu_context);
-
-        let is_pointer_over_viewport = {
-            if let Some(pos) = self.platform.context().pointer_latest_pos() {
-                pos.x >= x && pos.x <= x + width && pos.y >= y && pos.y <= y + height
-            } else {
-                false
-            }
-        };
-
-        self.state.pointer_in_use.store(
-            !is_pointer_over_viewport || self.platform.context().is_using_pointer(),
-            std::sync::atomic::Ordering::Relaxed,
-        );
     }
 }
 
@@ -145,10 +131,6 @@ impl<'a>
     ) -> Result<(Option<UiUpdateOutput>, (f32, f32, f32, f32)), Error> {
         puffin::profile_function!();
 
-        self.state
-            .pointer_in_use
-            .store(false, std::sync::atomic::Ordering::Relaxed);
-
         self.update(event, start_time, wgpu_context);
 
         match event {
@@ -156,6 +138,21 @@ impl<'a>
                 event: WindowEvent::RedrawRequested,
                 ..
             } => {
+                let (x, y, width, height) = self.screen.construct_viewport(wgpu_context);
+
+                let is_pointer_over_viewport = {
+                    if let Some(pos) = self.platform.context().pointer_latest_pos() {
+                        pos.x >= x && pos.x <= x + width && pos.y >= y && pos.y <= y + height
+                    } else {
+                        false
+                    }
+                };
+
+                self.state.pointer_in_use.store(
+                    !is_pointer_over_viewport || self.platform.context().is_using_pointer(),
+                    std::sync::atomic::Ordering::Relaxed,
+                );
+
                 self.platform.begin_frame();
 
                 self.platform.context().style_mut(|style| {

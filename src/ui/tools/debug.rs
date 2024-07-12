@@ -5,7 +5,7 @@ use crate::{
     GlobalState, RootEvent,
 };
 
-use super::ToolState;
+use super::{Tool, ToolState};
 
 #[derive(Debug, Default)]
 pub struct DebugToolState {
@@ -37,12 +37,14 @@ impl<'a> DebugTool<'a> {
     }
 }
 
-impl Component for DebugTool<'_> {
+impl Tool for DebugTool<'_> {
     fn show(
         &mut self,
         ctx: &egui::Context,
         (_ui_state, global_state): &(UiState, GlobalState<RootEvent>),
-    ) {
+    ) -> bool {
+        let mut pointer_over_tool = false;
+
         if self.state.enabled {
             let mut frame = egui::Frame::window(&ctx.style());
             frame.fill = Color32::from_rgba_premultiplied(
@@ -70,7 +72,11 @@ impl Component for DebugTool<'_> {
                             ))
                             .unwrap();
                     }
+
+                    pointer_over_tool = ui.ui_contains_pointer();
                 });
         }
+
+        pointer_over_tool
     }
 }

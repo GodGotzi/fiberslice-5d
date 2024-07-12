@@ -601,7 +601,7 @@ dependencies = [
 [[package]]
 name = "egui_code_editor"
 version = "0.2.8"
-source = "git+https://github.com/GodGotzi/egui_fast_editor.git#e11d9788a25b54b2825f307e6cb2114ac342c3a9"
+source = "git+https://github.com/GodGotzi/egui_code_editor.git?branch=egui27#cf44ba9be07ad013de77cc561a088b4604ca7b29"
 dependencies = [
  "egui",
 ]

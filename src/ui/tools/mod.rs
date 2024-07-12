@@ -1,14 +1,22 @@
-use std::time::Instant;
-
-use egui::{Color32, RichText, Sense, Widget};
-use egui_code_editor::{highlighting::highlight, CodeEditor, ColorTheme, Syntax};
-use winit::event::ElementState;
+use egui::Color32;
+use egui_code_editor::{ColorTheme, Syntax};
 
 use crate::{viewer::GCodeSyntax, GlobalState, RootEvent};
 
-use super::{Component, UiState};
+use super::{
+    widgets::reader::{EfficientReader, ReadSection},
+    UiState,
+};
 
 mod debug;
+
+pub trait Tool {
+    fn show(
+        &mut self,
+        ctx: &egui::Context,
+        shared_state: &(UiState, GlobalState<RootEvent>),
+    ) -> bool;
+}
 
 #[derive(Debug, Default)]
 pub struct Tools {
@@ -24,14 +32,27 @@ pub struct Tools {
 
 impl Tools {
     pub fn show(&mut self, ctx: &egui::Context, shared_state: &(UiState, GlobalState<RootEvent>)) {
-        CameraControlTool::with_state(&mut self.camera_tool).show(ctx, shared_state);
-        GCodeTool::with_state(&mut self.gcode_tool).show(ctx, shared_state);
+        let mut pointer_over_tool = false;
+
+        pointer_over_tool |=
+            CameraControlTool::with_state(&mut self.camera_tool).show(ctx, shared_state);
+        pointer_over_tool |= GCodeTool::with_state(&mut self.gcode_tool).show(ctx, shared_state);
 
         #[cfg(debug_assertions)]
-        Profiler::with_state(&mut self.profile_tool).show(ctx, shared_state);
+        {
+            pointer_over_tool |=
+                Profiler::with_state(&mut self.profile_tool).show(ctx, shared_state);
 
-        #[cfg(debug_assertions)]
-        debug::DebugTool::with_state(&mut self.debug_tool).show(ctx, shared_state);
+            pointer_over_tool |=
+                debug::DebugTool::with_state(&mut self.debug_tool).show(ctx, shared_state);
+        }
+
+        if pointer_over_tool {
+            shared_state
+                .0
+                .pointer_in_use
+                .store(true, std::sync::atomic::Ordering::Relaxed);
+        }
     }
 }
 
@@ -76,12 +97,14 @@ impl<'a> CameraControlTool<'a> {
     }
 }
 
-impl Component for CameraControlTool<'_> {
+impl Tool for CameraControlTool<'_> {
     fn show(
         &mut self,
         ctx: &egui::Context,
         (_ui_state, global_state): &(UiState, GlobalState<RootEvent>),
-    ) {
+    ) -> bool {
+        let mut pointer_over_tool = false;
+
         if self.state.enabled {
             let mut frame = egui::Frame::window(&ctx.style());
             frame.fill = Color32::from_rgba_premultiplied(
@@ -136,8 +159,12 @@ impl Component for CameraControlTool<'_> {
                             }
                         });
                     });
+
+                    pointer_over_tool = ui.ui_contains_pointer();
                 });
         }
+
+        pointer_over_tool
     }
 }
 
@@ -145,8 +172,7 @@ impl Component for CameraControlTool<'_> {
 pub struct GCodeToolState {
     enabled: bool,
     anchored: bool,
-    offset: usize,
-    size: usize,
+    view: ReadSection,
 }
 
 impl Default for GCodeToolState {
@@ -154,8 +180,7 @@ impl Default for GCodeToolState {
         Self {
             enabled: false,
             anchored: false,
-            offset: 0,
-            size: 20,
+            view: ReadSection::new(0, 20),
         }
     }
 }
@@ -184,12 +209,14 @@ impl<'a> GCodeTool<'a> {
     }
 }
 
-impl Component for GCodeTool<'_> {
+impl Tool for GCodeTool<'_> {
     fn show(
         &mut self,
         ctx: &egui::Context,
         (_ui_state, global_state): &(UiState, GlobalState<RootEvent>),
-    ) {
+    ) -> bool {
+        let mut pointer_over_tool = false;
+
         if self.state.enabled {
             let mut frame = egui::Frame::window(&ctx.style());
             frame.fill = Color32::from_rgba_premultiplied(
@@ -205,11 +232,9 @@ impl Component for GCodeTool<'_> {
                 .collapsible(false)
                 .frame(frame)
                 .show(ctx, |ui| {
-                    // if ui.button("⚓").clicked() {
-                    //   self.state.anchored = !self.state.anchored;
-                    // }
-
-                    ui.add_space(10.0);
+                    if ui.button("⚓").clicked() {
+                        self.state.anchored = !self.state.anchored;
+                    }
 
                     let toolpath_server = global_state.toolpath_server.read();
                     let focused_toolpath = toolpath_server.get_focused();
@@ -217,45 +242,24 @@ impl Component for GCodeTool<'_> {
                     if let Some(toolpath) = focused_toolpath {
                         let line_breaks = &toolpath.line_breaks;
 
-                        let selected_offset = if self.state.offset != 0 {
-                            line_breaks.get(self.state.offset - 1).unwrap_or(&0) + 1
-                        } else {
-                            0
-                        };
-                        let selected_end: usize = *line_breaks
-                            .get(self.state.offset + self.state.size - 1)
-                            .unwrap_or(&line_breaks.last().unwrap_or(&0));
+                        let now = std::time::Instant::now();
 
-                        CodeEditor::default()
+                        EfficientReader::new(&mut self.state.view)
                             .id_source("code editor")
-                            .with_line_range((self.state.offset + 1, self.state.size))
                             .with_fontsize(14.0)
                             .with_theme(ColorTheme::GRUVBOX)
                             .with_syntax(Syntax::gcode())
-                            .vscroll(true)
                             .with_numlines(true)
-                            .with_view((selected_offset, selected_end - selected_offset))
-                            .show(ui, &toolpath.code);
-
-                        let scroll_delta = ui.ctx().input(|input| input.smooth_scroll_delta.y);
-
-                        if ui.ui_contains_pointer() && self.state.size < line_breaks.len() {
-                            self.state.offset = ((self.state.offset as f32 - scroll_delta).max(0.0)
-                                as usize)
-                                .min(line_breaks.len() - 1);
-
-                            global_state
-                                .ui_state
-                                .pointer_in_use
-                                .store(true, std::sync::atomic::Ordering::Relaxed);
-
-                            println!("Offset: {}", self.state.offset);
-                        }
+                            .show(ui, &toolpath.code, line_breaks);
+                        println!("GCodeTool: {:?}", now.elapsed());
                     }
 
                     // println!("GCodeTool: {:?}", now.elapsed());
+                    pointer_over_tool = ui.ui_contains_pointer();
                 });
         }
+
+        pointer_over_tool
     }
 }
 
@@ -289,12 +293,14 @@ impl<'a> Profiler<'a> {
     }
 }
 
-impl Component for Profiler<'_> {
+impl Tool for Profiler<'_> {
     fn show(
         &mut self,
         ctx: &egui::Context,
-        (_ui_state, global_state): &(UiState, GlobalState<RootEvent>),
-    ) {
+        (_ui_state, _global_state): &(UiState, GlobalState<RootEvent>),
+    ) -> bool {
+        let mut pointer_over_tool = false;
+
         if self.state.enabled {
             let mut frame = egui::Frame::window(&ctx.style());
             frame.fill = Color32::from_rgba_premultiplied(
@@ -315,7 +321,11 @@ impl Component for Profiler<'_> {
                     }
 
                     puffin_egui::profiler_ui(ui);
+
+                    pointer_over_tool = ui.ui_contains_pointer();
                 });
         }
+
+        pointer_over_tool
     }
 }

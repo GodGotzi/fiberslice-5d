@@ -52,4 +52,5 @@ toml = "0.8.14"
 egui-toast = "0.13.0"
 puffin_egui = "0.27.0"
 futures-channel = "0.3.30"
-egui_code_editor = { git = "https://github.com/GodGotzi/egui_fast_editor.git" }
+
+egui_code_editor = { git = "https://github.com/GodGotzi/egui_code_editor.git", branch = "egui27" }
