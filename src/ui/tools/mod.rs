@@ -250,7 +250,9 @@ impl Tool for GCodeTool<'_> {
                             .with_theme(ColorTheme::GRUVBOX)
                             .with_syntax(Syntax::gcode())
                             .with_numlines(true)
+                            .with_focus(Some(ReadSection::new(0, 20)))
                             .show(ui, &toolpath.code, line_breaks);
+
                         println!("GCodeTool: {:?}", now.elapsed());
                     }
 

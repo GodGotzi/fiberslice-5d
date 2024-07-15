@@ -26,9 +26,7 @@ use egui::{FontDefinitions, InnerResponse, Pos2, Rect, Ui, Visuals};
 use winit::event::WindowEvent;
 
 use crate::{
-    prelude::{
-        Adapter, Error, FrameHandle, Mode, Shared, SharedMut, WgpuContext, WrappedSharedMut,
-    },
+    prelude::{Adapter, Error, FrameHandle, Mode, Shared, WgpuContext, WrappedSharedMut},
     GlobalState, RootEvent,
 };
 
@@ -39,7 +37,6 @@ pub enum UiEvent {
     ShowInfo(String),
     ShowSuccess(String),
     ShowError(String),
-    OpenPopup,
 }
 
 #[derive(Debug, Clone)]
@@ -223,17 +220,6 @@ impl<'a>
                     self.screen.add_toast(egui_toast::Toast {
                         kind: egui_toast::ToastKind::Error,
                         text: message.into(),
-                        options: ToastOptions::default()
-                            .duration_in_seconds(5.0)
-                            .show_progress(true),
-                    });
-
-                    wgpu_context.window.request_redraw();
-                }
-                UiEvent::OpenPopup => {
-                    self.screen.add_toast(egui_toast::Toast {
-                        kind: egui_toast::ToastKind::Info,
-                        text: "Popup opened".into(),
                         options: ToastOptions::default()
                             .duration_in_seconds(5.0)
                             .show_progress(true),

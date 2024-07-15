@@ -88,6 +88,10 @@ impl<'a> EfficientReader<'a> {
         EfficientReader { syntax, ..self }
     }
 
+    pub fn with_focus(self, focus: Option<ReadSection>) -> Self {
+        EfficientReader { focus, ..self }
+    }
+
     pub fn format(&self, ty: TokenType) -> egui::text::TextFormat {
         let font_id = egui::FontId::monospace(self.fontsize);
         let color = self.theme.type_color(ty);
@@ -95,7 +99,11 @@ impl<'a> EfficientReader<'a> {
     }
 
     fn numlines_show(&mut self, ui: &mut egui::Ui) {
-        let ReadSection { offset, size } = *self.view;
+        let ReadSection { offset, size } = if let Some(focus) = self.focus.as_ref() {
+            *focus
+        } else {
+            *self.view
+        };
 
         let counter = ((offset + 1)..=(size + offset))
             .map(|i| i.to_string())
@@ -120,7 +128,11 @@ impl<'a> EfficientReader<'a> {
                         ui.fonts(|f| f.layout_job(layout_job))
                     };
 
-                    let ReadSection { offset, size } = *self.view;
+                    let ReadSection { offset, size } = if let Some(focus) = self.focus.as_ref() {
+                        *focus
+                    } else {
+                        *self.view
+                    };
 
                     let char_start = if offset == 0 {
                         0
@@ -168,6 +180,8 @@ impl Editor for EfficientReader<'_> {
         &self.syntax
     }
 }
+
+// be right back
 
 #[derive(Debug, Clone, Default, Copy, PartialEq)]
 pub struct ReadSection {
