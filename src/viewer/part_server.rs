@@ -157,7 +157,7 @@ impl ToolpathServer {
 
     pub fn update(
         &mut self,
-        gloabl_state: GlobalState<RootEvent>,
+        global_state: GlobalState<RootEvent>,
         wgpu_context: &WgpuContext,
     ) -> Result<(), Error> {
         if !self.queue.is_empty() {
@@ -176,24 +176,18 @@ impl ToolpathServer {
             for toolpath in results {
                 let handle = self.insert(toolpath, wgpu_context)?;
 
-                gloabl_state
-                    .proxy
-                    .send_event(RootEvent::UiEvent(crate::ui::UiEvent::ShowSuccess(
-                        "Gcode loaded".to_string(),
-                    )))
-                    .unwrap();
+                global_state
+                    .ui_event_writer
+                    .send(crate::ui::UiEvent::ShowSuccess("Gcode loaded".to_string()));
 
-                gloabl_state
-                    .proxy
-                    .send_event(RootEvent::CameraEvent(
-                        crate::camera::CameraEvent::UpdatePreferredDistance(BoundingHitbox::new(
-                            handle.min(),
-                            handle.max(),
-                        )),
-                    ))
-                    .unwrap();
+                global_state.camera_event_writer.send(
+                    crate::camera::CameraEvent::UpdatePreferredDistance(BoundingHitbox::new(
+                        handle.min(),
+                        handle.max(),
+                    )),
+                );
 
-                gloabl_state.picking_state.add_hitbox(handle.into());
+                global_state.picking_state.add_hitbox(handle.into());
             }
         }
 

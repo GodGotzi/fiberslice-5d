@@ -5,16 +5,19 @@
     Please refer to the terms and conditions stated therein.
 */
 
+use camera::CameraEvent;
 use egui::ahash::HashMap;
 use log::{info, LevelFilter};
+use picking::PickingEvent;
 use render::buffer::{
     layout::{wire::WireAllocator, WidgetAllocator},
     DynamicBuffer,
 };
 use settings::tree::QuickSettings;
 use std::{sync::Arc, time::Instant};
+use ui::UiEvent;
 
-use prelude::{Adapter, FrameHandle, GlobalContext, SharedMut, WgpuContext};
+use prelude::{Adapter, EventWriter, FrameHandle, GlobalContext, SharedMut, WgpuContext};
 
 mod api;
 mod camera;
@@ -49,18 +52,20 @@ lazy_static::lazy_static! {
 
 #[derive(Debug, Clone)]
 pub enum RootEvent {
-    UiEvent(ui::UiEvent),
-    PickingEvent(picking::PickingEvent),
-    RenderEvent(render::RenderEvent),
-    CameraEvent(camera::CameraEvent),
     Exit,
 }
 
 #[derive(Debug, Clone)]
 pub struct GlobalState<T: 'static> {
     pub proxy: EventLoopProxy<T>,
+
     pub picking_state: picking::PickingState,
+    pub picking_event_writer: EventWriter<PickingEvent>,
+
     pub ui_state: ui::UiState,
+    pub ui_event_writer: EventWriter<UiEvent>,
+
+    pub camera_event_writer: EventWriter<CameraEvent>,
 
     pub toolpath_server: SharedMut<viewer::part_server::ToolpathServer>,
 
@@ -100,23 +105,29 @@ async fn main() -> Result<(), EventLoopError> {
 
     let mut wgpu_context = WgpuContext::new(window.clone()).unwrap();
 
-    let mut render_adapter = render::RenderAdapter::from_context(&wgpu_context).1;
+    let (_, _, mut render_adapter) = render::RenderAdapter::create(&wgpu_context);
 
-    let mut camera_adapter = camera::CameraAdapter::from_context(&wgpu_context).1;
+    let (_, camera_event_writer, mut camera_adapter) = camera::CameraAdapter::create(&wgpu_context);
 
-    let (picking_state, mut picking_adapter) = picking::PickingAdapter::from_context(&wgpu_context);
+    let (picking_state, picking_event_writer, mut picking_adapter) =
+        picking::PickingAdapter::create(&wgpu_context);
 
-    let (ui_state, mut ui_adapter) = ui::UiAdapter::from_context(&wgpu_context);
+    let (ui_state, ui_event_writer, mut ui_adapter) = ui::UiAdapter::create(&wgpu_context);
 
     // let mut picking_adapter = picking::PickingAdapter::from_context(&wgpu_context);
     // let mut environment_adapter = environment::EnvironmentAdapter::from_context(&wgpu_context);
-
     let proxy = event_loop.create_proxy();
 
     let mut global_state = GlobalState {
         proxy,
+
         picking_state,
+        picking_event_writer,
+
         ui_state,
+        ui_event_writer,
+
+        camera_event_writer,
 
         toolpath_server: SharedMut::from_inner(viewer::part_server::ToolpathServer::new(
             &wgpu_context.device,
@@ -132,6 +143,7 @@ async fn main() -> Result<(), EventLoopError> {
             "Test Wire Widget Buffer",
             &wgpu_context.device,
         )),
+
         fiber_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
         topology_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
         view_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
@@ -218,20 +230,15 @@ async fn main() -> Result<(), EventLoopError> {
             .update(global_state.clone(), &wgpu_context)
             .unwrap();
 
-        /*
-        environment_adapter
-            .handle_frame(&event, start_time, &wgpu_context, global_state.clone())
-            .unwrap();
-
-        picking_adapter
-            .handle_frame(&event, start_time, &wgpu_context, global_state.clone())
-            .unwrap();
-        */
+        ui_adapter.handle_events(&wgpu_context, &global_state);
+        camera_adapter.handle_events(&wgpu_context, &global_state);
+        render_adapter.handle_events(&wgpu_context, &global_state);
+        picking_adapter.handle_events(&wgpu_context, &global_state);
 
         if let winit::event::Event::WindowEvent {
             event: winit::event::WindowEvent::RedrawRequested,
             ..
-        } = event.clone()
+        } = event
         {
             global_state.ctx.end_frame();
         }

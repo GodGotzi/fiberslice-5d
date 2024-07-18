@@ -4,6 +4,7 @@ use wgpu::InstanceDescriptor;
 use winit::{event::Event, window::Window};
 
 pub use crate::error::Error;
+use crate::{GlobalState, RootEvent};
 
 pub mod shared;
 pub mod wrap;
@@ -121,13 +122,38 @@ pub trait FrameHandle<'a, E, T, C> {
     ) -> Result<T, Error>;
 }
 
-pub trait Adapter<'a, WinitE, S: Sized, T, C, E: Debug + Clone>:
-    FrameHandle<'a, WinitE, T, C>
-{
-    fn from_context(wgpu_context: &WgpuContext) -> (S, Self);
+pub type AdapterCreation<S, E, A> = (S, EventWriter<E>, A);
+
+pub trait Adapter<'a, WinitE, S: Sized, T, C, E: Debug>: FrameHandle<'a, WinitE, T, C> {
+    fn create(wgpu_context: &WgpuContext) -> AdapterCreation<S, E, Self>;
 
     #[allow(dead_code)]
     fn get_adapter_description(&self) -> String;
+
+    fn get_reader(&self) -> &EventReader<E>;
+
+    fn handle_event(
+        &mut self,
+        wgpu_context: &WgpuContext,
+        global_state: &GlobalState<RootEvent>,
+        event: E,
+    );
+
+    fn handle_events(&mut self, wgpu_context: &WgpuContext, global_state: &GlobalState<RootEvent>) {
+        if self.get_reader().has_active_events() {
+            let events = self.get_reader().read();
+
+            for event in events {
+                println!("=================");
+                println!("Handling event");
+                println!("Adapter: {:?}", self.get_adapter_description());
+                println!("Event: {:?}", event);
+                println!("=================");
+
+                self.handle_event(wgpu_context, global_state, event);
+            }
+        }
+    }
 }
 
 use strum_macros::{EnumCount, EnumIter};
@@ -145,4 +171,62 @@ pub enum Mode {
     Preview,
     Prepare,
     ForceAnalytics,
+}
+
+pub use event::{create_event_bundle, EventReader, EventWriter};
+
+mod event {
+    use std::fmt::Debug;
+
+    use crate::prelude::SharedMut;
+
+    pub struct EventReader<E: Debug> {
+        events: SharedMut<Vec<E>>,
+    }
+
+    impl<E: Debug> Clone for EventReader<E> {
+        fn clone(&self) -> Self {
+            Self {
+                events: self.events.clone(),
+            }
+        }
+    }
+
+    impl<E: Debug> EventReader<E> {
+        pub fn read(&self) -> Vec<E> {
+            self.events.write().drain(..).collect()
+        }
+
+        pub fn has_active_events(&self) -> bool {
+            !self.events.read().is_empty()
+        }
+    }
+
+    #[derive(Debug)]
+    pub struct EventWriter<E: Debug> {
+        events: SharedMut<Vec<E>>,
+    }
+
+    impl<E: Debug> Clone for EventWriter<E> {
+        fn clone(&self) -> Self {
+            Self {
+                events: self.events.clone(),
+            }
+        }
+    }
+
+    impl<E: Debug> EventWriter<E> {
+        pub fn send(&self, event: E) {
+            self.events.write().push(event);
+        }
+    }
+
+    pub fn create_event_bundle<T: Debug>() -> (EventReader<T>, EventWriter<T>) {
+        let events = SharedMut::from_inner(Vec::new());
+        let reader = EventReader {
+            events: events.clone(),
+        };
+        let writer = EventWriter { events };
+        (reader, writer)
+    }
 }

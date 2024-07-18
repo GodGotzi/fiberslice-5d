@@ -23,10 +23,14 @@ use egui_winit_platform::{Platform, PlatformDescriptor};
 use screen::Screen;
 
 use egui::{FontDefinitions, InnerResponse, Pos2, Rect, Ui, Visuals};
+use widgets::reader::ReadSection;
 use winit::event::WindowEvent;
 
 use crate::{
-    prelude::{Adapter, Error, FrameHandle, Mode, Shared, WgpuContext, WrappedSharedMut},
+    prelude::{
+        create_event_bundle, Adapter, AdapterCreation, Error, EventReader, FrameHandle, Mode,
+        Shared, Viewport, WgpuContext, WrappedSharedMut,
+    },
     GlobalState, RootEvent,
 };
 
@@ -37,6 +41,8 @@ pub enum UiEvent {
     ShowInfo(String),
     ShowSuccess(String),
     ShowError(String),
+
+    FocusGCode(ReadSection),
 }
 
 #[derive(Debug, Clone)]
@@ -96,6 +102,8 @@ pub struct UiAdapter {
     state: UiState,
     screen: Screen,
     platform: Platform,
+
+    event_reader: EventReader<UiEvent>,
 }
 
 impl UiAdapter {
@@ -103,7 +111,7 @@ impl UiAdapter {
         &mut self,
         event: &winit::event::Event<RootEvent>,
         start_time: std::time::Instant,
-        wgpu_context: &WgpuContext,
+        _wgpu_context: &WgpuContext,
     ) {
         self.platform.handle_event(event);
         self.platform
@@ -125,110 +133,73 @@ impl<'a>
         start_time: std::time::Instant,
         wgpu_context: &WgpuContext,
         global_state: GlobalState<RootEvent>,
-    ) -> Result<(Option<UiUpdateOutput>, (f32, f32, f32, f32)), Error> {
+    ) -> Result<(Option<UiUpdateOutput>, Viewport), Error> {
         puffin::profile_function!();
 
         self.update(event, start_time, wgpu_context);
 
-        match event {
-            winit::event::Event::WindowEvent {
-                event: WindowEvent::RedrawRequested,
-                ..
-            } => {
-                let (x, y, width, height) = self.screen.construct_viewport(wgpu_context);
+        if let winit::event::Event::WindowEvent {
+            event: WindowEvent::RedrawRequested,
+            ..
+        } = event
+        {
+            let (x, y, width, height) = self.screen.construct_viewport(wgpu_context);
 
-                let is_pointer_over_viewport = {
-                    if let Some(pos) = self.platform.context().pointer_latest_pos() {
-                        pos.x >= x && pos.x <= x + width && pos.y >= y && pos.y <= y + height
-                    } else {
-                        false
-                    }
-                };
-
-                self.state.pointer_in_use.store(
-                    !is_pointer_over_viewport || self.platform.context().is_using_pointer(),
-                    std::sync::atomic::Ordering::Relaxed,
-                );
-
-                self.platform.begin_frame();
-
-                self.platform.context().style_mut(|style| {
-                    catppuccin_egui::set_style_theme(style, catppuccin_egui::MOCHA);
-                    style.visuals.popup_shadow = egui::epaint::Shadow::NONE;
-                    style.visuals.window_shadow = egui::epaint::Shadow::NONE;
-                });
-
-                self.screen.show(
-                    &self.platform.context(),
-                    &(self.state.clone(), global_state),
-                );
-
-                let full_output = self.platform.end_frame(Some(&wgpu_context.window));
-
-                let viewport = self.screen.construct_viewport(wgpu_context);
-
-                let paint_jobs = self
-                    .platform
-                    .context()
-                    .tessellate(full_output.shapes, full_output.pixels_per_point);
-
-                let tdelta: egui::TexturesDelta = full_output.textures_delta;
-
-                let screen_descriptor = ScreenDescriptor {
-                    physical_width: wgpu_context.surface_config.width,
-                    physical_height: wgpu_context.surface_config.height,
-                    scale_factor: wgpu_context.window.scale_factor() as f32,
-                };
-
-                if self.platform.context().has_requested_repaint() {
-                    wgpu_context.window.request_redraw();
+            let is_pointer_over_viewport = {
+                if let Some(pos) = self.platform.context().pointer_latest_pos() {
+                    pos.x >= x && pos.x <= x + width && pos.y >= y && pos.y <= y + height
+                } else {
+                    false
                 }
+            };
 
-                return Ok((
-                    Some(UiUpdateOutput {
-                        paint_jobs,
-                        tdelta,
-                        screen_descriptor,
-                    }),
-                    viewport,
-                ));
+            self.state.pointer_in_use.store(
+                !is_pointer_over_viewport || self.platform.context().is_using_pointer(),
+                std::sync::atomic::Ordering::Relaxed,
+            );
+
+            self.platform.begin_frame();
+
+            self.platform.context().style_mut(|style| {
+                catppuccin_egui::set_style_theme(style, catppuccin_egui::MOCHA);
+                style.visuals.popup_shadow = egui::epaint::Shadow::NONE;
+                style.visuals.window_shadow = egui::epaint::Shadow::NONE;
+            });
+
+            self.screen.show(
+                &self.platform.context(),
+                &(self.state.clone(), global_state),
+            );
+
+            let full_output = self.platform.end_frame(Some(&wgpu_context.window));
+
+            let viewport = self.screen.construct_viewport(wgpu_context);
+
+            let paint_jobs = self
+                .platform
+                .context()
+                .tessellate(full_output.shapes, full_output.pixels_per_point);
+
+            let tdelta: egui::TexturesDelta = full_output.textures_delta;
+
+            let screen_descriptor = ScreenDescriptor {
+                physical_width: wgpu_context.surface_config.width,
+                physical_height: wgpu_context.surface_config.height,
+                scale_factor: wgpu_context.window.scale_factor() as f32,
+            };
+
+            if self.platform.context().has_requested_repaint() {
+                wgpu_context.window.request_redraw();
             }
-            winit::event::Event::UserEvent(RootEvent::UiEvent(event)) => match event {
-                UiEvent::ShowInfo(message) => {
-                    self.screen.add_toast(egui_toast::Toast {
-                        kind: egui_toast::ToastKind::Info,
-                        text: message.into(),
-                        options: ToastOptions::default()
-                            .duration_in_seconds(5.0)
-                            .show_progress(true),
-                    });
 
-                    wgpu_context.window.request_redraw();
-                }
-                UiEvent::ShowSuccess(message) => {
-                    self.screen.add_toast(egui_toast::Toast {
-                        kind: egui_toast::ToastKind::Success,
-                        text: message.into(),
-                        options: ToastOptions::default()
-                            .duration_in_seconds(5.0)
-                            .show_progress(false),
-                    });
-
-                    wgpu_context.window.request_redraw();
-                }
-                UiEvent::ShowError(message) => {
-                    self.screen.add_toast(egui_toast::Toast {
-                        kind: egui_toast::ToastKind::Error,
-                        text: message.into(),
-                        options: ToastOptions::default()
-                            .duration_in_seconds(5.0)
-                            .show_progress(true),
-                    });
-
-                    wgpu_context.window.request_redraw();
-                }
-            },
-            _ => {}
+            return Ok((
+                Some(UiUpdateOutput {
+                    paint_jobs,
+                    tdelta,
+                    screen_descriptor,
+                }),
+                viewport,
+            ));
         }
 
         Ok((None, self.screen.construct_viewport(wgpu_context)))
@@ -245,7 +216,7 @@ impl<'a>
         UiEvent,
     > for UiAdapter
 {
-    fn from_context(context: &WgpuContext) -> (UiState, Self) {
+    fn create(context: &WgpuContext) -> AdapterCreation<UiState, UiEvent, Self> {
         let platform = Platform::new(PlatformDescriptor {
             physical_width: context.window.inner_size().width,
             physical_height: context.window.inner_size().height,
@@ -260,19 +231,72 @@ impl<'a>
         let screen = Screen::new();
 
         // We use the egui_wgpu_backend crate as the render backend.
+        let (reader, writer) = create_event_bundle::<UiEvent>();
 
         (
             state.clone(),
+            writer,
             Self {
                 state,
                 screen,
                 platform,
+                event_reader: reader,
             },
         )
     }
 
     fn get_adapter_description(&self) -> String {
         "UiAdapter".to_string()
+    }
+
+    fn get_reader(&self) -> &crate::prelude::EventReader<UiEvent> {
+        &self.event_reader
+    }
+
+    fn handle_event(
+        &mut self,
+        wgpu_context: &WgpuContext,
+        _global_state: &GlobalState<RootEvent>,
+        event: UiEvent,
+    ) {
+        match event {
+            UiEvent::ShowInfo(message) => {
+                self.screen.add_toast(egui_toast::Toast {
+                    kind: egui_toast::ToastKind::Info,
+                    text: message.into(),
+                    options: ToastOptions::default()
+                        .duration_in_seconds(5.0)
+                        .show_progress(true),
+                });
+
+                wgpu_context.window.request_redraw();
+            }
+            UiEvent::ShowSuccess(message) => {
+                self.screen.add_toast(egui_toast::Toast {
+                    kind: egui_toast::ToastKind::Success,
+                    text: message.into(),
+                    options: ToastOptions::default()
+                        .duration_in_seconds(5.0)
+                        .show_progress(false),
+                });
+
+                wgpu_context.window.request_redraw();
+            }
+            UiEvent::ShowError(message) => {
+                self.screen.add_toast(egui_toast::Toast {
+                    kind: egui_toast::ToastKind::Error,
+                    text: message.into(),
+                    options: ToastOptions::default()
+                        .duration_in_seconds(5.0)
+                        .show_progress(true),
+                });
+
+                wgpu_context.window.request_redraw();
+            }
+            UiEvent::FocusGCode(_section) => {
+                todo!()
+            }
+        }
     }
 }
 

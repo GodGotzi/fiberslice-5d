@@ -86,11 +86,8 @@ pub mod orientation {
 
                                 if response.clicked() {
                                     global_state
-                                        .proxy
-                                        .send_event(crate::RootEvent::CameraEvent(
-                                            CameraEvent::CameraOrientationChanged(orientation),
-                                        ))
-                                        .unwrap();
+                                        .camera_event_writer
+                                        .send(CameraEvent::CameraOrientationChanged(orientation));
                                 }
                             },
                         );

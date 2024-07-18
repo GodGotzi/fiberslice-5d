@@ -65,12 +65,7 @@ impl Tool for DebugTool<'_> {
                     }
 
                     if ui.button("🔍").clicked() {
-                        global_state
-                            .proxy
-                            .send_event(RootEvent::RenderEvent(
-                                crate::render::RenderEvent::DebugVertex,
-                            ))
-                            .unwrap();
+                        //
                     }
 
                     pointer_over_tool = ui.ui_contains_pointer();

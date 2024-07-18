@@ -7,7 +7,10 @@ use winit::event::WindowEvent;
 
 use crate::{
     geometry::BoundingHitbox,
-    prelude::{Adapter, FrameHandle, Viewport},
+    prelude::{
+        create_event_bundle, Adapter, AdapterCreation, EventReader, FrameHandle, Viewport,
+        WgpuContext,
+    },
     GlobalState, RootEvent,
 };
 
@@ -30,7 +33,7 @@ pub enum Orientation {
     Front,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum CameraEvent {
     CameraOrientationChanged(Orientation),
     UpdatePreferredDistance(BoundingHitbox),
@@ -48,6 +51,8 @@ pub struct CameraAdapter {
     viewport: Option<Viewport>,
     view: Mat4,
     proj: Mat4,
+
+    event_reader: EventReader<CameraEvent>,
 }
 
 impl FrameHandle<'_, RootEvent, CameraResult, (GlobalState<RootEvent>, Viewport)>
@@ -72,29 +77,19 @@ impl FrameHandle<'_, RootEvent, CameraResult, (GlobalState<RootEvent>, Viewport)
             );
         });
 
-        match event {
-            winit::event::Event::WindowEvent {
-                event: WindowEvent::RedrawRequested,
-                ..
-            } => {
-                if viewport != self.viewport.unwrap_or_default() {
-                    self.viewport = Some(viewport);
-                    self.camera.aspect = viewport.2 / viewport.3;
-                }
-
-                let (view, proj) = self.camera.build_view_proj_matrix();
-                self.view = view;
-                self.proj = proj;
+        if let winit::event::Event::WindowEvent {
+            event: WindowEvent::RedrawRequested,
+            ..
+        } = event
+        {
+            if viewport != self.viewport.unwrap_or_default() {
+                self.viewport = Some(viewport);
+                self.camera.aspect = viewport.2 / viewport.3;
             }
-            winit::event::Event::UserEvent(RootEvent::CameraEvent(event)) => match event {
-                CameraEvent::CameraOrientationChanged(orientation) => {
-                    self.camera.handle_orientation(*orientation);
-                }
-                CameraEvent::UpdatePreferredDistance(distance) => {
-                    self.camera.set_preferred_distance(distance);
-                }
-            },
-            _ => {}
+
+            let (view, proj) = self.camera.build_view_proj_matrix();
+            self.view = view;
+            self.proj = proj;
         }
 
         Ok(CameraResult {
@@ -109,7 +104,9 @@ impl FrameHandle<'_, RootEvent, CameraResult, (GlobalState<RootEvent>, Viewport)
 impl Adapter<'_, RootEvent, (), CameraResult, (GlobalState<RootEvent>, Viewport), CameraEvent>
     for CameraAdapter
 {
-    fn from_context(wgpu_context: &crate::prelude::WgpuContext) -> ((), Self) {
+    fn create(
+        wgpu_context: &crate::prelude::WgpuContext,
+    ) -> AdapterCreation<(), CameraEvent, Self> {
         let mut camera = OrbitCamera::new(
             2.0,
             1.5,
@@ -123,19 +120,43 @@ impl Adapter<'_, RootEvent, (), CameraResult, (GlobalState<RootEvent>, Viewport)
         camera.bounds.max_pitch = std::f32::consts::FRAC_PI_2 - 0.1;
         camera.handle_orientation(Orientation::Default);
 
+        let (reader, writer) = create_event_bundle::<CameraEvent>();
+
         (
             (),
+            writer,
             Self {
                 camera,
                 viewport: None,
                 view: Mat4::IDENTITY,
                 proj: Mat4::IDENTITY,
+                event_reader: reader,
             },
         )
     }
 
     fn get_adapter_description(&self) -> String {
         "CameraAdapter".to_string()
+    }
+
+    fn get_reader(&self) -> &EventReader<CameraEvent> {
+        &self.event_reader
+    }
+
+    fn handle_event(
+        &mut self,
+        _wgpu_context: &WgpuContext,
+        _global_state: &GlobalState<RootEvent>,
+        event: CameraEvent,
+    ) {
+        match event {
+            CameraEvent::CameraOrientationChanged(orientation) => {
+                self.camera.handle_orientation(orientation);
+            }
+            CameraEvent::UpdatePreferredDistance(distance) => {
+                self.camera.set_preferred_distance(&distance);
+            }
+        }
     }
 }
 

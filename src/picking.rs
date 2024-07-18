@@ -4,7 +4,10 @@ use winit::event::{DeviceEvent, ElementState, WindowEvent};
 
 use crate::{
     camera::CameraResult,
-    prelude::{Adapter, Error, FrameHandle, SharedMut, WgpuContext},
+    prelude::{
+        create_event_bundle, Adapter, AdapterCreation, Error, EventReader, FrameHandle, SharedMut,
+        WgpuContext,
+    },
     GlobalState, RootEvent,
 };
 
@@ -13,8 +16,9 @@ pub mod interactive;
 mod queue;
 pub mod ray;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum PickingEvent {
+    Pick,
     AddHitbox(HitboxNode),
 }
 
@@ -35,8 +39,9 @@ impl PickingState {
 
 pub struct PickingAdapter {
     handles: Vec<JoinHandle<()>>,
-
     state: PickingState,
+
+    event_reader: EventReader<PickingEvent>,
 }
 
 impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, &CameraResult)> for PickingAdapter {
@@ -113,14 +118,6 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, &CameraResult)> for
                         }
                     }
                 }
-                winit::event::Event::UserEvent(RootEvent::PickingEvent(
-                    PickingEvent::AddHitbox(box_),
-                )) => {
-                    self.state.hitbox.write_with_fn(|root| {
-                        root.add_node(box_.clone());
-                    });
-                    println!("PickingAdapter: Adding Interactive Mesh");
-                }
                 _ => (),
             }
         } else if let &winit::event::Event::WindowEvent {
@@ -147,7 +144,7 @@ impl<'a>
     Adapter<'a, RootEvent, PickingState, (), (GlobalState<RootEvent>, &CameraResult), PickingEvent>
     for PickingAdapter
 {
-    fn from_context(_wgpu_context: &WgpuContext) -> (PickingState, Self) {
+    fn create(_wgpu_context: &WgpuContext) -> AdapterCreation<PickingState, PickingEvent, Self> {
         let state = PickingState {
             hitbox: SharedMut::from_inner(hitbox::HitboxNode::root()),
 
@@ -155,16 +152,41 @@ impl<'a>
             is_drag_right: false,
         };
 
+        let (reader, writer) = create_event_bundle::<PickingEvent>();
+
         (
             state.clone(),
+            writer,
             PickingAdapter {
                 handles: vec![],
                 state,
+                event_reader: reader,
             },
         )
     }
 
     fn get_adapter_description(&self) -> String {
         "PickingAdapter".to_string()
+    }
+
+    fn get_reader(&self) -> &crate::prelude::EventReader<PickingEvent> {
+        &self.event_reader
+    }
+
+    fn handle_event(
+        &mut self,
+        _wgpu_context: &WgpuContext,
+        _global_state: &GlobalState<RootEvent>,
+        event: PickingEvent,
+    ) {
+        match event {
+            PickingEvent::AddHitbox(box_) => {
+                self.state.hitbox.write_with_fn(|root| {
+                    root.add_node(box_.clone());
+                });
+                println!("PickingAdapter: Adding Interactive Mesh");
+            }
+            PickingEvent::Pick => {}
+        }
     }
 }

@@ -13,7 +13,7 @@ use glam::{Mat4, Vec3};
 use light::LightUniform;
 use log::info;
 use vertex::Vertex;
-use wgpu::{core::device::global, util::DeviceExt};
+use wgpu::util::DeviceExt;
 
 use crate::{
     camera::{self, CameraResult, CameraUniform},
@@ -34,7 +34,7 @@ pub mod vertex;
 
 const MSAA_SAMPLE_COUNT: u32 = 1;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum RenderEvent {
     AddGCodeToolpath(Toolpath),
     LoadMesh(TreeObject<Vertex, PickContext>),
@@ -95,6 +95,8 @@ pub struct RenderAdapter {
     debug_buffer: DynamicBuffer<Vertex, BufferDynamicAllocator>,
 
     render_state: RenderState,
+
+    event_reader: EventReader<RenderEvent>,
 }
 
 impl<'a>
@@ -129,256 +131,158 @@ impl<'a>
             viewport,
         } = *camera_result;
 
-        match event {
-            winit::event::Event::WindowEvent { event, .. } => {
-                match event {
-                    winit::event::WindowEvent::RedrawRequested => {
-                        self.render_state.update(wgpu_context, proj * view, eye);
+        if let winit::event::Event::WindowEvent { event, .. } = event {
+            match event {
+                winit::event::WindowEvent::RedrawRequested => {
+                    self.render_state.update(wgpu_context, proj * view, eye);
 
-                        let now = Instant::now();
+                    let now = Instant::now();
 
-                        let output = wgpu_context
-                            .surface
-                            .get_current_texture()
-                            .expect("Failed to acquire next swap chain texture");
-                        let view = output
-                            .texture
-                            .create_view(&wgpu::TextureViewDescriptor::default());
+                    let output = wgpu_context
+                        .surface
+                        .get_current_texture()
+                        .expect("Failed to acquire next swap chain texture");
+                    let view = output
+                        .texture
+                        .create_view(&wgpu::TextureViewDescriptor::default());
 
-                        let mut encoder = wgpu_context.device.create_command_encoder(
-                            &wgpu::CommandEncoderDescriptor {
-                                label: Some("Render Encoder"),
-                            },
-                        );
-
-                        let clear_color = wgpu::Color {
-                            r: 0.4,
-                            g: 0.5,
-                            b: 0.4,
-                            a: 1.0,
-                        };
-
-                        let rpass_color_attachment = wgpu::RenderPassColorAttachment {
-                            view: &view,
-                            resolve_target: None,
-                            ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(clear_color),
-                                store: wgpu::StoreOp::Store,
-                            },
-                        };
-
-                        let UiUpdateOutput {
-                            paint_jobs,
-                            tdelta,
-                            screen_descriptor,
-                        } = ui_output.unwrap();
-
-                        let (x, y, width, height) = viewport;
-
-                        let toolpath_server = state.toolpath_server.read();
-                        let toolpath_server_buffer = toolpath_server.read_buffer();
-                        let global_wdiget_buffer = state.widget_test_buffer.read();
-                        let global_wire_widget_buffer = state.widget_wire_test_buffer.read();
-
-                        let mut render_pass =
-                            encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                                label: Some("Render Pass"),
-                                color_attachments: &[Some(rpass_color_attachment)],
-                                depth_stencil_attachment: Some(
-                                    wgpu::RenderPassDepthStencilAttachment {
-                                        view: &self.render_state.depth_texture_view,
-                                        depth_ops: Some(wgpu::Operations {
-                                            load: wgpu::LoadOp::Clear(1.0),
-                                            store: wgpu::StoreOp::Store,
-                                        }),
-                                        stencil_ops: None,
-                                    },
-                                ),
-                                timestamp_writes: None,
-                                occlusion_query_set: None,
-                            });
-
-                        if width > 0.0 && height > 0.0 {
-                            render_pass.set_viewport(x, y, width, height, 0.0, 1.0);
-                            // render_pass.set_scissor_rect(x as u32, y as u32, width as , height);
-                            // render_pass.set_pipeline(&self.render_pipeline);
-
-                            render_pass.set_bind_group(
-                                0,
-                                &self.render_state.camera_bind_group,
-                                &[],
-                            );
-                            render_pass.set_bind_group(1, &self.render_state.light_bind_group, &[]);
-
-                            render_pass.set_pipeline(&self.back_cull_pipline);
-                            toolpath_server_buffer.render(&mut render_pass);
-
-                            render_pass.set_pipeline(&self.no_cull_pipline);
-                            self.widget_buffer.render(&mut render_pass);
-                            global_wdiget_buffer.render(&mut render_pass);
-
-                            render_pass.set_pipeline(&self.wire_pipline);
-                            self.wire_buffer.render(&mut render_pass);
-                            global_wire_widget_buffer.render(&mut render_pass);
-                            self.debug_buffer.render(&mut render_pass);
-                        }
-
-                        self.egui_rpass
-                            .add_textures(&wgpu_context.device, &wgpu_context.queue, &tdelta)
-                            .expect("add texture ok");
-
-                        self.egui_rpass.update_buffers(
-                            &wgpu_context.device,
-                            &wgpu_context.queue,
-                            &paint_jobs,
-                            &screen_descriptor,
-                        );
-
-                        drop(render_pass);
-
-                        self.egui_rpass
-                            .execute(&mut encoder, &view, &paint_jobs, &screen_descriptor, None)
-                            .expect("execute render pass ok");
-
-                        wgpu_context.queue.submit(std::iter::once(encoder.finish()));
-                        output.present();
-
-                        self.egui_rpass
-                            .remove_textures(tdelta)
-                            .expect("remove texture ok");
-
-                        println!("Render time: {:?}", now.elapsed());
-                    }
-                    winit::event::WindowEvent::Resized(size) => {
-                        if size.width > 0 && size.height > 0 {
-                            self.render_state.depth_texture_view =
-                                texture::Texture::create_depth_texture(
-                                    &wgpu_context.device,
-                                    &wgpu_context.surface_config,
-                                    MSAA_SAMPLE_COUNT,
-                                    "depth_texture",
-                                );
-                            self.multisampled_framebuffer =
-                                texture::Texture::create_multisampled_framebuffer(
-                                    &wgpu_context.device,
-                                    &wgpu_context.surface_config,
-                                    MSAA_SAMPLE_COUNT,
-                                    "multisampled_framebuffer",
-                                );
-                        }
-                    }
-                    winit::event::WindowEvent::ScaleFactorChanged { .. } => {
-                        let size = wgpu_context.window.inner_size();
-
-                        if size.width > 0 && size.height > 0 {
-                            self.render_state.depth_texture_view =
-                                texture::Texture::create_depth_texture(
-                                    &wgpu_context.device,
-                                    &wgpu_context.surface_config,
-                                    MSAA_SAMPLE_COUNT,
-                                    "depth_texture",
-                                );
-                            self.multisampled_framebuffer =
-                                texture::Texture::create_multisampled_framebuffer(
-                                    &wgpu_context.device,
-                                    &wgpu_context.surface_config,
-                                    MSAA_SAMPLE_COUNT,
-                                    "multisampled_framebuffer",
-                                );
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            winit::event::Event::UserEvent(RootEvent::RenderEvent(event)) => match event {
-                RenderEvent::AddGCodeToolpath(part) => {
-                    if let TreeObject::Root { geometry, .. } = &part.model {
-                        self.main_buffer.free(
-                            "entity-1",
-                            &wgpu_context.device,
-                            &wgpu_context.queue,
-                        );
-
-                        self.main_buffer.allocate_init(
-                            "entity-1",
-                            geometry,
-                            &wgpu_context.device,
-                            &wgpu_context.queue,
-                        );
-
-                        let handle = part.model.clone().req_handle("entity-1".to_string());
-
-                        let box_vertices =
-                            SelectBox::from(part.bounding_box).to_triangle_vertices();
-
-                        let line_vertices = SelectBox::from(part.bounding_box).to_wire_vertices();
-
-                        self.wire_buffer
-                            .write(&wgpu_context.queue, "select_box", &line_vertices);
-
-                        self.widget_buffer
-                            .write(&wgpu_context.queue, "select_box", &box_vertices);
-
-                        state
-                            .proxy
-                            .send_event(RootEvent::CameraEvent(
-                                camera::CameraEvent::UpdatePreferredDistance(part.bounding_box),
-                            ))
-                            .unwrap();
-
-                        info!("Loaded Gcode box: {:?}", part.bounding_box);
-
-                        state.picking_state.add_hitbox(handle.into());
-
-                        state
-                            .proxy
-                            .send_event(RootEvent::UiEvent(crate::ui::UiEvent::ShowSuccess(
-                                "Gcode loaded".to_string(),
-                            )))
-                            .unwrap();
-                    }
-
-                    wgpu_context.window.request_redraw();
-                }
-                RenderEvent::LoadMesh(mesh) => {
-                    let vertices = match mesh {
-                        TreeObject::Root { geometry, .. } => geometry,
-                        _ => {
-                            panic!("Not a root Model");
-                        }
-                    };
-
-                    self.wire_buffer
-                        .write(&wgpu_context.queue, "ray_debug", vertices);
-
-                    wgpu_context.window.request_redraw();
-                }
-                RenderEvent::Debug(name, vertices) => {
-                    let data = vertices
-                        .iter()
-                        .map(|v| Vertex {
-                            position: v.to_array(),
-                            normal: [0.0, 0.0, 0.0],
-                            color: [1.0, 0.0, 0.0, 1.0],
-                        })
-                        .collect::<Vec<Vertex>>();
-
-                    // compute_normals(vertices, &mut data);
-
-                    self.debug_buffer.allocate_init(
-                        name,
-                        &data,
-                        &wgpu_context.device,
-                        &wgpu_context.queue,
+                    let mut encoder = wgpu_context.device.create_command_encoder(
+                        &wgpu::CommandEncoderDescriptor {
+                            label: Some("Render Encoder"),
+                        },
                     );
 
-                    wgpu_context.window.request_redraw();
+                    let clear_color = wgpu::Color {
+                        r: 0.4,
+                        g: 0.5,
+                        b: 0.4,
+                        a: 1.0,
+                    };
+
+                    let rpass_color_attachment = wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(clear_color),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    };
+
+                    let UiUpdateOutput {
+                        paint_jobs,
+                        tdelta,
+                        screen_descriptor,
+                    } = ui_output.unwrap();
+
+                    let (x, y, width, height) = viewport;
+
+                    let toolpath_server = state.toolpath_server.read();
+                    let toolpath_server_buffer = toolpath_server.read_buffer();
+                    let global_wdiget_buffer = state.widget_test_buffer.read();
+                    let global_wire_widget_buffer = state.widget_wire_test_buffer.read();
+
+                    let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("Render Pass"),
+                        color_attachments: &[Some(rpass_color_attachment)],
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view: &self.render_state.depth_texture_view,
+                            depth_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(1.0),
+                                store: wgpu::StoreOp::Store,
+                            }),
+                            stencil_ops: None,
+                        }),
+                        timestamp_writes: None,
+                        occlusion_query_set: None,
+                    });
+
+                    if width > 0.0 && height > 0.0 {
+                        render_pass.set_viewport(x, y, width, height, 0.0, 1.0);
+                        // render_pass.set_scissor_rect(x as u32, y as u32, width as , height);
+                        // render_pass.set_pipeline(&self.render_pipeline);
+
+                        render_pass.set_bind_group(0, &self.render_state.camera_bind_group, &[]);
+                        render_pass.set_bind_group(1, &self.render_state.light_bind_group, &[]);
+
+                        render_pass.set_pipeline(&self.back_cull_pipline);
+                        toolpath_server_buffer.render(&mut render_pass);
+
+                        render_pass.set_pipeline(&self.no_cull_pipline);
+                        self.widget_buffer.render(&mut render_pass);
+                        global_wdiget_buffer.render(&mut render_pass);
+
+                        render_pass.set_pipeline(&self.wire_pipline);
+                        self.wire_buffer.render(&mut render_pass);
+                        global_wire_widget_buffer.render(&mut render_pass);
+                        self.debug_buffer.render(&mut render_pass);
+                    }
+
+                    self.egui_rpass
+                        .add_textures(&wgpu_context.device, &wgpu_context.queue, &tdelta)
+                        .expect("add texture ok");
+
+                    self.egui_rpass.update_buffers(
+                        &wgpu_context.device,
+                        &wgpu_context.queue,
+                        &paint_jobs,
+                        &screen_descriptor,
+                    );
+
+                    drop(render_pass);
+
+                    self.egui_rpass
+                        .execute(&mut encoder, &view, &paint_jobs, &screen_descriptor, None)
+                        .expect("execute render pass ok");
+
+                    wgpu_context.queue.submit(std::iter::once(encoder.finish()));
+                    output.present();
+
+                    self.egui_rpass
+                        .remove_textures(tdelta)
+                        .expect("remove texture ok");
+
+                    println!("Render time: {:?}", now.elapsed());
                 }
-                RenderEvent::DebugVertex => {
-                    wgpu_context.window.request_redraw();
+                winit::event::WindowEvent::Resized(size) => {
+                    if size.width > 0 && size.height > 0 {
+                        self.render_state.depth_texture_view =
+                            texture::Texture::create_depth_texture(
+                                &wgpu_context.device,
+                                &wgpu_context.surface_config,
+                                MSAA_SAMPLE_COUNT,
+                                "depth_texture",
+                            );
+                        self.multisampled_framebuffer =
+                            texture::Texture::create_multisampled_framebuffer(
+                                &wgpu_context.device,
+                                &wgpu_context.surface_config,
+                                MSAA_SAMPLE_COUNT,
+                                "multisampled_framebuffer",
+                            );
+                    }
                 }
-            },
-            _ => {}
+                winit::event::WindowEvent::ScaleFactorChanged { .. } => {
+                    let size = wgpu_context.window.inner_size();
+
+                    if size.width > 0 && size.height > 0 {
+                        self.render_state.depth_texture_view =
+                            texture::Texture::create_depth_texture(
+                                &wgpu_context.device,
+                                &wgpu_context.surface_config,
+                                MSAA_SAMPLE_COUNT,
+                                "depth_texture",
+                            );
+                        self.multisampled_framebuffer =
+                            texture::Texture::create_multisampled_framebuffer(
+                                &wgpu_context.device,
+                                &wgpu_context.surface_config,
+                                MSAA_SAMPLE_COUNT,
+                                "multisampled_framebuffer",
+                            );
+                    }
+                }
+                _ => {}
+            }
         }
 
         Ok(())
@@ -399,7 +303,7 @@ impl<'a>
         RenderEvent,
     > for RenderAdapter
 {
-    fn from_context(context: &WgpuContext) -> ((), Self) {
+    fn create(context: &WgpuContext) -> AdapterCreation<(), RenderEvent, Self> {
         let depth_texture_view = texture::Texture::create_depth_texture(
             &context.device,
             &context.surface_config,
@@ -543,8 +447,11 @@ impl<'a>
             &context.device,
         );
 
+        let (reader, writer) = create_event_bundle::<RenderEvent>();
+
         (
             (),
+            writer,
             RenderAdapter {
                 multisampled_framebuffer,
 
@@ -578,12 +485,104 @@ impl<'a>
                 debug_buffer,
 
                 render_state,
+
+                event_reader: reader,
             },
         )
     }
 
     fn get_adapter_description(&self) -> String {
         "RenderAdapter".to_string()
+    }
+
+    fn get_reader(&self) -> &EventReader<RenderEvent> {
+        &self.event_reader
+    }
+
+    fn handle_event(
+        &mut self,
+        wgpu_context: &WgpuContext,
+        global_state: &GlobalState<RootEvent>,
+        event: RenderEvent,
+    ) {
+        match event {
+            RenderEvent::AddGCodeToolpath(part) => {
+                if let TreeObject::Root { geometry, .. } = &part.model {
+                    self.main_buffer
+                        .free("entity-1", &wgpu_context.device, &wgpu_context.queue);
+
+                    self.main_buffer.allocate_init(
+                        "entity-1",
+                        geometry,
+                        &wgpu_context.device,
+                        &wgpu_context.queue,
+                    );
+
+                    let handle = part.model.clone().req_handle("entity-1".to_string());
+
+                    let box_vertices = SelectBox::from(part.bounding_box).to_triangle_vertices();
+
+                    let line_vertices = SelectBox::from(part.bounding_box).to_wire_vertices();
+
+                    self.wire_buffer
+                        .write(&wgpu_context.queue, "select_box", &line_vertices);
+
+                    self.widget_buffer
+                        .write(&wgpu_context.queue, "select_box", &box_vertices);
+
+                    global_state.camera_event_writer.send(
+                        camera::CameraEvent::UpdatePreferredDistance(part.bounding_box),
+                    );
+
+                    info!("Loaded Gcode box: {:?}", part.bounding_box);
+
+                    global_state.picking_state.add_hitbox(handle.into());
+
+                    global_state
+                        .ui_event_writer
+                        .send(crate::ui::UiEvent::ShowSuccess("Gcode loaded".to_string()));
+                }
+
+                wgpu_context.window.request_redraw();
+            }
+            RenderEvent::LoadMesh(mesh) => {
+                let vertices = match mesh {
+                    TreeObject::Root { geometry, .. } => geometry,
+                    _ => {
+                        panic!("Not a root Model");
+                    }
+                };
+
+                self.wire_buffer
+                    .write(&wgpu_context.queue, "ray_debug", &vertices);
+
+                wgpu_context.window.request_redraw();
+            }
+            RenderEvent::Debug(name, vertices) => {
+                let data = vertices
+                    .iter()
+                    .map(|v| Vertex {
+                        position: v.to_array(),
+                        normal: [0.0, 0.0, 0.0],
+                        color: [1.0, 0.0, 0.0, 1.0],
+                    })
+                    .collect::<Vec<Vertex>>();
+
+                // compute_normals(vertices, &mut data);
+
+                self.debug_buffer.allocate_init(
+                    &name,
+                    &data,
+                    &wgpu_context.device,
+                    &wgpu_context.queue,
+                );
+
+                wgpu_context.window.request_redraw();
+            }
+            RenderEvent::DebugVertex => {
+                wgpu_context.window.request_redraw();
+            }
+        }
     }
 }
 

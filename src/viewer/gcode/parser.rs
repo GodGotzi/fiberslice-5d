@@ -90,13 +90,19 @@ fn compute_instruction(
     Ok(())
 }
 
-fn parse_comment_to_state(line: &str, mut last_state: PrintState) -> Result<PrintState, crate::error::Error> {
+fn parse_comment_to_state(
+    line: &str,
+    mut last_state: PrintState,
+) -> Result<PrintState, crate::error::Error> {
     parse_comment_into_state(line, &mut last_state)?;
 
     Ok(last_state)
 }
 
-fn parse_comment_into_state(line: &str, last_state: &mut PrintState) -> Result<(), crate::error::Error> {
+fn parse_comment_into_state(
+    line: &str,
+    last_state: &mut PrintState,
+) -> Result<(), crate::error::Error> {
     last_state.parse(line.to_string())
 }
 
