@@ -19,11 +19,7 @@ impl TryFrom<String> for StateField {
 
         let variant = match splited.first() {
             Some(variant) => *variant,
-            None => {
-                return Err(crate::error::Error::GCodeStateParseError(
-                    "Invalid GCode".into(),
-                ))
-            }
+            None => return Err(crate::error::Error::GCodeStateParse("Invalid GCode".into())),
         };
 
         let value = match splited.get(1) {
@@ -33,9 +29,9 @@ impl TryFrom<String> for StateField {
 
         match variant {
             "LAYER" => {
-                let value = value.parse::<usize>().map_err(|_| {
-                    crate::error::Error::GCodeStateParseError("Invalid Layer".into())
-                })?;
+                let value = value
+                    .parse::<usize>()
+                    .map_err(|_| crate::error::Error::GCodeStateParse("Invalid Layer".into()))?;
 
                 Ok(StateField::LAYER(value))
             }
@@ -61,13 +57,13 @@ impl TryFrom<String> for StateField {
                 }
 
                 let value = value.parse::<PrintType>().map_err(|_| {
-                    crate::error::Error::GCodeStateParseError("Invalid Print Type".into())
+                    crate::error::Error::GCodeStateParse("Invalid Print Type".into())
                 })?;
 
                 Ok(StateField::TYPE(value))
             }
             "MESH" => Ok(StateField::MESH(value.to_string())),
-            _ => Err(crate::error::Error::GCodeStateParseError(
+            _ => Err(crate::error::Error::GCodeStateParse(
                 "Invalid GCodeState Type".into(),
             )),
         }

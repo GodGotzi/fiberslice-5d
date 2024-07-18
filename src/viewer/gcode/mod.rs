@@ -1,7 +1,6 @@
 use std::{fmt::Debug, str::Lines};
 
 use glam::{vec4, Vec3};
-use log::{debug, info};
 
 use crate::{
     geometry::{

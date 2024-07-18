@@ -1,5 +1,6 @@
 use std::{fmt::Debug, sync::Arc};
 
+use log::info;
 use wgpu::InstanceDescriptor;
 use winit::{event::Event, window::Window};
 
@@ -93,7 +94,7 @@ impl WgpuContext<'_> {
             format: surface_format,
             width: size.width,
             height: size.height,
-            present_mode: wgpu::PresentMode::AutoVsync,
+            present_mode: wgpu::PresentMode::AutoNoVsync,
             desired_maximum_frame_latency: 1,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
             view_formats: vec![surface_format],
@@ -130,7 +131,7 @@ pub trait Adapter<'a, WinitE, S: Sized, T, C, E: Debug>: FrameHandle<'a, WinitE,
     #[allow(dead_code)]
     fn get_adapter_description(&self) -> String;
 
-    fn get_reader(&self) -> &EventReader<E>;
+    fn get_reader(&self) -> EventReader<E>;
 
     fn handle_event(
         &mut self,
@@ -141,17 +142,14 @@ pub trait Adapter<'a, WinitE, S: Sized, T, C, E: Debug>: FrameHandle<'a, WinitE,
 
     fn handle_events(&mut self, wgpu_context: &WgpuContext, global_state: &GlobalState<RootEvent>) {
         if self.get_reader().has_active_events() {
-            let events = self.get_reader().read();
+            self.get_reader().read(|events| {
+                for event in events {
+                    info!("Handling event: {:?}", event);
+                    info!("Adapter: {:?}", self.get_adapter_description());
 
-            for event in events {
-                println!("=================");
-                println!("Handling event");
-                println!("Adapter: {:?}", self.get_adapter_description());
-                println!("Event: {:?}", event);
-                println!("=================");
-
-                self.handle_event(wgpu_context, global_state, event);
-            }
+                    self.handle_event(wgpu_context, global_state, event);
+                }
+            });
         }
     }
 }
@@ -193,8 +191,8 @@ mod event {
     }
 
     impl<E: Debug> EventReader<E> {
-        pub fn read(&self) -> Vec<E> {
-            self.events.write().drain(..).collect()
+        pub fn read<F: FnMut(std::vec::Drain<'_, E>)>(&self, mut f: F) {
+            f(self.events.write().drain(..))
         }
 
         pub fn has_active_events(&self) -> bool {

@@ -2,12 +2,9 @@ use std::collections::HashMap;
 
 use glam::{vec3, Vec3};
 
-use crate::{
-    api::math::Average, geometry::BoundingHitbox, picking::hitbox::Hitbox,
-    slicer::print_type::PrintType,
-};
+use crate::{api::math::Average, geometry::BoundingHitbox, slicer::print_type::PrintType};
 
-use super::{instruction::InstructionType, movement, state::PrintState, GCode};
+use super::{movement, state::PrintState, GCode};
 
 #[derive(Debug, Clone)]
 pub struct Line {
@@ -21,7 +18,7 @@ impl Line {
         self.end - self.start
     }
 
-    pub fn into_flipped_yz(&self) -> Line {
+    pub fn into_flipped_yz(self) -> Line {
         Line {
             start: vec3(self.start.x, self.start.z, self.start.y),
             end: vec3(self.end.x, self.end.z, self.end.y),

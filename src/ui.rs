@@ -249,8 +249,8 @@ impl<'a>
         "UiAdapter".to_string()
     }
 
-    fn get_reader(&self) -> &crate::prelude::EventReader<UiEvent> {
-        &self.event_reader
+    fn get_reader(&self) -> crate::prelude::EventReader<UiEvent> {
+        self.event_reader.clone()
     }
 
     fn handle_event(

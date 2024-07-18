@@ -169,8 +169,8 @@ impl<'a>
         "PickingAdapter".to_string()
     }
 
-    fn get_reader(&self) -> &crate::prelude::EventReader<PickingEvent> {
-        &self.event_reader
+    fn get_reader(&self) -> crate::prelude::EventReader<PickingEvent> {
+        self.event_reader.clone()
     }
 
     fn handle_event(

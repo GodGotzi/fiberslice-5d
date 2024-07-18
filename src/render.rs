@@ -1,9 +1,5 @@
 use std::time::Instant;
 
-use crate::{
-    model::{IntoHandle, TreeObject},
-    picking::hitbox::PickContext,
-};
 use buffer::{
     alloc::BufferDynamicAllocator,
     layout::{wire::WireAllocator, WidgetAllocator},
@@ -11,19 +7,13 @@ use buffer::{
 };
 use glam::{Mat4, Vec3};
 use light::LightUniform;
-use log::info;
 use vertex::Vertex;
 use wgpu::util::DeviceExt;
 
 use crate::{
     camera::{self, CameraResult, CameraUniform},
-    geometry::{
-        mesh::{Mesh, WireMesh},
-        SelectBox,
-    },
     prelude::*,
     ui::UiUpdateOutput,
-    viewer::gcode::Toolpath,
     GlobalState, RootEvent,
 };
 
@@ -36,8 +26,6 @@ const MSAA_SAMPLE_COUNT: u32 = 1;
 
 #[derive(Debug)]
 pub enum RenderEvent {
-    AddGCodeToolpath(Toolpath),
-    LoadMesh(TreeObject<Vertex, PickContext>),
     Debug(String, Vec<Vec3>),
     DebugVertex,
 }
@@ -90,7 +78,6 @@ pub struct RenderAdapter {
 
     wire_buffer: DynamicBuffer<Vertex, WireAllocator>,
     widget_buffer: DynamicBuffer<Vertex, WidgetAllocator>,
-    main_buffer: DynamicBuffer<Vertex, BufferDynamicAllocator>,
 
     debug_buffer: DynamicBuffer<Vertex, BufferDynamicAllocator>,
 
@@ -435,12 +422,6 @@ impl<'a>
 
         let wire_buffer = DynamicBuffer::new(WireAllocator, "Wire Buffer", &context.device);
 
-        let main_buffer = DynamicBuffer::new(
-            BufferDynamicAllocator::default(),
-            "Main Buffer",
-            &context.device,
-        );
-
         let debug_buffer = DynamicBuffer::new(
             BufferDynamicAllocator::default(),
             "Debug Buffer",
@@ -481,7 +462,6 @@ impl<'a>
 
                 wire_buffer,
                 widget_buffer,
-                main_buffer,
                 debug_buffer,
 
                 render_state,
@@ -495,69 +475,17 @@ impl<'a>
         "RenderAdapter".to_string()
     }
 
-    fn get_reader(&self) -> &EventReader<RenderEvent> {
-        &self.event_reader
+    fn get_reader(&self) -> EventReader<RenderEvent> {
+        self.event_reader.clone()
     }
 
     fn handle_event(
         &mut self,
         wgpu_context: &WgpuContext,
-        global_state: &GlobalState<RootEvent>,
+        _global_state: &GlobalState<RootEvent>,
         event: RenderEvent,
     ) {
         match event {
-            RenderEvent::AddGCodeToolpath(part) => {
-                if let TreeObject::Root { geometry, .. } = &part.model {
-                    self.main_buffer
-                        .free("entity-1", &wgpu_context.device, &wgpu_context.queue);
-
-                    self.main_buffer.allocate_init(
-                        "entity-1",
-                        geometry,
-                        &wgpu_context.device,
-                        &wgpu_context.queue,
-                    );
-
-                    let handle = part.model.clone().req_handle("entity-1".to_string());
-
-                    let box_vertices = SelectBox::from(part.bounding_box).to_triangle_vertices();
-
-                    let line_vertices = SelectBox::from(part.bounding_box).to_wire_vertices();
-
-                    self.wire_buffer
-                        .write(&wgpu_context.queue, "select_box", &line_vertices);
-
-                    self.widget_buffer
-                        .write(&wgpu_context.queue, "select_box", &box_vertices);
-
-                    global_state.camera_event_writer.send(
-                        camera::CameraEvent::UpdatePreferredDistance(part.bounding_box),
-                    );
-
-                    info!("Loaded Gcode box: {:?}", part.bounding_box);
-
-                    global_state.picking_state.add_hitbox(handle.into());
-
-                    global_state
-                        .ui_event_writer
-                        .send(crate::ui::UiEvent::ShowSuccess("Gcode loaded".to_string()));
-                }
-
-                wgpu_context.window.request_redraw();
-            }
-            RenderEvent::LoadMesh(mesh) => {
-                let vertices = match mesh {
-                    TreeObject::Root { geometry, .. } => geometry,
-                    _ => {
-                        panic!("Not a root Model");
-                    }
-                };
-
-                self.wire_buffer
-                    .write(&wgpu_context.queue, "ray_debug", &vertices);
-
-                wgpu_context.window.request_redraw();
-            }
             RenderEvent::Debug(name, vertices) => {
                 let data = vertices
                     .iter()

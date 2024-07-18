@@ -139,13 +139,13 @@ impl Adapter<'_, RootEvent, (), CameraResult, (GlobalState<RootEvent>, Viewport)
         "CameraAdapter".to_string()
     }
 
-    fn get_reader(&self) -> &EventReader<CameraEvent> {
-        &self.event_reader
+    fn get_reader(&self) -> EventReader<CameraEvent> {
+        self.event_reader.clone()
     }
 
     fn handle_event(
         &mut self,
-        _wgpu_context: &WgpuContext,
+        wgpu_context: &WgpuContext,
         _global_state: &GlobalState<RootEvent>,
         event: CameraEvent,
     ) {
@@ -157,6 +157,8 @@ impl Adapter<'_, RootEvent, (), CameraResult, (GlobalState<RootEvent>, Viewport)
                 self.camera.set_preferred_distance(&distance);
             }
         }
+
+        wgpu_context.window.request_redraw();
     }
 }
 

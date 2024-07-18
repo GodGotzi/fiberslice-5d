@@ -5,20 +5,18 @@ pub enum Error {
     Generic(String),
     #[error("FieldMissing {0}")]
     FieldMissing(String),
-    #[error("FrameError {0}")]
-    FrameError(String),
     #[error("InitialBuild {0}")]
     InitialBuild(String),
     #[error("GCode Parse Error {0}")]
-    GCodeParseError(String, usize),
+    GCodeParse(String, usize),
     #[error("Unknown Instruction Type {0}")]
     UnknownInstructionType(String),
     #[error("Setup Error {0}")]
-    SetupError(String),
+    Setup(String),
     #[error("GCode State Parse Error {0}")]
-    GCodeStateParseError(String),
+    GCodeStateParse(String),
     #[error("Settings Load Error {0}")]
-    SettingsLoadError(String),
+    SettingsLoad(String),
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error("Ui Not Rendered")]

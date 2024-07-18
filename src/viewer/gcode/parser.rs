@@ -121,7 +121,7 @@ fn compute_parameters(
             if instruction_type.is_stand_alone() {
                 child_instructions.push(instruction_type);
             } else {
-                return Err(crate::error::Error::GCodeParseError(
+                return Err(crate::error::Error::GCodeParse(
                     format!("Invalid instruction type: {}", movement),
                     index,
                 ));
@@ -132,7 +132,7 @@ fn compute_parameters(
             movements.set_movement(
                 movement,
                 value.parse::<f32>().map_err(|_| {
-                    crate::error::Error::GCodeParseError(
+                    crate::error::Error::GCodeParse(
                         format!("Invalid movement value: {}", value),
                         index,
                     )
