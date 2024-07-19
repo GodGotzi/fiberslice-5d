@@ -162,6 +162,7 @@ impl<'a>
 
             self.platform.context().style_mut(|style| {
                 catppuccin_egui::set_style_theme(style, catppuccin_egui::MOCHA);
+                // style.visuals = Visuals::light();
                 style.visuals.popup_shadow = egui::epaint::Shadow::NONE;
                 style.visuals.window_shadow = egui::epaint::Shadow::NONE;
             });

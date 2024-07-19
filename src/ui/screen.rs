@@ -5,6 +5,7 @@ use components::{
     modebar::{self, ModebarState},
     quick_settingsbar, taskbar,
     toolbar::{self, ToolBarState},
+    topbar::{self, TopBarState},
 };
 use egui::{Align2, Margin};
 use egui_toast::Toasts;
@@ -20,6 +21,7 @@ pub struct Screen {
     taskbar_state: taskbar::TaskbarState,
     modebar_state: ModebarState,
     toolbar_state: ToolBarState,
+    topbar_state: TopBarState,
 }
 
 impl Screen {
@@ -35,6 +37,7 @@ impl Screen {
             taskbar_state: taskbar::TaskbarState::new(),
             modebar_state: ModebarState::new(),
             toolbar_state: ToolBarState::new(),
+            topbar_state: TopBarState::new(),
         }
     }
 
@@ -52,6 +55,18 @@ impl Screen {
                 &mut self.taskbar_state,
                 &mut self.modebar_state,
                 &mut self.toolbar_state,
+                &mut self.topbar_state,
+            ])
+            .show(ctx, shared_state);
+
+        topbar::Topbar::with_state(&mut self.topbar_state)
+            .with_tools(&mut [
+                &mut self.tools.gcode_tool,
+                &mut self.tools.camera_tool,
+                #[cfg(debug_assertions)]
+                &mut self.tools.profile_tool,
+                #[cfg(debug_assertions)]
+                &mut self.tools.debug_tool,
             ])
             .show(ctx, shared_state);
 
@@ -63,6 +78,7 @@ impl Screen {
         toolbar::Toolbar::with_state(&mut self.toolbar_state)
             .with_tools(&mut [
                 &mut self.tools.gcode_tool,
+                &mut self.tools.visibility_tool,
                 &mut self.tools.camera_tool,
                 #[cfg(debug_assertions)]
                 &mut self.tools.profile_tool,

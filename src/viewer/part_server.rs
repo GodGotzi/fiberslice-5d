@@ -1,10 +1,14 @@
 use core::panic;
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::{hash_map::Iter, HashMap},
+    path::Path,
+};
 
 use tokio::{
     sync::oneshot::{error::TryRecvError, Receiver},
     task::JoinHandle,
 };
+use uni_path::PathBuf;
 
 use crate::{
     geometry::BoundingHitbox,
@@ -21,7 +25,9 @@ use crate::{
     GlobalState, RootEvent,
 };
 
-use super::gcode::{self, DisplaySettings, MeshSettings, Toolpath};
+use super::gcode::{self, DisplaySettings, MeshSettings, Toolpath, WireModel};
+
+const MAIN_LOADED_TOOLPATH: &str = "main"; // HACK: This is a solution to ease the dev when only one toolpath is loaded which is the only supported case (for now)
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -33,8 +39,11 @@ pub enum Error {
 
 #[derive(Debug)]
 pub struct ToolpathHandle {
+    pub path: PathBuf,
     pub code: String,
     pub line_breaks: Vec<usize>,
+
+    pub wire_model: WireModel,
     handle: TreeHandle<PickContext>,
 }
 
@@ -102,7 +111,9 @@ impl ToolpathServer {
         part: Toolpath,
         wgpu_context: &WgpuContext,
     ) -> Result<TreeHandle<crate::prelude::SharedMut<Box<dyn Pickable>>>, Error> {
-        let mut name = part.origin_path.to_string();
+        let name = part.origin_path.to_string();
+
+        /*
         let mut counter: u8 = 1;
 
         while self.parts.contains_key(&name) {
@@ -110,10 +121,21 @@ impl ToolpathServer {
 
             counter += 1;
         }
+        */
 
         if let TreeObject::Root { geometry, .. } = &part.model {
-            self.buffer
-                .allocate_init(&name, geometry, &wgpu_context.device, &wgpu_context.queue);
+            self.buffer.free(
+                MAIN_LOADED_TOOLPATH,
+                &wgpu_context.device,
+                &wgpu_context.queue,
+            );
+
+            self.buffer.allocate_init(
+                MAIN_LOADED_TOOLPATH,
+                geometry,
+                &wgpu_context.device,
+                &wgpu_context.queue,
+            );
         } else {
             return Err(Error::NoGeometryObject);
         }
@@ -128,10 +150,12 @@ impl ToolpathServer {
             .collect::<Vec<usize>>();
 
         self.parts.insert(
-            name.clone(),
+            MAIN_LOADED_TOOLPATH.to_string(),
             ToolpathHandle {
+                path: part.origin_path.into(),
                 code,
                 line_breaks,
+                wire_model: part.wire_model,
                 handle: handle.clone(),
             },
         );
@@ -145,8 +169,11 @@ impl ToolpathServer {
         if let Some(part) = self.parts.remove(&name) {
             match part.handle {
                 TreeHandle::Root { id, .. } => {
-                    self.buffer
-                        .free(&id, &wgpu_context.device, &wgpu_context.queue);
+                    self.buffer.free(
+                        MAIN_LOADED_TOOLPATH,
+                        &wgpu_context.device,
+                        &wgpu_context.queue,
+                    );
                 }
                 _ => {
                     panic!("Why am I here?")
@@ -192,6 +219,18 @@ impl ToolpathServer {
         }
 
         Ok(())
+    }
+
+    pub fn iter(&self) -> Iter<'_, String, ToolpathHandle> {
+        self.parts.iter()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.parts.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.parts.len()
     }
 
     pub fn kill(&mut self) {

@@ -1,4 +1,3 @@
-use alloc::BufferAllocation;
 use parking_lot::Mutex;
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},

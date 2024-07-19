@@ -5,3 +5,4 @@ pub mod quick_settingsbar;
 
 pub mod taskbar;
 pub mod toolbar;
+pub mod topbar;

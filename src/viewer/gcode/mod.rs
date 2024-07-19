@@ -58,7 +58,7 @@ pub struct MeshSettings {}
 pub struct Toolpath {
     pub origin_path: String,
     pub raw: GCodeRaw,
-    wire_model: WireModel,
+    pub wire_model: WireModel,
     pub model: TreeObject<Vertex, SharedMut<Box<dyn Pickable>>>,
     pub center_mass: Vec3,
     pub bounding_box: BoundingHitbox,
@@ -201,6 +201,14 @@ pub struct WireModel {
 impl WireModel {
     pub fn new(lines: Vec<Line>) -> Self {
         Self { lines }
+    }
+
+    pub fn len(&self) -> usize {
+        self.lines.len()
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<Line> {
+        self.lines.iter()
     }
 }
 

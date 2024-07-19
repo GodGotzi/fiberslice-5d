@@ -60,10 +60,6 @@ impl Tool for DebugTool<'_> {
                 .collapsible(false)
                 .frame(frame)
                 .show(ctx, |ui| {
-                    if ui.button("⚓").clicked() {
-                        self.state.anchored = !self.state.anchored;
-                    }
-
                     if ui.button("🔍").clicked() {
                         //
                     }

@@ -1,8 +1,8 @@
 use glam::Vec4;
-use strum_macros::EnumString;
+use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
 use wgpu::Color;
 
-#[derive(Debug, Clone, EnumString, PartialEq, Eq)]
+#[derive(Debug, Clone, EnumString, EnumCount, IntoStaticStr, EnumIter, PartialEq, Eq)]
 pub enum PrintType {
     InternalInfill,
     SolidInfill,

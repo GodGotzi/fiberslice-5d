@@ -9,6 +9,7 @@ use super::{
 };
 
 mod debug;
+mod visibility;
 
 pub trait Tool {
     fn show(
@@ -22,6 +23,7 @@ pub trait Tool {
 pub struct Tools {
     pub camera_tool: CameraToolState,
     pub gcode_tool: GCodeToolState,
+    pub visibility_tool: visibility::VisibilityToolState,
 
     #[cfg(debug_assertions)]
     pub profile_tool: ProfilerState,
@@ -37,6 +39,8 @@ impl Tools {
         pointer_over_tool |=
             CameraControlTool::with_state(&mut self.camera_tool).show(ctx, shared_state);
         pointer_over_tool |= GCodeTool::with_state(&mut self.gcode_tool).show(ctx, shared_state);
+        pointer_over_tool |= visibility::VisibilityTool::with_state(&mut self.visibility_tool)
+            .show(ctx, shared_state);
 
         #[cfg(debug_assertions)]
         {
@@ -120,10 +124,6 @@ impl Tool for CameraControlTool<'_> {
                 .movable(!self.state.anchored)
                 .frame(frame)
                 .show(ctx, |ui| {
-                    if ui.button("⚓").clicked() {
-                        self.state.anchored = !self.state.anchored;
-                    }
-
                     global_state.camera_controller.write_with_fn(|controller| {
                         ui.horizontal(|ui| {
                             ui.label(format!("{:20}", "Rotate Speed"));
@@ -232,10 +232,6 @@ impl Tool for GCodeTool<'_> {
                 .collapsible(false)
                 .frame(frame)
                 .show(ctx, |ui| {
-                    if ui.button("⚓").clicked() {
-                        self.state.anchored = !self.state.anchored;
-                    }
-
                     let toolpath_server = global_state.toolpath_server.read();
                     let focused_toolpath = toolpath_server.get_focused();
 
@@ -318,10 +314,6 @@ impl Tool for Profiler<'_> {
                 .collapsible(false)
                 .frame(frame)
                 .show(ctx, |ui| {
-                    if ui.button("⚓").clicked() {
-                        self.state.anchored = !self.state.anchored;
-                    }
-
                     puffin_egui::profiler_ui(ui);
 
                     pointer_over_tool = ui.ui_contains_pointer();
