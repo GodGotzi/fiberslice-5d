@@ -27,7 +27,7 @@ use crate::{
 
 use super::gcode::{self, DisplaySettings, MeshSettings, Toolpath, WireModel};
 
-const MAIN_LOADED_TOOLPATH: &str = "main"; // HACK: This is a solution to ease the dev when only one toolpath is loaded which is the only supported case (for now)
+const MAIN_LOADED_TOOLPATH: &str = "main"; // HACK: This is a solution to ease the dev when only one toolpath is loaded which is the only supported(for now)
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -111,31 +111,26 @@ impl ToolpathServer {
         part: Toolpath,
         wgpu_context: &WgpuContext,
     ) -> Result<TreeHandle<crate::prelude::SharedMut<Box<dyn Pickable>>>, Error> {
-        let name = part.origin_path.to_string();
+        let path: PathBuf = part.origin_path.into();
+        let file_name = if let Some(path) = path.file_name() {
+            path.to_string()
+        } else {
+            path.to_string()
+        };
 
-        /*
+        let mut name = file_name.clone();
+
         let mut counter: u8 = 1;
 
         while self.parts.contains_key(&name) {
-            name = format!("{} ({counter})", part.origin_path);
+            name = format!("{} ({counter})", file_name);
 
             counter += 1;
         }
-        */
 
         if let TreeObject::Root { geometry, .. } = &part.model {
-            self.buffer.free(
-                MAIN_LOADED_TOOLPATH,
-                &wgpu_context.device,
-                &wgpu_context.queue,
-            );
-
-            self.buffer.allocate_init(
-                MAIN_LOADED_TOOLPATH,
-                geometry,
-                &wgpu_context.device,
-                &wgpu_context.queue,
-            );
+            self.buffer
+                .allocate_init(&name, geometry, &wgpu_context.device, &wgpu_context.queue);
         } else {
             return Err(Error::NoGeometryObject);
         }
@@ -150,9 +145,9 @@ impl ToolpathServer {
             .collect::<Vec<usize>>();
 
         self.parts.insert(
-            MAIN_LOADED_TOOLPATH.to_string(),
+            name.clone(),
             ToolpathHandle {
-                path: part.origin_path.into(),
+                path,
                 code,
                 line_breaks,
                 wire_model: part.wire_model,
@@ -169,11 +164,8 @@ impl ToolpathServer {
         if let Some(part) = self.parts.remove(&name) {
             match part.handle {
                 TreeHandle::Root { id, .. } => {
-                    self.buffer.free(
-                        MAIN_LOADED_TOOLPATH,
-                        &wgpu_context.device,
-                        &wgpu_context.queue,
-                    );
+                    self.buffer
+                        .free(&id, &wgpu_context.device, &wgpu_context.queue);
                 }
                 _ => {
                     panic!("Why am I here?")
@@ -225,6 +217,14 @@ impl ToolpathServer {
         self.parts.iter()
     }
 
+    pub fn iter_keys(&self) -> impl Iterator<Item = &String> {
+        self.parts.keys()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&String, &mut ToolpathHandle)> {
+        self.parts.iter_mut()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.parts.is_empty()
     }
@@ -239,15 +239,20 @@ impl ToolpathServer {
         }
     }
 
-    pub fn get_focused(&self) -> Option<&ToolpathHandle> {
-        if let Some(focused_toolpath) = self
-            .parts
-            .get(self.focused.as_ref().unwrap_or(&"".to_string()))
-        {
-            Some(focused_toolpath)
-        } else {
-            None
-        }
+    pub fn get_toolpath(&self, name: &str) -> Option<&ToolpathHandle> {
+        self.parts.get(name)
+    }
+
+    pub fn get_toolpath_mut(&mut self, name: &str) -> Option<&mut ToolpathHandle> {
+        self.parts.get_mut(name)
+    }
+
+    pub fn get_focused(&self) -> Option<&str> {
+        self.focused.as_deref()
+    }
+
+    pub fn get_focused_mut(&mut self) -> &mut Option<String> {
+        &mut self.focused
     }
 
     pub fn read_buffer(&self) -> &DynamicBuffer<Vertex, BufferDynamicAllocator> {

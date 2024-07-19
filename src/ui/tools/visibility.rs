@@ -1,7 +1,11 @@
 use egui::{Color32, FontId, RichText};
 use strum::{EnumCount, IntoEnumIterator};
 
-use crate::{slicer::print_type::PrintType, ui::UiState, GlobalState, RootEvent};
+use crate::{
+    slicer::print_type::PrintType,
+    ui::{api::trim_text, UiState},
+    GlobalState, RootEvent,
+};
 
 use super::{Tool, ToolState};
 
@@ -121,15 +125,7 @@ impl Tool for VisibilityTool<'_> {
                                     ui.horizontal(|ui| {
                                         let file_name = toolpath.path.file_name().unwrap();
 
-                                        let text = if file_name.len() > 20 {
-                                            format!(
-                                                "{}...{}",
-                                                &file_name[..=16],
-                                                &file_name[file_name.len() - 4..]
-                                            )
-                                        } else {
-                                            format!("{:20}", file_name)
-                                        };
+                                        let text = trim_text::<20, 4>(file_name);
 
                                         ui.checkbox(
                                             &mut true,
