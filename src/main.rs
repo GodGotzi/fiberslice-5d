@@ -117,7 +117,6 @@ async fn main() -> Result<(), EventLoopError> {
     // let mut picking_adapter = picking::PickingAdapter::from_context(&wgpu_context);
     // let mut environment_adapter = environment::EnvironmentAdapter::from_context(&wgpu_context);
     let proxy = event_loop.create_proxy();
-
     let mut global_state = GlobalState {
         proxy,
 

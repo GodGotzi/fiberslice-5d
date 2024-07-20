@@ -1,11 +1,8 @@
 use egui::Color32;
 
-use crate::{
-    ui::{Component, UiState},
-    GlobalState, RootEvent,
-};
+use crate::{ui::UiState, GlobalState, RootEvent};
 
-use super::{Tool, ToolState};
+use super::{create_tool, impl_tool_state_trait, impl_with_state, Tool};
 
 #[derive(Debug, Default)]
 pub struct DebugToolState {
@@ -13,35 +10,16 @@ pub struct DebugToolState {
     anchored: bool,
 }
 
-impl ToolState for DebugToolState {
-    fn get_enabled(&mut self) -> &mut bool {
-        &mut self.enabled
-    }
+impl_tool_state_trait!(DebugToolState, "Debug", "🐞");
 
-    fn get_popup_string(&self) -> &str {
-        "Debug"
-    }
-
-    fn get_icon(&self) -> &str {
-        "🐞"
-    }
-}
-
-pub struct DebugTool<'a> {
-    state: &'a mut DebugToolState,
-}
-
-impl<'a> DebugTool<'a> {
-    pub fn with_state(state: &'a mut DebugToolState) -> Self {
-        Self { state }
-    }
-}
+create_tool!(DebugTool, DebugToolState);
+impl_with_state!(DebugTool, DebugToolState);
 
 impl Tool for DebugTool<'_> {
     fn show(
         &mut self,
         ctx: &egui::Context,
-        (_ui_state, global_state): &(UiState, GlobalState<RootEvent>),
+        (_ui_state, _global_state): &(UiState, GlobalState<RootEvent>),
     ) -> bool {
         let mut pointer_over_tool = false;
 

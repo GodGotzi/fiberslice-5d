@@ -1,7 +1,6 @@
-use egui::{Button, Layout, RichText, TopBottomPanel};
-use egui::{Context, SidePanel};
+use egui::Context;
+use egui::{RichText, TopBottomPanel};
 
-use crate::config;
 use crate::ui::boundary::Boundary;
 use crate::ui::tools::ToolState;
 use crate::ui::Component;

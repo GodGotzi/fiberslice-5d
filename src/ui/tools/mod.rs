@@ -1,14 +1,11 @@
-use egui::{Color32, RichText};
-use egui_code_editor::{ColorTheme, Syntax};
+use egui::Color32;
 
-use crate::{viewer::GCodeSyntax, GlobalState, RootEvent};
+use crate::{GlobalState, RootEvent};
 
-use super::{
-    widgets::reader::{EfficientReader, ReadSection},
-    UiState,
-};
+use super::UiState;
 
 mod debug;
+mod gcode;
 mod visibility;
 
 pub trait Tool {
@@ -22,7 +19,7 @@ pub trait Tool {
 #[derive(Debug, Default)]
 pub struct Tools {
     pub camera_tool: CameraToolState,
-    pub gcode_tool: GCodeToolState,
+    pub gcode_tool: gcode::GCodeToolState,
     pub visibility_tool: visibility::VisibilityToolState,
 
     #[cfg(debug_assertions)]
@@ -36,9 +33,9 @@ impl Tools {
     pub fn show(&mut self, ctx: &egui::Context, shared_state: &(UiState, GlobalState<RootEvent>)) {
         let mut pointer_over_tool = false;
 
+        pointer_over_tool |= CameraTool::with_state(&mut self.camera_tool).show(ctx, shared_state);
         pointer_over_tool |=
-            CameraControlTool::with_state(&mut self.camera_tool).show(ctx, shared_state);
-        pointer_over_tool |= GCodeTool::with_state(&mut self.gcode_tool).show(ctx, shared_state);
+            gcode::GCodeTool::with_state(&mut self.gcode_tool).show(ctx, shared_state);
         pointer_over_tool |= visibility::VisibilityTool::with_state(&mut self.visibility_tool)
             .show(ctx, shared_state);
 
@@ -70,38 +67,89 @@ pub trait ToolState {
     fn get_icon(&self) -> &str;
 }
 
+macro_rules! impl_tool_state_trait {
+    ($name:ident) => {
+        impl crate::ui::tools::ToolState for $name {
+            fn get_enabled(&mut self) -> &mut bool {
+                &mut self.enabled
+            }
+
+            fn get_popup_string(&self) -> &str {
+                stringify!($name)
+            }
+
+            fn get_icon(&self) -> &str {
+                "🔧"
+            }
+        }
+    }; {
+        $name:ident, $icon:expr
+    } => {
+        impl crate::ui::tools::ToolState for $name {
+            fn get_enabled(&mut self) -> &mut bool {
+                &mut self.enabled
+            }
+
+            fn get_popup_string(&self) -> &str {
+                stringify!($name)
+            }
+
+            fn get_icon(&self) -> &str {
+                $icon
+            }
+        }
+    }; {
+        $name:ident, $popup:expr, $icon:expr
+    } => {
+        impl crate::ui::tools::ToolState for $name {
+            fn get_enabled(&mut self) -> &mut bool {
+                &mut self.enabled
+            }
+
+            fn get_popup_string(&self) -> &str {
+                $popup
+            }
+
+            fn get_icon(&self) -> &str {
+                $icon
+            }
+        }
+    };
+}
+
+macro_rules! create_tool {
+    ($name:ident, $state:ident) => {
+        pub struct $name<'a> {
+            state: &'a mut $state,
+        }
+    };
+}
+
+macro_rules! impl_with_state {
+    ($name:ident, $state:ident) => {
+        impl<'a> $name<'a> {
+            pub fn with_state(state: &'a mut $state) -> Self {
+                Self { state }
+            }
+        }
+    };
+}
+
+pub(crate) use create_tool;
+pub(crate) use impl_tool_state_trait;
+pub(crate) use impl_with_state;
+
 #[derive(Debug, Default)]
 pub struct CameraToolState {
     enabled: bool,
     anchored: bool,
 }
 
-impl ToolState for CameraToolState {
-    fn get_enabled(&mut self) -> &mut bool {
-        &mut self.enabled
-    }
+impl_tool_state_trait!(CameraToolState, "Camera Settings", "📷");
+create_tool!(CameraTool, CameraToolState);
+impl_with_state!(CameraTool, CameraToolState);
 
-    fn get_popup_string(&self) -> &str {
-        "Camera"
-    }
-
-    fn get_icon(&self) -> &str {
-        "📷"
-    }
-}
-
-#[derive(Debug)]
-pub struct CameraControlTool<'a> {
-    state: &'a mut CameraToolState,
-}
-
-impl<'a> CameraControlTool<'a> {
-    pub fn with_state(state: &'a mut CameraToolState) -> Self {
-        Self { state }
-    }
-}
-
-impl Tool for CameraControlTool<'_> {
+impl Tool for CameraTool<'_> {
     fn show(
         &mut self,
         ctx: &egui::Context,
@@ -168,154 +216,15 @@ impl Tool for CameraControlTool<'_> {
     }
 }
 
-#[derive(Debug)]
-pub struct GCodeToolState {
-    enabled: bool,
-    anchored: bool,
-    view: ReadSection,
-}
-
-impl Default for GCodeToolState {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            anchored: false,
-            view: ReadSection::new(0, 20),
-        }
-    }
-}
-
-impl ToolState for GCodeToolState {
-    fn get_enabled(&mut self) -> &mut bool {
-        &mut self.enabled
-    }
-
-    fn get_popup_string(&self) -> &str {
-        "GCode"
-    }
-
-    fn get_icon(&self) -> &str {
-        "📄"
-    }
-}
-
-pub struct GCodeTool<'a> {
-    state: &'a mut GCodeToolState,
-}
-
-impl<'a> GCodeTool<'a> {
-    pub fn with_state(state: &'a mut GCodeToolState) -> Self {
-        Self { state }
-    }
-}
-
-impl Tool for GCodeTool<'_> {
-    fn show(
-        &mut self,
-        ctx: &egui::Context,
-        (_ui_state, global_state): &(UiState, GlobalState<RootEvent>),
-    ) -> bool {
-        let mut pointer_over_tool = false;
-
-        if self.state.enabled {
-            let mut frame = egui::Frame::window(&ctx.style());
-            frame.fill = Color32::from_rgba_premultiplied(
-                frame.fill.r(),
-                frame.fill.g(),
-                frame.fill.b(),
-                220,
-            );
-
-            egui::Window::new("GCode")
-                .open(&mut self.state.enabled)
-                .movable(!self.state.anchored)
-                .collapsible(false)
-                .frame(frame)
-                .show(ctx, |ui| {
-                    global_state.toolpath_server.write_with_fn(|server| {
-                        let focused_toolpath = server.get_focused().map(|key| key.to_string());
-
-                        let text = if let Some(toolpath_key) = focused_toolpath.as_ref() {
-                            toolpath_key.to_string()
-                        } else {
-                            "None".to_string()
-                        };
-
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new("Selected").size(15.0));
-
-                            egui::ComboBox::from_label("") // When created from a label the text will b shown on the side of the combobox
-                                .selected_text(RichText::new(text).size(15.0)) // This is the currently selected option (in text form)
-                                .show_ui(ui, |ui| {
-                                    // In this closure the various options can be added
-
-                                    let keys = server.iter_keys().cloned().collect::<Vec<_>>();
-
-                                    for key in keys {
-                                        // The first parameter is a mutable reference to allow the choice to be modified when the user selects
-                                        // something else. The second parameter is the actual value of the option (to be compared with the currently)
-                                        // selected one to allow egui to highlight the correct label. The third parameter is the string to show.
-                                        ui.selectable_value(
-                                            server.get_focused_mut(),
-                                            Some(key.to_string()),
-                                            key.to_string(),
-                                        );
-                                    }
-                                });
-                        });
-
-                        if let Some(toolpath_key) = focused_toolpath {
-                            let toolpath = server.get_toolpath(&toolpath_key).unwrap();
-                            let line_breaks = &toolpath.line_breaks;
-
-                            EfficientReader::new(&mut self.state.view)
-                                .id_source("code editor")
-                                .with_fontsize(14.0)
-                                .with_theme(ColorTheme::GRUVBOX)
-                                .with_syntax(Syntax::gcode())
-                                .with_numlines(true)
-                                // .with_focus(Some(ReadSection::new(0, 20)))
-                                .show(ui, &toolpath.code, line_breaks);
-                        }
-                    });
-
-                    pointer_over_tool = ui.ui_contains_pointer();
-                });
-        }
-
-        pointer_over_tool
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct ProfilerState {
     enabled: bool,
     anchored: bool,
 }
 
-impl ToolState for ProfilerState {
-    fn get_enabled(&mut self) -> &mut bool {
-        &mut self.enabled
-    }
-
-    fn get_popup_string(&self) -> &str {
-        "Profile"
-    }
-
-    fn get_icon(&self) -> &str {
-        "📊"
-    }
-}
-
-pub struct Profiler<'a> {
-    state: &'a mut ProfilerState,
-}
-
-impl<'a> Profiler<'a> {
-    pub fn with_state(state: &'a mut ProfilerState) -> Self {
-        Self { state }
-    }
-}
+impl_tool_state_trait!(ProfilerState, "Profile", "📊");
+create_tool!(Profiler, ProfilerState);
+impl_with_state!(Profiler, ProfilerState);
 
 impl Tool for Profiler<'_> {
     fn show(
