@@ -33,8 +33,9 @@ impl Rotate for QuadFace {
 }
 
 impl Scale for QuadFace {
-    fn scale(&mut self, _scale: Vec3) {
-        todo!("Implement scale for QuadFace")
+    fn scale(&mut self, scale: Vec3) {
+        self.min *= scale;
+        self.max *= scale;
     }
 }
 

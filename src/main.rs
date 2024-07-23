@@ -8,10 +8,15 @@
 use camera::CameraEvent;
 use egui::ahash::HashMap;
 use log::{info, LevelFilter};
+use parking_lot::Mutex;
 use picking::PickingEvent;
-use render::buffer::{
-    layout::{wire::WireAllocator, WidgetAllocator},
-    DynamicBuffer,
+use render::{
+    buffer::{
+        alloc::BufferDynamicAllocator,
+        layout::{wire::WireAllocator, WidgetAllocator},
+        DynamicBuffer,
+    },
+    vertex::Vertex,
 };
 use settings::tree::QuickSettings;
 use std::{sync::Arc, time::Instant};
@@ -48,6 +53,11 @@ lazy_static::lazy_static! {
         let content = include_str!("../config.toml");
         toml::from_str(content).unwrap()
     };
+}
+
+#[cfg(debug_assertions)]
+lazy_static::lazy_static! {
+    pub static ref DEBUG_BUFFER: Mutex<Option<DynamicBuffer<render::vertex::Vertex, BufferDynamicAllocator>>> = Mutex::new(None);
 }
 
 #[derive(Debug, Clone)]
@@ -150,6 +160,17 @@ async fn main() -> Result<(), EventLoopError> {
         camera_controller: SharedMut::from_inner(camera::CameraController::new(0.01, -2.0, 0.1)),
         ctx: GlobalContext::default(),
     };
+
+    #[cfg(debug_assertions)]
+    {
+        let debug_buffer = DynamicBuffer::new(
+            BufferDynamicAllocator::default(),
+            "Debug Buffer",
+            &wgpu_context.device,
+        );
+
+        *DEBUG_BUFFER.lock() = Some(debug_buffer);
+    }
 
     window.set_visible(true);
 

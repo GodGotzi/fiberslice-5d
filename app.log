@@ -1,188 +1,470 @@
-[00:00:00.000] (7fec12332d40) INFO   Starting up version 0.1.0
-[00:00:00.123] (7fec12332d40) WARN   InstanceFlags::VALIDATION requested, but unable to find layer: VK_LAYER_KHRONOS_validation
-[00:00:00.123] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.000] (7f650d0c8d40) INFO   Starting up version 0.1.0
+[00:00:00.243] (7f650d0c8d40) WARN   InstanceFlags::VALIDATION requested, but unable to find layer: VK_LAYER_KHRONOS_validation
+[00:00:00.243] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	Searching for implicit layer manifest files
-[00:00:00.123] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.123] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.243] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.243] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	   In following locations:
-[00:00:00.123] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.123] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.243] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.243] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /home/gotzi/.config/vulkan/implicit_layer.d
-[00:00:00.123] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.123] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.243] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.243] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /etc/xdg/vulkan/implicit_layer.d
-[00:00:00.123] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.123] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.244] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.244] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /etc/vulkan/implicit_layer.d
-[00:00:00.123] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.123] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.244] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.244] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /home/gotzi/.local/share/vulkan/implicit_layer.d
-[00:00:00.124] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.124] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.244] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.244] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /home/gotzi/.local/share/flatpak/exports/share/vulkan/implicit_layer.d
-[00:00:00.124] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.124] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.244] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.244] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /var/lib/flatpak/exports/share/vulkan/implicit_layer.d
-[00:00:00.124] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.124] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.244] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.244] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /usr/local/share/vulkan/implicit_layer.d
-[00:00:00.124] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.124] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.245] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.245] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /usr/share/vulkan/implicit_layer.d
-[00:00:00.124] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.124] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.245] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.245] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	   Found the following files:
-[00:00:00.124] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.124] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.245] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.245] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /usr/share/vulkan/implicit_layer.d/nvidia_layers.json
-[00:00:00.124] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.124] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.245] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.245] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/implicit_layer.d/VkLayer_FROG_gamescope_wsi.x86_64.json
+[00:00:00.246] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.246] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/implicit_layer.d/VkLayer_MESA_device_select.json
+[00:00:00.246] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.246] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	Found manifest file /usr/share/vulkan/implicit_layer.d/nvidia_layers.json (file version 1.0.0)
-[00:00:00.124] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.124] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.246] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.246] (7f650d0c8d40) WARN   GENERAL [Loader Message (0x0)]
+	loader_add_layer_properties: 'layers' tag not supported until file version 1.0.1, but /usr/share/vulkan/implicit_layer.d/nvidia_layers.json is reporting version 1
+[00:00:00.246] (7f650d0c8d40) WARN   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.246] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found manifest file /usr/share/vulkan/implicit_layer.d/VkLayer_FROG_gamescope_wsi.x86_64.json (file version 1.0.0)
+[00:00:00.246] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.247] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found manifest file /usr/share/vulkan/implicit_layer.d/VkLayer_MESA_device_select.json (file version 1.0.0)
+[00:00:00.247] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.247] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	Searching for explicit layer manifest files
-[00:00:00.124] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.124] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.247] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.247] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	   In following locations:
-[00:00:00.124] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.124] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.247] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.247] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /home/gotzi/.config/vulkan/explicit_layer.d
-[00:00:00.124] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.124] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.247] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.248] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /etc/xdg/vulkan/explicit_layer.d
-[00:00:00.124] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.124] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.248] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.248] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /etc/vulkan/explicit_layer.d
-[00:00:00.124] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.124] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.248] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.248] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /home/gotzi/.local/share/vulkan/explicit_layer.d
-[00:00:00.124] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.124] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.248] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.248] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /home/gotzi/.local/share/flatpak/exports/share/vulkan/explicit_layer.d
-[00:00:00.124] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.125] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.248] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.249] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /var/lib/flatpak/exports/share/vulkan/explicit_layer.d
-[00:00:00.125] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.125] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.249] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.249] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /usr/local/share/vulkan/explicit_layer.d
-[00:00:00.125] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.125] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.249] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.249] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /usr/share/vulkan/explicit_layer.d
-[00:00:00.125] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.125] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.249] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.249] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	   Found no files
-[00:00:00.125] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.125] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.249] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.249] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	Searching for driver manifest files
-[00:00:00.125] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.125] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.250] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.250] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	   In following locations:
-[00:00:00.125] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.125] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.250] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.250] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /home/gotzi/.config/vulkan/icd.d
-[00:00:00.125] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.125] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.250] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.250] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /etc/xdg/vulkan/icd.d
-[00:00:00.125] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.125] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.250] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.250] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /etc/vulkan/icd.d
-[00:00:00.125] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.125] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.250] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.251] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /home/gotzi/.local/share/vulkan/icd.d
-[00:00:00.125] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.125] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.251] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.251] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /home/gotzi/.local/share/flatpak/exports/share/vulkan/icd.d
-[00:00:00.125] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.125] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.251] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.251] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /var/lib/flatpak/exports/share/vulkan/icd.d
-[00:00:00.125] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.125] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.251] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.251] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /usr/local/share/vulkan/icd.d
-[00:00:00.125] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.125] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.251] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.251] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /usr/share/vulkan/icd.d
-[00:00:00.125] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.125] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.252] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.252] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	   Found the following files:
-[00:00:00.126] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.126] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.252] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.252] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	      /usr/share/vulkan/icd.d/nvidia_icd.json
-[00:00:00.126] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.126] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.252] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.252] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/icd.d/broadcom_icd.x86_64.json
+[00:00:00.252] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.253] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/icd.d/freedreno_icd.x86_64.json
+[00:00:00.253] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.253] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/icd.d/intel_hasvk_icd.x86_64.json
+[00:00:00.253] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.253] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/icd.d/intel_icd.x86_64.json
+[00:00:00.253] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.253] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/icd.d/lvp_icd.x86_64.json
+[00:00:00.253] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.253] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/icd.d/nouveau_icd.x86_64.json
+[00:00:00.254] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.254] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/icd.d/panfrost_icd.x86_64.json
+[00:00:00.254] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.254] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/icd.d/powervr_mesa_icd.x86_64.json
+[00:00:00.254] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.254] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/icd.d/radeon_icd.x86_64.json
+[00:00:00.254] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.254] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/icd.d/broadcom_icd.i686.json
+[00:00:00.255] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.255] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/icd.d/freedreno_icd.i686.json
+[00:00:00.255] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.255] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/icd.d/intel_hasvk_icd.i686.json
+[00:00:00.255] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.255] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/icd.d/intel_icd.i686.json
+[00:00:00.255] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.255] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/icd.d/lvp_icd.i686.json
+[00:00:00.255] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.255] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/icd.d/nouveau_icd.i686.json
+[00:00:00.256] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.256] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/icd.d/panfrost_icd.i686.json
+[00:00:00.256] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.256] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/icd.d/powervr_mesa_icd.i686.json
+[00:00:00.256] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.256] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	      /usr/share/vulkan/icd.d/radeon_icd.i686.json
+[00:00:00.256] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.256] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	Found ICD manifest file /usr/share/vulkan/icd.d/nvidia_icd.json, version 1.0.0
-[00:00:00.126] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.126] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.257] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.257] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found ICD manifest file /usr/share/vulkan/icd.d/broadcom_icd.x86_64.json, version 1.0.0
+[00:00:00.257] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.257] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found ICD manifest file /usr/share/vulkan/icd.d/freedreno_icd.x86_64.json, version 1.0.0
+[00:00:00.257] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.257] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found ICD manifest file /usr/share/vulkan/icd.d/intel_hasvk_icd.x86_64.json, version 1.0.0
+[00:00:00.257] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.257] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found ICD manifest file /usr/share/vulkan/icd.d/intel_icd.x86_64.json, version 1.0.0
+[00:00:00.258] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.258] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found ICD manifest file /usr/share/vulkan/icd.d/lvp_icd.x86_64.json, version 1.0.0
+[00:00:00.258] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.258] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found ICD manifest file /usr/share/vulkan/icd.d/nouveau_icd.x86_64.json, version 1.0.0
+[00:00:00.258] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.258] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found ICD manifest file /usr/share/vulkan/icd.d/panfrost_icd.x86_64.json, version 1.0.0
+[00:00:00.258] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.258] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found ICD manifest file /usr/share/vulkan/icd.d/powervr_mesa_icd.x86_64.json, version 1.0.0
+[00:00:00.259] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.259] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found ICD manifest file /usr/share/vulkan/icd.d/radeon_icd.x86_64.json, version 1.0.0
+[00:00:00.259] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.259] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found ICD manifest file /usr/share/vulkan/icd.d/broadcom_icd.i686.json, version 1.0.0
+[00:00:00.259] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.259] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	/usr/lib/libvulkan_broadcom.so: wrong ELF class: ELFCLASS32
+[00:00:00.259] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.259] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Requested ICD /usr/lib/libvulkan_broadcom.so was wrong bit-type. Ignoring this JSON
+[00:00:00.259] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.260] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found ICD manifest file /usr/share/vulkan/icd.d/freedreno_icd.i686.json, version 1.0.0
+[00:00:00.260] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.260] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	/usr/lib/libvulkan_freedreno.so: wrong ELF class: ELFCLASS32
+[00:00:00.260] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.260] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Requested ICD /usr/lib/libvulkan_freedreno.so was wrong bit-type. Ignoring this JSON
+[00:00:00.260] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.260] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found ICD manifest file /usr/share/vulkan/icd.d/intel_hasvk_icd.i686.json, version 1.0.0
+[00:00:00.260] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.260] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	/usr/lib/libvulkan_intel_hasvk.so: wrong ELF class: ELFCLASS32
+[00:00:00.260] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.261] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Requested ICD /usr/lib/libvulkan_intel_hasvk.so was wrong bit-type. Ignoring this JSON
+[00:00:00.261] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.261] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found ICD manifest file /usr/share/vulkan/icd.d/intel_icd.i686.json, version 1.0.0
+[00:00:00.261] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.261] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	/usr/lib/libvulkan_intel.so: wrong ELF class: ELFCLASS32
+[00:00:00.261] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.261] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Requested ICD /usr/lib/libvulkan_intel.so was wrong bit-type. Ignoring this JSON
+[00:00:00.261] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.261] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found ICD manifest file /usr/share/vulkan/icd.d/lvp_icd.i686.json, version 1.0.0
+[00:00:00.262] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.262] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	/usr/lib/libvulkan_lvp.so: wrong ELF class: ELFCLASS32
+[00:00:00.262] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.262] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Requested ICD /usr/lib/libvulkan_lvp.so was wrong bit-type. Ignoring this JSON
+[00:00:00.262] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.262] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found ICD manifest file /usr/share/vulkan/icd.d/nouveau_icd.i686.json, version 1.0.0
+[00:00:00.262] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.262] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	/usr/lib/libvulkan_nouveau.so: wrong ELF class: ELFCLASS32
+[00:00:00.262] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.262] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Requested ICD /usr/lib/libvulkan_nouveau.so was wrong bit-type. Ignoring this JSON
+[00:00:00.263] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.263] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found ICD manifest file /usr/share/vulkan/icd.d/panfrost_icd.i686.json, version 1.0.0
+[00:00:00.263] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.263] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	/usr/lib/libvulkan_panfrost.so: wrong ELF class: ELFCLASS32
+[00:00:00.263] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.263] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Requested ICD /usr/lib/libvulkan_panfrost.so was wrong bit-type. Ignoring this JSON
+[00:00:00.263] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.263] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found ICD manifest file /usr/share/vulkan/icd.d/powervr_mesa_icd.i686.json, version 1.0.0
+[00:00:00.263] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.264] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	/usr/lib/libvulkan_powervr_mesa.so: wrong ELF class: ELFCLASS32
+[00:00:00.264] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.264] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Requested ICD /usr/lib/libvulkan_powervr_mesa.so was wrong bit-type. Ignoring this JSON
+[00:00:00.264] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.264] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Found ICD manifest file /usr/share/vulkan/icd.d/radeon_icd.i686.json, version 1.0.0
+[00:00:00.264] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.264] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	/usr/lib/libvulkan_radeon.so: wrong ELF class: ELFCLASS32
+[00:00:00.264] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.264] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Requested ICD /usr/lib/libvulkan_radeon.so was wrong bit-type. Ignoring this JSON
+[00:00:00.265] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.265] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Insert instance layer "VK_LAYER_MESA_device_select" (libVkLayer_MESA_device_select.so)
+[00:00:00.265] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.265] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	vkCreateInstance layer callstack setup to:
-[00:00:00.126] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.126] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.265] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.265] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	   <Application>
-[00:00:00.126] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.126] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.266] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.266] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	     ||
-[00:00:00.126] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.126] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.266] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.266] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	   <Loader>
-[00:00:00.126] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.126] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.266] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.266] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	     ||
-[00:00:00.126] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.126] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.266] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.266] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	   VK_LAYER_MESA_device_select
+[00:00:00.267] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.267] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           Type: Implicit
+[00:00:00.267] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.267] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	               Disable Env Var:  NODEVICE_SELECT
+[00:00:00.267] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.267] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           Manifest: /usr/share/vulkan/implicit_layer.d/VkLayer_MESA_device_select.json
+[00:00:00.267] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.267] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           Library:  libVkLayer_MESA_device_select.so
+[00:00:00.267] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.268] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	     ||
+[00:00:00.268] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.268] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	   <Drivers>
-[00:00:00.126] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.132] (7fec12332d40) INFO   Enabling debug utils
-[00:00:00.133] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.268] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.294] (7f650d0c8d40) INFO   Enabling debug utils
+[00:00:00.296] (7f650d0c8d40) ERROR  GENERAL [../src/nouveau/vulkan/nvk_physical_device.c:1109 (0x0)]
+	VK_ERROR_INCOMPATIBLE_DRIVER
+[00:00:00.296] (7f650d0c8d40) ERROR  	objects: (type: INSTANCE, hndl: 0x55aab45e3ad0, name: ?)
+[00:00:00.299] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	linux_read_sorted_physical_devices:
-[00:00:00.133] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.133] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.299] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.299] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	     Original order:
-[00:00:00.133] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.133] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
-	           [0] NVIDIA GeForce RTX 3060 Laptop GPU
-[00:00:00.133] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.133] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.299] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.300] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           [0] llvmpipe (LLVM 18.1.6, 256 bits)
+[00:00:00.300] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.300] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           [1] NVIDIA GeForce GTX 1660 Ti
+[00:00:00.300] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.300] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	     Sorted order:
-[00:00:00.133] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.133] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
-	           [0] NVIDIA GeForce RTX 3060 Laptop GPU  
-[00:00:00.133] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.133] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.300] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.300] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           [0] NVIDIA GeForce GTX 1660 Ti  
+[00:00:00.300] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.300] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           [1] llvmpipe (LLVM 18.1.6, 256 bits)  
+[00:00:00.301] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.301] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	linux_read_sorted_physical_devices:
-[00:00:00.133] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.133] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.301] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.301] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	     Original order:
-[00:00:00.133] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.133] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
-	           [0] NVIDIA GeForce RTX 3060 Laptop GPU
-[00:00:00.133] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.133] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.301] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.301] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           [0] llvmpipe (LLVM 18.1.6, 256 bits)
+[00:00:00.301] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.301] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           [1] NVIDIA GeForce GTX 1660 Ti
+[00:00:00.301] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.302] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	     Sorted order:
-[00:00:00.133] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.133] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
-	           [0] NVIDIA GeForce RTX 3060 Laptop GPU  
-[00:00:00.134] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.134] (7fec12332d40) INFO   Adapter Vulkan AdapterInfo { name: "NVIDIA GeForce RTX 3060 Laptop GPU", vendor: 4318, device: 9504, device_type: DiscreteGpu, driver: "NVIDIA", driver_info: "550.78", backend: Vulkan }
-[00:00:00.134] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.302] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.302] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           [0] NVIDIA GeForce GTX 1660 Ti  
+[00:00:00.302] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.302] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           [1] llvmpipe (LLVM 18.1.6, 256 bits)  
+[00:00:00.302] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.303] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	linux_read_sorted_physical_devices:
+[00:00:00.303] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.303] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	     Original order:
+[00:00:00.303] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.303] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           [0] llvmpipe (LLVM 18.1.6, 256 bits)
+[00:00:00.303] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.304] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           [1] NVIDIA GeForce GTX 1660 Ti
+[00:00:00.304] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.304] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	     Sorted order:
+[00:00:00.304] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.304] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           [0] NVIDIA GeForce GTX 1660 Ti  
+[00:00:00.304] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.304] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           [1] llvmpipe (LLVM 18.1.6, 256 bits)  
+[00:00:00.304] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.305] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	linux_read_sorted_physical_devices:
+[00:00:00.305] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.305] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	     Original order:
+[00:00:00.305] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.305] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           [0] llvmpipe (LLVM 18.1.6, 256 bits)
+[00:00:00.305] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.305] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           [1] NVIDIA GeForce GTX 1660 Ti
+[00:00:00.305] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.305] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	     Sorted order:
+[00:00:00.305] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.306] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           [0] NVIDIA GeForce GTX 1660 Ti  
+[00:00:00.306] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.306] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	           [1] llvmpipe (LLVM 18.1.6, 256 bits)  
+[00:00:00.306] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.307] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Removing driver /usr/lib64/libvulkan_radeon.so due to not having any physical devices
+[00:00:00.307] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.307] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Removing driver /usr/lib64/libvulkan_powervr_mesa.so due to not having any physical devices
+[00:00:00.307] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.307] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Removing driver /usr/lib64/libvulkan_panfrost.so due to not having any physical devices
+[00:00:00.308] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.308] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Removing driver /usr/lib64/libvulkan_nouveau.so due to not having any physical devices
+[00:00:00.308] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.308] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Removing driver /usr/lib64/libvulkan_intel.so due to not having any physical devices
+[00:00:00.308] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.308] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Removing driver /usr/lib64/libvulkan_intel_hasvk.so due to not having any physical devices
+[00:00:00.309] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.309] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Removing driver /usr/lib64/libvulkan_freedreno.so due to not having any physical devices
+[00:00:00.309] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.309] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Removing driver /usr/lib64/libvulkan_broadcom.so due to not having any physical devices
+[00:00:00.309] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.310] (7f650d0c8d40) INFO   Adapter Vulkan AdapterInfo { name: "NVIDIA GeForce GTX 1660 Ti", vendor: 4318, device: 8578, device_type: DiscreteGpu, driver: "NVIDIA", driver_info: "555.58.02", backend: Vulkan }
+[00:00:00.311] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	Failed to find vkGetDeviceProcAddr in layer "libVkLayer_MESA_device_select.so"
+[00:00:00.311] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.311] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	vkCreateDevice layer callstack setup to:
-[00:00:00.134] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.134] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.311] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.311] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	   <Application>
-[00:00:00.134] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.134] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.311] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.312] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	     ||
-[00:00:00.134] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.134] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.312] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.312] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	   <Loader>
-[00:00:00.134] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.134] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.312] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.312] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	     ||
-[00:00:00.134] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.134] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
+[00:00:00.312] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.312] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
 	   <Device>
-[00:00:00.135] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:00.135] (7fec12332d40) INFO   GENERAL [Loader Message (0x0)]
-	       Using "NVIDIA GeForce RTX 3060 Laptop GPU" with driver: "libGLX_nvidia.so.0"
-[00:00:00.135] (7fec12332d40) INFO   	objects: (type: INSTANCE, hndl: 0x56413e167350, name: ?)
-[00:00:09.533] (7fec12332d40) INFO   Handling event: ShowSuccess("Gcode loaded")
-[00:00:09.533] (7fec12332d40) INFO   Adapter: "UiAdapter"
-[00:00:09.533] (7fec12332d40) INFO   Handling event: UpdatePreferredDistance(BoundingHitbox { max: Vec3(33.089355, 10.589224, 34.994293), min: Vec3(-130.20584, -4.572749, -215.99872), enabled: true })
-[00:00:09.533] (7fec12332d40) INFO   Adapter: "CameraAdapter"
+[00:00:00.312] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:00.312] (7f650d0c8d40) INFO   GENERAL [Loader Message (0x0)]
+	       Using "NVIDIA GeForce GTX 1660 Ti" with driver: "libGLX_nvidia.so.0"
+[00:00:00.313] (7f650d0c8d40) INFO   	objects: (type: INSTANCE, hndl: 0x55aab431af60, name: ?)
+[00:00:20.849] (7f650d0c8d40) INFO   Handling event: ShowSuccess("Gcode loaded")
+[00:00:20.849] (7f650d0c8d40) INFO   Adapter: "UiAdapter"
+[00:00:20.849] (7f650d0c8d40) INFO   Handling event: UpdatePreferredDistance(BoundingHitbox { max: Vec3(100.225, 1.1625, 100.225), min: Vec3(-0.225, -0.1625, -0.225), enabled: true })
+[00:00:20.850] (7f650d0c8d40) INFO   Adapter: "CameraAdapter"

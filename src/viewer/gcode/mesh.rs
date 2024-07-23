@@ -1,8 +1,10 @@
-use glam::{Vec3, Vec4};
+use std::vec;
+
+use glam::{vec3, vec4, Vec3, Vec4};
 
 use crate::{
     geometry::{
-        mesh::{construct_triangle_vertices, Mesh},
+        mesh::{construct_triangle_vertices, construct_wire_vertices, Mesh, WireMesh},
         BoundingHitbox, QuadFace,
     },
     model::{
@@ -10,7 +12,10 @@ use crate::{
         TreeObject,
     },
     picking::hitbox::{Hitbox, PickContext},
-    render::{buffer::BufferLocation, vertex::Vertex},
+    render::{
+        buffer::{layout::wire, BufferLocation},
+        vertex::Vertex,
+    },
 };
 
 use super::{path::PathModul, DisplaySettings, PathContext};
@@ -343,6 +348,15 @@ impl PathModul {
 
                 let path_hitbox = PathHitbox::from(path_mesh);
 
+                #[cfg(debug_assertions)]
+                {
+                    let cloned_box = path_hitbox.clone();
+
+                    let wire_vertices = cloned_box.to_triangle_vertices();
+
+                    vertices.extend_from_slice(&wire_vertices);
+                }
+
                 bounding_box.expand(&path_hitbox);
 
                 let sub_model = TreeObject::<Vertex, PickContext>::Node {
@@ -470,5 +484,60 @@ impl Hitbox for PathHitbox {
             .max(self.north_east.max)
             .max(self.south_west.max)
             .max(self.south_east.max)
+    }
+}
+
+impl WireMesh<8> for PathHitbox {
+    fn to_wire_vertices(&self) -> [Vertex; 8] {
+        construct_wire_vertices(
+            [
+                self.north_east.min,
+                self.north_east.max,
+                self.north_west.min,
+                self.north_west.max,
+                self.south_east.min,
+                self.south_east.max,
+                self.south_west.min,
+                self.south_west.max,
+            ],
+            vec4(0.0, 0.0, 0.0, 1.0),
+        )
+    }
+}
+
+impl Mesh<24> for PathHitbox {
+    fn to_triangle_vertices(&self) -> [Vertex; 24] {
+        construct_triangle_vertices(
+            [
+                self.north_east.max,
+                self.north_east.min,
+                self.north_west.min,
+                self.north_east.max,
+                self.north_west.min,
+                self.north_west.max,
+                // asdasd
+                self.south_east.max,
+                self.south_east.min,
+                self.south_west.min,
+                self.south_east.max,
+                self.south_west.min,
+                self.south_west.max,
+                // asdasd
+                self.north_east.max,
+                self.north_east.min,
+                self.south_east.min,
+                self.north_east.max,
+                self.south_east.min,
+                self.south_east.max,
+                // asdasd
+                self.north_west.max,
+                self.north_west.min,
+                self.south_west.min,
+                self.north_west.max,
+                self.south_west.min,
+                self.south_west.max,
+            ],
+            vec4(0.0, 0.0, 0.0, 1.0),
+        )
     }
 }

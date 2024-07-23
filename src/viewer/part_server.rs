@@ -58,6 +58,10 @@ pub struct ToolpathServer {
     queue: Vec<(Receiver<Toolpath>, JoinHandle<()>)>,
 
     buffer: DynamicBuffer<Vertex, BufferDynamicAllocator>,
+
+    // #[cfg(debug_assertions)]
+    debug_buffer: DynamicBuffer<Vertex, BufferDynamicAllocator>,
+
     parts: HashMap<String, ToolpathHandle>,
     focused: Option<String>,
 }
@@ -69,6 +73,11 @@ impl ToolpathServer {
             buffer: DynamicBuffer::new(
                 BufferDynamicAllocator::default(),
                 "Toolpath Buffer",
+                device,
+            ),
+            debug_buffer: DynamicBuffer::new(
+                BufferDynamicAllocator::default(),
+                "Debug Buffer",
                 device,
             ),
             parts: HashMap::new(),

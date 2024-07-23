@@ -165,8 +165,14 @@ impl<'a>
 
                     let toolpath_server = state.toolpath_server.read();
                     let toolpath_server_buffer = toolpath_server.read_buffer();
+
                     let global_wdiget_buffer = state.widget_test_buffer.read();
                     let global_wire_widget_buffer = state.widget_wire_test_buffer.read();
+
+                    #[cfg(debug_assertions)]
+                    let debug_buffer_lock = crate::DEBUG_BUFFER.lock();
+                    #[cfg(debug_assertions)]
+                    let debug_buffer = debug_buffer_lock.as_ref().unwrap();
 
                     let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: Some("Render Pass"),
@@ -201,7 +207,10 @@ impl<'a>
                         render_pass.set_pipeline(&self.wire_pipline);
                         self.wire_buffer.render(&mut render_pass);
                         global_wire_widget_buffer.render(&mut render_pass);
-                        self.debug_buffer.render(&mut render_pass);
+                        // self.debug_buffer.render(&mut render_pass);
+
+                        #[cfg(debug_assertions)]
+                        debug_buffer.render(&mut render_pass);
                     }
 
                     self.egui_rpass
