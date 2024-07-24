@@ -3,7 +3,7 @@ use log::info;
 
 use crate::{
     model::transform::{Rotate, Scale, Translate},
-    prelude::SharedMut,
+    prelude::{SharedMut, WgpuContext},
 }; // Importing the BoundingBox struct from the geometry module in the crate
 
 use super::{
@@ -13,7 +13,7 @@ use super::{
 };
 
 pub trait Hitbox: std::fmt::Debug + Send + Sync + Translate + Rotate + Scale {
-    fn check_hit(&self, ray: &Ray) -> Option<f32>;
+    fn check_hit(&self, ray: &Ray, wgpu_context: &WgpuContext) -> Option<f32>;
     fn expand(&mut self, _box: &dyn Hitbox);
     fn set_enabled(&mut self, enabled: bool);
     fn enabled(&self) -> bool;
@@ -66,12 +66,12 @@ impl HitboxNode {
         }
     }
 
-    pub fn check_hit(&self, ray: &Ray) -> Option<&PickContext> {
+    pub fn check_hit(&self, ray: &Ray, wgpu_context: &WgpuContext) -> Option<&PickContext> {
         let mut queue = HitboxQueue::new(); // Creating a new HitboxQueue
 
         if let HitboxNode::Root { inner_hitboxes } = self {
             for hitbox in inner_hitboxes {
-                let distance = hitbox.hitbox().check_hit(ray);
+                let distance = hitbox.hitbox().check_hit(ray, wgpu_context);
                 if let Some(distance) = distance {
                     queue.push(HitBoxQueueEntry { hitbox, distance });
                 }
@@ -85,7 +85,7 @@ impl HitboxNode {
                 | HitboxNode::Root { inner_hitboxes, .. } => {
                     // If it intersects, recursively check inner hitboxes
                     for hitbox in inner_hitboxes {
-                        let distance = hitbox.hitbox().check_hit(ray);
+                        let distance = hitbox.hitbox().check_hit(ray, wgpu_context);
                         if let Some(distance) = distance {
                             queue.push(HitBoxQueueEntry { hitbox, distance });
                         }

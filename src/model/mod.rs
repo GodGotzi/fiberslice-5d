@@ -291,10 +291,10 @@ impl<C: Pickable + Hitbox> Pickable for TreeHandle<C> {
 }
 
 impl<C: Hitbox> Hitbox for TreeHandle<C> {
-    fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
+    fn check_hit(&self, ray: &crate::picking::ray::Ray, wgpu_context: &WgpuContext) -> Option<f32> {
         match self {
-            Self::Root { ctx, .. } => ctx.check_hit(ray),
-            Self::Node { ctx, .. } => ctx.check_hit(ray),
+            Self::Root { ctx, .. } => ctx.check_hit(ray, wgpu_context),
+            Self::Node { ctx, .. } => ctx.check_hit(ray, wgpu_context),
         }
     }
 

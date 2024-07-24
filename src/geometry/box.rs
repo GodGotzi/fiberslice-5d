@@ -3,7 +3,7 @@ use glam::Vec3;
 use crate::{
     model::transform::{Rotate, Scale, Translate},
     picking::hitbox::Hitbox,
-    prelude::SharedMut,
+    prelude::{SharedMut, WgpuContext},
 };
 
 use super::QuadFace;
@@ -65,31 +65,37 @@ impl BoundingHitbox {
         [
             QuadFace {
                 normal: Vec3::new(1.0, 0.0, 0.0),
+                point: Vec3::new(self.max.x, self.max.y, self.max.z),
                 max: Vec3::new(self.max.x, self.max.y, self.max.z),
                 min: Vec3::new(self.max.x, self.min.y, self.min.z),
             },
             QuadFace {
                 normal: Vec3::new(-1.0, 0.0, 0.0),
+                point: Vec3::new(self.min.x, self.max.y, self.max.z),
                 max: Vec3::new(self.min.x, self.max.y, self.max.z),
                 min: Vec3::new(self.min.x, self.min.y, self.min.z),
             },
             QuadFace {
                 normal: Vec3::new(0.0, 1.0, 0.0),
+                point: Vec3::new(self.max.x, self.max.y, self.max.z),
                 max: Vec3::new(self.max.x, self.max.y, self.max.z),
                 min: Vec3::new(self.min.x, self.max.y, self.min.z),
             },
             QuadFace {
                 normal: Vec3::new(0.0, -1.0, 0.0),
+                point: Vec3::new(self.max.x, self.min.y, self.max.z),
                 max: Vec3::new(self.max.x, self.min.y, self.max.z),
                 min: Vec3::new(self.min.x, self.min.y, self.min.z),
             },
             QuadFace {
                 normal: Vec3::new(0.0, 0.0, 1.0),
+                point: Vec3::new(self.max.x, self.max.y, self.max.z),
                 max: Vec3::new(self.max.x, self.max.y, self.max.z),
                 min: Vec3::new(self.min.x, self.min.y, self.max.z),
             },
             QuadFace {
                 normal: Vec3::new(0.0, 0.0, -1.0),
+                point: Vec3::new(self.max.x, self.max.y, self.min.z),
                 max: Vec3::new(self.max.x, self.max.y, self.min.z),
                 min: Vec3::new(self.min.x, self.min.y, self.min.z),
             },
@@ -117,7 +123,7 @@ impl Scale for BoundingHitbox {
 }
 
 impl Hitbox for BoundingHitbox {
-    fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
+    fn check_hit(&self, ray: &crate::picking::ray::Ray, wgpu_context: &WgpuContext) -> Option<f32> {
         // bounding box min max
 
         if self.contains(ray.origin) {
@@ -127,7 +133,7 @@ impl Hitbox for BoundingHitbox {
         let mut min = None;
 
         for quad_face in self.faces() {
-            let distance = quad_face.check_hit(ray);
+            let distance = quad_face.check_hit(ray, wgpu_context);
 
             if let Some(distance) = distance {
                 if min.unwrap_or(f32::MAX) > distance || min.is_none() {

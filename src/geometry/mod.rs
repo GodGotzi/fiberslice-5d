@@ -1,3 +1,5 @@
+use std::sync::atomic::AtomicUsize;
+
 use glam::{vec3, vec4, Vec3, Vec4};
 use mesh::{construct_triangle_vertices, construct_wire_vertices, WireMesh};
 
@@ -9,12 +11,14 @@ pub use r#box::BoundingHitbox;
 use crate::{
     model::transform::{Rotate, Scale, Translate},
     picking::hitbox::Hitbox,
+    prelude::WgpuContext,
     render::vertex::Vertex,
 };
 
 #[derive(Debug, Clone, Copy)]
 pub struct QuadFace {
     pub normal: Vec3,
+    pub point: Vec3,
     pub min: Vec3,
     pub max: Vec3,
 }
@@ -39,9 +43,30 @@ impl Scale for QuadFace {
     }
 }
 
+lazy_static::lazy_static! {
+    pub static ref DEBUG_COUNTER: AtomicUsize = AtomicUsize::new(0);
+}
+
 impl Hitbox for QuadFace {
-    fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
-        let intersection = ray.intersection_plane(self.normal, self.min);
+    fn check_hit(&self, ray: &crate::picking::ray::Ray, wgpu_context: &WgpuContext) -> Option<f32> {
+        let intersection = ray.intersection_plane(self.normal, self.point);
+
+        #[cfg(debug_assertions)]
+        {
+            let debug =
+                construct_wire_vertices([intersection, ray.origin], vec4(0.0, 0.0, 0.0, 1.0));
+
+            let count = DEBUG_COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+
+            let mut buffer_lock = crate::DEBUG_BUFFER.lock();
+
+            buffer_lock.as_mut().unwrap().allocate_init(
+                &format!("debug_{}", count),
+                &debug,
+                &wgpu_context.device,
+                &wgpu_context.queue,
+            );
+        }
 
         const EPSILON: f32 = 0.0001;
 

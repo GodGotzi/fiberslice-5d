@@ -1,10 +1,8 @@
-use std::vec;
-
-use glam::{vec3, vec4, Vec3, Vec4};
+use glam::{vec4, Vec3, Vec4};
 
 use crate::{
     geometry::{
-        mesh::{construct_triangle_vertices, construct_wire_vertices, Mesh, WireMesh},
+        mesh::{construct_triangle_vertices, Mesh},
         BoundingHitbox, QuadFace,
     },
     model::{
@@ -12,10 +10,8 @@ use crate::{
         TreeObject,
     },
     picking::hitbox::{Hitbox, PickContext},
-    render::{
-        buffer::{layout::wire, BufferLocation},
-        vertex::Vertex,
-    },
+    prelude::WgpuContext,
+    render::{buffer::BufferLocation, vertex::Vertex},
 };
 
 use super::{path::PathModul, DisplaySettings, PathContext};
@@ -48,6 +44,14 @@ impl ProfileCross {
             right: horizontal.normalize() * -horizontal_radius,
         }
     }
+
+    pub fn min(&self) -> Vec3 {
+        self.up.min(self.down).min(self.left).min(self.right)
+    }
+
+    pub fn max(&self) -> Vec3 {
+        self.up.max(self.down).max(self.left).max(self.right)
+    }
 }
 
 impl ProfileCross {
@@ -58,6 +62,33 @@ impl ProfileCross {
             left: self.left + offset,
             right: self.right + offset,
         }
+    }
+}
+
+impl Translate for ProfileCross {
+    fn translate(&mut self, translation: Vec3) {
+        self.up += translation;
+        self.down += translation;
+        self.left += translation;
+        self.right += translation;
+    }
+}
+
+impl Rotate for ProfileCross {
+    fn rotate(&mut self, rotation: glam::Quat) {
+        self.up = rotation * self.up;
+        self.down = rotation * self.down;
+        self.left = rotation * self.left;
+        self.right = rotation * self.right;
+    }
+}
+
+impl Scale for ProfileCross {
+    fn scale(&mut self, scale: Vec3) {
+        self.up *= scale;
+        self.down *= scale;
+        self.left *= scale;
+        self.right *= scale;
     }
 }
 
@@ -172,70 +203,8 @@ impl Mesh<24> for PathMesh {
 impl From<PathMesh> for PathHitbox {
     fn from(val: PathMesh) -> Self {
         PathHitbox {
-            north_west: QuadFace {
-                normal: (val.profile_end.up - val.profile_start.up)
-                    .cross(val.profile_start.right - val.profile_start.up),
-                max: val
-                    .profile_end
-                    .up
-                    .max(val.profile_start.up)
-                    .max(val.profile_start.right)
-                    .max(val.profile_end.right),
-                min: val
-                    .profile_end
-                    .up
-                    .min(val.profile_start.up)
-                    .min(val.profile_start.right)
-                    .min(val.profile_end.right),
-            },
-            north_east: QuadFace {
-                normal: (val.profile_end.right - val.profile_start.right)
-                    .cross(val.profile_start.down - val.profile_start.right),
-                max: val
-                    .profile_end
-                    .right
-                    .max(val.profile_start.right)
-                    .max(val.profile_start.down)
-                    .max(val.profile_end.down),
-                min: val
-                    .profile_end
-                    .right
-                    .min(val.profile_start.right)
-                    .min(val.profile_start.down)
-                    .min(val.profile_end.down),
-            },
-            south_west: QuadFace {
-                normal: (val.profile_end.down - val.profile_start.down)
-                    .cross(val.profile_start.left - val.profile_start.down),
-                max: val
-                    .profile_end
-                    .down
-                    .max(val.profile_start.down)
-                    .max(val.profile_start.left)
-                    .max(val.profile_end.left),
-                min: val
-                    .profile_end
-                    .down
-                    .min(val.profile_start.down)
-                    .min(val.profile_start.left)
-                    .min(val.profile_end.left),
-            },
-            south_east: QuadFace {
-                normal: (val.profile_end.left - val.profile_start.left)
-                    .cross(val.profile_start.up - val.profile_start.left),
-                max: val
-                    .profile_end
-                    .left
-                    .max(val.profile_start.left)
-                    .max(val.profile_start.up)
-                    .max(val.profile_end.up),
-                min: val
-                    .profile_end
-                    .left
-                    .min(val.profile_start.left)
-                    .min(val.profile_start.up)
-                    .min(val.profile_end.up),
-            },
+            profile_start: val.profile_start,
+            profile_end: val.profile_end,
             enabled: true,
         }
     }
@@ -399,53 +368,109 @@ impl PathModul {
 
 #[derive(Debug, Clone)]
 pub struct PathHitbox {
-    north_west: QuadFace,
-    north_east: QuadFace,
-    south_west: QuadFace,
-    south_east: QuadFace,
+    profile_start: ProfileCross,
+    profile_end: ProfileCross,
     enabled: bool,
 }
 
 impl Translate for PathHitbox {
     fn translate(&mut self, translation: Vec3) {
-        self.north_west.translate(translation);
-        self.north_east.translate(translation);
-        self.south_west.translate(translation);
-        self.south_east.translate(translation);
+        self.profile_start.translate(translation);
+        self.profile_end.translate(translation);
     }
 }
 
 impl Rotate for PathHitbox {
     fn rotate(&mut self, rotation: glam::Quat) {
-        self.north_west.rotate(rotation);
-        self.north_east.rotate(rotation);
-        self.south_west.rotate(rotation);
-        self.south_east.rotate(rotation);
+        self.profile_start.rotate(rotation);
+        self.profile_end.rotate(rotation);
     }
 }
 
 impl Scale for PathHitbox {
     fn scale(&mut self, scale: Vec3) {
-        self.north_west.scale(scale);
-        self.north_east.scale(scale);
-        self.south_west.scale(scale);
-        self.south_east.scale(scale);
+        self.profile_start.scale(scale);
+        self.profile_end.scale(scale);
     }
 }
 
 impl Hitbox for PathHitbox {
-    fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
+    fn check_hit(&self, ray: &crate::picking::ray::Ray, wgpu_context: &WgpuContext) -> Option<f32> {
         let faces = [
-            self.north_west,
-            self.north_east,
-            self.south_west,
-            self.south_east,
+            QuadFace {
+                normal: (self.profile_end.up - self.profile_start.up)
+                    .cross(self.profile_start.right - self.profile_start.up),
+                point: self.profile_start.up,
+                min: self
+                    .profile_start
+                    .up
+                    .min(self.profile_end.up)
+                    .min(self.profile_start.right)
+                    .min(self.profile_end.right),
+                max: self
+                    .profile_start
+                    .up
+                    .max(self.profile_end.up)
+                    .max(self.profile_start.right)
+                    .max(self.profile_end.right),
+            },
+            QuadFace {
+                normal: (self.profile_end.right - self.profile_start.right)
+                    .cross(self.profile_start.down - self.profile_start.right),
+                point: self.profile_start.right,
+                min: self
+                    .profile_start
+                    .right
+                    .min(self.profile_end.right)
+                    .min(self.profile_start.down)
+                    .min(self.profile_end.down),
+                max: self
+                    .profile_start
+                    .right
+                    .max(self.profile_end.right)
+                    .max(self.profile_start.down)
+                    .max(self.profile_end.down),
+            },
+            QuadFace {
+                normal: (self.profile_end.down - self.profile_start.down)
+                    .cross(self.profile_start.left - self.profile_start.down),
+                point: self.profile_start.down,
+                min: self
+                    .profile_start
+                    .down
+                    .min(self.profile_end.down)
+                    .min(self.profile_start.left)
+                    .min(self.profile_end.left),
+                max: self
+                    .profile_start
+                    .down
+                    .max(self.profile_end.down)
+                    .max(self.profile_start.left)
+                    .max(self.profile_end.left),
+            },
+            QuadFace {
+                normal: (self.profile_end.left - self.profile_start.left)
+                    .cross(self.profile_start.up - self.profile_start.left),
+                point: self.profile_start.left,
+                min: self
+                    .profile_start
+                    .left
+                    .min(self.profile_end.left)
+                    .min(self.profile_start.up)
+                    .min(self.profile_end.up),
+                max: self
+                    .profile_start
+                    .left
+                    .max(self.profile_end.left)
+                    .max(self.profile_start.up)
+                    .max(self.profile_end.up),
+            },
         ];
 
         let mut min = None;
 
         for quad_face in faces {
-            let distance = quad_face.check_hit(ray);
+            let distance = quad_face.check_hit(ray, wgpu_context);
 
             if let Some(distance) = distance {
                 if min.unwrap_or(f32::MAX) > distance || min.is_none() {
@@ -471,37 +496,11 @@ impl Hitbox for PathHitbox {
     }
 
     fn min(&self) -> Vec3 {
-        self.north_west
-            .min
-            .min(self.north_east.min)
-            .min(self.south_west.min)
-            .min(self.south_east.min)
+        self.profile_start.min().min(self.profile_end.min())
     }
 
     fn max(&self) -> Vec3 {
-        self.north_west
-            .max
-            .max(self.north_east.max)
-            .max(self.south_west.max)
-            .max(self.south_east.max)
-    }
-}
-
-impl WireMesh<8> for PathHitbox {
-    fn to_wire_vertices(&self) -> [Vertex; 8] {
-        construct_wire_vertices(
-            [
-                self.north_east.min,
-                self.north_east.max,
-                self.north_west.min,
-                self.north_west.max,
-                self.south_east.min,
-                self.south_east.max,
-                self.south_west.min,
-                self.south_west.max,
-            ],
-            vec4(0.0, 0.0, 0.0, 1.0),
-        )
+        self.profile_start.max().max(self.profile_end.max())
     }
 }
 
@@ -509,33 +508,34 @@ impl Mesh<24> for PathHitbox {
     fn to_triangle_vertices(&self) -> [Vertex; 24] {
         construct_triangle_vertices(
             [
-                self.north_east.max,
-                self.north_east.min,
-                self.north_west.min,
-                self.north_east.max,
-                self.north_west.min,
-                self.north_west.max,
                 // asdasd
-                self.south_east.max,
-                self.south_east.min,
-                self.south_west.min,
-                self.south_east.max,
-                self.south_west.min,
-                self.south_west.max,
+                self.profile_end.right,
+                self.profile_end.up,
+                self.profile_start.up,
+                self.profile_end.right,
+                self.profile_start.up,
+                self.profile_start.right,
                 // asdasd
-                self.north_east.max,
-                self.north_east.min,
-                self.south_east.min,
-                self.north_east.max,
-                self.south_east.min,
-                self.south_east.max,
+                self.profile_end.down,
+                self.profile_end.right,
+                self.profile_start.down,
+                self.profile_end.right,
+                self.profile_start.right,
+                self.profile_start.down,
                 // asdasd
-                self.north_west.max,
-                self.north_west.min,
-                self.south_west.min,
-                self.north_west.max,
-                self.south_west.min,
-                self.south_west.max,
+                self.profile_end.left,
+                self.profile_end.down,
+                self.profile_start.down,
+                self.profile_end.left,
+                self.profile_start.down,
+                self.profile_start.left,
+                // asdasd
+                self.profile_end.up,
+                self.profile_end.left,
+                self.profile_start.up,
+                self.profile_end.left,
+                self.profile_start.left,
+                self.profile_start.up,
             ],
             vec4(0.0, 0.0, 0.0, 1.0),
         )

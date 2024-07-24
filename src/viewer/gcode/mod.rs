@@ -142,8 +142,8 @@ impl Scale for PathContext {
 }
 
 impl Hitbox for PathContext {
-    fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
-        self.box_.check_hit(ray)
+    fn check_hit(&self, ray: &crate::picking::ray::Ray, wgpu_context: &WgpuContext) -> Option<f32> {
+        self.box_.check_hit(ray, wgpu_context)
     }
 
     fn expand(&mut self, _box: &dyn Hitbox) {
