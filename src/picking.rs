@@ -75,18 +75,19 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, &CameraResult)> for
                     }
                     winit::event::MouseButton::Right => {
                         if let Some((x, y)) = global_state.ctx.mouse_position {
+                            let now = std::time::Instant::now();
+
                             let ray = ray::Ray::from_view(viewport, (x, y), view, proj, eye);
 
                             self.state.hitbox.read_with_fn(|root| {
-                                println!("PickingAdapter: Checking Hit");
-
                                 let hit = root.check_hit(&ray);
 
                                 if let Some(handle) = hit {
-                                    println!("PickingAdapter: Hit");
                                     handle.read().picked(&global_state, wgpu_context);
                                 }
                             });
+
+                            println!("PickingAdapter: Picking took {:?}", now.elapsed());
                         }
 
                         self.state.is_drag_right = *state == ElementState::Pressed;

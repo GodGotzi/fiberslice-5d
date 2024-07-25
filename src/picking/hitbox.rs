@@ -97,8 +97,6 @@ impl HitboxNode {
             }
         }
 
-        println!("Ray does not intersect any hitbox");
-
         None
     }
 

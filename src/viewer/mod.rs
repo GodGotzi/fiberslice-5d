@@ -2,9 +2,20 @@ use std::collections::BTreeSet;
 
 use egui_code_editor::Syntax;
 
+use crate::render::vertex::Vertex;
+
 pub mod gcode;
 pub mod part_server;
 pub mod widget_server;
+
+pub struct Visual<const T: usize, const W: usize> {
+    pub vertices: [Vertex; T],
+    pub wires: [Vertex; W],
+}
+
+pub trait ToVisual<const T: usize, const W: usize> {
+    fn to_visual(&self) -> Visual<T, W>;
+}
 
 pub trait GCodeSyntax {
     fn gcode() -> Syntax;

@@ -12,6 +12,7 @@ use crate::{
     model::transform::{Rotate, Scale, Translate},
     picking::hitbox::Hitbox,
     render::vertex::Vertex,
+    viewer::gcode::mesh::ProfileCross,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -89,8 +90,30 @@ impl Hitbox for QuadFace {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ProfileExtrusion {
+    profile_start: ProfileCross,
+    profile_end: ProfileCross,
+}
+
+impl ProfileExtrusion {
+    pub fn new(profile_start: ProfileCross, profile_end: ProfileCross) -> Self {
+        Self {
+            profile_start,
+            profile_end,
+        }
+    }
+
+    pub fn scaled(mut self, scale: f32) -> Self {
+        Self {
+            profile_start: self.profile_start.scaled(scale),
+            profile_end: self.profile_end.scaled(scale),
+        }
+    }
+}
+
 pub struct SelectBox {
-    box_: BoundingHitbox,
+    box_: ProfileExtrusion,
     triangle_color: Option<Vec4>,
     wire_color: Option<Vec4>,
 }
@@ -100,6 +123,31 @@ impl From<BoundingHitbox> for SelectBox {
         // box_.expand_point(box_.max + Vec3::new(2.0, 2.0, 2.0));
         // box_.expand_point(box_.min + Vec3::new(-2.0, -2.0, -2.0));
 
+        let box_ = ProfileExtrusion {
+            profile_start: ProfileCross {
+                a: box_.min,
+                c: vec3(box_.max.x, box_.max.y, box_.min.z),
+                b: vec3(box_.min.x, box_.max.y, box_.min.z),
+                d: vec3(box_.max.x, box_.min.y, box_.min.z),
+            },
+            profile_end: ProfileCross {
+                a: box_.max,
+                c: vec3(box_.min.x, box_.min.y, box_.max.z),
+                b: vec3(box_.min.x, box_.max.y, box_.max.z),
+                d: vec3(box_.max.x, box_.min.y, box_.max.z),
+            },
+        };
+
+        Self {
+            box_,
+            triangle_color: None,
+            wire_color: None,
+        }
+    }
+}
+
+impl From<ProfileExtrusion> for SelectBox {
+    fn from(box_: ProfileExtrusion) -> Self {
         Self {
             box_,
             triangle_color: None,
@@ -126,316 +174,43 @@ impl SelectBox {
 
 impl crate::geometry::mesh::Mesh<72> for SelectBox {
     fn to_triangle_vertices(&self) -> [Vertex; 72] {
-        let corner_expansion = 0.2
-            * (self.box_.min.x - self.box_.max.x)
-                .abs()
-                .min((self.box_.min.y - self.box_.max.y).abs())
-                .min((self.box_.min.z - self.box_.max.z).abs());
-
         construct_triangle_vertices(
-            [
-                vec3(self.box_.min.x, self.box_.min.y, self.box_.min.z),
-                vec3(
-                    self.box_.min.x,
-                    self.box_.min.y + corner_expansion,
-                    self.box_.min.z,
-                ),
-                vec3(
-                    self.box_.min.x,
-                    self.box_.min.y,
-                    self.box_.min.z + corner_expansion,
-                ),
-                vec3(self.box_.min.x, self.box_.min.y, self.box_.min.z),
-                vec3(
-                    self.box_.min.x,
-                    self.box_.min.y + corner_expansion,
-                    self.box_.min.z,
-                ),
-                vec3(
-                    self.box_.min.x + corner_expansion,
-                    self.box_.min.y,
-                    self.box_.min.z,
-                ),
-                vec3(self.box_.min.x, self.box_.min.y, self.box_.min.z),
-                vec3(
-                    self.box_.min.x,
-                    self.box_.min.y,
-                    self.box_.min.z + corner_expansion,
-                ),
-                vec3(
-                    self.box_.min.x + corner_expansion,
-                    self.box_.min.y,
-                    self.box_.min.z,
-                ),
-                vec3(self.box_.max.x, self.box_.max.y, self.box_.max.z),
-                vec3(
-                    self.box_.max.x,
-                    self.box_.max.y - corner_expansion,
-                    self.box_.max.z,
-                ),
-                vec3(
-                    self.box_.max.x,
-                    self.box_.max.y,
-                    self.box_.max.z - corner_expansion,
-                ),
-                vec3(self.box_.max.x, self.box_.max.y, self.box_.max.z),
-                vec3(
-                    self.box_.max.x,
-                    self.box_.max.y - corner_expansion,
-                    self.box_.max.z,
-                ),
-                vec3(
-                    self.box_.max.x - corner_expansion,
-                    self.box_.max.y,
-                    self.box_.max.z,
-                ),
-                vec3(self.box_.max.x, self.box_.max.y, self.box_.max.z),
-                vec3(
-                    self.box_.max.x,
-                    self.box_.max.y,
-                    self.box_.max.z - corner_expansion,
-                ),
-                vec3(
-                    self.box_.max.x - corner_expansion,
-                    self.box_.max.y,
-                    self.box_.max.z,
-                ),
-                vec3(self.box_.min.x, self.box_.max.y, self.box_.min.z),
-                vec3(
-                    self.box_.min.x,
-                    self.box_.max.y - corner_expansion,
-                    self.box_.min.z,
-                ),
-                vec3(
-                    self.box_.min.x,
-                    self.box_.max.y,
-                    self.box_.min.z + corner_expansion,
-                ),
-                vec3(self.box_.min.x, self.box_.max.y, self.box_.min.z),
-                vec3(
-                    self.box_.min.x,
-                    self.box_.max.y - corner_expansion,
-                    self.box_.min.z,
-                ),
-                vec3(
-                    self.box_.min.x + corner_expansion,
-                    self.box_.max.y,
-                    self.box_.min.z,
-                ),
-                vec3(self.box_.min.x, self.box_.max.y, self.box_.min.z),
-                vec3(
-                    self.box_.min.x,
-                    self.box_.max.y,
-                    self.box_.min.z + corner_expansion,
-                ),
-                vec3(
-                    self.box_.min.x + corner_expansion,
-                    self.box_.max.y,
-                    self.box_.min.z,
-                ),
-                vec3(self.box_.max.x, self.box_.min.y, self.box_.max.z),
-                vec3(
-                    self.box_.max.x,
-                    self.box_.min.y + corner_expansion,
-                    self.box_.max.z,
-                ),
-                vec3(
-                    self.box_.max.x,
-                    self.box_.min.y,
-                    self.box_.max.z - corner_expansion,
-                ),
-                vec3(self.box_.max.x, self.box_.min.y, self.box_.max.z),
-                vec3(
-                    self.box_.max.x,
-                    self.box_.min.y + corner_expansion,
-                    self.box_.max.z,
-                ),
-                vec3(
-                    self.box_.max.x - corner_expansion,
-                    self.box_.min.y,
-                    self.box_.max.z,
-                ),
-                vec3(self.box_.max.x, self.box_.min.y, self.box_.max.z),
-                vec3(
-                    self.box_.max.x,
-                    self.box_.min.y,
-                    self.box_.max.z - corner_expansion,
-                ),
-                vec3(
-                    self.box_.max.x - corner_expansion,
-                    self.box_.min.y,
-                    self.box_.max.z,
-                ),
-                vec3(self.box_.min.x, self.box_.min.y, self.box_.max.z),
-                vec3(
-                    self.box_.min.x,
-                    self.box_.min.y + corner_expansion,
-                    self.box_.max.z,
-                ),
-                vec3(
-                    self.box_.min.x,
-                    self.box_.min.y,
-                    self.box_.max.z - corner_expansion,
-                ),
-                vec3(self.box_.min.x, self.box_.min.y, self.box_.max.z),
-                vec3(
-                    self.box_.min.x,
-                    self.box_.min.y + corner_expansion,
-                    self.box_.max.z,
-                ),
-                vec3(
-                    self.box_.min.x + corner_expansion,
-                    self.box_.min.y,
-                    self.box_.max.z,
-                ),
-                vec3(self.box_.min.x, self.box_.min.y, self.box_.max.z),
-                vec3(
-                    self.box_.min.x,
-                    self.box_.min.y,
-                    self.box_.max.z - corner_expansion,
-                ),
-                vec3(
-                    self.box_.min.x + corner_expansion,
-                    self.box_.min.y,
-                    self.box_.max.z,
-                ),
-                vec3(self.box_.max.x, self.box_.max.y, self.box_.min.z),
-                vec3(
-                    self.box_.max.x,
-                    self.box_.max.y - corner_expansion,
-                    self.box_.min.z,
-                ),
-                vec3(
-                    self.box_.max.x,
-                    self.box_.max.y,
-                    self.box_.min.z + corner_expansion,
-                ),
-                vec3(self.box_.max.x, self.box_.max.y, self.box_.min.z),
-                vec3(
-                    self.box_.max.x,
-                    self.box_.max.y - corner_expansion,
-                    self.box_.min.z,
-                ),
-                vec3(
-                    self.box_.max.x - corner_expansion,
-                    self.box_.max.y,
-                    self.box_.min.z,
-                ),
-                vec3(self.box_.max.x, self.box_.max.y, self.box_.min.z),
-                vec3(
-                    self.box_.max.x,
-                    self.box_.max.y,
-                    self.box_.min.z + corner_expansion,
-                ),
-                vec3(
-                    self.box_.max.x - corner_expansion,
-                    self.box_.max.y,
-                    self.box_.min.z,
-                ),
-                vec3(self.box_.min.x, self.box_.max.y, self.box_.max.z),
-                vec3(
-                    self.box_.min.x,
-                    self.box_.max.y - corner_expansion,
-                    self.box_.max.z,
-                ),
-                vec3(
-                    self.box_.min.x,
-                    self.box_.max.y,
-                    self.box_.max.z - corner_expansion,
-                ),
-                vec3(self.box_.min.x, self.box_.max.y, self.box_.max.z),
-                vec3(
-                    self.box_.min.x,
-                    self.box_.max.y - corner_expansion,
-                    self.box_.max.z,
-                ),
-                vec3(
-                    self.box_.min.x + corner_expansion,
-                    self.box_.max.y,
-                    self.box_.max.z,
-                ),
-                vec3(self.box_.min.x, self.box_.max.y, self.box_.max.z),
-                vec3(
-                    self.box_.min.x,
-                    self.box_.max.y,
-                    self.box_.max.z - corner_expansion,
-                ),
-                vec3(
-                    self.box_.min.x + corner_expansion,
-                    self.box_.max.y,
-                    self.box_.max.z,
-                ),
-                vec3(self.box_.max.x, self.box_.min.y, self.box_.min.z),
-                vec3(
-                    self.box_.max.x,
-                    self.box_.min.y + corner_expansion,
-                    self.box_.min.z,
-                ),
-                vec3(
-                    self.box_.max.x,
-                    self.box_.min.y,
-                    self.box_.min.z + corner_expansion,
-                ),
-                vec3(self.box_.max.x, self.box_.min.y, self.box_.min.z),
-                vec3(
-                    self.box_.max.x,
-                    self.box_.min.y + corner_expansion,
-                    self.box_.min.z,
-                ),
-                vec3(
-                    self.box_.max.x - corner_expansion,
-                    self.box_.min.y,
-                    self.box_.min.z,
-                ),
-                vec3(self.box_.max.x, self.box_.min.y, self.box_.min.z),
-                vec3(
-                    self.box_.max.x,
-                    self.box_.min.y,
-                    self.box_.min.z + corner_expansion,
-                ),
-                vec3(
-                    self.box_.max.x - corner_expansion,
-                    self.box_.min.y,
-                    self.box_.min.z,
-                ),
-            ],
+            [Vec3::default(); 72],
             self.triangle_color.unwrap_or(vec4(0.0, 0.0, 0.0, 1.0)),
         )
     }
 }
 
-impl WireMesh<28> for SelectBox {
-    fn to_wire_vertices(&self) -> [Vertex; 28] {
+impl WireMesh<24> for SelectBox {
+    fn to_wire_vertices(&self) -> [Vertex; 24] {
         construct_wire_vertices(
             [
-                vec3(self.box_.min.x, self.box_.min.y, self.box_.min.z),
-                vec3(self.box_.max.x, self.box_.min.y, self.box_.min.z),
-                vec3(self.box_.min.x, self.box_.min.y, self.box_.min.z),
-                vec3(self.box_.min.x, self.box_.max.y, self.box_.min.z),
-                vec3(self.box_.min.x, self.box_.min.y, self.box_.min.z),
-                vec3(self.box_.min.x, self.box_.min.y, self.box_.max.z),
-                vec3(self.box_.max.x, self.box_.max.y, self.box_.max.z),
-                vec3(self.box_.min.x, self.box_.max.y, self.box_.max.z),
-                vec3(self.box_.max.x, self.box_.max.y, self.box_.max.z),
-                vec3(self.box_.max.x, self.box_.min.y, self.box_.max.z),
-                vec3(self.box_.max.x, self.box_.max.y, self.box_.max.z),
-                vec3(self.box_.max.x, self.box_.max.y, self.box_.min.z),
-                vec3(self.box_.max.x, self.box_.min.y, self.box_.min.z),
-                vec3(self.box_.max.x, self.box_.min.y, self.box_.max.z),
-                vec3(self.box_.min.x, self.box_.max.y, self.box_.min.z),
-                vec3(self.box_.max.x, self.box_.max.y, self.box_.min.z),
-                vec3(self.box_.min.x, self.box_.max.y, self.box_.min.z),
-                vec3(self.box_.min.x, self.box_.max.y, self.box_.max.z),
-                vec3(self.box_.min.x, self.box_.max.y, self.box_.max.z),
-                vec3(self.box_.max.x, self.box_.max.y, self.box_.max.z),
-                vec3(self.box_.max.x, self.box_.min.y, self.box_.min.z),
-                vec3(self.box_.max.x, self.box_.max.y, self.box_.min.z),
-                vec3(self.box_.max.x, self.box_.min.y, self.box_.min.z),
-                vec3(self.box_.max.x, self.box_.min.y, self.box_.max.z),
-                vec3(self.box_.min.x, self.box_.min.y, self.box_.max.z),
-                vec3(self.box_.max.x, self.box_.min.y, self.box_.max.z),
-                vec3(self.box_.min.x, self.box_.min.y, self.box_.max.z),
-                vec3(self.box_.min.x, self.box_.max.y, self.box_.max.z),
+                self.box_.profile_start.a,
+                self.box_.profile_start.d,
+                self.box_.profile_start.d,
+                self.box_.profile_start.c,
+                self.box_.profile_start.c,
+                self.box_.profile_start.b,
+                self.box_.profile_start.b,
+                self.box_.profile_start.a,
+                //end
+                self.box_.profile_end.a,
+                self.box_.profile_end.d,
+                self.box_.profile_end.d,
+                self.box_.profile_end.c,
+                self.box_.profile_end.c,
+                self.box_.profile_end.b,
+                self.box_.profile_end.b,
+                self.box_.profile_end.a,
+                // connection
+                self.box_.profile_start.a,
+                self.box_.profile_end.a,
+                self.box_.profile_start.d,
+                self.box_.profile_end.d,
+                self.box_.profile_start.c,
+                self.box_.profile_end.c,
+                self.box_.profile_start.b,
+                self.box_.profile_end.b,
             ],
             self.wire_color.unwrap_or(vec4(0.0, 0.0, 0.0, 1.0)),
         )

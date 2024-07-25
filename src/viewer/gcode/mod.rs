@@ -28,6 +28,8 @@ use self::{
 
 use crate::geometry::BoundingHitbox;
 
+use super::ToVisual;
+
 pub mod instruction;
 pub mod mesh;
 pub mod movement;
@@ -80,7 +82,7 @@ impl Toolpath {
             geometry: Vec::new(),
             sub_models: Vec::new(),
             ctx: SharedMut::from_inner(Box::new(PathContext {
-                box_: Box::<BoundingHitbox>::default(),
+                box_: BoundingHitbox::default(),
             })),
         };
 
@@ -108,29 +110,29 @@ impl Toolpath {
 }
 
 #[derive(Debug)]
-pub struct PathContext {
-    box_: Box<dyn Hitbox>,
+pub struct PathContext<T> {
+    box_: T,
 }
 
-impl Translate for PathContext {
+impl<T: Translate> Translate for PathContext<T> {
     fn translate(&mut self, translation: Vec3) {
         self.box_.translate(translation)
     }
 }
 
-impl Rotate for PathContext {
+impl<T: Rotate> Rotate for PathContext<T> {
     fn rotate(&mut self, rotation: glam::Quat) {
         self.box_.rotate(rotation)
     }
 }
 
-impl Scale for PathContext {
+impl<T: Scale> Scale for PathContext<T> {
     fn scale(&mut self, scale: Vec3) {
         self.box_.scale(scale)
     }
 }
 
-impl Hitbox for PathContext {
+impl<T: Hitbox> Hitbox for PathContext<T> {
     fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
         self.box_.check_hit(ray)
     }
@@ -156,14 +158,12 @@ impl Hitbox for PathContext {
     }
 }
 
-impl Pickable for PathContext {
+impl<T: Hitbox + ToVisual<72, 48>> Pickable for PathContext<T> {
     fn picked(
         &self,
         global_state: &crate::GlobalState<crate::RootEvent>,
         wgpu_context: &WgpuContext,
     ) {
-        println!("Picked Hitbox: {:?}", self.box_);
-
         let diagonal = self.max() - self.min();
         let distance = diagonal.x.min(diagonal.y).min(diagonal.z);
 
@@ -179,24 +179,18 @@ impl Pickable for PathContext {
         ))
         .with_color(vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0, 1.0, 1.0, 1.0));
 
-        // "select_smaller_box"
+        let visual = self.box_.to_visual();
 
         global_state.widget_test_buffer.write().write(
             &wgpu_context.queue,
             "select_box",
-            &select_box.to_triangle_vertices(),
+            &visual.vertices,
         );
 
         global_state.widget_wire_test_buffer.write().write(
             &wgpu_context.queue,
             "select_box",
-            &select_box.to_wire_vertices(),
-        );
-
-        global_state.widget_wire_test_buffer.write().write(
-            &wgpu_context.queue,
-            "select_smaller_box",
-            &select_smaller_box.to_wire_vertices(),
+            &visual.wires,
         );
     }
 }

@@ -1,9 +1,9 @@
-use glam::{Vec3, Vec4};
+use glam::{vec4, Vec3, Vec4};
 
 use crate::{
     geometry::{
-        mesh::{construct_triangle_vertices, Mesh},
-        BoundingHitbox, QuadFace,
+        mesh::{construct_triangle_vertices, construct_wire_vertices, Mesh, WireMesh},
+        BoundingHitbox, ProfileExtrusion, QuadFace, SelectBox,
     },
     model::{
         transform::{Rotate, Scale, Translate},
@@ -11,16 +11,17 @@ use crate::{
     },
     picking::hitbox::{Hitbox, PickContext},
     render::{buffer::BufferLocation, vertex::Vertex},
+    viewer::{ToVisual, Visual},
 };
 
 use super::{path::PathModul, DisplaySettings, PathContext};
 
 #[derive(Debug, Clone)]
 pub struct ProfileCross {
-    pub up: Vec3,
-    pub down: Vec3,
-    pub left: Vec3,
-    pub right: Vec3,
+    pub a: Vec3,
+    pub c: Vec3,
+    pub b: Vec3,
+    pub d: Vec3,
 }
 
 impl ProfileCross {
@@ -37,57 +38,44 @@ impl ProfileCross {
         let vertical = direction.cross(horizontal);
 
         Self {
-            up: vertical.normalize() * vertical_radius,
-            down: vertical.normalize() * -vertical_radius,
-            left: horizontal.normalize() * horizontal_radius,
-            right: horizontal.normalize() * -horizontal_radius,
+            a: vertical.normalize() * vertical_radius,
+            c: vertical.normalize() * -vertical_radius,
+            b: horizontal.normalize() * horizontal_radius,
+            d: horizontal.normalize() * -horizontal_radius,
+        }
+    }
+
+    pub fn axis_aligned(self) -> Self {
+        let horizontal = self.b - self.d;
+        let vertical = self.a - self.c;
+
+        let corner = self.a - (horizontal / 2.0);
+
+        ProfileCross {
+            a: corner,
+            c: corner - vertical + horizontal,
+            b: corner - vertical,
+            d: corner + horizontal,
         }
     }
 
     pub fn min(&self) -> Vec3 {
-        self.up.min(self.down).min(self.left).min(self.right)
+        self.a.min(self.c).min(self.b).min(self.d)
     }
 
     pub fn max(&self) -> Vec3 {
-        self.up.max(self.down).max(self.left).max(self.right)
+        self.a.max(self.c).max(self.b).max(self.d)
     }
 }
 
 impl ProfileCross {
     fn with_offset(&self, offset: Vec3) -> Self {
         Self {
-            up: self.up + offset,
-            down: self.down + offset,
-            left: self.left + offset,
-            right: self.right + offset,
+            a: self.a + offset,
+            c: self.c + offset,
+            b: self.b + offset,
+            d: self.d + offset,
         }
-    }
-}
-
-impl Translate for ProfileCross {
-    fn translate(&mut self, translation: Vec3) {
-        self.up += translation;
-        self.down += translation;
-        self.left += translation;
-        self.right += translation;
-    }
-}
-
-impl Rotate for ProfileCross {
-    fn rotate(&mut self, rotation: glam::Quat) {
-        self.up = rotation * self.up;
-        self.down = rotation * self.down;
-        self.left = rotation * self.left;
-        self.right = rotation * self.right;
-    }
-}
-
-impl Scale for ProfileCross {
-    fn scale(&mut self, scale: Vec3) {
-        self.up *= scale;
-        self.down *= scale;
-        self.left *= scale;
-        self.right *= scale;
     }
 }
 
@@ -114,12 +102,12 @@ impl Mesh<6> for ProfileCrossMesh {
     fn to_triangle_vertices(&self) -> [Vertex; 6] {
         construct_triangle_vertices(
             [
-                self.profile.up,
-                self.profile.right,
-                self.profile.down,
-                self.profile.up,
-                self.profile.down,
-                self.profile.left,
+                self.profile.a,
+                self.profile.d,
+                self.profile.c,
+                self.profile.a,
+                self.profile.c,
+                self.profile.b,
             ],
             self.color.unwrap_or(Vec4::new(0.0, 0.0, 0.0, 1.0)),
         )
@@ -128,12 +116,12 @@ impl Mesh<6> for ProfileCrossMesh {
     fn to_triangle_vertices_flipped(&self) -> [Vertex; 6] {
         construct_triangle_vertices(
             [
-                self.profile.up,
-                self.profile.down,
-                self.profile.right,
-                self.profile.up,
-                self.profile.left,
-                self.profile.down,
+                self.profile.a,
+                self.profile.c,
+                self.profile.d,
+                self.profile.a,
+                self.profile.b,
+                self.profile.c,
             ],
             self.color.unwrap_or(Vec4::new(0.0, 0.0, 0.0, 1.0)),
         )
@@ -166,33 +154,33 @@ impl Mesh<24> for PathMesh {
         construct_triangle_vertices(
             [
                 // asdasd
-                self.profile_end.right,
-                self.profile_end.up,
-                self.profile_start.up,
-                self.profile_end.right,
-                self.profile_start.up,
-                self.profile_start.right,
+                self.profile_end.d,
+                self.profile_end.a,
+                self.profile_start.a,
+                self.profile_end.d,
+                self.profile_start.a,
+                self.profile_start.d,
                 // asdasd
-                self.profile_end.down,
-                self.profile_end.right,
-                self.profile_start.down,
-                self.profile_end.right,
-                self.profile_start.right,
-                self.profile_start.down,
+                self.profile_end.c,
+                self.profile_end.d,
+                self.profile_start.c,
+                self.profile_end.d,
+                self.profile_start.d,
+                self.profile_start.c,
                 // asdasd
-                self.profile_end.left,
-                self.profile_end.down,
-                self.profile_start.down,
-                self.profile_end.left,
-                self.profile_start.down,
-                self.profile_start.left,
+                self.profile_end.b,
+                self.profile_end.c,
+                self.profile_start.c,
+                self.profile_end.b,
+                self.profile_start.c,
+                self.profile_start.b,
                 // asdasd
-                self.profile_end.up,
-                self.profile_end.left,
-                self.profile_start.up,
-                self.profile_end.left,
-                self.profile_start.left,
-                self.profile_start.up,
+                self.profile_end.a,
+                self.profile_end.b,
+                self.profile_start.a,
+                self.profile_end.b,
+                self.profile_start.b,
+                self.profile_start.a,
             ],
             self.color.unwrap_or(Vec4::new(0.0, 0.0, 0.0, 1.0)),
         )
@@ -224,21 +212,21 @@ impl Mesh<12> for PathConnectionMesh {
     fn to_triangle_vertices(&self) -> [Vertex; 12] {
         construct_triangle_vertices(
             [
-                self.profile_start.right,
-                self.profile_end.right,
-                self.profile_start.up,
+                self.profile_start.d,
+                self.profile_end.d,
+                self.profile_start.a,
                 // asdasd
-                self.profile_start.down,
-                self.profile_start.right,
-                self.profile_end.right,
+                self.profile_start.c,
+                self.profile_start.d,
+                self.profile_end.d,
                 // asdasd
-                self.profile_start.left,
-                self.profile_end.left,
-                self.profile_start.down,
+                self.profile_start.b,
+                self.profile_end.b,
+                self.profile_start.c,
                 // asdasd
-                self.profile_end.left,
-                self.profile_start.left,
-                self.profile_start.up,
+                self.profile_end.b,
+                self.profile_start.b,
+                self.profile_start.a,
             ],
             self.color.unwrap_or(Vec4::new(0.0, 0.0, 0.0, 1.0)),
         )
@@ -260,7 +248,7 @@ impl PathModul {
             .as_ref()
             .unwrap_or(&crate::slicer::print_type::PrintType::Unknown);
 
-        let mut bounding_box: Box<dyn Hitbox> = Box::<BoundingHitbox>::default();
+        let mut bounding_box = BoundingHitbox::default();
 
         let mut last_cross: Option<ProfileCross> = None;
 
@@ -306,7 +294,8 @@ impl PathModul {
 
                 let path_hitbox = PathHitbox::from(path_mesh);
 
-                bounding_box.expand(&path_hitbox);
+                bounding_box.expand_min(path_hitbox.min());
+                bounding_box.expand_max(path_hitbox.max());
 
                 let sub_model = TreeObject::<Vertex, PickContext>::Node {
                     location: BufferLocation {
@@ -314,9 +303,7 @@ impl PathModul {
                         size: path_mesh_vertices.len(),
                     },
                     sub_models: Vec::new(),
-                    ctx: PickContext::from_inner(Box::new(PathContext {
-                        box_: Box::new(path_hitbox),
-                    })),
+                    ctx: PickContext::from_inner(Box::new(PathContext { box_: path_hitbox })),
                 };
 
                 sub_models.push(sub_model);
@@ -350,73 +337,78 @@ impl From<PathMesh> for PathHitbox {
     fn from(val: PathMesh) -> Self {
         PathHitbox {
             north_west: QuadFace {
-                normal: (val.profile_end.up - val.profile_start.up)
-                    .cross(val.profile_start.right - val.profile_start.up),
-                point: val.profile_start.up,
+                normal: (val.profile_end.a - val.profile_start.a)
+                    .cross(val.profile_start.d - val.profile_start.a),
+                point: val.profile_start.a,
                 max: val
                     .profile_end
-                    .up
-                    .max(val.profile_start.up)
-                    .max(val.profile_start.right)
-                    .max(val.profile_end.right),
+                    .a
+                    .max(val.profile_start.a)
+                    .max(val.profile_start.d)
+                    .max(val.profile_end.d),
                 min: val
                     .profile_end
-                    .up
-                    .min(val.profile_start.up)
-                    .min(val.profile_start.right)
-                    .min(val.profile_end.right),
+                    .a
+                    .min(val.profile_start.a)
+                    .min(val.profile_start.d)
+                    .min(val.profile_end.d),
             },
             north_east: QuadFace {
-                normal: (val.profile_end.right - val.profile_start.right)
-                    .cross(val.profile_start.down - val.profile_start.right),
-                point: val.profile_start.right,
+                normal: (val.profile_end.d - val.profile_start.d)
+                    .cross(val.profile_start.c - val.profile_start.d),
+                point: val.profile_start.d,
                 max: val
                     .profile_end
-                    .right
-                    .max(val.profile_start.right)
-                    .max(val.profile_start.down)
-                    .max(val.profile_end.down),
+                    .d
+                    .max(val.profile_start.d)
+                    .max(val.profile_start.c)
+                    .max(val.profile_end.c),
                 min: val
                     .profile_end
-                    .right
-                    .min(val.profile_start.right)
-                    .min(val.profile_start.down)
-                    .min(val.profile_end.down),
+                    .d
+                    .min(val.profile_start.d)
+                    .min(val.profile_start.c)
+                    .min(val.profile_end.c),
             },
             south_west: QuadFace {
-                normal: (val.profile_end.down - val.profile_start.down)
-                    .cross(val.profile_start.left - val.profile_start.down),
-                point: val.profile_start.down,
+                normal: (val.profile_end.c - val.profile_start.c)
+                    .cross(val.profile_start.b - val.profile_start.c),
+                point: val.profile_start.c,
                 max: val
                     .profile_end
-                    .down
-                    .max(val.profile_start.down)
-                    .max(val.profile_start.left)
-                    .max(val.profile_end.left),
+                    .c
+                    .max(val.profile_start.c)
+                    .max(val.profile_start.b)
+                    .max(val.profile_end.b),
                 min: val
                     .profile_end
-                    .down
-                    .min(val.profile_start.down)
-                    .min(val.profile_start.left)
-                    .min(val.profile_end.left),
+                    .c
+                    .min(val.profile_start.c)
+                    .min(val.profile_start.b)
+                    .min(val.profile_end.b),
             },
             south_east: QuadFace {
-                normal: (val.profile_end.left - val.profile_start.left)
-                    .cross(val.profile_start.up - val.profile_start.left),
-                point: val.profile_start.left,
+                normal: (val.profile_end.b - val.profile_start.b)
+                    .cross(val.profile_start.a - val.profile_start.b),
+                point: val.profile_start.b,
                 max: val
                     .profile_end
-                    .left
-                    .max(val.profile_start.left)
-                    .max(val.profile_start.up)
-                    .max(val.profile_end.up),
+                    .b
+                    .max(val.profile_start.b)
+                    .max(val.profile_start.a)
+                    .max(val.profile_end.a),
                 min: val
                     .profile_end
-                    .left
-                    .min(val.profile_start.left)
-                    .min(val.profile_start.up)
-                    .min(val.profile_end.up),
+                    .b
+                    .min(val.profile_start.b)
+                    .min(val.profile_start.a)
+                    .min(val.profile_end.a),
             },
+            visual: ProfileExtrusion::new(
+                val.profile_start.axis_aligned(),
+                val.profile_end.axis_aligned(),
+            ),
+
             enabled: true,
         }
     }
@@ -424,13 +416,12 @@ impl From<PathMesh> for PathHitbox {
 
 #[derive(Debug, Clone)]
 pub struct PathHitbox {
-    // profile_start: ProfileCross,
-    // profile_end: ProfileCross,
+    visual: ProfileExtrusion,
+
     north_west: QuadFace,
     north_east: QuadFace,
     south_west: QuadFace,
     south_east: QuadFace,
-
     enabled: bool,
 }
 
@@ -464,10 +455,10 @@ impl Scale for PathHitbox {
 impl Hitbox for PathHitbox {
     fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
         let faces = [
-            self.north_west,
-            self.north_east,
-            self.south_west,
-            self.south_east,
+            &self.north_west,
+            &self.north_east,
+            &self.south_west,
+            &self.south_east,
         ];
 
         let mut min = None;
@@ -512,5 +503,25 @@ impl Hitbox for PathHitbox {
             .max(self.north_east.max)
             .max(self.south_west.max)
             .max(self.south_east.max)
+    }
+}
+
+impl ToVisual<72, 48> for PathHitbox {
+    fn to_visual(&self) -> Visual<72, 48> {
+        let select_smaller_box: SelectBox = SelectBox::from(self.visual.clone())
+            .with_color(vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0, 1.0, 1.0, 1.0));
+
+        let select_box = SelectBox::from(self.visual.clone())
+            .with_color(vec4(0.0, 1.0, 0.0, 1.0), vec4(0.0, 0.0, 1.0, 1.0));
+
+        let vertices = select_smaller_box.to_triangle_vertices();
+
+        let mut wires = [Vertex::default(); 48];
+
+        wires[..24].clone_from_slice(&select_smaller_box.to_wire_vertices());
+
+        wires[24..].clone_from_slice(&select_box.to_wire_vertices());
+
+        Visual { vertices, wires }
     }
 }

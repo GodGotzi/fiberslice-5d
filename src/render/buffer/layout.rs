@@ -15,12 +15,7 @@ pub mod wire {
 
     const SELECT_BOX_ALLOCATION: BufferAllocation = BufferAllocation {
         offset: HOVER_BOX_ALLOCATION.size,
-        size: SelectBox::wire_vertex_count(),
-    };
-
-    const SELECT_SMALLER_BOX_ALLOCATION: BufferAllocation = BufferAllocation {
-        offset: SELECT_BOX_ALLOCATION.size + HOVER_BOX_ALLOCATION.size,
-        size: SelectBox::wire_vertex_count(),
+        size: 48,
     };
 
     #[derive(Debug)]
@@ -31,15 +26,12 @@ pub mod wire {
             match id {
                 "hover_box" => Some(&HOVER_BOX_ALLOCATION),
                 "select_box" => Some(&SELECT_BOX_ALLOCATION),
-                "select_smaller_box" => Some(&SELECT_SMALLER_BOX_ALLOCATION),
                 _ => None,
             }
         }
 
         fn size(&self) -> usize {
-            HOVER_BOX_ALLOCATION.size
-                + SELECT_BOX_ALLOCATION.size
-                + SELECT_SMALLER_BOX_ALLOCATION.size
+            HOVER_BOX_ALLOCATION.size + SELECT_BOX_ALLOCATION.size
         }
     }
 }
@@ -51,12 +43,7 @@ const HOVER_BOX_ALLOCATION: BufferAllocation = BufferAllocation {
 
 const SELECT_BOX_ALLOCATION: BufferAllocation = BufferAllocation {
     offset: HOVER_BOX_ALLOCATION.size,
-    size: SelectBox::traingle_vertex_count(),
-};
-
-const SELECT_SMALLER_BOX_ALLOCATION: BufferAllocation = BufferAllocation {
-    offset: SELECT_BOX_ALLOCATION.size + HOVER_BOX_ALLOCATION.size,
-    size: SelectBox::traingle_vertex_count(),
+    size: 72,
 };
 
 #[derive(Debug)]
@@ -67,12 +54,11 @@ impl<T> super::alloc::BufferAlloc<T> for WidgetAllocator {
         match id {
             "hover_box" => Some(&HOVER_BOX_ALLOCATION),
             "select_box" => Some(&SELECT_BOX_ALLOCATION),
-            "select_smaller_box" => Some(&SELECT_SMALLER_BOX_ALLOCATION),
             _ => None,
         }
     }
 
     fn size(&self) -> usize {
-        HOVER_BOX_ALLOCATION.size + SELECT_BOX_ALLOCATION.size + SELECT_SMALLER_BOX_ALLOCATION.size
+        HOVER_BOX_ALLOCATION.size + SELECT_BOX_ALLOCATION.size
     }
 }

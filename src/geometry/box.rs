@@ -1,12 +1,16 @@
-use glam::Vec3;
+use glam::{vec4, Vec3};
 
 use crate::{
     model::transform::{Rotate, Scale, Translate},
     picking::hitbox::Hitbox,
-    prelude::{SharedMut, WgpuContext},
+    render::vertex::Vertex,
+    viewer::{ToVisual, Visual},
 };
 
-use super::QuadFace;
+use super::{
+    mesh::{Mesh, WireMesh},
+    QuadFace, SelectBox,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct BoundingHitbox {
@@ -50,6 +54,14 @@ impl BoundingHitbox {
     pub fn expand_point(&mut self, point: Vec3) {
         self.min = self.min.min(point);
         self.max = self.max.max(point);
+    }
+
+    pub fn expand_min(&mut self, min: Vec3) {
+        self.min = self.min.min(min);
+    }
+
+    pub fn expand_max(&mut self, max: Vec3) {
+        self.max = self.max.max(max);
     }
 
     pub fn contains(&self, point: Vec3) -> bool {
@@ -170,5 +182,27 @@ impl Hitbox for BoundingHitbox {
 
     fn max(&self) -> Vec3 {
         self.max
+    }
+}
+
+impl ToVisual<72, 48> for BoundingHitbox {
+    fn to_visual(&self) -> Visual<72, 48> {
+        let diagonal = self.max() - self.min();
+        let distance = diagonal.x.min(diagonal.y).min(diagonal.z);
+
+        let select_smaller_box: SelectBox = SelectBox::from(BoundingHitbox::new(
+            self.min() - distance * 0.1,
+            self.max() + distance * 0.1,
+        ))
+        .with_color(vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0, 1.0, 1.0, 1.0));
+
+        let mut wires = [Vertex::default(); 48];
+
+        wires[..25].copy_from_slice(&select_smaller_box.to_wire_vertices());
+
+        Visual {
+            vertices: select_smaller_box.to_triangle_vertices(),
+            wires,
+        }
     }
 }
