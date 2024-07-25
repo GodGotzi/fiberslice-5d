@@ -5,7 +5,6 @@ use wgpu::{
 };
 
 pub mod alloc;
-pub mod layout;
 
 #[allow(dead_code)]
 pub enum BufferRange {

@@ -10,11 +10,7 @@ use egui::ahash::HashMap;
 use log::{info, LevelFilter};
 use parking_lot::Mutex;
 use picking::PickingEvent;
-use render::buffer::{
-    alloc::BufferDynamicAllocator,
-    layout::{wire::WireAllocator, WidgetAllocator},
-    DynamicBuffer,
-};
+use render::buffer::{alloc::BufferDynamicAllocator, DynamicBuffer};
 use settings::tree::QuickSettings;
 use std::{sync::Arc, time::Instant};
 use ui::UiEvent;
@@ -77,9 +73,6 @@ pub struct GlobalState<T: 'static> {
     pub toolpath_server: SharedMut<viewer::part_server::ToolpathServer>,
     pub widget_server: SharedMut<viewer::widget_server::WidgetServer>,
 
-    pub widget_test_buffer: SharedMut<DynamicBuffer<render::vertex::Vertex, WidgetAllocator>>,
-    pub widget_wire_test_buffer: SharedMut<DynamicBuffer<render::vertex::Vertex, WireAllocator>>,
-
     pub fiber_settings: SharedMut<QuickSettings>,
     pub topology_settings: SharedMut<QuickSettings>,
     pub view_settings: SharedMut<QuickSettings>,
@@ -140,17 +133,6 @@ async fn main() -> Result<(), EventLoopError> {
             &wgpu_context.device,
         )),
         widget_server: SharedMut::from_inner(viewer::widget_server::WidgetServer::new(
-            &wgpu_context.device,
-        )),
-
-        widget_test_buffer: SharedMut::from_inner(DynamicBuffer::new(
-            WidgetAllocator,
-            "Test Widget Buffer",
-            &wgpu_context.device,
-        )),
-        widget_wire_test_buffer: SharedMut::from_inner(DynamicBuffer::new(
-            WireAllocator,
-            "Test Wire Widget Buffer",
             &wgpu_context.device,
         )),
 
