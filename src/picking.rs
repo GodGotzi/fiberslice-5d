@@ -103,20 +103,7 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, &CameraResult)> for
                     }
 
                     if self.state.is_drag_right {
-                        if let Some((x, y)) = global_state.ctx.mouse_position {
-                            let ray = ray::Ray::from_view(viewport, (x, y), view, proj, eye);
-
-                            self.state.hitbox.read_with_fn(|root| {
-                                println!("PickingAdapter: Checking Hit");
-
-                                let hit = root.check_hit(&ray);
-
-                                if let Some(handle) = hit {
-                                    println!("PickingAdapter: Hit");
-                                    handle.read().picked(&global_state, wgpu_context);
-                                }
-                            });
-                        }
+                        println!("PickingAdapter: Dragging Right Click");
                     }
                 }
                 _ => (),

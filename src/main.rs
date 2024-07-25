@@ -10,13 +10,10 @@ use egui::ahash::HashMap;
 use log::{info, LevelFilter};
 use parking_lot::Mutex;
 use picking::PickingEvent;
-use render::{
-    buffer::{
-        alloc::BufferDynamicAllocator,
-        layout::{wire::WireAllocator, WidgetAllocator},
-        DynamicBuffer,
-    },
-    vertex::Vertex,
+use render::buffer::{
+    alloc::BufferDynamicAllocator,
+    layout::{wire::WireAllocator, WidgetAllocator},
+    DynamicBuffer,
 };
 use settings::tree::QuickSettings;
 use std::{sync::Arc, time::Instant};
@@ -78,6 +75,7 @@ pub struct GlobalState<T: 'static> {
     pub camera_event_writer: EventWriter<CameraEvent>,
 
     pub toolpath_server: SharedMut<viewer::part_server::ToolpathServer>,
+    pub widget_server: SharedMut<viewer::widget_server::WidgetServer>,
 
     pub widget_test_buffer: SharedMut<DynamicBuffer<render::vertex::Vertex, WidgetAllocator>>,
     pub widget_wire_test_buffer: SharedMut<DynamicBuffer<render::vertex::Vertex, WireAllocator>>,
@@ -139,6 +137,9 @@ async fn main() -> Result<(), EventLoopError> {
         camera_event_writer,
 
         toolpath_server: SharedMut::from_inner(viewer::part_server::ToolpathServer::new(
+            &wgpu_context.device,
+        )),
+        widget_server: SharedMut::from_inner(viewer::widget_server::WidgetServer::new(
             &wgpu_context.device,
         )),
 

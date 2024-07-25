@@ -59,6 +59,20 @@ impl ProfileCross {
         }
     }
 
+    pub fn scaled(self, scale: f32) -> Self {
+        let diagonal_1 = (self.a - self.c) * scale;
+        let diagonal_2 = (self.b - self.d) * scale;
+
+        let center = (self.a + self.c + self.b + self.d) / 4.0;
+
+        Self {
+            a: center + diagonal_1 / 2.0,
+            c: center - diagonal_1 / 2.0,
+            b: center + diagonal_2 / 2.0,
+            d: center - diagonal_2 / 2.0,
+        }
+    }
+
     pub fn min(&self) -> Vec3 {
         self.a.min(self.c).min(self.b).min(self.d)
     }
@@ -76,6 +90,38 @@ impl ProfileCross {
             b: self.b + offset,
             d: self.d + offset,
         }
+    }
+}
+
+impl Translate for ProfileCross {
+    fn translate(&mut self, translation: Vec3) {
+        self.a += translation;
+        self.c += translation;
+        self.b += translation;
+        self.d += translation;
+    }
+}
+
+impl Rotate for ProfileCross {
+    fn rotate(&mut self, rotation: glam::Quat) {
+        self.a = rotation * self.a;
+        self.c = rotation * self.c;
+        self.b = rotation * self.b;
+        self.d = rotation * self.d;
+    }
+}
+
+impl Scale for ProfileCross {
+    fn scale(&mut self, scale: Vec3) {
+        let diagonal_1 = (self.a - self.c) * scale;
+        let diagonal_2 = (self.b - self.d) * scale;
+
+        let center = (self.a + self.c + self.b + self.d) / 4.0;
+
+        self.a = center + diagonal_1 / 2.0;
+        self.c = center - diagonal_1 / 2.0;
+        self.b = center + diagonal_2 / 2.0;
+        self.d = center - diagonal_2 / 2.0;
     }
 }
 
@@ -431,6 +477,8 @@ impl Translate for PathHitbox {
         self.north_east.translate(translation);
         self.south_west.translate(translation);
         self.south_east.translate(translation);
+
+        self.visual.translate(translation);
     }
 }
 
@@ -440,6 +488,8 @@ impl Rotate for PathHitbox {
         self.north_east.rotate(rotation);
         self.south_west.rotate(rotation);
         self.south_east.rotate(rotation);
+
+        self.visual.rotate(rotation);
     }
 }
 
@@ -449,6 +499,8 @@ impl Scale for PathHitbox {
         self.north_east.scale(scale);
         self.south_west.scale(scale);
         self.south_east.scale(scale);
+
+        self.visual.scale(scale);
     }
 }
 
@@ -509,12 +561,13 @@ impl Hitbox for PathHitbox {
 impl ToVisual<72, 48> for PathHitbox {
     fn to_visual(&self) -> Visual<72, 48> {
         let select_smaller_box: SelectBox = SelectBox::from(self.visual.clone())
-            .with_color(vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0, 1.0, 1.0, 1.0));
+            .with_color(vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0, 0.0, 0.0, 1.0));
 
-        let select_box = SelectBox::from(self.visual.clone())
-            .with_color(vec4(0.0, 1.0, 0.0, 1.0), vec4(0.0, 0.0, 1.0, 1.0));
+        let select_box = SelectBox::from(self.visual.clone().scaled(2.0))
+            .with_corner_expansion(0.35)
+            .with_color(Vec4::W, Vec4::W);
 
-        let vertices = select_smaller_box.to_triangle_vertices();
+        let vertices = select_box.to_triangle_vertices();
 
         let mut wires = [Vertex::default(); 48];
 

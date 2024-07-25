@@ -1,5 +1,4 @@
 use glam::{Quat, Vec3};
-use log::info;
 
 use crate::{
     model::{

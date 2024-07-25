@@ -1,12 +1,8 @@
 use std::{fmt::Debug, str::Lines};
 
-use glam::{vec4, Vec3};
+use glam::Vec3;
 
 use crate::{
-    geometry::{
-        mesh::{Mesh, WireMesh},
-        SelectBox,
-    },
     model::{
         transform::{Rotate, Scale, Translate},
         TreeObject,
@@ -39,15 +35,6 @@ pub mod state;
 
 pub type GCodeRaw = Vec<String>;
 pub type GCode = Vec<InstructionModul>;
-
-#[derive(Debug, Clone)]
-pub struct ModulModel {
-    pub mesh: Vec<Vertex>,
-    pub state: PrintState,
-    range: (usize, usize),
-}
-
-pub type LayerModel = Vec<ModulModel>;
 
 pub struct DisplaySettings {
     pub horizontal: f32,
@@ -164,34 +151,12 @@ impl<T: Hitbox + ToVisual<72, 48>> Pickable for PathContext<T> {
         global_state: &crate::GlobalState<crate::RootEvent>,
         wgpu_context: &WgpuContext,
     ) {
-        let diagonal = self.max() - self.min();
-        let distance = diagonal.x.min(diagonal.y).min(diagonal.z);
-
-        let select_box: SelectBox = SelectBox::from(BoundingHitbox::new(
-            self.min() - distance,
-            self.max() + distance,
-        ))
-        .with_color(vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0, 1.0, 1.0, 1.0));
-
-        let select_smaller_box: SelectBox = SelectBox::from(BoundingHitbox::new(
-            self.min() - distance * 0.1,
-            self.max() + distance * 0.1,
-        ))
-        .with_color(vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0, 1.0, 1.0, 1.0));
-
         let visual = self.box_.to_visual();
 
-        global_state.widget_test_buffer.write().write(
-            &wgpu_context.queue,
-            "select_box",
-            &visual.vertices,
-        );
-
-        global_state.widget_wire_test_buffer.write().write(
-            &wgpu_context.queue,
-            "select_box",
-            &visual.wires,
-        );
+        global_state
+            .widget_server
+            .write()
+            .set_select_visual(visual, &wgpu_context.queue);
     }
 }
 

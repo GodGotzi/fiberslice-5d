@@ -104,7 +104,7 @@ impl ProfileExtrusion {
         }
     }
 
-    pub fn scaled(mut self, scale: f32) -> Self {
+    pub fn scaled(self, scale: f32) -> Self {
         Self {
             profile_start: self.profile_start.scaled(scale),
             profile_end: self.profile_end.scaled(scale),
@@ -112,10 +112,32 @@ impl ProfileExtrusion {
     }
 }
 
+impl Translate for ProfileExtrusion {
+    fn translate(&mut self, translation: Vec3) {
+        self.profile_start.translate(translation);
+        self.profile_end.translate(translation);
+    }
+}
+
+impl Rotate for ProfileExtrusion {
+    fn rotate(&mut self, rotation: glam::Quat) {
+        self.profile_start.rotate(rotation);
+        self.profile_end.rotate(rotation);
+    }
+}
+
+impl Scale for ProfileExtrusion {
+    fn scale(&mut self, scale: Vec3) {
+        self.profile_start.scale(scale);
+        self.profile_end.scale(scale);
+    }
+}
+
 pub struct SelectBox {
     box_: ProfileExtrusion,
     triangle_color: Option<Vec4>,
     wire_color: Option<Vec4>,
+    corner_expansion: f32,
 }
 
 impl From<BoundingHitbox> for SelectBox {
@@ -142,6 +164,7 @@ impl From<BoundingHitbox> for SelectBox {
             box_,
             triangle_color: None,
             wire_color: None,
+            corner_expansion: 0.2,
         }
     }
 }
@@ -152,6 +175,7 @@ impl From<ProfileExtrusion> for SelectBox {
             box_,
             triangle_color: None,
             wire_color: None,
+            corner_expansion: 0.2,
         }
     }
 }
@@ -160,6 +184,11 @@ impl SelectBox {
     pub fn with_color(mut self, triangle: Vec4, wire: Vec4) -> Self {
         self.triangle_color = Some(triangle);
         self.wire_color = Some(wire);
+        self
+    }
+
+    pub fn with_corner_expansion(mut self, corner_expansion: f32) -> Self {
+        self.corner_expansion = corner_expansion;
         self
     }
 
@@ -174,8 +203,98 @@ impl SelectBox {
 
 impl crate::geometry::mesh::Mesh<72> for SelectBox {
     fn to_triangle_vertices(&self) -> [Vertex; 72] {
+        let max = self
+            .box_
+            .profile_end
+            .max()
+            .max(self.box_.profile_start.max());
+        let min = self
+            .box_
+            .profile_end
+            .min()
+            .min(self.box_.profile_start.min());
+
+        let corner_expansion = self.corner_expansion
+            * (min.x - max.x)
+                .abs()
+                .min((min.y - max.y).abs())
+                .min((min.z - max.z).abs());
+
         construct_triangle_vertices(
-            [Vec3::default(); 72],
+            [
+                vec3(min.x, min.y, min.z),
+                vec3(min.x, min.y + corner_expansion, min.z),
+                vec3(min.x, min.y, min.z + corner_expansion),
+                vec3(min.x, min.y, min.z),
+                vec3(min.x, min.y + corner_expansion, min.z),
+                vec3(min.x + corner_expansion, min.y, min.z),
+                vec3(min.x, min.y, min.z),
+                vec3(min.x, min.y, min.z + corner_expansion),
+                vec3(min.x + corner_expansion, min.y, min.z),
+                vec3(max.x, max.y, max.z),
+                vec3(max.x, max.y - corner_expansion, max.z),
+                vec3(max.x, max.y, max.z - corner_expansion),
+                vec3(max.x, max.y, max.z),
+                vec3(max.x, max.y - corner_expansion, max.z),
+                vec3(max.x - corner_expansion, max.y, max.z),
+                vec3(max.x, max.y, max.z),
+                vec3(max.x, max.y, max.z - corner_expansion),
+                vec3(max.x - corner_expansion, max.y, max.z),
+                vec3(min.x, max.y, min.z),
+                vec3(min.x, max.y - corner_expansion, min.z),
+                vec3(min.x, max.y, min.z + corner_expansion),
+                vec3(min.x, max.y, min.z),
+                vec3(min.x, max.y - corner_expansion, min.z),
+                vec3(min.x + corner_expansion, max.y, min.z),
+                vec3(min.x, max.y, min.z),
+                vec3(min.x, max.y, min.z + corner_expansion),
+                vec3(min.x + corner_expansion, max.y, min.z),
+                vec3(max.x, min.y, max.z),
+                vec3(max.x, min.y + corner_expansion, max.z),
+                vec3(max.x, min.y, max.z - corner_expansion),
+                vec3(max.x, min.y, max.z),
+                vec3(max.x, min.y + corner_expansion, max.z),
+                vec3(max.x - corner_expansion, min.y, max.z),
+                vec3(max.x, min.y, max.z),
+                vec3(max.x, min.y, max.z - corner_expansion),
+                vec3(max.x - corner_expansion, min.y, max.z),
+                vec3(min.x, min.y, max.z),
+                vec3(min.x, min.y + corner_expansion, max.z),
+                vec3(min.x, min.y, max.z - corner_expansion),
+                vec3(min.x, min.y, max.z),
+                vec3(min.x, min.y + corner_expansion, max.z),
+                vec3(min.x + corner_expansion, min.y, max.z),
+                vec3(min.x, min.y, max.z),
+                vec3(min.x, min.y, max.z - corner_expansion),
+                vec3(min.x + corner_expansion, min.y, max.z),
+                vec3(max.x, max.y, min.z),
+                vec3(max.x, max.y - corner_expansion, min.z),
+                vec3(max.x, max.y, min.z + corner_expansion),
+                vec3(max.x, max.y, min.z),
+                vec3(max.x, max.y - corner_expansion, min.z),
+                vec3(max.x - corner_expansion, max.y, min.z),
+                vec3(max.x, max.y, min.z),
+                vec3(max.x, max.y, min.z + corner_expansion),
+                vec3(max.x - corner_expansion, max.y, min.z),
+                vec3(min.x, max.y, max.z),
+                vec3(min.x, max.y - corner_expansion, max.z),
+                vec3(min.x, max.y, max.z - corner_expansion),
+                vec3(min.x, max.y, max.z),
+                vec3(min.x, max.y - corner_expansion, max.z),
+                vec3(min.x + corner_expansion, max.y, max.z),
+                vec3(min.x, max.y, max.z),
+                vec3(min.x, max.y, max.z - corner_expansion),
+                vec3(min.x + corner_expansion, max.y, max.z),
+                vec3(max.x, min.y, min.z),
+                vec3(max.x, min.y + corner_expansion, min.z),
+                vec3(max.x, min.y, min.z + corner_expansion),
+                vec3(max.x, min.y, min.z),
+                vec3(max.x, min.y + corner_expansion, min.z),
+                vec3(max.x - corner_expansion, min.y, min.z),
+                vec3(max.x, min.y, min.z),
+                vec3(max.x, min.y, min.z + corner_expansion),
+                vec3(max.x - corner_expansion, min.y, min.z),
+            ],
             self.triangle_color.unwrap_or(vec4(0.0, 0.0, 0.0, 1.0)),
         )
     }

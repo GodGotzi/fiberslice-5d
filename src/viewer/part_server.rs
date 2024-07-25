@@ -27,7 +27,7 @@ use crate::{
 
 use super::gcode::{self, DisplaySettings, MeshSettings, Toolpath, WireModel};
 
-const MAIN_LOADED_TOOLPATH: &str = "main"; // HACK: This is a solution to ease the dev when only one toolpath is loaded which is the only supported(for now)
+// const MAIN_LOADED_TOOLPATH: &str = "main"; // HACK: This is a solution to ease the dev when only one toolpath is loaded which is the only supported(for now)
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -59,9 +59,6 @@ pub struct ToolpathServer {
 
     buffer: DynamicBuffer<Vertex, BufferDynamicAllocator>,
 
-    // #[cfg(debug_assertions)]
-    debug_buffer: DynamicBuffer<Vertex, BufferDynamicAllocator>,
-
     parts: HashMap<String, ToolpathHandle>,
     focused: Option<String>,
 }
@@ -73,11 +70,6 @@ impl ToolpathServer {
             buffer: DynamicBuffer::new(
                 BufferDynamicAllocator::default(),
                 "Toolpath Buffer",
-                device,
-            ),
-            debug_buffer: DynamicBuffer::new(
-                BufferDynamicAllocator::default(),
-                "Debug Buffer",
                 device,
             ),
             parts: HashMap::new(),

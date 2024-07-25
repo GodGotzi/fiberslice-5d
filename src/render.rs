@@ -1,14 +1,10 @@
 use std::time::Instant;
 
-use buffer::{
-    alloc::BufferDynamicAllocator,
-    layout::{wire::WireAllocator, WidgetAllocator},
-    DynamicBuffer,
-};
+use buffer::{alloc::BufferDynamicAllocator, DynamicBuffer};
 use glam::{Mat4, Vec3};
 use light::LightUniform;
 use vertex::Vertex;
-use wgpu::util::DeviceExt;
+use wgpu::{util::DeviceExt, CommandEncoder};
 
 use crate::{
     camera::{self, CameraResult, CameraUniform},
@@ -25,10 +21,7 @@ pub mod vertex;
 const MSAA_SAMPLE_COUNT: u32 = 1;
 
 #[derive(Debug)]
-pub enum RenderEvent {
-    Debug(String, Vec<Vec3>),
-    DebugVertex,
-}
+pub enum RenderEvent {}
 
 struct RenderState {
     depth_texture_view: wgpu::TextureView,
@@ -76,14 +69,122 @@ pub struct RenderAdapter {
     no_cull_pipline: wgpu::RenderPipeline,
     wire_pipline: wgpu::RenderPipeline,
 
-    wire_buffer: DynamicBuffer<Vertex, WireAllocator>,
-    widget_buffer: DynamicBuffer<Vertex, WidgetAllocator>,
-
     debug_buffer: DynamicBuffer<Vertex, BufferDynamicAllocator>,
 
     render_state: RenderState,
 
     event_reader: EventReader<RenderEvent>,
+}
+
+impl RenderAdapter {
+    fn render_main(
+        &self,
+        encoder: &mut CommandEncoder,
+        view: &wgpu::TextureView,
+        viewport: &Viewport,
+        global_state: &GlobalState<RootEvent>,
+    ) {
+        let toolpath_server = global_state.toolpath_server.read();
+        let toolpath_server_buffer = toolpath_server.read_buffer();
+
+        let clear_color = wgpu::Color {
+            r: 0.4,
+            g: 0.5,
+            b: 0.4,
+            a: 1.0,
+        };
+
+        let (x, y, width, height) = *viewport;
+
+        let rpass_color_attachment = wgpu::RenderPassColorAttachment {
+            view,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(clear_color),
+                store: wgpu::StoreOp::Store,
+            },
+        };
+
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Render Pass"),
+            color_attachments: &[Some(rpass_color_attachment)],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.render_state.depth_texture_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+
+        if width > 0.0 && height > 0.0 {
+            render_pass.set_viewport(x, y, width, height, 0.0, 1.0);
+            // render_pass.set_scissor_rect(x as u32, y as u32, width as , height);
+            // render_pass.set_pipeline(&self.render_pipeline);
+
+            render_pass.set_bind_group(0, &self.render_state.camera_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.render_state.light_bind_group, &[]);
+
+            render_pass.set_pipeline(&self.back_cull_pipline);
+            toolpath_server_buffer.render(&mut render_pass);
+        }
+    }
+
+    fn render_widgets(
+        &self,
+        encoder: &mut CommandEncoder,
+        view: &wgpu::TextureView,
+        viewport: &Viewport,
+        global_state: &GlobalState<RootEvent>,
+    ) {
+        let widget_server_lock = global_state.widget_server.read();
+        let widget_buffer = widget_server_lock.read_buffer();
+        let widget_wire_buffer = widget_server_lock.read_line_buffer();
+
+        let (x, y, width, height) = *viewport;
+
+        let rpass_color_attachment = wgpu::RenderPassColorAttachment {
+            view,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Load,
+                store: wgpu::StoreOp::Store,
+            },
+        };
+
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Render Pass"),
+            color_attachments: &[Some(rpass_color_attachment)],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.render_state.depth_texture_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+
+        if width > 0.0 && height > 0.0 {
+            render_pass.set_viewport(x, y, width, height, 0.0, 1.0);
+            // render_pass.set_scissor_rect(x as u32, y as u32, width as , height);
+            // render_pass.set_pipeline(&self.render_pipeline);
+
+            render_pass.set_bind_group(0, &self.render_state.camera_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.render_state.light_bind_group, &[]);
+
+            render_pass.set_pipeline(&self.no_cull_pipline);
+            widget_buffer.render(&mut render_pass);
+
+            render_pass.set_pipeline(&self.wire_pipline);
+            widget_wire_buffer.render(&mut render_pass);
+        }
+    }
 }
 
 impl<'a>
@@ -139,79 +240,14 @@ impl<'a>
                         },
                     );
 
-                    let clear_color = wgpu::Color {
-                        r: 0.4,
-                        g: 0.5,
-                        b: 0.4,
-                        a: 1.0,
-                    };
-
-                    let rpass_color_attachment = wgpu::RenderPassColorAttachment {
-                        view: &view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(clear_color),
-                            store: wgpu::StoreOp::Store,
-                        },
-                    };
-
                     let UiUpdateOutput {
                         paint_jobs,
                         tdelta,
                         screen_descriptor,
                     } = ui_output.unwrap();
 
-                    let (x, y, width, height) = viewport;
-
-                    let toolpath_server = state.toolpath_server.read();
-                    let toolpath_server_buffer = toolpath_server.read_buffer();
-
-                    let global_wdiget_buffer = state.widget_test_buffer.read();
-                    let global_wire_widget_buffer = state.widget_wire_test_buffer.read();
-
-                    #[cfg(debug_assertions)]
-                    let debug_buffer_lock = crate::DEBUG_BUFFER.lock();
-                    #[cfg(debug_assertions)]
-                    let debug_buffer = debug_buffer_lock.as_ref().unwrap();
-
-                    let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                        label: Some("Render Pass"),
-                        color_attachments: &[Some(rpass_color_attachment)],
-                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                            view: &self.render_state.depth_texture_view,
-                            depth_ops: Some(wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(1.0),
-                                store: wgpu::StoreOp::Store,
-                            }),
-                            stencil_ops: None,
-                        }),
-                        timestamp_writes: None,
-                        occlusion_query_set: None,
-                    });
-
-                    if width > 0.0 && height > 0.0 {
-                        render_pass.set_viewport(x, y, width, height, 0.0, 1.0);
-                        // render_pass.set_scissor_rect(x as u32, y as u32, width as , height);
-                        // render_pass.set_pipeline(&self.render_pipeline);
-
-                        render_pass.set_bind_group(0, &self.render_state.camera_bind_group, &[]);
-                        render_pass.set_bind_group(1, &self.render_state.light_bind_group, &[]);
-
-                        render_pass.set_pipeline(&self.back_cull_pipline);
-                        toolpath_server_buffer.render(&mut render_pass);
-
-                        render_pass.set_pipeline(&self.no_cull_pipline);
-                        self.widget_buffer.render(&mut render_pass);
-                        global_wdiget_buffer.render(&mut render_pass);
-
-                        render_pass.set_pipeline(&self.wire_pipline);
-                        self.wire_buffer.render(&mut render_pass);
-                        global_wire_widget_buffer.render(&mut render_pass);
-                        // self.debug_buffer.render(&mut render_pass);
-
-                        #[cfg(debug_assertions)]
-                        debug_buffer.render(&mut render_pass);
-                    }
+                    self.render_main(&mut encoder, &view, &viewport, &state);
+                    self.render_widgets(&mut encoder, &view, &viewport, &state);
 
                     self.egui_rpass
                         .add_textures(&wgpu_context.device, &wgpu_context.queue, &tdelta)
@@ -223,8 +259,6 @@ impl<'a>
                         &paint_jobs,
                         &screen_descriptor,
                     );
-
-                    drop(render_pass);
 
                     self.egui_rpass
                         .execute(&mut encoder, &view, &paint_jobs, &screen_descriptor, None)
@@ -427,10 +461,6 @@ impl<'a>
             MSAA_SAMPLE_COUNT,
         );
 
-        let widget_buffer = DynamicBuffer::new(WidgetAllocator, "Widget Buffer", &context.device);
-
-        let wire_buffer = DynamicBuffer::new(WireAllocator, "Wire Buffer", &context.device);
-
         let debug_buffer = DynamicBuffer::new(
             BufferDynamicAllocator::default(),
             "Debug Buffer",
@@ -469,8 +499,6 @@ impl<'a>
                     None,
                 ),
 
-                wire_buffer,
-                widget_buffer,
                 debug_buffer,
 
                 render_state,
@@ -494,36 +522,15 @@ impl<'a>
         _global_state: &GlobalState<RootEvent>,
         event: RenderEvent,
     ) {
+        /*
         match event {
-            RenderEvent::Debug(name, vertices) => {
-                let data = vertices
-                    .iter()
-                    .map(|v| Vertex {
-                        position: v.to_array(),
-                        normal: [0.0, 0.0, 0.0],
-                        color: [1.0, 0.0, 0.0, 1.0],
-                    })
-                    .collect::<Vec<Vertex>>();
-
-                // compute_normals(vertices, &mut data);
-
-                self.debug_buffer.allocate_init(
-                    &name,
-                    &data,
-                    &wgpu_context.device,
-                    &wgpu_context.queue,
-                );
-
-                wgpu_context.window.request_redraw();
-            }
-            RenderEvent::DebugVertex => {
-                wgpu_context.window.request_redraw();
-            }
+            _ => {}
         }
+        */
     }
 }
 
-fn create_pipline(
+pub fn create_pipline(
     context: &WgpuContext,
     pipeline_layout: &wgpu::PipelineLayout,
     shader: &wgpu::ShaderModule,
