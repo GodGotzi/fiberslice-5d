@@ -80,7 +80,7 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, &CameraResult)> for
                             self.state.hitbox.read_with_fn(|root| {
                                 println!("PickingAdapter: Checking Hit");
 
-                                let hit = root.check_hit(&ray, wgpu_context);
+                                let hit = root.check_hit(&ray);
 
                                 if let Some(handle) = hit {
                                     println!("PickingAdapter: Hit");
@@ -108,7 +108,7 @@ impl FrameHandle<'_, RootEvent, (), (GlobalState<RootEvent>, &CameraResult)> for
                             self.state.hitbox.read_with_fn(|root| {
                                 println!("PickingAdapter: Checking Hit");
 
-                                let hit = root.check_hit(&ray, wgpu_context);
+                                let hit = root.check_hit(&ray);
 
                                 if let Some(handle) = hit {
                                     println!("PickingAdapter: Hit");

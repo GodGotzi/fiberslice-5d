@@ -38,8 +38,8 @@ impl Scale for PickContext {
 }
 
 impl Hitbox for PickContext {
-    fn check_hit(&self, ray: &Ray, wgpu_context: &WgpuContext) -> Option<f32> {
-        self.read().check_hit(ray, wgpu_context)
+    fn check_hit(&self, ray: &Ray) -> Option<f32> {
+        self.read().check_hit(ray)
     }
 
     fn expand(&mut self, _box: &dyn Hitbox) {

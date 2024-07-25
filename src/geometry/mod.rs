@@ -11,7 +11,6 @@ pub use r#box::BoundingHitbox;
 use crate::{
     model::transform::{Rotate, Scale, Translate},
     picking::hitbox::Hitbox,
-    prelude::WgpuContext,
     render::vertex::Vertex,
 };
 
@@ -27,6 +26,7 @@ impl Translate for QuadFace {
     fn translate(&mut self, translation: Vec3) {
         self.min += translation;
         self.max += translation;
+        self.point += translation;
     }
 }
 
@@ -38,8 +38,7 @@ impl Rotate for QuadFace {
 
 impl Scale for QuadFace {
     fn scale(&mut self, scale: Vec3) {
-        self.min *= scale;
-        self.max *= scale;
+        todo!("Implement scale for QuadFace")
     }
 }
 
@@ -48,25 +47,8 @@ lazy_static::lazy_static! {
 }
 
 impl Hitbox for QuadFace {
-    fn check_hit(&self, ray: &crate::picking::ray::Ray, wgpu_context: &WgpuContext) -> Option<f32> {
+    fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
         let intersection = ray.intersection_plane(self.normal, self.point);
-
-        #[cfg(debug_assertions)]
-        {
-            let debug =
-                construct_wire_vertices([intersection, ray.origin], vec4(0.0, 0.0, 0.0, 1.0));
-
-            let count = DEBUG_COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-
-            let mut buffer_lock = crate::DEBUG_BUFFER.lock();
-
-            buffer_lock.as_mut().unwrap().allocate_init(
-                &format!("debug_{}", count),
-                &debug,
-                &wgpu_context.device,
-                &wgpu_context.queue,
-            );
-        }
 
         const EPSILON: f32 = 0.0001;
 

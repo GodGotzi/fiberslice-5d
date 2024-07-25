@@ -26,6 +26,9 @@ impl PartialOrd for HitBoxQueueEntry<'_> {
 
 impl Ord for HitBoxQueueEntry<'_> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.distance.partial_cmp(&other.distance).unwrap()
+        self.distance
+            .partial_cmp(&other.distance)
+            .unwrap()
+            .reverse()
     }
 }

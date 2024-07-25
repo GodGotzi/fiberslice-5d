@@ -61,7 +61,6 @@ pub struct Toolpath {
     pub wire_model: WireModel,
     pub model: TreeObject<Vertex, SharedMut<Box<dyn Pickable>>>,
     pub center_mass: Vec3,
-    pub bounding_box: BoundingHitbox,
 }
 
 impl Toolpath {
@@ -86,10 +85,6 @@ impl Toolpath {
         };
 
         for modul in raw_path.moduls {
-            // let layer = modul.state.layer.unwrap_or(0);
-            // let state = modul.state.clone();
-            // let range = modul.line_range;
-
             lines.extend(modul.lines.clone());
 
             let (modul_vertices, model) = modul.to_vertices(display_settings);
@@ -100,11 +95,6 @@ impl Toolpath {
 
         root.translate(-raw_path.center_mass);
 
-        let box_ = BoundingHitbox::new(
-            raw_path.virtual_box.min - raw_path.center_mass,
-            raw_path.virtual_box.max - raw_path.center_mass,
-        );
-
         let wire_model = WireModel::new(lines);
 
         Self {
@@ -113,7 +103,6 @@ impl Toolpath {
             wire_model,
             model: root,
             center_mass: raw_path.center_mass,
-            bounding_box: box_,
         }
     }
 }
@@ -142,8 +131,8 @@ impl Scale for PathContext {
 }
 
 impl Hitbox for PathContext {
-    fn check_hit(&self, ray: &crate::picking::ray::Ray, wgpu_context: &WgpuContext) -> Option<f32> {
-        self.box_.check_hit(ray, wgpu_context)
+    fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
+        self.box_.check_hit(ray)
     }
 
     fn expand(&mut self, _box: &dyn Hitbox) {
@@ -175,9 +164,22 @@ impl Pickable for PathContext {
     ) {
         println!("Picked Hitbox: {:?}", self.box_);
 
-        let select_box: SelectBox =
-            SelectBox::from(BoundingHitbox::new(self.min() - 1.0, self.max() + 1.0))
-                .with_color(vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0, 1.0, 1.0, 1.0));
+        let diagonal = self.max() - self.min();
+        let distance = diagonal.x.min(diagonal.y).min(diagonal.z);
+
+        let select_box: SelectBox = SelectBox::from(BoundingHitbox::new(
+            self.min() - distance,
+            self.max() + distance,
+        ))
+        .with_color(vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0, 1.0, 1.0, 1.0));
+
+        let select_smaller_box: SelectBox = SelectBox::from(BoundingHitbox::new(
+            self.min() - distance * 0.1,
+            self.max() + distance * 0.1,
+        ))
+        .with_color(vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0, 1.0, 1.0, 1.0));
+
+        // "select_smaller_box"
 
         global_state.widget_test_buffer.write().write(
             &wgpu_context.queue,
@@ -189,6 +191,12 @@ impl Pickable for PathContext {
             &wgpu_context.queue,
             "select_box",
             &select_box.to_wire_vertices(),
+        );
+
+        global_state.widget_wire_test_buffer.write().write(
+            &wgpu_context.queue,
+            "select_smaller_box",
+            &select_smaller_box.to_wire_vertices(),
         );
     }
 }

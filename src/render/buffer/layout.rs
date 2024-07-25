@@ -18,9 +18,9 @@ pub mod wire {
         size: SelectBox::wire_vertex_count(),
     };
 
-    const RAY_DEBUG_ALLOCATION: BufferAllocation = BufferAllocation {
-        offset: HOVER_BOX_ALLOCATION.size + SELECT_BOX_ALLOCATION.size,
-        size: 4,
+    const SELECT_SMALLER_BOX_ALLOCATION: BufferAllocation = BufferAllocation {
+        offset: SELECT_BOX_ALLOCATION.size + HOVER_BOX_ALLOCATION.size,
+        size: SelectBox::wire_vertex_count(),
     };
 
     #[derive(Debug)]
@@ -31,13 +31,15 @@ pub mod wire {
             match id {
                 "hover_box" => Some(&HOVER_BOX_ALLOCATION),
                 "select_box" => Some(&SELECT_BOX_ALLOCATION),
-                "ray_debug" => Some(&RAY_DEBUG_ALLOCATION),
+                "select_smaller_box" => Some(&SELECT_SMALLER_BOX_ALLOCATION),
                 _ => None,
             }
         }
 
         fn size(&self) -> usize {
-            HOVER_BOX_ALLOCATION.size + SELECT_BOX_ALLOCATION.size + RAY_DEBUG_ALLOCATION.size
+            HOVER_BOX_ALLOCATION.size
+                + SELECT_BOX_ALLOCATION.size
+                + SELECT_SMALLER_BOX_ALLOCATION.size
         }
     }
 }
@@ -52,6 +54,11 @@ const SELECT_BOX_ALLOCATION: BufferAllocation = BufferAllocation {
     size: SelectBox::traingle_vertex_count(),
 };
 
+const SELECT_SMALLER_BOX_ALLOCATION: BufferAllocation = BufferAllocation {
+    offset: SELECT_BOX_ALLOCATION.size + HOVER_BOX_ALLOCATION.size,
+    size: SelectBox::traingle_vertex_count(),
+};
+
 #[derive(Debug)]
 pub struct WidgetAllocator;
 
@@ -60,11 +67,12 @@ impl<T> super::alloc::BufferAlloc<T> for WidgetAllocator {
         match id {
             "hover_box" => Some(&HOVER_BOX_ALLOCATION),
             "select_box" => Some(&SELECT_BOX_ALLOCATION),
+            "select_smaller_box" => Some(&SELECT_SMALLER_BOX_ALLOCATION),
             _ => None,
         }
     }
 
     fn size(&self) -> usize {
-        HOVER_BOX_ALLOCATION.size + SELECT_BOX_ALLOCATION.size
+        HOVER_BOX_ALLOCATION.size + SELECT_BOX_ALLOCATION.size + SELECT_SMALLER_BOX_ALLOCATION.size
     }
 }

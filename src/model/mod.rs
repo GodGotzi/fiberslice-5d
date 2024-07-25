@@ -178,8 +178,13 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable + Clone + Translate, C: Translate> Tr
                     model.translate(translation);
                 }
             }
-            Self::Node { ctx, .. } => {
+            Self::Node {
+                ctx, sub_models, ..
+            } => {
                 ctx.translate(translation);
+                for model in sub_models.iter_mut() {
+                    model.translate(translation);
+                }
             }
         }
     }
@@ -202,8 +207,13 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable + Clone + Rotate, C: Rotate> Rotate
                     model.rotate(rotation);
                 }
             }
-            Self::Node { ctx, .. } => {
+            Self::Node {
+                ctx, sub_models, ..
+            } => {
                 ctx.rotate(rotation);
+                for model in sub_models.iter_mut() {
+                    model.rotate(rotation);
+                }
             }
         }
     }
@@ -224,8 +234,13 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable + Clone + Scale, C: Scale> Scale for 
                     model.scale(scale);
                 }
             }
-            Self::Node { ctx, .. } => {
+            Self::Node {
+                ctx, sub_models, ..
+            } => {
                 ctx.scale(scale);
+                for model in sub_models.iter_mut() {
+                    model.scale(scale);
+                }
             }
         }
     }
@@ -291,10 +306,10 @@ impl<C: Pickable + Hitbox> Pickable for TreeHandle<C> {
 }
 
 impl<C: Hitbox> Hitbox for TreeHandle<C> {
-    fn check_hit(&self, ray: &crate::picking::ray::Ray, wgpu_context: &WgpuContext) -> Option<f32> {
+    fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
         match self {
-            Self::Root { ctx, .. } => ctx.check_hit(ray, wgpu_context),
-            Self::Node { ctx, .. } => ctx.check_hit(ray, wgpu_context),
+            Self::Root { ctx, .. } => ctx.check_hit(ray),
+            Self::Node { ctx, .. } => ctx.check_hit(ray),
         }
     }
 

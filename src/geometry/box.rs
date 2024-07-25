@@ -123,7 +123,7 @@ impl Scale for BoundingHitbox {
 }
 
 impl Hitbox for BoundingHitbox {
-    fn check_hit(&self, ray: &crate::picking::ray::Ray, wgpu_context: &WgpuContext) -> Option<f32> {
+    fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
         // bounding box min max
 
         if self.contains(ray.origin) {
@@ -133,7 +133,7 @@ impl Hitbox for BoundingHitbox {
         let mut min = None;
 
         for quad_face in self.faces() {
-            let distance = quad_face.check_hit(ray, wgpu_context);
+            let distance = quad_face.check_hit(ray);
 
             if let Some(distance) = distance {
                 if min.unwrap_or(f32::MAX) > distance || min.is_none() {
