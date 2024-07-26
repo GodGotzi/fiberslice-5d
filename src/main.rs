@@ -397,8 +397,6 @@ impl ApplicationHandler<RootEvent> for Application {
         event: winit::event::WindowEvent,
     ) {
         if let Some(state) = self.state.as_mut() {
-            state.handle_window_event(event.clone(), window_id);
-
             match event {
                 winit::event::WindowEvent::RedrawRequested => {
                     state.global_state.ctx.begin_frame();
@@ -432,6 +430,8 @@ impl ApplicationHandler<RootEvent> for Application {
                     state.window.request_redraw();
                 }
             }
+
+            state.handle_window_event(event.clone(), window_id);
         }
     }
 
