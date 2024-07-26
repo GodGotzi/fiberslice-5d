@@ -6,16 +6,13 @@
 */
 
 use camera::CameraEvent;
-use egui::ahash::HashMap;
 use log::{info, LevelFilter};
-use parking_lot::Mutex;
 use picking::PickingEvent;
-use render::buffer::{alloc::BufferDynamicAllocator, DynamicBuffer};
 use settings::tree::QuickSettings;
 use std::{sync::Arc, time::Instant};
 use ui::UiEvent;
 
-use prelude::{Adapter, EventWriter, FrameHandle, GlobalContext, SharedMut, WgpuContext};
+use prelude::{Adapter, EventWriter, FrameHandle, GlobalContext, SharedMut, Viewport, WgpuContext};
 
 mod api;
 mod camera;
@@ -37,21 +34,11 @@ mod viewer;
 mod window;
 
 use winit::{
+    application::ApplicationHandler,
     error::EventLoopError,
-    event_loop::{EventLoopBuilder, EventLoopProxy},
+    event::WindowEvent,
+    event_loop::{EventLoop, EventLoopProxy},
 };
-
-lazy_static::lazy_static! {
-    pub static ref CONFIG: HashMap<String, toml::Value> = {
-        let content = include_str!("../config.toml");
-        toml::from_str(content).unwrap()
-    };
-}
-
-#[cfg(debug_assertions)]
-lazy_static::lazy_static! {
-    pub static ref DEBUG_BUFFER: Mutex<Option<DynamicBuffer<render::vertex::Vertex, BufferDynamicAllocator>>> = Mutex::new(None);
-}
 
 #[derive(Debug, Clone)]
 pub enum RootEvent {
@@ -78,6 +65,7 @@ pub struct GlobalState<T: 'static> {
     pub view_settings: SharedMut<QuickSettings>,
 
     pub camera_controller: SharedMut<camera::camera_controller::CameraController>,
+    pub viewport: SharedMut<Viewport>,
 
     pub ctx: GlobalContext,
 }
@@ -97,67 +85,18 @@ async fn main() -> Result<(), EventLoopError> {
     const VERSION: &str = env!("CARGO_PKG_VERSION");
     info!("Starting up version {}", VERSION);
 
-    let event_loop = EventLoopBuilder::<RootEvent>::with_user_event()
-        .build()
-        .unwrap();
-    let window = Arc::new(window::build_window(&event_loop).unwrap());
+    let event_loop: EventLoop<RootEvent> = EventLoop::with_user_event().build().unwrap();
 
-    // let settings = SharedMut::from_inner(settings::Settings { diameter: 0.45 });
+    event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
 
-    let mut wgpu_context = WgpuContext::new(window.clone()).unwrap();
-
-    let (_, _, mut render_adapter) = render::RenderAdapter::create(&wgpu_context);
-
-    let (_, camera_event_writer, mut camera_adapter) = camera::CameraAdapter::create(&wgpu_context);
-
-    let (picking_state, picking_event_writer, mut picking_adapter) =
-        picking::PickingAdapter::create(&wgpu_context);
-
-    let (ui_state, ui_event_writer, mut ui_adapter) = ui::UiAdapter::create(&wgpu_context);
-
-    // let mut picking_adapter = picking::PickingAdapter::from_context(&wgpu_context);
-    // let mut environment_adapter = environment::EnvironmentAdapter::from_context(&wgpu_context);
-    let proxy = event_loop.create_proxy();
-    let mut global_state = GlobalState {
-        proxy,
-
-        picking_state,
-        picking_event_writer,
-
-        ui_state,
-        ui_event_writer,
-
-        camera_event_writer,
-
-        toolpath_server: SharedMut::from_inner(viewer::part_server::ToolpathServer::new(
-            &wgpu_context.device,
-        )),
-        widget_server: SharedMut::from_inner(viewer::widget_server::WidgetServer::new(
-            &wgpu_context.device,
-        )),
-
-        fiber_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
-        topology_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
-        view_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
-
-        camera_controller: SharedMut::from_inner(camera::CameraController::new(0.01, -2.0, 0.1)),
-        ctx: GlobalContext::default(),
+    let mut application = Application {
+        proxy: event_loop.create_proxy(),
+        state: None,
     };
 
-    #[cfg(debug_assertions)]
-    {
-        let debug_buffer = DynamicBuffer::new(
-            BufferDynamicAllocator::default(),
-            "Debug Buffer",
-            &wgpu_context.device,
-        );
+    event_loop.run_app(&mut application)
 
-        *DEBUG_BUFFER.lock() = Some(debug_buffer);
-    }
-
-    window.set_visible(true);
-
-    let start_time = Instant::now();
+    /*
     event_loop.run(move |event, loop_target| {
         match event.clone() {
             winit::event::Event::WindowEvent {
@@ -246,6 +185,288 @@ async fn main() -> Result<(), EventLoopError> {
             global_state.ctx.end_frame();
         }
     })
+    */
+}
+
+struct ApplicationState {
+    window: Arc<winit::window::Window>,
+    wgpu_context: WgpuContext,
+    global_state: GlobalState<RootEvent>,
+
+    ui_adapter: ui::UiAdapter,
+    camera_adapter: camera::CameraAdapter,
+    render_adapter: render::RenderAdapter,
+    picking_adapter: picking::PickingAdapter,
+
+    start_time: Instant,
+}
+
+impl ApplicationState {
+    fn update(&mut self) {
+        self.global_state
+            .toolpath_server
+            .write()
+            .update(self.global_state.clone(), &self.wgpu_context)
+            .unwrap();
+
+        self.ui_adapter.update(self.start_time);
+
+        self.camera_adapter.update(self.start_time);
+
+        self.render_adapter.update(self.start_time);
+
+        self.picking_adapter.update(self.start_time);
+
+        self.ui_adapter
+            .handle_events(&self.wgpu_context, &self.global_state);
+
+        self.camera_adapter
+            .handle_events(&self.wgpu_context, &self.global_state);
+
+        self.render_adapter
+            .handle_events(&self.wgpu_context, &self.global_state);
+
+        self.picking_adapter
+            .handle_events(&self.wgpu_context, &self.global_state);
+    }
+
+    fn handle_frame(&mut self) {
+        let (ui_output, viewport) = self
+            .ui_adapter
+            .handle_frame(&self.wgpu_context, self.global_state.clone(), ())
+            .expect("Failed to handle frame");
+
+        let camera_result = self
+            .camera_adapter
+            .handle_frame(&self.wgpu_context, self.global_state.clone(), viewport)
+            .expect("Failed to handle frame");
+
+        self.render_adapter
+            .handle_frame(
+                &self.wgpu_context,
+                self.global_state.clone(),
+                (Some(ui_output), &camera_result),
+            )
+            .expect("Failed to handle frame");
+
+        self.picking_adapter
+            .handle_frame(
+                &self.wgpu_context,
+                self.global_state.clone(),
+                &camera_result,
+            )
+            .expect("Failed to handle frame");
+    }
+
+    fn handle_window_event(
+        &mut self,
+        event: winit::event::WindowEvent,
+        window_id: winit::window::WindowId,
+    ) {
+        self.ui_adapter.handle_window_event(
+            &event,
+            window_id,
+            &self.wgpu_context,
+            self.global_state.clone(),
+        );
+
+        self.camera_adapter.handle_window_event(
+            &event,
+            window_id,
+            &self.wgpu_context,
+            self.global_state.clone(),
+        );
+
+        self.render_adapter.handle_window_event(
+            &event,
+            window_id,
+            &self.wgpu_context,
+            self.global_state.clone(),
+        );
+
+        self.picking_adapter.handle_window_event(
+            &event,
+            window_id,
+            &self.wgpu_context,
+            self.global_state.clone(),
+        );
+    }
+
+    fn handle_device_event(
+        &mut self,
+        event: winit::event::DeviceEvent,
+        device_id: winit::event::DeviceId,
+    ) {
+        self.ui_adapter.handle_device_event(
+            &event,
+            device_id,
+            &self.wgpu_context,
+            self.global_state.clone(),
+        );
+
+        self.camera_adapter.handle_device_event(
+            &event,
+            device_id,
+            &self.wgpu_context,
+            self.global_state.clone(),
+        );
+
+        self.render_adapter.handle_device_event(
+            &event,
+            device_id,
+            &self.wgpu_context,
+            self.global_state.clone(),
+        );
+
+        self.picking_adapter.handle_device_event(
+            &event,
+            device_id,
+            &self.wgpu_context,
+            self.global_state.clone(),
+        );
+    }
+}
+
+struct Application {
+    proxy: EventLoopProxy<RootEvent>,
+    state: Option<ApplicationState>,
+}
+
+impl ApplicationHandler<RootEvent> for Application {
+    fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+        let window = Arc::new(window::create_window(event_loop).expect("Failed to create window"));
+
+        let wgpu_context = WgpuContext::new(window.clone()).unwrap();
+
+        let (_, _, render_adapter) = render::RenderAdapter::create(&wgpu_context);
+
+        let (_, camera_event_writer, camera_adapter) = camera::CameraAdapter::create(&wgpu_context);
+
+        let (picking_state, picking_event_writer, picking_adapter) =
+            picking::PickingAdapter::create(&wgpu_context);
+
+        let (ui_state, ui_event_writer, ui_adapter) = ui::UiAdapter::create(&wgpu_context);
+
+        let global_state = GlobalState {
+            proxy: self.proxy.clone(),
+
+            picking_state,
+            picking_event_writer,
+
+            ui_state,
+            ui_event_writer,
+
+            camera_event_writer,
+
+            toolpath_server: SharedMut::from_inner(viewer::part_server::ToolpathServer::new(
+                &wgpu_context.device,
+            )),
+            widget_server: SharedMut::from_inner(viewer::widget_server::WidgetServer::new(
+                &wgpu_context.device,
+            )),
+
+            fiber_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
+            topology_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
+            view_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
+
+            camera_controller: SharedMut::from_inner(camera::CameraController::new(
+                0.01, -2.0, 0.1,
+            )),
+            viewport: SharedMut::from_inner(Viewport::default()),
+            ctx: GlobalContext::default(),
+        };
+
+        self.state = Some(ApplicationState {
+            window,
+            wgpu_context,
+            global_state,
+
+            ui_adapter,
+            camera_adapter,
+            render_adapter,
+            picking_adapter,
+
+            start_time: Instant::now(),
+        });
+    }
+
+    fn window_event(
+        &mut self,
+        event_loop: &winit::event_loop::ActiveEventLoop,
+        window_id: winit::window::WindowId,
+        event: winit::event::WindowEvent,
+    ) {
+        if let Some(state) = self.state.as_mut() {
+            state.handle_window_event(event.clone(), window_id);
+
+            match event {
+                winit::event::WindowEvent::RedrawRequested => {
+                    state.global_state.ctx.begin_frame();
+                    puffin::GlobalProfiler::lock().new_frame();
+
+                    state.handle_frame();
+
+                    state.global_state.ctx.end_frame();
+                }
+                winit::event::WindowEvent::Resized(size) => {
+                    resize_surface(&mut state.wgpu_context, size);
+
+                    state.window.request_redraw();
+                }
+                winit::event::WindowEvent::ScaleFactorChanged { .. } => {
+                    let size = state.wgpu_context.window.inner_size();
+
+                    resize_surface(&mut state.wgpu_context, size);
+
+                    state.window.request_redraw();
+                }
+                winit::event::WindowEvent::CloseRequested => {
+                    event_loop.exit();
+                }
+                winit::event::WindowEvent::CursorMoved { position, .. } => {
+                    state.global_state.ctx.mouse_position =
+                        Some((position.x as f32, position.y as f32));
+                    state.window.request_redraw();
+                }
+                _ => {
+                    state.window.request_redraw();
+                }
+            }
+        }
+    }
+
+    fn device_event(
+        &mut self,
+        _event_loop: &winit::event_loop::ActiveEventLoop,
+        device_id: winit::event::DeviceId,
+        event: winit::event::DeviceEvent,
+    ) {
+        if let Some(state) = self.state.as_mut() {
+            state.handle_device_event(event, device_id);
+        }
+    }
+
+    fn user_event(&mut self, event_loop: &winit::event_loop::ActiveEventLoop, event: RootEvent) {
+        match event {
+            RootEvent::Exit => {
+                event_loop.exit();
+            }
+        }
+    }
+
+    fn new_events(
+        &mut self,
+        _event_loop: &winit::event_loop::ActiveEventLoop,
+        _cause: winit::event::StartCause,
+    ) {
+        if let Some(state) = self.state.as_mut() {
+            state.update();
+        }
+    }
+
+    fn exiting(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
+        println!("Exiting");
+    }
 }
 
 fn resize_surface(wgpu_context: &mut WgpuContext, size: winit::dpi::PhysicalSize<u32>) {

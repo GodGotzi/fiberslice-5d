@@ -88,6 +88,7 @@ impl<'a> Component for Toolbar<'a> {
                                 } else if response.hovered() {
                                     egui::popup::show_tooltip(
                                         ui.ctx(),
+                                        ui.layer_id(),
                                         egui::Id::new(format!("popup-{}", tool.get_popup_string())),
                                         |ui| {
                                             ui.label(tool.get_popup_string());

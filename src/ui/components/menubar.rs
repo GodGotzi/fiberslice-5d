@@ -1,3 +1,4 @@
+use egui::TextWrapMode;
 use egui::Ui;
 use nfde::DialogResult;
 use nfde::FilterableDialogBuilder;
@@ -5,14 +6,10 @@ use nfde::Nfd;
 use nfde::SingleFileDialogBuilder;
 
 use crate::config;
-use crate::render;
 use crate::ui::boundary::Boundary;
 use crate::ui::Component;
 use crate::ui::ComponentState;
 use crate::ui::UiState;
-use crate::viewer::gcode;
-use crate::viewer::gcode::DisplaySettings;
-use crate::viewer::gcode::MeshSettings;
 use crate::GlobalState;
 use crate::RootEvent;
 
@@ -86,7 +83,7 @@ impl<'a> Menubar<'a> {
     fn window_button(&mut self, ui: &mut Ui, _shared_state: &(UiState, GlobalState<RootEvent>)) {
         ui.menu_button("Window", |ui| {
             ui.set_min_width(220.0);
-            ui.style_mut().wrap = Some(false);
+            ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
 
             /*
                         ui.checkbox(
@@ -108,7 +105,7 @@ impl<'a> Menubar<'a> {
 fn file_button(ui: &mut Ui, (_ui_state, global_state): &(UiState, GlobalState<RootEvent>)) {
     ui.menu_button("File", |ui| {
         ui.set_min_width(220.0);
-        ui.style_mut().wrap = Some(false);
+        ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
 
         build_sub_menu(ui, "Import GCode", |_ui| {
             let nfd = Nfd::new().unwrap();
@@ -139,12 +136,17 @@ fn file_button(ui: &mut Ui, (_ui_state, global_state): &(UiState, GlobalState<Ro
 fn help_button(ui: &mut Ui, _shared_state: &(UiState, GlobalState<RootEvent>)) {
     ui.menu_button("Help", |ui| {
         ui.set_min_width(220.0);
-        ui.style_mut().wrap = Some(false);
+        ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
 
         if ui.button("About").hovered() {
-            egui::popup::show_tooltip(ui.ctx(), egui::Id::new("menubar-about-popup"), |ui| {
-                ui.label("This is a special slicer for placing fibers in gcode.");
-            });
+            egui::popup::show_tooltip(
+                ui.ctx(),
+                ui.layer_id(),
+                egui::Id::new("menubar-about-popup"),
+                |ui| {
+                    ui.label("This is a special slicer for placing fibers in gcode.");
+                },
+            );
         }
     });
 }

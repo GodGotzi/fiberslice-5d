@@ -2,7 +2,10 @@ use std::{fmt::Debug, sync::Arc};
 
 use log::info;
 use wgpu::InstanceDescriptor;
-use winit::{event::Event, window::Window};
+use winit::{
+    event::{DeviceEvent, Event, WindowEvent},
+    window::Window,
+};
 
 pub use crate::error::Error;
 use crate::{GlobalState, RootEvent};
@@ -44,18 +47,18 @@ impl GlobalContext {
     }
 }
 
-pub struct WgpuContext<'a> {
+pub struct WgpuContext {
     pub window: Arc<Window>,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub adapter: wgpu::Adapter,
 
-    pub surface: wgpu::Surface<'a>,
+    pub surface: wgpu::Surface<'static>,
     pub surface_config: wgpu::SurfaceConfiguration,
     pub surface_format: wgpu::TextureFormat,
 }
 
-impl WgpuContext<'_> {
+impl WgpuContext {
     pub fn new(window: Arc<Window>) -> Result<Self, Error> {
         let instance = wgpu::Instance::new(InstanceDescriptor {
             backends: wgpu::Backends::VULKAN,
@@ -82,6 +85,7 @@ impl WgpuContext<'_> {
                     ..Default::default()
                 },
                 label: None,
+                memory_hints: wgpu::MemoryHints::Performance,
             },
             None,
         ))
@@ -94,7 +98,7 @@ impl WgpuContext<'_> {
             format: surface_format,
             width: size.width,
             height: size.height,
-            present_mode: wgpu::PresentMode::AutoVsync,
+            present_mode: wgpu::PresentMode::AutoNoVsync,
             desired_maximum_frame_latency: 1,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
             view_formats: vec![surface_format],
@@ -114,13 +118,32 @@ impl WgpuContext<'_> {
 }
 
 pub trait FrameHandle<'a, E, T, C> {
+    fn update(&mut self, start_time: std::time::Instant) {}
+
     fn handle_frame(
         &'a mut self,
-        event: &Event<E>,
-        start_time: std::time::Instant,
         wgpu_context: &WgpuContext,
-        state: C,
+        state: GlobalState<RootEvent>,
+        ctx: C,
     ) -> Result<T, Error>;
+
+    fn handle_window_event(
+        &mut self,
+        event: &WindowEvent,
+        id: winit::window::WindowId,
+        wgpu_context: &WgpuContext,
+        state: GlobalState<RootEvent>,
+    ) {
+    }
+
+    fn handle_device_event(
+        &mut self,
+        event: &DeviceEvent,
+        id: winit::event::DeviceId,
+        wgpu_context: &WgpuContext,
+        state: GlobalState<RootEvent>,
+    ) {
+    }
 }
 
 pub type AdapterCreation<S, E, A> = (S, EventWriter<E>, A);
@@ -138,7 +161,8 @@ pub trait Adapter<'a, WinitE, S: Sized, T, C, E: Debug>: FrameHandle<'a, WinitE,
         wgpu_context: &WgpuContext,
         global_state: &GlobalState<RootEvent>,
         event: E,
-    );
+    ) {
+    }
 
     fn handle_events(&mut self, wgpu_context: &WgpuContext, global_state: &GlobalState<RootEvent>) {
         if self.get_reader().has_active_events() {
