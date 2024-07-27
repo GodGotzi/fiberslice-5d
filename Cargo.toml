@@ -41,7 +41,6 @@ wgpu = "22.0"
 
 glam = "0.28"
 bytemuck = "1.7.0"
-catppuccin-egui = { version = "5.1" }
 simple-logging = "2.0.2"
 log = "0.4.21"
 egui-toast = "0.14"
@@ -51,4 +50,3 @@ futures-channel = "0.3.30"
 egui_code_editor = "0.2.9"
 env_logger = "0.11.3"
 pollster = "0.3.0"
-ouroboros = "0.18.4"
