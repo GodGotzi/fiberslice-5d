@@ -187,28 +187,12 @@ impl RenderAdapter {
     }
 }
 
-impl<'a>
-    FrameHandle<
-        'a,
-        RootEvent,
-        (),
-        (
-            GlobalState<RootEvent>,
-            Option<UiUpdateOutput>,
-            &CameraResult,
-        ),
-    > for RenderAdapter
-{
+impl<'a> FrameHandle<'a, RootEvent, (), (Option<UiUpdateOutput>, &CameraResult)> for RenderAdapter {
     fn handle_frame(
         &'a mut self,
-        event: &winit::event::Event<RootEvent>,
-        _start_time: std::time::Instant,
         wgpu_context: &WgpuContext,
-        (state, ui_output, camera_result): (
-            GlobalState<RootEvent>,
-            Option<UiUpdateOutput>,
-            &CameraResult,
-        ),
+        state: GlobalState<RootEvent>,
+        (ui_output, camera_result): (Option<UiUpdateOutput>, &CameraResult),
     ) -> Result<(), Error> {
         puffin::profile_function!("Render handle_frame");
 
@@ -219,119 +203,112 @@ impl<'a>
             viewport,
         } = *camera_result;
 
-        if let winit::event::Event::WindowEvent { event, .. } = event {
-            match event {
-                winit::event::WindowEvent::RedrawRequested => {
-                    self.render_state.update(wgpu_context, proj * view, eye);
+        self.render_state.update(wgpu_context, proj * view, eye);
 
-                    let now = Instant::now();
+        let now = Instant::now();
 
-                    let output = wgpu_context
-                        .surface
-                        .get_current_texture()
-                        .expect("Failed to acquire next swap chain texture");
-                    let view = output
-                        .texture
-                        .create_view(&wgpu::TextureViewDescriptor::default());
+        let output = wgpu_context
+            .surface
+            .get_current_texture()
+            .expect("Failed to acquire next swap chain texture");
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
 
-                    let mut encoder = wgpu_context.device.create_command_encoder(
-                        &wgpu::CommandEncoderDescriptor {
-                            label: Some("Render Encoder"),
-                        },
-                    );
+        let mut encoder =
+            wgpu_context
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Render Encoder"),
+                });
 
-                    let UiUpdateOutput {
-                        paint_jobs,
-                        tdelta,
-                        screen_descriptor,
-                    } = ui_output.unwrap();
+        let UiUpdateOutput {
+            paint_jobs,
+            tdelta,
+            screen_descriptor,
+        } = ui_output.unwrap();
 
-                    self.render_main(&mut encoder, &view, &viewport, &state);
-                    self.render_widgets(&mut encoder, &view, &viewport, &state);
+        self.render_main(&mut encoder, &view, &viewport, &state);
+        self.render_widgets(&mut encoder, &view, &viewport, &state);
 
-                    self.egui_rpass
-                        .add_textures(&wgpu_context.device, &wgpu_context.queue, &tdelta)
-                        .expect("add texture ok");
+        self.egui_rpass
+            .add_textures(&wgpu_context.device, &wgpu_context.queue, &tdelta)
+            .expect("add texture ok");
 
-                    self.egui_rpass.update_buffers(
-                        &wgpu_context.device,
-                        &wgpu_context.queue,
-                        &paint_jobs,
-                        &screen_descriptor,
-                    );
+        self.egui_rpass.update_buffers(
+            &wgpu_context.device,
+            &wgpu_context.queue,
+            &paint_jobs,
+            &screen_descriptor,
+        );
 
-                    self.egui_rpass
-                        .execute(&mut encoder, &view, &paint_jobs, &screen_descriptor, None)
-                        .expect("execute render pass ok");
+        self.egui_rpass
+            .execute(&mut encoder, &view, &paint_jobs, &screen_descriptor, None)
+            .expect("execute render pass ok");
 
-                    wgpu_context.queue.submit(std::iter::once(encoder.finish()));
-                    output.present();
+        wgpu_context.queue.submit(std::iter::once(encoder.finish()));
+        output.present();
 
-                    self.egui_rpass
-                        .remove_textures(tdelta)
-                        .expect("remove texture ok");
+        self.egui_rpass
+            .remove_textures(tdelta)
+            .expect("remove texture ok");
 
-                    println!("Render time: {:?}", now.elapsed());
-                }
-                winit::event::WindowEvent::Resized(size) => {
-                    if size.width > 0 && size.height > 0 {
-                        self.render_state.depth_texture_view =
-                            texture::Texture::create_depth_texture(
-                                &wgpu_context.device,
-                                &wgpu_context.surface_config,
-                                MSAA_SAMPLE_COUNT,
-                                "depth_texture",
-                            );
-                        self.multisampled_framebuffer =
-                            texture::Texture::create_multisampled_framebuffer(
-                                &wgpu_context.device,
-                                &wgpu_context.surface_config,
-                                MSAA_SAMPLE_COUNT,
-                                "multisampled_framebuffer",
-                            );
-                    }
-                }
-                winit::event::WindowEvent::ScaleFactorChanged { .. } => {
-                    let size = wgpu_context.window.inner_size();
-
-                    if size.width > 0 && size.height > 0 {
-                        self.render_state.depth_texture_view =
-                            texture::Texture::create_depth_texture(
-                                &wgpu_context.device,
-                                &wgpu_context.surface_config,
-                                MSAA_SAMPLE_COUNT,
-                                "depth_texture",
-                            );
-                        self.multisampled_framebuffer =
-                            texture::Texture::create_multisampled_framebuffer(
-                                &wgpu_context.device,
-                                &wgpu_context.surface_config,
-                                MSAA_SAMPLE_COUNT,
-                                "multisampled_framebuffer",
-                            );
-                    }
-                }
-                _ => {}
-            }
-        }
+        println!("Render time: {:?}", now.elapsed());
 
         Ok(())
     }
+
+    fn handle_window_event(
+        &mut self,
+        event: &winit::event::WindowEvent,
+        _id: winit::window::WindowId,
+        wgpu_context: &WgpuContext,
+        _global_state: GlobalState<RootEvent>,
+    ) {
+        match event {
+            winit::event::WindowEvent::Resized(size) => {
+                if size.width > 0 && size.height > 0 {
+                    self.render_state.depth_texture_view = texture::Texture::create_depth_texture(
+                        &wgpu_context.device,
+                        &wgpu_context.surface_config,
+                        MSAA_SAMPLE_COUNT,
+                        "depth_texture",
+                    );
+                    self.multisampled_framebuffer =
+                        texture::Texture::create_multisampled_framebuffer(
+                            &wgpu_context.device,
+                            &wgpu_context.surface_config,
+                            MSAA_SAMPLE_COUNT,
+                            "multisampled_framebuffer",
+                        );
+                }
+            }
+            winit::event::WindowEvent::ScaleFactorChanged { .. } => {
+                let size = wgpu_context.window.inner_size();
+
+                if size.width > 0 && size.height > 0 {
+                    self.render_state.depth_texture_view = texture::Texture::create_depth_texture(
+                        &wgpu_context.device,
+                        &wgpu_context.surface_config,
+                        MSAA_SAMPLE_COUNT,
+                        "depth_texture",
+                    );
+                    self.multisampled_framebuffer =
+                        texture::Texture::create_multisampled_framebuffer(
+                            &wgpu_context.device,
+                            &wgpu_context.surface_config,
+                            MSAA_SAMPLE_COUNT,
+                            "multisampled_framebuffer",
+                        );
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
-impl<'a>
-    Adapter<
-        'a,
-        RootEvent,
-        (),
-        (),
-        (
-            GlobalState<RootEvent>,
-            Option<UiUpdateOutput>,
-            &CameraResult,
-        ),
-        RenderEvent,
-    > for RenderAdapter
+impl<'a> Adapter<'a, RootEvent, (), (), (Option<UiUpdateOutput>, &CameraResult), RenderEvent>
+    for RenderAdapter
 {
     fn create(context: &WgpuContext) -> AdapterCreation<(), RenderEvent, Self> {
         let depth_texture_view = texture::Texture::create_depth_texture(
@@ -515,19 +492,6 @@ impl<'a>
     fn get_reader(&self) -> EventReader<RenderEvent> {
         self.event_reader.clone()
     }
-
-    fn handle_event(
-        &mut self,
-        wgpu_context: &WgpuContext,
-        _global_state: &GlobalState<RootEvent>,
-        event: RenderEvent,
-    ) {
-        /*
-        match event {
-            _ => {}
-        }
-        */
-    }
 }
 
 pub fn create_pipline(
@@ -590,5 +554,6 @@ pub fn create_pipline(
                 ..Default::default()
             },
             multiview: None,
+            cache: None,
         })
 }

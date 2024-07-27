@@ -3,6 +3,7 @@ use std::f32::consts::PI;
 use glam::{Mat4, Vec3};
 use macros::NumEnum;
 use strum_macros::{EnumCount, EnumIter};
+use wgpu::core::device::global;
 use winit::event::WindowEvent;
 
 use crate::{
@@ -39,6 +40,7 @@ pub enum CameraEvent {
     UpdatePreferredDistance(BoundingHitbox),
 }
 
+#[derive(Debug, Clone)]
 pub struct CameraResult {
     pub view: Mat4,
     pub proj: Mat4,
@@ -55,42 +57,21 @@ pub struct CameraAdapter {
     event_reader: EventReader<CameraEvent>,
 }
 
-impl FrameHandle<'_, RootEvent, CameraResult, (GlobalState<RootEvent>, Viewport)>
-    for CameraAdapter
-{
+impl FrameHandle<'_, RootEvent, CameraResult, Viewport> for CameraAdapter {
     fn handle_frame(
         &'_ mut self,
-        event: &winit::event::Event<RootEvent>,
-        _start_time: std::time::Instant,
-        wgpu_context: &crate::prelude::WgpuContext,
-        (state, viewport): (GlobalState<RootEvent>, Viewport),
+        _wgpu_context: &crate::prelude::WgpuContext,
+        global_state: GlobalState<RootEvent>,
+        viewport: Viewport,
     ) -> Result<CameraResult, crate::prelude::Error> {
-        state.camera_controller.write_with_fn(|controller| {
-            controller.process_events(
-                event,
-                &wgpu_context.window,
-                &mut self.camera,
-                state
-                    .ui_state
-                    .pointer_in_use
-                    .load(std::sync::atomic::Ordering::Relaxed),
-            );
-        });
-
-        if let winit::event::Event::WindowEvent {
-            event: WindowEvent::RedrawRequested,
-            ..
-        } = event
-        {
-            if viewport != self.viewport.unwrap_or_default() {
-                self.viewport = Some(viewport);
-                self.camera.aspect = viewport.2 / viewport.3;
-            }
-
-            let (view, proj) = self.camera.build_view_proj_matrix();
-            self.view = view;
-            self.proj = proj;
+        if viewport != self.viewport.unwrap_or_default() {
+            self.viewport = Some(viewport);
+            self.camera.aspect = viewport.2 / viewport.3;
         }
+
+        let (view, proj) = self.camera.build_view_proj_matrix();
+        self.view = view;
+        self.proj = proj;
 
         Ok(CameraResult {
             view: self.view,
@@ -99,11 +80,49 @@ impl FrameHandle<'_, RootEvent, CameraResult, (GlobalState<RootEvent>, Viewport)
             viewport,
         })
     }
+
+    fn handle_window_event(
+        &mut self,
+        event: &WindowEvent,
+        _id: winit::window::WindowId,
+        wgpu_context: &WgpuContext,
+        state: GlobalState<RootEvent>,
+    ) {
+        state.camera_controller.write_with_fn(|controller| {
+            controller.handle_window_events(
+                event,
+                &wgpu_context.window,
+                &mut self.camera,
+                state
+                    .ui_state
+                    .pointer_in_use
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            )
+        });
+    }
+
+    fn handle_device_event(
+        &mut self,
+        event: &winit::event::DeviceEvent,
+        _id: winit::event::DeviceId,
+        wgpu_context: &WgpuContext,
+        state: GlobalState<RootEvent>,
+    ) {
+        state.camera_controller.write_with_fn(|controller| {
+            controller.handle_device_events(
+                event,
+                &wgpu_context.window,
+                &mut self.camera,
+                state
+                    .ui_state
+                    .pointer_in_use
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            )
+        });
+    }
 }
 
-impl Adapter<'_, RootEvent, (), CameraResult, (GlobalState<RootEvent>, Viewport), CameraEvent>
-    for CameraAdapter
-{
+impl Adapter<'_, RootEvent, (), CameraResult, Viewport, CameraEvent> for CameraAdapter {
     fn create(
         wgpu_context: &crate::prelude::WgpuContext,
     ) -> AdapterCreation<(), CameraEvent, Self> {

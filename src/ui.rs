@@ -106,116 +106,93 @@ pub struct UiAdapter {
     event_reader: EventReader<UiEvent>,
 }
 
-impl UiAdapter {
-    fn update(
-        &mut self,
-        event: &winit::event::Event<RootEvent>,
-        start_time: std::time::Instant,
-        _wgpu_context: &WgpuContext,
-    ) {
-        self.platform.handle_event(event);
+impl<'a> FrameHandle<'a, RootEvent, (UiUpdateOutput, (f32, f32, f32, f32)), ()> for UiAdapter {
+    fn update(&mut self, start_time: std::time::Instant) {
         self.platform
             .update_time(start_time.elapsed().as_secs_f64());
     }
-}
 
-impl<'a>
-    FrameHandle<
-        'a,
-        RootEvent,
-        (Option<UiUpdateOutput>, (f32, f32, f32, f32)),
-        GlobalState<RootEvent>,
-    > for UiAdapter
-{
     fn handle_frame(
         &'a mut self,
-        event: &winit::event::Event<RootEvent>,
-        start_time: std::time::Instant,
         wgpu_context: &WgpuContext,
         global_state: GlobalState<RootEvent>,
-    ) -> Result<(Option<UiUpdateOutput>, Viewport), Error> {
+        _ctx: (),
+    ) -> Result<(UiUpdateOutput, Viewport), Error> {
         puffin::profile_function!();
 
-        self.update(event, start_time, wgpu_context);
+        let (x, y, width, height) = self.screen.construct_viewport(wgpu_context);
 
-        if let winit::event::Event::WindowEvent {
-            event: WindowEvent::RedrawRequested,
-            ..
-        } = event
-        {
-            let (x, y, width, height) = self.screen.construct_viewport(wgpu_context);
-
-            let is_pointer_over_viewport = {
-                if let Some(pos) = self.platform.context().pointer_latest_pos() {
-                    pos.x >= x && pos.x <= x + width && pos.y >= y && pos.y <= y + height
-                } else {
-                    false
-                }
-            };
-
-            self.state.pointer_in_use.store(
-                !is_pointer_over_viewport || self.platform.context().is_using_pointer(),
-                std::sync::atomic::Ordering::Relaxed,
-            );
-
-            self.platform.begin_frame();
-
-            self.platform.context().style_mut(|style| {
-                catppuccin_egui::set_style_theme(style, catppuccin_egui::MOCHA);
-                // style.visuals = Visuals::light();
-                style.visuals.popup_shadow = egui::epaint::Shadow::NONE;
-                style.visuals.window_shadow = egui::epaint::Shadow::NONE;
-            });
-
-            self.screen.show(
-                &self.platform.context(),
-                &(self.state.clone(), global_state),
-            );
-
-            let full_output = self.platform.end_frame(Some(&wgpu_context.window));
-
-            let viewport = self.screen.construct_viewport(wgpu_context);
-
-            let paint_jobs = self
-                .platform
-                .context()
-                .tessellate(full_output.shapes, full_output.pixels_per_point);
-
-            let tdelta: egui::TexturesDelta = full_output.textures_delta;
-
-            let screen_descriptor = ScreenDescriptor {
-                physical_width: wgpu_context.surface_config.width,
-                physical_height: wgpu_context.surface_config.height,
-                scale_factor: wgpu_context.window.scale_factor() as f32,
-            };
-
-            if self.platform.context().has_requested_repaint() {
-                wgpu_context.window.request_redraw();
+        let is_pointer_over_viewport = {
+            if let Some(pos) = self.platform.context().pointer_latest_pos() {
+                pos.x >= x && pos.x <= x + width && pos.y >= y && pos.y <= y + height
+            } else {
+                false
             }
+        };
 
-            return Ok((
-                Some(UiUpdateOutput {
-                    paint_jobs,
-                    tdelta,
-                    screen_descriptor,
-                }),
-                viewport,
-            ));
+        self.state.pointer_in_use.store(
+            !is_pointer_over_viewport || self.platform.context().is_using_pointer(),
+            std::sync::atomic::Ordering::Relaxed,
+        );
+
+        self.platform.begin_frame();
+
+        self.platform.context().style_mut(|style| {
+            // catppuccin_egui::set_style_theme(style, catppuccin_egui::MOCHA);
+            // style.visuals = Visuals::light();
+            style.visuals.popup_shadow = egui::epaint::Shadow::NONE;
+            style.visuals.window_shadow = egui::epaint::Shadow::NONE;
+        });
+
+        self.screen.show(
+            &self.platform.context(),
+            &(self.state.clone(), global_state),
+        );
+
+        let full_output = self.platform.end_frame(Some(&wgpu_context.window));
+
+        let viewport = self.screen.construct_viewport(wgpu_context);
+
+        let paint_jobs = self
+            .platform
+            .context()
+            .tessellate(full_output.shapes, full_output.pixels_per_point);
+
+        let tdelta: egui::TexturesDelta = full_output.textures_delta;
+
+        let screen_descriptor = ScreenDescriptor {
+            physical_width: wgpu_context.surface_config.width,
+            physical_height: wgpu_context.surface_config.height,
+            scale_factor: wgpu_context.window.scale_factor() as f32,
+        };
+
+        if self.platform.context().has_requested_repaint() {
+            wgpu_context.window.request_redraw();
         }
 
-        Ok((None, self.screen.construct_viewport(wgpu_context)))
+        Ok((
+            UiUpdateOutput {
+                paint_jobs,
+                tdelta,
+                screen_descriptor,
+            },
+            viewport,
+        ))
+    }
+
+    fn handle_window_event(
+        &mut self,
+        event: &WindowEvent,
+        _id: winit::window::WindowId,
+        _wgpu_context: &WgpuContext,
+        _state: GlobalState<RootEvent>,
+    ) {
+        self.platform.handle_event(event);
     }
 }
 
-impl<'a>
-    Adapter<
-        'a,
-        RootEvent,
-        UiState,
-        (Option<UiUpdateOutput>, (f32, f32, f32, f32)),
-        GlobalState<RootEvent>,
-        UiEvent,
-    > for UiAdapter
+impl<'a> Adapter<'a, RootEvent, UiState, (UiUpdateOutput, (f32, f32, f32, f32)), (), UiEvent>
+    for UiAdapter
 {
     fn create(context: &WgpuContext) -> AdapterCreation<UiState, UiEvent, Self> {
         let platform = Platform::new(PlatformDescriptor {
@@ -268,6 +245,7 @@ impl<'a>
                     options: ToastOptions::default()
                         .duration_in_seconds(5.0)
                         .show_progress(true),
+                    ..Default::default()
                 });
 
                 wgpu_context.window.request_redraw();
@@ -279,6 +257,7 @@ impl<'a>
                     options: ToastOptions::default()
                         .duration_in_seconds(5.0)
                         .show_progress(false),
+                    ..Default::default()
                 });
 
                 wgpu_context.window.request_redraw();
@@ -290,6 +269,7 @@ impl<'a>
                     options: ToastOptions::default()
                         .duration_in_seconds(5.0)
                         .show_progress(true),
+                    ..Default::default()
                 });
 
                 wgpu_context.window.request_redraw();

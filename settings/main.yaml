@@ -71,15 +71,15 @@ extruder: !Branch
     layer_height_limits: !Branch
       weight: 0
       children:
-        max: !Value
+        retract_restart_extra: !Value
           weight: 0
-          value: !Float 0.3
-          description: Max
+          value: !Float 0.0
+          description: Retract Restart Extra
           unit: mm
-        min: !Value
+        length: !Value
           weight: 0
-          value: !Float 0.07
-          description: Min
+          value: !Float 0.8
+          description: Length
           unit: mm
       description: Max
   description: Extruder

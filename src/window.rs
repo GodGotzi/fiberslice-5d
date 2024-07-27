@@ -1,15 +1,16 @@
 use winit::{
     dpi,
+    error::OsError,
     event_loop::*,
-    window::{Icon, Window, WindowBuilder},
+    window::{Icon, Window, WindowAttributes},
 };
 
-use crate::{config, prelude::Error};
+use crate::config;
 
-pub fn build_window<T>(event_loop: &EventLoop<T>) -> Result<Window, Error> {
+pub fn create_window(event_loop: &ActiveEventLoop) -> Result<Window, OsError> {
     let window_icon = load_icon("assets/icons/main_icon.png");
 
-    let window_builder = WindowBuilder::new()
+    let attributes = WindowAttributes::default()
         .with_title("Fiberslice-5D")
         .with_min_inner_size(dpi::LogicalSize::new(
             config::default::WINDOW_S.0,
@@ -25,9 +26,7 @@ pub fn build_window<T>(event_loop: &EventLoop<T>) -> Result<Window, Error> {
             config::default::WINDOW_S.1 as f64,
         ));
 
-    window_builder
-        .build(event_loop)
-        .map_err(|e| Error::InitialBuild(e.to_string()))
+    event_loop.create_window(attributes)
 }
 
 fn load_icon(path: &str) -> Icon {

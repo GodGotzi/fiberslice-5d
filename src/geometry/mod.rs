@@ -43,10 +43,6 @@ impl Scale for QuadFace {
     }
 }
 
-lazy_static::lazy_static! {
-    pub static ref DEBUG_COUNTER: AtomicUsize = AtomicUsize::new(0);
-}
-
 impl Hitbox for QuadFace {
     fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
         let intersection = ray.intersection_plane(self.normal, self.point);
