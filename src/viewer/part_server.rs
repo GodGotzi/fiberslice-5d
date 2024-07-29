@@ -53,6 +53,7 @@ impl ToolpathHandle {
     }
 }
 
+// TODO also use vertex indices
 #[derive(Debug)]
 pub struct ToolpathServer {
     queue: Vec<(Receiver<Toolpath>, JoinHandle<()>)>,
