@@ -1,12 +1,10 @@
-use hitbox::HitboxNode;
 use tokio::task::JoinHandle;
 use winit::event::{DeviceEvent, ElementState, WindowEvent};
 
 use crate::{
     camera::CameraResult,
     prelude::{
-        create_event_bundle, Adapter, AdapterCreation, Error, EventReader, FrameHandle, SharedMut,
-        WgpuContext,
+        create_event_bundle, Adapter, AdapterCreation, Error, EventReader, FrameHandle, WgpuContext,
     },
     GlobalState, RootEvent,
 };
@@ -19,22 +17,12 @@ pub mod ray;
 #[derive(Debug)]
 pub enum PickingEvent {
     Pick,
-    AddHitbox(HitboxNode),
 }
 
 #[derive(Debug, Clone)]
 pub struct PickingState {
-    hitbox: SharedMut<hitbox::HitboxNode>,
     is_drag_left: bool,
     is_drag_right: bool,
-}
-
-impl PickingState {
-    pub fn add_hitbox(&self, hitbox: hitbox::HitboxNode) {
-        self.hitbox.write_with_fn(|root| {
-            root.add_node(hitbox);
-        });
-    }
 }
 
 pub struct PickingAdapter {
@@ -78,27 +66,29 @@ impl FrameHandle<'_, RootEvent, (), &CameraResult> for PickingAdapter {
             }) = self.camera_result.clone()
             {
                 if let WindowEvent::MouseInput { button, state, .. } = event {
+                    if let Some((x, y)) = global_state.ctx.mouse_position {
+                        let now = std::time::Instant::now();
+
+                        let ray = ray::Ray::from_view(viewport, (x, y), view, proj, eye);
+
+                        global_state.toolpath_server.clone().read_with_fn(|server| {
+                            let hit = server.root_hitbox().check_hit(&ray);
+
+                            if let Some(handle) = hit {
+                                let mut handle_read = handle.write();
+
+                                handle_read.mouse_clicked(*button, global_state, wgpu_context);
+                            }
+                        });
+
+                        println!("PickingAdapter: Picking took {:?}", now.elapsed());
+                    }
+
                     match button {
                         winit::event::MouseButton::Left => {
                             self.state.is_drag_left = *state == ElementState::Pressed;
                         }
                         winit::event::MouseButton::Right => {
-                            if let Some((x, y)) = global_state.ctx.mouse_position {
-                                let now = std::time::Instant::now();
-
-                                let ray = ray::Ray::from_view(viewport, (x, y), view, proj, eye);
-
-                                self.state.hitbox.read_with_fn(|root| {
-                                    let hit = root.check_hit(&ray);
-
-                                    if let Some(handle) = hit {
-                                        handle.read().picked(&global_state, wgpu_context);
-                                    }
-                                });
-
-                                println!("PickingAdapter: Picking took {:?}", now.elapsed());
-                            }
-
                             self.state.is_drag_right = *state == ElementState::Pressed;
                         }
                         _ => (),
@@ -147,8 +137,6 @@ impl FrameHandle<'_, RootEvent, (), &CameraResult> for PickingAdapter {
 impl<'a> Adapter<'a, RootEvent, PickingState, (), &CameraResult, PickingEvent> for PickingAdapter {
     fn create(_wgpu_context: &WgpuContext) -> AdapterCreation<PickingState, PickingEvent, Self> {
         let state = PickingState {
-            hitbox: SharedMut::from_inner(hitbox::HitboxNode::root()),
-
             is_drag_left: false,
             is_drag_right: false,
         };
@@ -183,12 +171,6 @@ impl<'a> Adapter<'a, RootEvent, PickingState, (), &CameraResult, PickingEvent> f
         event: PickingEvent,
     ) {
         match event {
-            PickingEvent::AddHitbox(box_) => {
-                self.state.hitbox.write_with_fn(|root| {
-                    root.add_node(box_.clone());
-                });
-                println!("PickingAdapter: Adding Interactive Mesh");
-            }
             PickingEvent::Pick => {}
         }
     }

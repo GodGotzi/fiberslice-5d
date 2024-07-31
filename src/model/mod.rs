@@ -2,8 +2,8 @@ use transform::{Rotate, Scale, Transform, Translate};
 
 use crate::{
     picking::{
-        hitbox::{Hitbox, HitboxNode, PickContext},
-        interactive::Pickable,
+        hitbox::{Hitbox, HitboxNode, InteractiveContext},
+        interactive::Interactive,
     },
     prelude::WgpuContext,
     render::buffer::{alloc::BufferAllocationID, BufferLocation},
@@ -261,7 +261,7 @@ pub enum TreeHandle<C> {
     },
 }
 
-impl Into<HitboxNode> for TreeHandle<PickContext> {
+impl Into<HitboxNode> for TreeHandle<InteractiveContext> {
     fn into(self) -> HitboxNode {
         match self {
             Self::Root {
@@ -292,15 +292,41 @@ impl Into<HitboxNode> for TreeHandle<PickContext> {
     }
 }
 
-impl<C: Pickable + Hitbox> Pickable for TreeHandle<C> {
-    fn picked(
-        &self,
-        global_state: &crate::GlobalState<crate::RootEvent>,
+impl<C: Interactive + Hitbox> Interactive for TreeHandle<C> {
+    fn mouse_clicked(
+        &mut self,
+        button: winit::event::MouseButton,
+        global_state: crate::GlobalState<crate::RootEvent>,
         wgpu_context: &WgpuContext,
     ) {
         match self {
-            Self::Root { ctx, .. } => ctx.picked(global_state, wgpu_context),
-            Self::Node { ctx, .. } => ctx.picked(global_state, wgpu_context),
+            Self::Root { ctx, .. } => ctx.mouse_clicked(button, global_state, wgpu_context),
+            Self::Node { ctx, .. } => ctx.mouse_clicked(button, global_state, wgpu_context),
+        }
+    }
+
+    fn mouse_delta(
+        &mut self,
+        button: winit::event::MouseButton,
+        delta: glam::Vec2,
+        global_state: crate::GlobalState<crate::RootEvent>,
+        wgpu_context: &WgpuContext,
+    ) {
+        match self {
+            Self::Root { ctx, .. } => ctx.mouse_delta(button, delta, global_state, wgpu_context),
+            Self::Node { ctx, .. } => ctx.mouse_delta(button, delta, global_state, wgpu_context),
+        }
+    }
+
+    fn mouse_scroll(
+        &mut self,
+        delta: f32,
+        global_state: crate::GlobalState<crate::RootEvent>,
+        wgpu_context: &WgpuContext,
+    ) {
+        match self {
+            Self::Root { ctx, .. } => ctx.mouse_scroll(delta, global_state, wgpu_context),
+            Self::Node { ctx, .. } => ctx.mouse_scroll(delta, global_state, wgpu_context),
         }
     }
 }

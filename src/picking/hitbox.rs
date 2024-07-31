@@ -6,7 +6,7 @@ use crate::{
 }; // Importing the BoundingBox struct from the geometry module in the crate
 
 use super::{
-    interactive::Pickable,
+    interactive::Interactive,
     queue::{HitBoxQueueEntry, HitboxQueue},
     ray::Ray,
 };
@@ -20,7 +20,7 @@ pub trait Hitbox: std::fmt::Debug + Send + Sync + Translate + Rotate + Scale {
     fn max(&self) -> Vec3;
 }
 
-pub type PickContext = SharedMut<Box<dyn Pickable>>;
+pub type InteractiveContext = SharedMut<Box<dyn Interactive>>;
 
 // Importing the Ray struct from the ray module in the super namespace
 // Function to check if a ray hits a hitbox node, returning an optional usize
@@ -34,11 +34,11 @@ pub enum HitboxNode {
     },
     ParentBox {
         inner_hitboxes: Vec<HitboxNode>,
-        ctx: PickContext,
+        ctx: InteractiveContext,
     },
     // Variant for individual boxes with a bounding box and an id
     Box {
-        ctx: PickContext,
+        ctx: InteractiveContext,
     },
 }
 
@@ -50,7 +50,7 @@ impl HitboxNode {
         }
     }
 
-    pub fn parent_box(ctx: PickContext, inner_hitboxes: Vec<HitboxNode>) -> Self {
+    pub fn parent_box(ctx: InteractiveContext, inner_hitboxes: Vec<HitboxNode>) -> Self {
         HitboxNode::ParentBox {
             inner_hitboxes,
             ctx,
@@ -65,7 +65,7 @@ impl HitboxNode {
         }
     }
 
-    pub fn check_hit(&self, ray: &Ray) -> Option<&PickContext> {
+    pub fn check_hit(&self, ray: &Ray) -> Option<&InteractiveContext> {
         let mut queue = HitboxQueue::new(); // Creating a new HitboxQueue
 
         if let HitboxNode::Root { inner_hitboxes } = self {

@@ -1,4 +1,5 @@
-use glam::{Quat, Vec3};
+use glam::{Quat, Vec2, Vec3};
+use winit::event::MouseButton;
 
 use crate::{
     model::{
@@ -6,37 +7,57 @@ use crate::{
         Expandable,
     },
     prelude::WgpuContext,
-    GlobalState, RootEvent,
 };
 
 use super::{
-    hitbox::{Hitbox, PickContext},
+    hitbox::{Hitbox, InteractiveContext},
     ray::Ray,
 };
 
-pub trait Pickable: Hitbox {
-    fn picked(&self, global_state: &GlobalState<RootEvent>, wgpu_context: &WgpuContext);
+pub trait Interactive: Hitbox {
+    fn mouse_clicked(
+        &mut self,
+        button: MouseButton,
+        global_state: crate::GlobalState<crate::RootEvent>,
+        wgpu_context: &WgpuContext,
+    ) {
+    }
+    fn mouse_scroll(
+        &mut self,
+        delta: f32,
+        global_state: crate::GlobalState<crate::RootEvent>,
+        wgpu_context: &WgpuContext,
+    ) {
+    }
+    fn mouse_delta(
+        &mut self,
+        button: MouseButton,
+        delta: Vec2,
+        global_state: crate::GlobalState<crate::RootEvent>,
+        wgpu_context: &WgpuContext,
+    ) {
+    }
 }
 
-impl Translate for PickContext {
+impl Translate for InteractiveContext {
     fn translate(&mut self, translation: Vec3) {
         self.write().translate(translation)
     }
 }
 
-impl Rotate for PickContext {
+impl Rotate for InteractiveContext {
     fn rotate(&mut self, rotation: Quat) {
         self.write().rotate(rotation)
     }
 }
 
-impl Scale for PickContext {
+impl Scale for InteractiveContext {
     fn scale(&mut self, scale: Vec3) {
         self.write().scale(scale)
     }
 }
 
-impl Hitbox for PickContext {
+impl Hitbox for InteractiveContext {
     fn check_hit(&self, ray: &Ray) -> Option<f32> {
         self.read().check_hit(ray)
     }
@@ -62,13 +83,39 @@ impl Hitbox for PickContext {
     }
 }
 
-impl Pickable for PickContext {
-    fn picked(&self, global_state: &GlobalState<RootEvent>, wgpu_context: &WgpuContext) {
-        self.read().picked(global_state, wgpu_context)
+impl Interactive for InteractiveContext {
+    fn mouse_clicked(
+        &mut self,
+        button: MouseButton,
+        global_state: crate::GlobalState<crate::RootEvent>,
+        wgpu_context: &WgpuContext,
+    ) {
+        self.write()
+            .mouse_clicked(button, global_state, wgpu_context)
+    }
+
+    fn mouse_scroll(
+        &mut self,
+        delta: f32,
+        global_state: crate::GlobalState<crate::RootEvent>,
+        wgpu_context: &WgpuContext,
+    ) {
+        self.write().mouse_scroll(delta, global_state, wgpu_context)
+    }
+
+    fn mouse_delta(
+        &mut self,
+        button: MouseButton,
+        delta: Vec2,
+        global_state: crate::GlobalState<crate::RootEvent>,
+        wgpu_context: &WgpuContext,
+    ) {
+        self.write()
+            .mouse_delta(button, delta, global_state, wgpu_context)
     }
 }
 
-impl Expandable for PickContext {
+impl Expandable for InteractiveContext {
     fn expand(&mut self, _box: &Self) {
         self.write().expand(_box)
     }

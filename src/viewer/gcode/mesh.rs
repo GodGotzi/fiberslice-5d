@@ -9,7 +9,7 @@ use crate::{
         transform::{Rotate, Scale, Translate},
         TreeObject,
     },
-    picking::hitbox::{Hitbox, PickContext},
+    picking::hitbox::{Hitbox, InteractiveContext},
     render::{buffer::BufferLocation, vertex::Vertex},
     viewer::{ToVisual, Visual},
 };
@@ -283,7 +283,7 @@ impl PathModul {
     pub(super) fn to_vertices(
         &self,
         settings: &DisplaySettings,
-    ) -> (Vec<Vertex>, TreeObject<Vertex, PickContext>) {
+    ) -> (Vec<Vertex>, TreeObject<Vertex, InteractiveContext>) {
         let mut vertices = Vec::new();
         let mut offsets: Vec<usize> = Vec::new();
         let mut sub_models = Vec::new();
@@ -343,13 +343,15 @@ impl PathModul {
                 bounding_box.expand_min(path_hitbox.min());
                 bounding_box.expand_max(path_hitbox.max());
 
-                let sub_model = TreeObject::<Vertex, PickContext>::Node {
+                let sub_model = TreeObject::<Vertex, InteractiveContext>::Node {
                     location: BufferLocation {
                         offset: vertices.len(),
                         size: path_mesh_vertices.len(),
                     },
                     sub_models: Vec::new(),
-                    ctx: PickContext::from_inner(Box::new(PathContext { box_: path_hitbox })),
+                    ctx: InteractiveContext::from_inner(Box::new(PathContext {
+                        box_: path_hitbox,
+                    })),
                 };
 
                 sub_models.push(sub_model);
@@ -366,13 +368,13 @@ impl PathModul {
             }
         }
 
-        let model = TreeObject::<Vertex, PickContext>::Node {
+        let model = TreeObject::<Vertex, InteractiveContext>::Node {
             location: BufferLocation {
                 offset: 0,
                 size: vertices.len(),
             },
             sub_models,
-            ctx: PickContext::from_inner(Box::new(PathContext { box_: bounding_box })),
+            ctx: InteractiveContext::from_inner(Box::new(PathContext { box_: bounding_box })),
         };
 
         (vertices, model)

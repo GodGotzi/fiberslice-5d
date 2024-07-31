@@ -14,8 +14,8 @@ use crate::{
     geometry::BoundingHitbox,
     model::{IntoHandle, TreeHandle, TreeObject},
     picking::{
-        hitbox::{Hitbox, PickContext},
-        interactive::Pickable,
+        hitbox::{Hitbox, HitboxNode, InteractiveContext},
+        interactive::Interactive,
     },
     prelude::WgpuContext,
     render::{
@@ -44,7 +44,7 @@ pub struct ToolpathHandle {
     pub line_breaks: Vec<usize>,
 
     pub wire_model: WireModel,
-    handle: TreeHandle<PickContext>,
+    handle: TreeHandle<InteractiveContext>,
 }
 
 impl ToolpathHandle {
@@ -60,6 +60,8 @@ pub struct ToolpathServer {
 
     buffer: DynamicBuffer<Vertex, BufferDynamicAllocator>,
 
+    root_hitbox: HitboxNode,
+
     parts: HashMap<String, ToolpathHandle>,
     focused: Option<String>,
 }
@@ -73,6 +75,7 @@ impl ToolpathServer {
                 "Toolpath Buffer",
                 device,
             ),
+            root_hitbox: HitboxNode::root(),
             parts: HashMap::new(),
             focused: None,
         }
@@ -112,7 +115,7 @@ impl ToolpathServer {
         &mut self,
         part: Toolpath,
         wgpu_context: &WgpuContext,
-    ) -> Result<TreeHandle<crate::prelude::SharedMut<Box<dyn Pickable>>>, Error> {
+    ) -> Result<TreeHandle<crate::prelude::SharedMut<Box<dyn Interactive>>>, Error> {
         let path: PathBuf = part.origin_path.into();
         let file_name = if let Some(path) = path.file_name() {
             path.to_string()
@@ -208,7 +211,7 @@ impl ToolpathServer {
                     )),
                 );
 
-                global_state.picking_state.add_hitbox(handle.into());
+                self.root_hitbox.add_node(handle.into());
             }
         }
 
@@ -259,5 +262,9 @@ impl ToolpathServer {
 
     pub fn read_buffer(&self) -> &DynamicBuffer<Vertex, BufferDynamicAllocator> {
         &self.buffer
+    }
+
+    pub fn root_hitbox(&self) -> &HitboxNode {
+        &self.root_hitbox
     }
 }

@@ -8,8 +8,8 @@ use crate::{
         TreeObject,
     },
     picking::{
-        hitbox::{Hitbox, PickContext},
-        interactive::Pickable,
+        hitbox::{Hitbox, InteractiveContext},
+        interactive::Interactive,
     },
     prelude::{SharedMut, WgpuContext},
     render::vertex::Vertex,
@@ -19,7 +19,6 @@ use self::{
     instruction::{InstructionModul, InstructionType},
     movement::Movements,
     path::{Line, RawPath},
-    state::PrintState,
 };
 
 use crate::geometry::BoundingHitbox;
@@ -48,7 +47,7 @@ pub struct Toolpath {
     pub origin_path: String,
     pub raw: GCodeRaw,
     pub wire_model: WireModel,
-    pub model: TreeObject<Vertex, SharedMut<Box<dyn Pickable>>>,
+    pub model: TreeObject<Vertex, SharedMut<Box<dyn Interactive>>>,
     pub center_mass: Vec3,
 }
 
@@ -65,7 +64,7 @@ impl Toolpath {
 
         // let mut layers: HashMap<usize, LayerModel> = HashMap::new();
 
-        let mut root: TreeObject<Vertex, PickContext> = TreeObject::Root {
+        let mut root: TreeObject<Vertex, InteractiveContext> = TreeObject::Root {
             geometry: Vec::new(),
             sub_models: Vec::new(),
             ctx: SharedMut::from_inner(Box::new(PathContext {
@@ -145,18 +144,21 @@ impl<T: Hitbox> Hitbox for PathContext<T> {
     }
 }
 
-impl<T: Hitbox + ToVisual<72, 48>> Pickable for PathContext<T> {
-    fn picked(
-        &self,
-        global_state: &crate::GlobalState<crate::RootEvent>,
+impl<T: Hitbox + ToVisual<72, 48>> Interactive for PathContext<T> {
+    fn mouse_clicked(
+        &mut self,
+        button: winit::event::MouseButton,
+        global_state: crate::GlobalState<crate::RootEvent>,
         wgpu_context: &WgpuContext,
     ) {
-        let visual = self.box_.to_visual();
+        if button == winit::event::MouseButton::Left {
+            let visual = self.box_.to_visual();
 
-        global_state
-            .widget_server
-            .write()
-            .set_select_visual(visual, &wgpu_context.queue);
+            global_state
+                .widget_server
+                .write()
+                .set_select_visual(visual, &wgpu_context.queue);
+        }
     }
 }
 
