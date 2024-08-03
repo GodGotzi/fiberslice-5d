@@ -4,6 +4,12 @@ use std::{
     path::Path,
 };
 
+use rether::{
+    alloc::BufferDynamicAllocator,
+    picking::{Hitbox, HitboxNode},
+    vertex::Vertex,
+    Buffer, {IntoHandle, TreeHandle, TreeModel},
+};
 use tokio::{
     sync::oneshot::{error::TryRecvError, Receiver},
     task::JoinHandle,
@@ -11,17 +17,7 @@ use tokio::{
 use uni_path::PathBuf;
 
 use crate::{
-    geometry::BoundingHitbox,
-    model::{IntoHandle, TreeHandle, TreeObject},
-    picking::{
-        hitbox::{Hitbox, HitboxNode, InteractiveContext},
-        interactive::Interactive,
-    },
-    prelude::WgpuContext,
-    render::{
-        buffer::{alloc::BufferDynamicAllocator, DynamicBuffer},
-        vertex::Vertex,
-    },
+    geometry::BoundingHitbox, picking::interact::InteractContext, prelude::WgpuContext,
     GlobalState, RootEvent,
 };
 
@@ -44,7 +40,7 @@ pub struct ToolpathHandle {
     pub line_breaks: Vec<usize>,
 
     pub wire_model: WireModel,
-    handle: TreeHandle<InteractiveContext>,
+    handle: TreeHandle<InteractContext>,
 }
 
 impl ToolpathHandle {
@@ -58,9 +54,9 @@ impl ToolpathHandle {
 pub struct ToolpathServer {
     queue: Vec<(Receiver<Toolpath>, JoinHandle<()>)>,
 
-    buffer: DynamicBuffer<Vertex, BufferDynamicAllocator>,
+    buffer: rether::Buffer<Vertex, rether::alloc::BufferDynamicAllocator>,
 
-    root_hitbox: HitboxNode,
+    root_hitbox: HitboxNode<InteractContext>,
 
     parts: HashMap<String, ToolpathHandle>,
     focused: Option<String>,
@@ -70,11 +66,7 @@ impl ToolpathServer {
     pub fn new(device: &wgpu::Device) -> Self {
         Self {
             queue: Vec::new(),
-            buffer: DynamicBuffer::new(
-                BufferDynamicAllocator::default(),
-                "Toolpath Buffer",
-                device,
-            ),
+            buffer: Buffer::new("Toolpath Buffer", device),
             root_hitbox: HitboxNode::root(),
             parts: HashMap::new(),
             focused: None,
@@ -115,7 +107,7 @@ impl ToolpathServer {
         &mut self,
         part: Toolpath,
         wgpu_context: &WgpuContext,
-    ) -> Result<TreeHandle<crate::prelude::SharedMut<Box<dyn Interactive>>>, Error> {
+    ) -> Result<TreeHandle<InteractContext>, Error> {
         let path: PathBuf = part.origin_path.into();
         let file_name = if let Some(path) = path.file_name() {
             path.to_string()
@@ -133,7 +125,7 @@ impl ToolpathServer {
             counter += 1;
         }
 
-        if let TreeObject::Root { geometry, .. } = &part.model {
+        if let TreeModel::Root { geometry, .. } = &part.model {
             self.buffer
                 .allocate_init(&name, geometry, &wgpu_context.device, &wgpu_context.queue);
         } else {
@@ -260,11 +252,11 @@ impl ToolpathServer {
         &mut self.focused
     }
 
-    pub fn read_buffer(&self) -> &DynamicBuffer<Vertex, BufferDynamicAllocator> {
+    pub fn read_buffer(&self) -> &Buffer<Vertex, BufferDynamicAllocator> {
         &self.buffer
     }
 
-    pub fn root_hitbox(&self) -> &HitboxNode {
+    pub fn root_hitbox(&self) -> &HitboxNode<InteractContext> {
         &self.root_hitbox
     }
 }

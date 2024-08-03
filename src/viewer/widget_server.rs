@@ -1,18 +1,16 @@
 use std::collections::HashMap;
 
-use crate::{
-    model::TreeHandle,
-    picking::hitbox::HitboxNode,
-    render::{buffer::DynamicBuffer, vertex::Vertex},
-};
+use rether::{picking::HitboxNode, vertex::Vertex, Buffer, TreeHandle};
+
+use crate::picking::interact::InteractContext;
 
 use super::Visual;
 
 mod layout {
 
     mod wire {
-        use crate::render::{
-            buffer::alloc::{BufferAlloc, BufferAllocation},
+        use rether::{
+            alloc::{BufferAlloc, BufferAllocation},
             vertex::Vertex,
         };
 
@@ -26,7 +24,7 @@ mod layout {
             size: 48,
         };
 
-        #[derive(Debug)]
+        #[derive(Debug, Default)]
         pub struct WireAllocator;
 
         impl BufferAlloc<Vertex> for WireAllocator {
@@ -54,8 +52,12 @@ mod layout {
         size: 72,
     };
 
-    #[derive(Debug)]
+    #[derive(Debug, Default)]
     pub struct WidgetAllocator;
+    use rether::{
+        alloc::{BufferAlloc, BufferAllocation},
+        vertex::Vertex,
+    };
     pub use wire::WireAllocator;
 
     impl BufferAlloc<Vertex> for WidgetAllocator {
@@ -71,11 +73,6 @@ mod layout {
             HOVER_BOX_ALLOCATION.size + SELECT_BOX_ALLOCATION.size
         }
     }
-
-    use crate::render::{
-        buffer::alloc::{BufferAlloc, BufferAllocation},
-        vertex::Vertex,
-    };
 }
 
 #[derive(Debug)]
@@ -88,9 +85,9 @@ pub struct WidgetHandle {
 
 #[derive(Debug)]
 pub struct WidgetServer {
-    widget_hitbox: HitboxNode,
-    buffer: DynamicBuffer<Vertex, layout::WidgetAllocator>,
-    line_buffer: DynamicBuffer<Vertex, layout::WireAllocator>,
+    widget_hitbox: HitboxNode<InteractContext>,
+    buffer: Buffer<Vertex, layout::WidgetAllocator>,
+    line_buffer: Buffer<Vertex, layout::WireAllocator>,
 
     widgets: HashMap<String, WidgetHandle>,
 }
@@ -99,37 +96,85 @@ impl WidgetServer {
     pub fn new(device: &wgpu::Device) -> Self {
         Self {
             widget_hitbox: HitboxNode::root(),
-            buffer: DynamicBuffer::new(layout::WidgetAllocator, "Widget Buffer", device),
-            line_buffer: DynamicBuffer::new(layout::WireAllocator, "Widget Line Buffer", device),
+            buffer: Buffer::new("Widget Buffer", device),
+            line_buffer: Buffer::new("Widget Line Buffer", device),
             widgets: HashMap::new(),
         }
     }
 
     pub fn set_hover_visual(&mut self, visual: Visual<72, 48>, queue: &wgpu::Queue) {
-        self.buffer.write(queue, "select_box", &visual.vertices);
-        self.line_buffer.write(queue, "select_box", &visual.wires);
+        self.buffer.write(
+            "hover_box",
+            &rether::Geometry::Simple {
+                vertices: visual.vertices.to_vec(),
+            },
+            queue,
+        );
+        self.line_buffer.write(
+            "hover_box",
+            &rether::Geometry::Simple {
+                vertices: visual.wires.to_vec(),
+            },
+            queue,
+        );
     }
 
     pub fn set_select_visual(&mut self, visual: Visual<72, 48>, queue: &wgpu::Queue) {
-        self.buffer.write(queue, "hover_box", &visual.vertices);
-        self.line_buffer.write(queue, "hover_box", &visual.wires);
+        self.buffer.write(
+            "select_box",
+            &rether::Geometry::Simple {
+                vertices: visual.vertices.to_vec(),
+            },
+            queue,
+        );
+        self.line_buffer.write(
+            "select_box",
+            &rether::Geometry::Simple {
+                vertices: visual.wires.to_vec(),
+            },
+            queue,
+        );
     }
 
     pub fn reset_hover_visual(&mut self, queue: &wgpu::Queue) {
-        self.buffer.write(queue, "hover_box", &[]);
-        self.line_buffer.write(queue, "hover_box", &[]);
+        self.buffer.write(
+            "hover_box",
+            &rether::Geometry::Simple {
+                vertices: Vec::new(),
+            },
+            queue,
+        );
+        self.line_buffer.write(
+            "hover_box",
+            &rether::Geometry::Simple {
+                vertices: Vec::new(),
+            },
+            queue,
+        );
     }
 
     pub fn reset_select_visual(&mut self, queue: &wgpu::Queue) {
-        self.buffer.write(queue, "select_box", &[]);
-        self.line_buffer.write(queue, "select_box", &[]);
+        self.buffer.write(
+            "select_box",
+            &rether::Geometry::Simple {
+                vertices: Vec::new(),
+            },
+            queue,
+        );
+        self.line_buffer.write(
+            "select_box",
+            &rether::Geometry::Simple {
+                vertices: Vec::new(),
+            },
+            queue,
+        );
     }
 
-    pub fn read_buffer(&self) -> &DynamicBuffer<Vertex, layout::WidgetAllocator> {
+    pub fn read_buffer(&self) -> &Buffer<Vertex, layout::WidgetAllocator> {
         &self.buffer
     }
 
-    pub fn read_line_buffer(&self) -> &DynamicBuffer<Vertex, layout::WireAllocator> {
+    pub fn read_line_buffer(&self) -> &Buffer<Vertex, layout::WireAllocator> {
         &self.line_buffer
     }
 }

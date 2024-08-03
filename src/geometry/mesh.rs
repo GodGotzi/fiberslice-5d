@@ -1,6 +1,5 @@
 use glam::{Vec3, Vec4};
-
-use crate::render::vertex::Vertex;
+use rether::vertex::Vertex;
 
 pub trait Mesh<const V: usize> {
     fn to_triangle_vertices(&self) -> [Vertex; V];

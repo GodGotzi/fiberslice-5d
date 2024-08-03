@@ -9,10 +9,7 @@ use crate::{
     GlobalState, RootEvent,
 };
 
-pub mod hitbox;
-pub mod interactive;
-mod queue;
-pub mod ray;
+pub mod interact;
 
 #[derive(Debug)]
 pub enum PickingEvent {
@@ -69,7 +66,8 @@ impl FrameHandle<'_, RootEvent, (), &CameraResult> for PickingAdapter {
                     if let Some((x, y)) = global_state.ctx.mouse_position {
                         let now = std::time::Instant::now();
 
-                        let ray = ray::Ray::from_view(viewport, (x, y), view, proj, eye);
+                        let ray =
+                            rether::picking::Ray::from_view(viewport, (x, y), view, proj, eye);
 
                         global_state.toolpath_server.clone().read_with_fn(|server| {
                             let hit = server.root_hitbox().check_hit(&ray);
@@ -77,7 +75,7 @@ impl FrameHandle<'_, RootEvent, (), &CameraResult> for PickingAdapter {
                             if let Some(handle) = hit {
                                 let mut handle_read = handle.write();
 
-                                handle_read.mouse_clicked(*button, global_state, wgpu_context);
+                                handle_read.mouse_clicked(*button);
                             }
                         });
 

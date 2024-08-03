@@ -1,8 +1,7 @@
 use std::collections::BTreeSet;
 
 use egui_code_editor::Syntax;
-
-use crate::render::vertex::Vertex;
+use rether::vertex::Vertex;
 
 pub mod gcode;
 pub mod part_server;

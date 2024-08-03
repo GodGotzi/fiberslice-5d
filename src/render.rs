@@ -1,9 +1,8 @@
 use std::time::Instant;
 
-use buffer::{alloc::BufferDynamicAllocator, DynamicBuffer};
 use glam::{Mat4, Vec3};
 use light::LightUniform;
-use vertex::Vertex;
+use rether::vertex::Vertex;
 use wgpu::{util::DeviceExt, CommandEncoder};
 
 use crate::{
@@ -13,10 +12,8 @@ use crate::{
     GlobalState, RootEvent,
 };
 
-pub mod buffer;
 pub mod light;
 pub mod texture;
-pub mod vertex;
 
 const MSAA_SAMPLE_COUNT: u32 = 1;
 
@@ -68,8 +65,6 @@ pub struct RenderAdapter {
     back_cull_pipline: wgpu::RenderPipeline,
     no_cull_pipline: wgpu::RenderPipeline,
     wire_pipline: wgpu::RenderPipeline,
-
-    debug_buffer: DynamicBuffer<Vertex, BufferDynamicAllocator>,
 
     render_state: RenderState,
 
@@ -438,12 +433,6 @@ impl<'a> Adapter<'a, RootEvent, (), (), (Option<UiUpdateOutput>, &CameraResult),
             MSAA_SAMPLE_COUNT,
         );
 
-        let debug_buffer = DynamicBuffer::new(
-            BufferDynamicAllocator::default(),
-            "Debug Buffer",
-            &context.device,
-        );
-
         let (reader, writer) = create_event_bundle::<RenderEvent>();
 
         (
@@ -475,8 +464,6 @@ impl<'a> Adapter<'a, RootEvent, (), (), (Option<UiUpdateOutput>, &CameraResult),
                     wgpu::PrimitiveTopology::LineList,
                     None,
                 ),
-
-                debug_buffer,
 
                 render_state,
 

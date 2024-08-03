@@ -1,16 +1,17 @@
 use glam::{vec4, Vec3, Vec4};
+use rether::{
+    picking::{Hitbox, Ray},
+    transform::{Rotate, Scale, Translate},
+    vertex::Vertex,
+    BufferLocation, TreeModel,
+};
 
 use crate::{
     geometry::{
-        mesh::{construct_triangle_vertices, construct_wire_vertices, Mesh, WireMesh},
+        mesh::{construct_triangle_vertices, Mesh, WireMesh},
         BoundingHitbox, ProfileExtrusion, QuadFace, SelectBox,
     },
-    model::{
-        transform::{Rotate, Scale, Translate},
-        TreeObject,
-    },
-    picking::hitbox::{Hitbox, InteractiveContext},
-    render::{buffer::BufferLocation, vertex::Vertex},
+    picking::interact::InteractContext,
     viewer::{ToVisual, Visual},
 };
 
@@ -280,10 +281,10 @@ impl Mesh<12> for PathConnectionMesh {
 }
 
 impl PathModul {
-    pub(super) fn to_vertices(
+    pub(super) fn to_model(
         &self,
         settings: &DisplaySettings,
-    ) -> (Vec<Vertex>, TreeObject<Vertex, InteractiveContext>) {
+    ) -> TreeModel<Vertex, InteractContext> {
         let mut vertices = Vec::new();
         let mut offsets: Vec<usize> = Vec::new();
         let mut sub_models = Vec::new();
@@ -343,15 +344,13 @@ impl PathModul {
                 bounding_box.expand_min(path_hitbox.min());
                 bounding_box.expand_max(path_hitbox.max());
 
-                let sub_model = TreeObject::<Vertex, InteractiveContext>::Node {
+                let sub_model = TreeModel::<Vertex, InteractContext>::Node {
                     location: BufferLocation {
                         offset: vertices.len(),
                         size: path_mesh_vertices.len(),
                     },
                     sub_models: Vec::new(),
-                    ctx: InteractiveContext::from_inner(Box::new(PathContext {
-                        box_: path_hitbox,
-                    })),
+                    ctx: InteractContext::from_inner(Box::new(PathContext { box_: path_hitbox })),
                 };
 
                 sub_models.push(sub_model);
@@ -368,16 +367,11 @@ impl PathModul {
             }
         }
 
-        let model = TreeObject::<Vertex, InteractiveContext>::Node {
-            location: BufferLocation {
-                offset: 0,
-                size: vertices.len(),
-            },
+        TreeModel::<Vertex, InteractContext>::Root {
+            geometry: rether::Geometry::Simple { vertices },
             sub_models,
-            ctx: InteractiveContext::from_inner(Box::new(PathContext { box_: bounding_box })),
-        };
-
-        (vertices, model)
+            ctx: InteractContext::from_inner(Box::new(PathContext { box_: bounding_box })),
+        }
     }
 }
 
@@ -507,7 +501,7 @@ impl Scale for PathHitbox {
 }
 
 impl Hitbox for PathHitbox {
-    fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
+    fn check_hit(&self, ray: &Ray) -> Option<f32> {
         let faces = [
             &self.north_west,
             &self.north_east,

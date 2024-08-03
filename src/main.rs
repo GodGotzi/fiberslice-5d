@@ -21,7 +21,6 @@ mod control;
 mod env;
 mod error;
 mod geometry;
-mod model;
 mod picking;
 mod prelude;
 mod render;
@@ -36,7 +35,6 @@ mod window;
 use winit::{
     application::ApplicationHandler,
     error::EventLoopError,
-    event::WindowEvent,
     event_loop::{EventLoop, EventLoopProxy},
 };
 

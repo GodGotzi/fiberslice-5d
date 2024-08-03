@@ -1,5 +1,3 @@
-use std::sync::atomic::AtomicUsize;
-
 use glam::{vec3, vec4, Vec3, Vec4};
 use mesh::{construct_triangle_vertices, construct_wire_vertices, WireMesh};
 
@@ -7,13 +5,13 @@ pub mod r#box;
 pub mod mesh;
 
 pub use r#box::BoundingHitbox;
-
-use crate::{
-    model::transform::{Rotate, Scale, Translate},
-    picking::hitbox::Hitbox,
-    render::vertex::Vertex,
-    viewer::gcode::mesh::ProfileCross,
+use rether::{
+    picking::Hitbox,
+    transform::{Rotate, Scale, Translate},
+    vertex::Vertex,
 };
+
+use crate::viewer::gcode::mesh::ProfileCross;
 
 #[derive(Debug, Clone, Copy)]
 pub struct QuadFace {
@@ -44,7 +42,7 @@ impl Scale for QuadFace {
 }
 
 impl Hitbox for QuadFace {
-    fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
+    fn check_hit(&self, ray: &rether::picking::Ray) -> Option<f32> {
         let intersection = ray.intersection_plane(self.normal, self.point);
 
         const EPSILON: f32 = 0.0001;
