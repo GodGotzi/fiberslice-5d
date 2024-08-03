@@ -49,8 +49,8 @@ impl GlobalContext {
 
 pub struct WgpuContext {
     pub window: Arc<Window>,
-    pub device: wgpu::Device,
-    pub queue: wgpu::Queue,
+    pub device: Arc<wgpu::Device>,
+    pub queue: Arc<wgpu::Queue>,
     pub adapter: wgpu::Adapter,
 
     pub surface: wgpu::Surface<'static>,
@@ -107,8 +107,8 @@ impl WgpuContext {
 
         Ok(Self {
             window,
-            device,
-            queue,
+            device: Arc::new(device),
+            queue: Arc::new(queue),
             adapter,
             surface,
             surface_config,

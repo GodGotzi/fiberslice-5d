@@ -11,6 +11,7 @@ use picking::PickingEvent;
 use settings::tree::QuickSettings;
 use std::{sync::Arc, time::Instant};
 use ui::UiEvent;
+use wgpu::Device;
 
 use prelude::{Adapter, EventWriter, FrameHandle, GlobalContext, SharedMut, Viewport, WgpuContext};
 
@@ -46,6 +47,10 @@ pub enum RootEvent {
 #[derive(Debug, Clone)]
 pub struct GlobalState<T: 'static> {
     pub proxy: EventLoopProxy<T>,
+
+    pub window: Arc<winit::window::Window>,
+    pub device: Arc<wgpu::Device>,
+    pub queue: Arc<wgpu::Queue>,
 
     pub picking_state: picking::PickingState,
     pub picking_event_writer: EventWriter<PickingEvent>,
@@ -98,6 +103,7 @@ async fn main() -> Result<(), EventLoopError> {
 struct ApplicationState {
     window: Arc<winit::window::Window>,
     wgpu_context: WgpuContext,
+
     global_state: GlobalState<RootEvent>,
 
     ui_adapter: ui::UiAdapter,
@@ -256,6 +262,10 @@ impl ApplicationHandler<RootEvent> for Application {
 
         let global_state = GlobalState {
             proxy: self.proxy.clone(),
+
+            window: window.clone(),
+            device: wgpu_context.device.clone(),
+            queue: wgpu_context.queue.clone(),
 
             picking_state,
             picking_event_writer,
