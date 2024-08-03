@@ -1,9 +1,7 @@
 use std::time::Instant;
 
-use buffer::{alloc::BufferDynamicAllocator, DynamicBuffer};
 use glam::{Mat4, Vec3};
-use light::LightUniform;
-use vertex::Vertex;
+use rether::{light::LightUniform, texture::Texture, vertex::Vertex};
 use wgpu::{util::DeviceExt, CommandEncoder};
 
 use crate::{
@@ -12,11 +10,6 @@ use crate::{
     ui::UiUpdateOutput,
     GlobalState, RootEvent,
 };
-
-pub mod buffer;
-pub mod light;
-pub mod texture;
-pub mod vertex;
 
 const MSAA_SAMPLE_COUNT: u32 = 1;
 
@@ -30,7 +23,7 @@ struct RenderState {
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
 
-    light_uniform: light::LightUniform,
+    light_uniform: LightUniform,
     light_buffer: wgpu::Buffer,
     light_bind_group: wgpu::BindGroup,
 }
@@ -68,8 +61,6 @@ pub struct RenderAdapter {
     back_cull_pipline: wgpu::RenderPipeline,
     no_cull_pipline: wgpu::RenderPipeline,
     wire_pipline: wgpu::RenderPipeline,
-
-    debug_buffer: DynamicBuffer<Vertex, BufferDynamicAllocator>,
 
     render_state: RenderState,
 
@@ -268,38 +259,36 @@ impl<'a> FrameHandle<'a, RootEvent, (), (Option<UiUpdateOutput>, &CameraResult)>
         match event {
             winit::event::WindowEvent::Resized(size) => {
                 if size.width > 0 && size.height > 0 {
-                    self.render_state.depth_texture_view = texture::Texture::create_depth_texture(
+                    self.render_state.depth_texture_view = Texture::create_depth_texture(
                         &wgpu_context.device,
                         &wgpu_context.surface_config,
                         MSAA_SAMPLE_COUNT,
                         "depth_texture",
                     );
-                    self.multisampled_framebuffer =
-                        texture::Texture::create_multisampled_framebuffer(
-                            &wgpu_context.device,
-                            &wgpu_context.surface_config,
-                            MSAA_SAMPLE_COUNT,
-                            "multisampled_framebuffer",
-                        );
+                    self.multisampled_framebuffer = Texture::create_multisampled_framebuffer(
+                        &wgpu_context.device,
+                        &wgpu_context.surface_config,
+                        MSAA_SAMPLE_COUNT,
+                        "multisampled_framebuffer",
+                    );
                 }
             }
             winit::event::WindowEvent::ScaleFactorChanged { .. } => {
                 let size = wgpu_context.window.inner_size();
 
                 if size.width > 0 && size.height > 0 {
-                    self.render_state.depth_texture_view = texture::Texture::create_depth_texture(
+                    self.render_state.depth_texture_view = Texture::create_depth_texture(
                         &wgpu_context.device,
                         &wgpu_context.surface_config,
                         MSAA_SAMPLE_COUNT,
                         "depth_texture",
                     );
-                    self.multisampled_framebuffer =
-                        texture::Texture::create_multisampled_framebuffer(
-                            &wgpu_context.device,
-                            &wgpu_context.surface_config,
-                            MSAA_SAMPLE_COUNT,
-                            "multisampled_framebuffer",
-                        );
+                    self.multisampled_framebuffer = Texture::create_multisampled_framebuffer(
+                        &wgpu_context.device,
+                        &wgpu_context.surface_config,
+                        MSAA_SAMPLE_COUNT,
+                        "multisampled_framebuffer",
+                    );
                 }
             }
             _ => {}
@@ -311,7 +300,7 @@ impl<'a> Adapter<'a, RootEvent, (), (), (Option<UiUpdateOutput>, &CameraResult),
     for RenderAdapter
 {
     fn create(context: &WgpuContext) -> AdapterCreation<(), RenderEvent, Self> {
-        let depth_texture_view = texture::Texture::create_depth_texture(
+        let depth_texture_view = Texture::create_depth_texture(
             &context.device,
             &context.surface_config,
             MSAA_SAMPLE_COUNT,
@@ -425,7 +414,7 @@ impl<'a> Adapter<'a, RootEvent, (), (), (Option<UiUpdateOutput>, &CameraResult),
                     push_constant_ranges: &[],
                 });
 
-        let multisampled_framebuffer = texture::Texture::create_multisampled_framebuffer(
+        let multisampled_framebuffer = Texture::create_multisampled_framebuffer(
             &context.device,
             &context.surface_config,
             MSAA_SAMPLE_COUNT,
@@ -436,12 +425,6 @@ impl<'a> Adapter<'a, RootEvent, (), (), (Option<UiUpdateOutput>, &CameraResult),
             &context.device,
             context.surface_format,
             MSAA_SAMPLE_COUNT,
-        );
-
-        let debug_buffer = DynamicBuffer::new(
-            BufferDynamicAllocator::default(),
-            "Debug Buffer",
-            &context.device,
         );
 
         let (reader, writer) = create_event_bundle::<RenderEvent>();
@@ -475,8 +458,6 @@ impl<'a> Adapter<'a, RootEvent, (), (), (Option<UiUpdateOutput>, &CameraResult),
                     wgpu::PrimitiveTopology::LineList,
                     None,
                 ),
-
-                debug_buffer,
 
                 render_state,
 

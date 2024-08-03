@@ -1,28 +1,25 @@
 use std::{fmt::Debug, str::Lines};
 
 use glam::Vec3;
-
-use crate::{
-    model::{
+use rether::{
+    picking::{Hitbox, Ray},
+    vertex::Vertex,
+    {
         transform::{Rotate, Scale, Translate},
-        TreeObject,
+        TreeModel,
     },
-    picking::{
-        hitbox::{Hitbox, PickContext},
-        interactive::Pickable,
-    },
-    prelude::{SharedMut, WgpuContext},
-    render::vertex::Vertex,
 };
 
 use self::{
     instruction::{InstructionModul, InstructionType},
     movement::Movements,
     path::{Line, RawPath},
-    state::PrintState,
 };
 
-use crate::geometry::BoundingHitbox;
+use crate::{
+    geometry::BoundingHitbox,
+    picking::interact::{InteractContext, Interactive},
+};
 
 use super::ToVisual;
 
@@ -48,7 +45,7 @@ pub struct Toolpath {
     pub origin_path: String,
     pub raw: GCodeRaw,
     pub wire_model: WireModel,
-    pub model: TreeObject<Vertex, SharedMut<Box<dyn Pickable>>>,
+    pub model: TreeModel<Vertex, InteractContext>,
     pub center_mass: Vec3,
 }
 
@@ -65,10 +62,12 @@ impl Toolpath {
 
         // let mut layers: HashMap<usize, LayerModel> = HashMap::new();
 
-        let mut root: TreeObject<Vertex, PickContext> = TreeObject::Root {
-            geometry: Vec::new(),
+        let mut root: TreeModel<Vertex, InteractContext> = TreeModel::Root {
+            geometry: rether::Geometry::Simple {
+                vertices: Vec::new(),
+            },
             sub_models: Vec::new(),
-            ctx: SharedMut::from_inner(Box::new(PathContext {
+            ctx: InteractContext::from_inner(Box::new(PathContext {
                 box_: BoundingHitbox::default(),
             })),
         };
@@ -76,10 +75,9 @@ impl Toolpath {
         for modul in raw_path.moduls {
             lines.extend(modul.lines.clone());
 
-            let (modul_vertices, model) = modul.to_vertices(display_settings);
+            let model = modul.to_model(display_settings);
 
             root.expand(model);
-            root.extend_data(modul_vertices);
         }
 
         root.translate(-raw_path.center_mass);
@@ -120,7 +118,7 @@ impl<T: Scale> Scale for PathContext<T> {
 }
 
 impl<T: Hitbox> Hitbox for PathContext<T> {
-    fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
+    fn check_hit(&self, ray: &Ray) -> Option<f32> {
         self.box_.check_hit(ray)
     }
 
@@ -145,18 +143,24 @@ impl<T: Hitbox> Hitbox for PathContext<T> {
     }
 }
 
-impl<T: Hitbox + ToVisual<72, 48>> Pickable for PathContext<T> {
-    fn picked(
-        &self,
-        global_state: &crate::GlobalState<crate::RootEvent>,
-        wgpu_context: &WgpuContext,
+impl<T: Hitbox + ToVisual<72, 48>> Interactive for PathContext<T> {
+    fn mouse_clicked(
+        &mut self,
+        button: winit::event::MouseButton,
+        // global_state: crate::GlobalState<crate::RootEvent>,
+        // wgpu_context: &WgpuContext,
     ) {
-        let visual = self.box_.to_visual();
+        /*
+                    if button == winit::event::MouseButton::Left {
+            let visual = self.box_.to_visual();
 
-        global_state
-            .widget_server
-            .write()
-            .set_select_visual(visual, &wgpu_context.queue);
+            global_state
+                .widget_server
+                .write()
+                .set_select_visual(visual, &wgpu_context.queue);
+        }
+
+        */
     }
 }
 

@@ -1,11 +1,11 @@
 use glam::{vec4, Vec3};
-
-use crate::{
-    model::transform::{Rotate, Scale, Translate},
-    picking::hitbox::Hitbox,
-    render::vertex::Vertex,
-    viewer::{ToVisual, Visual},
+use rether::{
+    picking::{Hitbox, Ray},
+    transform::{Rotate, Scale, Translate},
+    vertex::Vertex,
 };
+
+use crate::viewer::{ToVisual, Visual};
 
 use super::{
     mesh::{Mesh, WireMesh},
@@ -135,7 +135,7 @@ impl Scale for BoundingHitbox {
 }
 
 impl Hitbox for BoundingHitbox {
-    fn check_hit(&self, ray: &crate::picking::ray::Ray) -> Option<f32> {
+    fn check_hit(&self, ray: &Ray) -> Option<f32> {
         // bounding box min max
 
         if self.contains(ray.origin) {
