@@ -9,8 +9,6 @@ use crate::{
     GlobalState, RootEvent,
 };
 
-pub mod interact;
-
 #[derive(Debug)]
 pub enum PickingEvent {
     Pick,

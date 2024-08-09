@@ -1,8 +1,8 @@
 use glam::{vec4, Vec3};
 use rether::{
     picking::{Hitbox, Ray},
-    transform::{Rotate, Scale, Translate},
     vertex::Vertex,
+    {Rotate, Scale, Translate},
 };
 
 use crate::viewer::{ToVisual, Visual};

@@ -2,12 +2,11 @@ use std::{fmt::Debug, str::Lines};
 
 use glam::Vec3;
 use rether::{
+    alloc::DynamicAllocHandle,
+    model::{ModelState, TreeModel},
     picking::{Hitbox, Ray},
     vertex::Vertex,
-    {
-        transform::{Rotate, Scale, Translate},
-        TreeModel,
-    },
+    Rotate, Scale, SimpleGeometry, Translate,
 };
 
 use self::{
@@ -45,7 +44,7 @@ pub struct Toolpath {
     pub origin_path: String,
     pub raw: GCodeRaw,
     pub wire_model: WireModel,
-    pub model: TreeModel<Vertex, InteractContext>,
+    pub model: TreeModel<Vertex, InteractContext, DynamicAllocHandle<Vertex>>,
     pub center_mass: Vec3,
 }
 
@@ -62,15 +61,14 @@ impl Toolpath {
 
         // let mut layers: HashMap<usize, LayerModel> = HashMap::new();
 
-        let mut root: TreeModel<Vertex, InteractContext> = TreeModel::Root {
-            geometry: rether::Geometry::Simple {
-                vertices: Vec::new(),
-            },
-            sub_models: Vec::new(),
-            ctx: InteractContext::from_inner(Box::new(PathContext {
-                box_: BoundingHitbox::default(),
-            })),
-        };
+        let mut root: TreeModel<Vertex, InteractContext, DynamicAllocHandle<Vertex>> =
+            TreeModel::Root {
+                state: ModelState::Dormant(SimpleGeometry::empty()),
+                sub_handles: Vec::new(),
+                ctx: InteractContext::from_inner(Box::new(PathContext {
+                    box_: BoundingHitbox::default(),
+                })),
+            };
 
         for modul in raw_path.moduls {
             lines.extend(modul.lines.clone());

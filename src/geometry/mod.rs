@@ -7,8 +7,8 @@ pub mod mesh;
 pub use r#box::BoundingHitbox;
 use rether::{
     picking::Hitbox,
-    transform::{Rotate, Scale, Translate},
     vertex::Vertex,
+    {Rotate, Scale, Translate},
 };
 
 use crate::viewer::gcode::mesh::ProfileCross;

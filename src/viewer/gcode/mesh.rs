@@ -1,9 +1,10 @@
 use glam::{vec4, Vec3, Vec4};
 use rether::{
+    alloc::DynamicAllocHandle,
+    model::{BufferLocation, ModelState, TreeModel},
     picking::{Hitbox, Ray},
-    transform::{Rotate, Scale, Translate},
     vertex::Vertex,
-    BufferLocation, TreeModel,
+    Rotate, Scale, SimpleGeometry, Translate,
 };
 
 use crate::{
@@ -284,10 +285,10 @@ impl PathModul {
     pub(super) fn to_model(
         &self,
         settings: &DisplaySettings,
-    ) -> TreeModel<Vertex, InteractContext> {
+    ) -> TreeModel<Vertex, InteractContext, DynamicAllocHandle<Vertex>> {
         let mut vertices = Vec::new();
         let mut offsets: Vec<usize> = Vec::new();
-        let mut sub_models = Vec::new();
+        let mut sub_handles = Vec::new();
 
         let color = self
             .state
@@ -344,16 +345,19 @@ impl PathModul {
                 bounding_box.expand_min(path_hitbox.min());
                 bounding_box.expand_max(path_hitbox.max());
 
-                let sub_model = TreeModel::<Vertex, InteractContext>::Node {
-                    location: BufferLocation {
-                        offset: vertices.len(),
-                        size: path_mesh_vertices.len(),
-                    },
-                    sub_models: Vec::new(),
-                    ctx: InteractContext::from_inner(Box::new(PathContext { box_: path_hitbox })),
-                };
+                let sub_model =
+                    TreeModel::<Vertex, InteractContext, DynamicAllocHandle<Vertex>>::Node {
+                        location: BufferLocation {
+                            offset: vertices.len(),
+                            size: path_mesh_vertices.len(),
+                        },
+                        sub_handles: Vec::new(),
+                        ctx: InteractContext::from_inner(Box::new(PathContext {
+                            box_: path_hitbox,
+                        })),
+                    };
 
-                sub_models.push(sub_model);
+                sub_handles.push(sub_model);
 
                 last_cross = Some(profile_end);
             } else if let Some(last) = last_cross.take() {
@@ -367,9 +371,9 @@ impl PathModul {
             }
         }
 
-        TreeModel::<Vertex, InteractContext>::Root {
-            geometry: rether::Geometry::Simple { vertices },
-            sub_models,
+        TreeModel::<Vertex, InteractContext, DynamicAllocHandle<Vertex>>::Root {
+            state: ModelState::Dormant(SimpleGeometry::init(vertices)),
+            sub_handles,
             ctx: InteractContext::from_inner(Box::new(PathContext { box_: bounding_box })),
         }
     }
