@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use rether::{
-    alloc::ModifyAction,
-    model::TreeModel,
-    picking::{HitboxNode, HitboxRoot},
+    alloc::{ModifyAction, StaticAllocHandle},
+    model::{BaseModel, TreeModel},
+    picking::{interact::Interactive, HitboxNode, HitboxRoot},
     vertex::Vertex,
     Buffer,
 };
@@ -88,12 +88,12 @@ struct WidgetContext;
 
 #[derive(Debug)]
 pub struct WidgetModel {
-    handle: TreeModel<WidgetContext>,
+    handle: TreeModel<Vertex, WidgetContext, StaticAllocHandle<Vertex>>,
 }
 
 #[derive(Debug)]
 pub struct WidgetServer {
-    widget_hitbox: HitboxRoot<InteractContext>,
+    widget_hitbox: HitboxRoot<BaseModel<Vertex, Box<dyn Interactive>, StaticAllocHandle<Vertex>>>,
     buffer: Buffer<Vertex, layout::WidgetAllocator>,
     line_buffer: Buffer<Vertex, layout::WireAllocator>,
 

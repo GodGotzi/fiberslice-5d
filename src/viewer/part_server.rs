@@ -5,10 +5,11 @@ use std::{
 };
 
 use rether::{
-    alloc::BufferDynamicAllocator,
-    picking::{Hitbox, HitboxNode},
+    alloc::{BufferDynamicAllocator, DynamicAllocHandle},
+    model::TreeModel,
+    picking::{Hitbox, HitboxNode, HitboxRoot},
     vertex::Vertex,
-    Buffer, {IntoHandle, TreeHandle, TreeModel},
+    Buffer,
 };
 use tokio::{
     sync::oneshot::{error::TryRecvError, Receiver},
@@ -16,12 +17,9 @@ use tokio::{
 };
 use uni_path::PathBuf;
 
-use crate::{
-    geometry::BoundingHitbox, picking::interact::InteractContext, prelude::WgpuContext,
-    GlobalState, RootEvent,
-};
+use crate::{geometry::BoundingHitbox, prelude::WgpuContext, GlobalState, RootEvent};
 
-use super::gcode::{self, DisplaySettings, MeshSettings, Toolpath, WireModel};
+use super::gcode::{self, DisplaySettings, MeshSettings, PathContext, Toolpath, WireModel};
 
 // const MAIN_LOADED_TOOLPATH: &str = "main"; // HACK: This is a solution to ease the dev when only one toolpath is loaded which is the only supported(for now)
 
@@ -40,7 +38,7 @@ pub struct ToolpathHandle {
     pub line_breaks: Vec<usize>,
 
     pub wire_model: WireModel,
-    handle: TreeHandle<InteractContext>,
+    handle: TreeModel<InteractContext>,
 }
 
 impl ToolpathHandle {
@@ -54,9 +52,9 @@ impl ToolpathHandle {
 pub struct ToolpathServer {
     queue: Vec<(Receiver<Toolpath>, JoinHandle<()>)>,
 
-    buffer: rether::Buffer<Vertex, rether::alloc::BufferDynamicAllocator>,
+    buffer: rether::Buffer<Vertex, rether::alloc::BufferDynamicAllocator<Vertex>>,
 
-    root_hitbox: HitboxNode<InteractContext>,
+    root_hitbox: HitboxRoot<TreeModel<Vertex, PathContext<Vertex>, DynamicAllocHandle<Vertex>>>,
 
     parts: HashMap<String, ToolpathHandle>,
     focused: Option<String>,
