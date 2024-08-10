@@ -12,7 +12,6 @@ use crate::{
         mesh::{construct_triangle_vertices, Mesh, WireMesh},
         BoundingHitbox, ProfileExtrusion, QuadFace, SelectBox,
     },
-    picking::interact::InteractContext,
     viewer::{ToVisual, Visual},
 };
 

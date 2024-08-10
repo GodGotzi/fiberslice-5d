@@ -7,7 +7,7 @@ use std::{
 use rether::{
     alloc::{BufferDynamicAllocator, DynamicAllocHandle},
     model::TreeModel,
-    picking::{Hitbox, HitboxNode, HitboxRoot},
+    picking::{interact::Interactive, Hitbox, HitboxNode, HitboxRoot},
     vertex::Vertex,
     Buffer,
 };
@@ -54,7 +54,7 @@ pub struct ToolpathServer {
 
     buffer: rether::Buffer<Vertex, rether::alloc::BufferDynamicAllocator<Vertex>>,
 
-    root_hitbox: HitboxRoot<TreeModel<Vertex, PathContext<Vertex>, DynamicAllocHandle<Vertex>>>,
+    root_hitbox: HitboxRoot<TreeModel<Vertex, Box<dyn Interactive>, DynamicAllocHandle<Vertex>>>,
 
     parts: HashMap<String, ToolpathHandle>,
     focused: Option<String>,

@@ -4,7 +4,7 @@ use glam::Vec3;
 use rether::{
     alloc::DynamicAllocHandle,
     model::{ModelState, TreeModel},
-    picking::{Hitbox, Ray},
+    picking::{interact::Interactive, Hitbox, Ray},
     vertex::Vertex,
     Rotate, Scale, SimpleGeometry, Translate,
 };
@@ -15,10 +15,7 @@ use self::{
     path::{Line, RawPath},
 };
 
-use crate::{
-    geometry::BoundingHitbox,
-    picking::interact::{InteractContext, Interactive},
-};
+use crate::geometry::BoundingHitbox;
 
 use super::ToVisual;
 
