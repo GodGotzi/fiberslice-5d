@@ -5,11 +5,11 @@ use std::{
 };
 
 use rether::{
-    alloc::{BufferDynamicAllocator, DynamicAllocHandle},
-    model::TreeModel,
+    alloc::{AllocHandle, DynamicAllocHandle},
+    model::{geometry::Geometry, TreeModel},
     picking::{interact::Interactive, Hitbox, HitboxNode, HitboxRoot},
     vertex::Vertex,
-    Buffer,
+    Buffer, Rotate, Scale, Translate,
 };
 use tokio::{
     sync::oneshot::{error::TryRecvError, Receiver},
@@ -19,7 +19,7 @@ use uni_path::PathBuf;
 
 use crate::{geometry::BoundingHitbox, prelude::WgpuContext, GlobalState, RootEvent};
 
-use super::gcode::{self, DisplaySettings, MeshSettings, PathContext, Toolpath, WireModel};
+use super::gcode::{self, DisplaySettings, MeshSettings, Toolpath, WireModel};
 
 // const MAIN_LOADED_TOOLPATH: &str = "main"; // HACK: This is a solution to ease the dev when only one toolpath is loaded which is the only supported(for now)
 
@@ -38,12 +38,83 @@ pub struct ToolpathHandle {
     pub line_breaks: Vec<usize>,
 
     pub wire_model: WireModel,
-    handle: TreeModel<InteractContext>,
+    handle: TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>,
 }
 
 impl ToolpathHandle {
     pub fn code(&self) -> &String {
         &self.code
+    }
+}
+
+pub trait ToolpathContextImpl: Translate + Rotate + Scale + Interactive + Hitbox {}
+
+#[derive(Debug)]
+pub struct ToolpathContext {
+    context: Box<dyn ToolpathContextImpl>,
+}
+
+impl ToolpathContext {
+    pub fn new(context: Box<dyn ToolpathContextImpl>) -> Self {
+        Self { context }
+    }
+}
+
+impl Translate for ToolpathContext {
+    fn translate(&mut self, translation: glam::Vec3) {
+        self.context.translate(translation);
+    }
+}
+
+impl Rotate for ToolpathContext {
+    fn rotate(&mut self, rotation: glam::Quat) {
+        self.context.rotate(rotation);
+    }
+}
+
+impl Scale for ToolpathContext {
+    fn scale(&mut self, scale: glam::Vec3) {
+        self.context.scale(scale);
+    }
+}
+
+impl Interactive for ToolpathContext {
+    fn mouse_clicked(&mut self, button: winit::event::MouseButton) {
+        self.context.mouse_clicked(button);
+    }
+
+    fn mouse_motion(&mut self, button: winit::event::MouseButton, delta: glam::Vec2) {
+        self.context.mouse_motion(button, delta);
+    }
+
+    fn mouse_scroll(&mut self, delta: f32) {
+        self.context.mouse_scroll(delta);
+    }
+}
+
+impl Hitbox for ToolpathContext {
+    fn check_hit(&self, ray: &rether::picking::Ray) -> Option<f32> {
+        self.context.check_hit(ray)
+    }
+
+    fn expand(&mut self, _box: &dyn Hitbox) {
+        self.context.expand(_box);
+    }
+
+    fn set_enabled(&mut self, enabled: bool) {
+        self.context.set_enabled(enabled);
+    }
+
+    fn enabled(&self) -> bool {
+        self.context.enabled()
+    }
+
+    fn min(&self) -> glam::Vec3 {
+        self.context.min()
+    }
+
+    fn max(&self) -> glam::Vec3 {
+        self.context.max()
     }
 }
 
@@ -54,7 +125,7 @@ pub struct ToolpathServer {
 
     buffer: rether::Buffer<Vertex, rether::alloc::BufferDynamicAllocator<Vertex>>,
 
-    root_hitbox: HitboxRoot<TreeModel<Vertex, Box<dyn Interactive>, DynamicAllocHandle<Vertex>>>,
+    root_hitbox: HitboxRoot<TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>>,
 
     parts: HashMap<String, ToolpathHandle>,
     focused: Option<String>,
@@ -65,7 +136,7 @@ impl ToolpathServer {
         Self {
             queue: Vec::new(),
             buffer: Buffer::new("Toolpath Buffer", device),
-            root_hitbox: HitboxNode::root(),
+            root_hitbox: HitboxRoot::root(),
             parts: HashMap::new(),
             focused: None,
         }
@@ -105,7 +176,7 @@ impl ToolpathServer {
         &mut self,
         part: Toolpath,
         wgpu_context: &WgpuContext,
-    ) -> Result<TreeHandle<InteractContext>, Error> {
+    ) -> Result<TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>, Error> {
         let path: PathBuf = part.origin_path.into();
         let file_name = if let Some(path) = path.file_name() {
             path.to_string()
@@ -123,9 +194,17 @@ impl ToolpathServer {
             counter += 1;
         }
 
-        if let TreeModel::Root { geometry, .. } = &part.model {
+        if let TreeModel::Root { state, .. } = &part.model {
+            let data = match state {
+                rether::model::ModelState::Dormant(geometry) => geometry.build_data(),
+                rether::model::ModelState::DormantIndexed(geometry) => {
+                    geometry.clone().into_simple().build_data()
+                }
+                _ => panic!("Unsupported geometry"),
+            };
+
             self.buffer
-                .allocate_init(&name, geometry, &wgpu_context.device, &wgpu_context.queue);
+                .allocate_init(&name, data, &wgpu_context.device, &wgpu_context.queue);
         } else {
             return Err(Error::NoGeometryObject);
         }
@@ -158,7 +237,13 @@ impl ToolpathServer {
     pub fn remove(&mut self, name: String, wgpu_context: &WgpuContext) {
         if let Some(part) = self.parts.remove(&name) {
             match part.handle {
-                TreeHandle::Root { id, .. } => {
+                TreeModel::Root { state, .. } => {
+                    let id = match &state {
+                        rether::model::ModelState::Alive(handle) => handle.id(),
+                        rether::model::ModelState::Destroyed => panic!("Already destroyed"),
+                        _ => panic!("Not alive"),
+                    };
+
                     self.buffer
                         .free(&id, &wgpu_context.device, &wgpu_context.queue);
                 }
@@ -196,8 +281,8 @@ impl ToolpathServer {
 
                 global_state.camera_event_writer.send(
                     crate::camera::CameraEvent::UpdatePreferredDistance(BoundingHitbox::new(
-                        handle.min(),
-                        handle.max(),
+                        handle.hitbox().min(),
+                        handle.hitbox().max(),
                     )),
                 );
 
@@ -248,13 +333,5 @@ impl ToolpathServer {
 
     pub fn get_focused_mut(&mut self) -> &mut Option<String> {
         &mut self.focused
-    }
-
-    pub fn read_buffer(&self) -> &Buffer<Vertex, BufferDynamicAllocator> {
-        &self.buffer
-    }
-
-    pub fn root_hitbox(&self) -> &HitboxNode<InteractContext> {
-        &self.root_hitbox
     }
 }
