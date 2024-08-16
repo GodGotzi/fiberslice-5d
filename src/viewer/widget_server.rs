@@ -13,8 +13,10 @@ use super::Visual;
 mod layout {
 
     mod wire {
+        use std::sync::Arc;
+
         use rether::{
-            alloc::{BufferAlloc, BufferAllocation},
+            alloc::{BufferAlloc, BufferAllocation, StaticAllocHandle},
             vertex::Vertex,
         };
 
@@ -28,20 +30,56 @@ mod layout {
             size: 48,
         };
 
-        #[derive(Debug, Default)]
-        pub struct WireAllocator;
+        #[derive(Debug)]
+        pub struct WireAllocator {
+            action_queue: std::sync::mpsc::Receiver<rether::alloc::ModifyAction<Vertex>>,
+            dummy_action_sender: std::sync::mpsc::Sender<rether::alloc::ModifyAction<Vertex>>,
+
+            hover_box: Arc<StaticAllocHandle<Vertex>>,
+            select_box: Arc<StaticAllocHandle<Vertex>>,
+        }
+
+        impl Default for WireAllocator {
+            fn default() -> Self {
+                let (action_sender, action_receiver) = std::sync::mpsc::channel();
+
+                Self {
+                    action_queue: action_receiver,
+                    dummy_action_sender: action_sender.clone(),
+
+                    hover_box: Arc::new(StaticAllocHandle::from_buffer_allocation(
+                        "hover_box",
+                        &HOVER_BOX_ALLOCATION,
+                        action_sender.clone(),
+                    )),
+                    select_box: Arc::new(StaticAllocHandle::from_buffer_allocation(
+                        "select_box",
+                        &SELECT_BOX_ALLOCATION,
+                        action_sender.clone(),
+                    )),
+                }
+            }
+        }
 
         impl BufferAlloc<Vertex> for WireAllocator {
-            fn get(&self, id: &str) -> Option<&BufferAllocation> {
+            type Handle = StaticAllocHandle<Vertex>;
+
+            fn get(&self, id: &str) -> Option<&Arc<StaticAllocHandle<Vertex>>> {
                 match id {
-                    "hover_box" => Some(&HOVER_BOX_ALLOCATION),
-                    "select_box" => Some(&SELECT_BOX_ALLOCATION),
+                    "hover_box" => Some(&self.hover_box),
+                    "select_box" => Some(&self.select_box),
                     _ => None,
                 }
             }
 
             fn size(&self) -> usize {
                 HOVER_BOX_ALLOCATION.size + SELECT_BOX_ALLOCATION.size
+            }
+
+            fn update(&self, modify: impl Fn(rether::alloc::ModifyAction<Vertex>)) {
+                while let Ok(action) = self.action_queue.try_recv() {
+                    modify(action);
+                }
             }
         }
     }
@@ -56,21 +94,52 @@ mod layout {
         size: 72,
     };
 
-    #[derive(Debug, Default)]
-    pub struct WidgetAllocator;
+    use std::sync::Arc;
+
     use rether::{
         alloc::{BufferAlloc, BufferAllocation, StaticAllocHandle},
         vertex::Vertex,
     };
     pub use wire::WireAllocator;
 
-    impl BufferAlloc<Vertex> for WidgetAllocator {
+    #[derive(Debug)]
+    pub struct VertexAllocator {
+        action_queue: std::sync::mpsc::Receiver<rether::alloc::ModifyAction<Vertex>>,
+        dummy_action_sender: std::sync::mpsc::Sender<rether::alloc::ModifyAction<Vertex>>,
+
+        hover_box: Arc<StaticAllocHandle<Vertex>>,
+        select_box: Arc<StaticAllocHandle<Vertex>>,
+    }
+
+    impl Default for VertexAllocator {
+        fn default() -> Self {
+            let (action_sender, action_receiver) = std::sync::mpsc::channel();
+
+            Self {
+                action_queue: action_receiver,
+                dummy_action_sender: action_sender.clone(),
+
+                hover_box: Arc::new(StaticAllocHandle::from_buffer_allocation(
+                    "hover_box",
+                    &HOVER_BOX_ALLOCATION,
+                    action_sender.clone(),
+                )),
+                select_box: Arc::new(StaticAllocHandle::from_buffer_allocation(
+                    "select_box",
+                    &SELECT_BOX_ALLOCATION,
+                    action_sender.clone(),
+                )),
+            }
+        }
+    }
+
+    impl BufferAlloc<Vertex> for VertexAllocator {
         type Handle = StaticAllocHandle<Vertex>;
 
         fn get(&self, id: &str) -> Option<&std::sync::Arc<Self::Handle>> {
             match id {
-                "hover_box" => Some(&HOVER_BOX_ALLOCATION),
-                "select_box" => Some(&SELECT_BOX_ALLOCATION),
+                "hover_box" => Some(&self.hover_box),
+                "select_box" => Some(&self.select_box),
                 _ => None,
             }
         }
@@ -79,7 +148,11 @@ mod layout {
             HOVER_BOX_ALLOCATION.size + SELECT_BOX_ALLOCATION.size
         }
 
-        fn update(&self, modify: impl Fn(rether::alloc::ModifyAction<Vertex>)) {}
+        fn update(&self, modify: impl Fn(rether::alloc::ModifyAction<Vertex>)) {
+            while let Ok(action) = self.action_queue.try_recv() {
+                modify(action);
+            }
+        }
     }
 }
 
@@ -94,7 +167,7 @@ pub struct WidgetModel {
 #[derive(Debug)]
 pub struct WidgetServer {
     widget_hitbox: HitboxRoot<BaseModel<Vertex, Box<dyn Interactive>, StaticAllocHandle<Vertex>>>,
-    buffer: Buffer<Vertex, layout::WidgetAllocator>,
+    buffer: Buffer<Vertex, layout::VertexAllocator>,
     line_buffer: Buffer<Vertex, layout::WireAllocator>,
 
     action_queue: std::sync::mpsc::Receiver<ModifyAction<Vertex>>,
@@ -108,7 +181,7 @@ impl WidgetServer {
         let (action_sender, action_receiver) = std::sync::mpsc::channel();
 
         Self {
-            widget_hitbox: HitboxNode::root(),
+            widget_hitbox: HitboxRoot::root(),
             buffer: Buffer::new("Widget Buffer", device),
             line_buffer: Buffer::new("Widget Line Buffer", device),
 
@@ -159,7 +232,7 @@ impl WidgetServer {
             .write("select_box", &rether::SimpleGeometry::empty(), queue);
     }
 
-    pub fn read_buffer(&self) -> &Buffer<Vertex, layout::WidgetAllocator> {
+    pub fn read_buffer(&self) -> &Buffer<Vertex, layout::VertexAllocator> {
         &self.buffer
     }
 
