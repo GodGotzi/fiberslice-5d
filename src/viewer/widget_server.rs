@@ -156,8 +156,9 @@ mod layout {
     }
 }
 
-#[derive(Debug)]
-struct WidgetContext;
+pub struct WidgetContext {
+    ctx: Box<dyn Interactive>,
+}
 
 #[derive(Debug)]
 pub struct WidgetModel {
