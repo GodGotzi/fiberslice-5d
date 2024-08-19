@@ -5,7 +5,7 @@ use rether::{
     model::{BaseModel, TreeModel},
     picking::{interact::Interactive, HitboxNode, HitboxRoot},
     vertex::Vertex,
-    Buffer,
+    Buffer, Rotate, Scale, Translate,
 };
 
 use super::Visual;
@@ -155,6 +155,8 @@ mod layout {
         }
     }
 }
+
+pub trait WidgetContextImpl: Translate + Scale + Rotate + std::fmt::Debug {}
 
 pub struct WidgetContext {
     ctx: Box<dyn Interactive>,
