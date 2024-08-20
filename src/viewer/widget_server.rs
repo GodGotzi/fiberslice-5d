@@ -1,9 +1,9 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug};
 
 use rether::{
     alloc::{ModifyAction, StaticAllocHandle},
     model::{BaseModel, TreeModel},
-    picking::{interact::Interactive, HitboxNode, HitboxRoot},
+    picking::{interact::Interactive, Hitbox, HitboxNode, HitboxRoot},
     vertex::Vertex,
     Buffer, Rotate, Scale, Translate,
 };
@@ -156,20 +156,83 @@ mod layout {
     }
 }
 
-pub trait WidgetContextImpl: Translate + Scale + Rotate + std::fmt::Debug {}
-
-pub struct WidgetContext {
-    ctx: Box<dyn Interactive>,
-}
+pub trait WidgetContextImpl: Translate + Rotate + Scale + Interactive + Hitbox {}
 
 #[derive(Debug)]
+pub struct WidgetContext {
+    context: Box<dyn WidgetContextImpl>,
+}
+
+impl WidgetContext {
+    pub fn new(context: Box<dyn WidgetContextImpl>) -> Self {
+        Self { context }
+    }
+}
+
+impl Translate for WidgetContext {
+    fn translate(&mut self, translation: glam::Vec3) {
+        self.context.translate(translation);
+    }
+}
+
+impl Rotate for WidgetContext {
+    fn rotate(&mut self, rotation: glam::Quat) {
+        self.context.rotate(rotation);
+    }
+}
+
+impl Scale for WidgetContext {
+    fn scale(&mut self, scale: glam::Vec3) {
+        self.context.scale(scale);
+    }
+}
+
+impl Interactive for WidgetContext {
+    fn mouse_clicked(&mut self, button: winit::event::MouseButton) {
+        self.context.mouse_clicked(button);
+    }
+
+    fn mouse_motion(&mut self, button: winit::event::MouseButton, delta: glam::Vec2) {
+        self.context.mouse_motion(button, delta);
+    }
+
+    fn mouse_scroll(&mut self, delta: f32) {
+        self.context.mouse_scroll(delta);
+    }
+}
+
+impl Hitbox for WidgetContext {
+    fn check_hit(&self, ray: &rether::picking::Ray) -> Option<f32> {
+        self.context.check_hit(ray)
+    }
+
+    fn expand(&mut self, _box: &dyn Hitbox) {
+        self.context.expand(_box);
+    }
+
+    fn set_enabled(&mut self, enabled: bool) {
+        self.context.set_enabled(enabled);
+    }
+
+    fn enabled(&self) -> bool {
+        self.context.enabled()
+    }
+
+    fn min(&self) -> glam::Vec3 {
+        self.context.min()
+    }
+
+    fn max(&self) -> glam::Vec3 {
+        self.context.max()
+    }
+}
+
 pub struct WidgetModel {
     handle: TreeModel<Vertex, WidgetContext, StaticAllocHandle<Vertex>>,
 }
 
-#[derive(Debug)]
 pub struct WidgetServer {
-    widget_hitbox: HitboxRoot<BaseModel<Vertex, Box<dyn Interactive>, StaticAllocHandle<Vertex>>>,
+    widget_hitbox: HitboxRoot<BaseModel<Vertex, WidgetContext, StaticAllocHandle<Vertex>>>,
     buffer: Buffer<Vertex, layout::VertexAllocator>,
     line_buffer: Buffer<Vertex, layout::WireAllocator>,
 
