@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Debug};
 
 use rether::{
     alloc::{ModifyAction, StaticAllocHandle},
-    model::{BaseModel, TreeModel},
+    model::{geometry::Geometry, BaseModel, TreeModel},
     picking::{interact::Interactive, Hitbox, HitboxNode, HitboxRoot},
     vertex::Vertex,
     Buffer, Rotate, Scale, Translate,
@@ -261,12 +261,12 @@ impl WidgetServer {
     pub fn set_hover_visual(&mut self, visual: Visual<72, 48>, queue: &wgpu::Queue) {
         self.buffer.write(
             "hover_box",
-            &rether::SimpleGeometry::init(visual.vertices.to_vec()),
+            rether::SimpleGeometry::init(visual.vertices.to_vec()).build_data(),
             queue,
         );
         self.line_buffer.write(
             "hover_box",
-            &rether::SimpleGeometry::init(visual.wires.to_vec()),
+            rether::SimpleGeometry::init(visual.wires.to_vec()).build_data(),
             queue,
         );
     }
@@ -274,28 +274,40 @@ impl WidgetServer {
     pub fn set_select_visual(&mut self, visual: Visual<72, 48>, queue: &wgpu::Queue) {
         self.buffer.write(
             "select_box",
-            &rether::SimpleGeometry::init(visual.vertices.to_vec()),
+            rether::SimpleGeometry::init(visual.vertices.to_vec()).build_data(),
             queue,
         );
         self.line_buffer.write(
             "select_box",
-            &rether::SimpleGeometry::init(visual.wires.to_vec()),
+            rether::SimpleGeometry::init(visual.wires.to_vec()).build_data(),
             queue,
         );
     }
 
     pub fn reset_hover_visual(&mut self, queue: &wgpu::Queue) {
-        self.buffer
-            .write("hover_box", &rether::SimpleGeometry::empty(), queue);
-        self.line_buffer
-            .write("hover_box", &rether::SimpleGeometry::empty(), queue);
+        self.buffer.write(
+            "hover_box",
+            rether::SimpleGeometry::empty().build_data(),
+            queue,
+        );
+        self.line_buffer.write(
+            "hover_box",
+            rether::SimpleGeometry::empty().build_data(),
+            queue,
+        );
     }
 
     pub fn reset_select_visual(&mut self, queue: &wgpu::Queue) {
-        self.buffer
-            .write("select_box", &rether::SimpleGeometry::empty(), queue);
-        self.line_buffer
-            .write("select_box", &rether::SimpleGeometry::empty(), queue);
+        self.buffer.write(
+            "select_box",
+            rether::SimpleGeometry::empty().build_data(),
+            queue,
+        );
+        self.line_buffer.write(
+            "select_box",
+            rether::SimpleGeometry::empty().build_data(),
+            queue,
+        );
     }
 
     pub fn read_buffer(&self) -> &Buffer<Vertex, layout::VertexAllocator> {

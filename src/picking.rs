@@ -68,7 +68,7 @@ impl FrameHandle<'_, RootEvent, (), &CameraResult> for PickingAdapter {
                             rether::picking::Ray::from_view(viewport, (x, y), view, proj, eye);
 
                         global_state.toolpath_server.clone().read_with_fn(|server| {
-                            let hit = server.root_hitbox().check_hit(&ray);
+                            let hit = server.().check_hit(&ray);
 
                             if let Some(handle) = hit {
                                 let mut handle_read = handle.write();

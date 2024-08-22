@@ -17,7 +17,10 @@ use self::{
 
 use crate::geometry::BoundingHitbox;
 
-use super::ToVisual;
+use super::{
+    part_server::{ToolpathContext, ToolpathContextImpl},
+    ToVisual,
+};
 
 pub mod instruction;
 pub mod mesh;
@@ -36,13 +39,21 @@ pub struct DisplaySettings {
 
 pub struct MeshSettings {}
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Toolpath {
     pub origin_path: String,
     pub raw: GCodeRaw,
     pub wire_model: WireModel,
-    pub model: TreeModel<Vertex, InteractContext, DynamicAllocHandle<Vertex>>,
+    pub model: TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>,
     pub center_mass: Vec3,
+}
+
+unsafe impl Sync for Toolpath {}
+unsafe impl Send for Toolpath {}
+
+pub enum ToolpathModelContext {
+    Parent { _box: BoundingHitbox },
+    Path { bounding_box: BoundingHitbox },
 }
 
 impl Toolpath {
@@ -58,11 +69,11 @@ impl Toolpath {
 
         // let mut layers: HashMap<usize, LayerModel> = HashMap::new();
 
-        let mut root: TreeModel<Vertex, InteractContext, DynamicAllocHandle<Vertex>> =
+        let mut root: TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>> =
             TreeModel::Root {
                 state: ModelState::Dormant(SimpleGeometry::empty()),
                 sub_handles: Vec::new(),
-                ctx: InteractContext::from_inner(Box::new(PathContext {
+                ctx: ToolpathContext::from_inner(Box::new(PathContext {
                     box_: BoundingHitbox::default(),
                 })),
             };
@@ -71,8 +82,6 @@ impl Toolpath {
             lines.extend(modul.lines.clone());
 
             let model = modul.to_model(display_settings);
-
-            root.expand(model);
         }
 
         root.translate(-raw_path.center_mass);
@@ -93,6 +102,8 @@ impl Toolpath {
 pub struct PathContext<T> {
     box_: T,
 }
+
+impl ToolpathContextImpl for PathContext<BoundingHitbox> {}
 
 impl<T: Translate> Translate for PathContext<T> {
     fn translate(&mut self, translation: Vec3) {
@@ -138,7 +149,7 @@ impl<T: Hitbox> Hitbox for PathContext<T> {
     }
 }
 
-impl<T: Hitbox + ToVisual<72, 48>> Interactive for PathContext<T> {
+impl<T: Hitbox> Interactive for PathContext<T> {
     fn mouse_clicked(
         &mut self,
         button: winit::event::MouseButton,

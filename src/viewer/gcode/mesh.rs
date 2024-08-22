@@ -12,7 +12,7 @@ use crate::{
         mesh::{construct_triangle_vertices, Mesh, WireMesh},
         BoundingHitbox, ProfileExtrusion, QuadFace, SelectBox,
     },
-    viewer::{ToVisual, Visual},
+    viewer::{part_server::ToolpathContext, ToVisual, Visual},
 };
 
 use super::{path::PathModul, DisplaySettings, PathContext};
@@ -284,7 +284,7 @@ impl PathModul {
     pub(super) fn to_model(
         &self,
         settings: &DisplaySettings,
-    ) -> TreeModel<Vertex, InteractContext, DynamicAllocHandle<Vertex>> {
+    ) -> TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>> {
         let mut vertices = Vec::new();
         let mut offsets: Vec<usize> = Vec::new();
         let mut sub_handles = Vec::new();
@@ -345,13 +345,13 @@ impl PathModul {
                 bounding_box.expand_max(path_hitbox.max());
 
                 let sub_model =
-                    TreeModel::<Vertex, InteractContext, DynamicAllocHandle<Vertex>>::Node {
+                    TreeModel::<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>::Node {
                         location: BufferLocation {
                             offset: vertices.len(),
                             size: path_mesh_vertices.len(),
                         },
                         sub_handles: Vec::new(),
-                        ctx: InteractContext::from_inner(Box::new(PathContext {
+                        ctx: ToolpathContext::from_inner(Box::new(PathContext {
                             box_: path_hitbox,
                         })),
                     };
@@ -370,10 +370,10 @@ impl PathModul {
             }
         }
 
-        TreeModel::<Vertex, InteractContext, DynamicAllocHandle<Vertex>>::Root {
+        TreeModel::<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>::Root {
             state: ModelState::Dormant(SimpleGeometry::init(vertices)),
             sub_handles,
-            ctx: InteractContext::from_inner(Box::new(PathContext { box_: bounding_box })),
+            ctx: ToolpathContext::from_inner(Box::new(PathContext { box_: bounding_box })),
         }
     }
 }

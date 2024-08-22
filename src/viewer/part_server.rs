@@ -55,7 +55,7 @@ pub struct ToolpathContext {
 }
 
 impl ToolpathContext {
-    pub fn new(context: Box<dyn ToolpathContextImpl>) -> Self {
+    pub fn from_inner(context: Box<dyn ToolpathContextImpl>) -> Self {
         Self { context }
     }
 }
