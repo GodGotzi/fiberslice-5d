@@ -1,6 +1,7 @@
 use std::{fmt::Debug, str::Lines};
 
 use glam::Vec3;
+use mesh::PathHitbox;
 use rether::{
     alloc::DynamicAllocHandle,
     model::{ModelState, TreeModel},
@@ -52,8 +53,8 @@ unsafe impl Sync for Toolpath {}
 unsafe impl Send for Toolpath {}
 
 pub enum ToolpathModelContext {
-    Parent { _box: BoundingHitbox },
-    Path { bounding_box: BoundingHitbox },
+    Parent(BoundingHitbox),
+    Path(PathHitbox),
 }
 
 impl Toolpath {
