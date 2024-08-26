@@ -6,7 +6,7 @@ use std::{
 
 use rether::{
     alloc::{AllocHandle, DynamicAllocHandle},
-    model::{geometry::Geometry, TreeModel},
+    model::{geometry::Geometry, Model, TreeModel},
     picking::{interact::Interactive, Hitbox, HitboxNode, HitboxRoot},
     vertex::Vertex,
     Buffer, Rotate, Scale, Translate,
@@ -19,7 +19,7 @@ use uni_path::PathBuf;
 
 use crate::{geometry::BoundingHitbox, prelude::WgpuContext, GlobalState, RootEvent};
 
-use super::gcode::{self, DisplaySettings, MeshSettings, Toolpath, WireModel};
+use super::gcode::{self, mesh::PathHitbox, DisplaySettings, MeshSettings, Toolpath, WireModel};
 
 // const MAIN_LOADED_TOOLPATH: &str = "main"; // HACK: This is a solution to ease the dev when only one toolpath is loaded which is the only supported(for now)
 
@@ -47,74 +47,111 @@ impl ToolpathHandle {
     }
 }
 
-pub trait ToolpathContextImpl: Translate + Rotate + Scale + Interactive + Hitbox {}
-
-#[derive(Debug)]
-pub struct ToolpathContext {
-    context: Box<dyn ToolpathContextImpl>,
+pub enum ToolpathContext {
+    Parent { box_: BoundingHitbox },
+    Path { box_: PathHitbox },
 }
 
-impl ToolpathContext {
-    pub fn from_inner(context: Box<dyn ToolpathContextImpl>) -> Self {
-        Self { context }
+impl std::fmt::Debug for ToolpathContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Parent { box_, .. } => write!(f, "Parent({:?})", box_),
+            Self::Path { box_, .. } => write!(f, "Path({:?})", box_),
+        }
     }
 }
 
 impl Translate for ToolpathContext {
     fn translate(&mut self, translation: glam::Vec3) {
-        self.context.translate(translation);
+        match self {
+            Self::Parent { box_ } => box_.translate(translation),
+            Self::Path { box_ } => box_.translate(translation),
+        }
     }
 }
 
 impl Rotate for ToolpathContext {
     fn rotate(&mut self, rotation: glam::Quat) {
-        self.context.rotate(rotation);
+        match self {
+            Self::Parent { box_ } => box_.rotate(rotation),
+            Self::Path { box_ } => box_.rotate(rotation),
+        };
     }
 }
 
 impl Scale for ToolpathContext {
     fn scale(&mut self, scale: glam::Vec3) {
-        self.context.scale(scale);
+        match self {
+            Self::Parent { box_ } => box_.scale(scale),
+            Self::Path { box_ } => box_.scale(scale),
+        };
     }
 }
 
 impl Interactive for ToolpathContext {
     fn mouse_clicked(&mut self, button: winit::event::MouseButton) {
-        self.context.mouse_clicked(button);
+        match self {
+            Self::Parent { box_ } => todo!(),
+            Self::Path { box_ } => todo!(),
+        };
     }
 
     fn mouse_motion(&mut self, button: winit::event::MouseButton, delta: glam::Vec2) {
-        self.context.mouse_motion(button, delta);
+        match self {
+            Self::Parent { box_ } => todo!(),
+            Self::Path { box_ } => todo!(),
+        };
     }
 
     fn mouse_scroll(&mut self, delta: f32) {
-        self.context.mouse_scroll(delta);
+        match self {
+            Self::Parent { box_ } => todo!(),
+            Self::Path { box_ } => todo!(),
+        };
     }
 }
 
 impl Hitbox for ToolpathContext {
     fn check_hit(&self, ray: &rether::picking::Ray) -> Option<f32> {
-        self.context.check_hit(ray)
+        match self {
+            Self::Parent { box_ } => box_.check_hit(ray),
+            Self::Path { box_ } => box_.check_hit(ray),
+        }
     }
 
     fn expand(&mut self, _box: &dyn Hitbox) {
-        self.context.expand(_box);
+        match self {
+            Self::Parent { box_ } => (box_ as &mut dyn Hitbox).expand(_box),
+            Self::Path { box_ } => (box_ as &mut dyn Hitbox).expand(_box),
+        }
     }
 
     fn set_enabled(&mut self, enabled: bool) {
-        self.context.set_enabled(enabled);
+        match self {
+            Self::Parent { box_ } => box_.set_enabled(enabled),
+            Self::Path { box_ } => box_.set_enabled(enabled),
+        }
     }
 
     fn enabled(&self) -> bool {
-        self.context.enabled()
+        match self {
+            Self::Parent { box_ } => box_.enabled(),
+            Self::Path { box_ } => box_.enabled(),
+        }
     }
 
     fn min(&self) -> glam::Vec3 {
-        self.context.min()
+        match self {
+            Self::Parent { box_ } => box_.min(),
+            Self::Path { box_ } => box_.min(),
+        }
     }
 
     fn max(&self) -> glam::Vec3 {
-        self.context.max()
+        match self {
+            Self::Parent { box_ } => box_.max(),
+            Self::Path { box_ } => box_.max(),
+        }
     }
 }
 
@@ -174,9 +211,9 @@ impl ToolpathServer {
 
     pub fn insert(
         &mut self,
-        part: Toolpath,
+        mut part: Toolpath,
         wgpu_context: &WgpuContext,
-    ) -> Result<TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>, Error> {
+    ) -> Result<&TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>, Error> {
         let path: PathBuf = part.origin_path.into();
         let file_name = if let Some(path) = path.file_name() {
             path.to_string()
@@ -197,41 +234,39 @@ impl ToolpathServer {
         if let TreeModel::Root { state, .. } = &part.model {
             let data = match state {
                 rether::model::ModelState::Dormant(geometry) => geometry.build_data(),
-                rether::model::ModelState::DormantIndexed(geometry) => {
-                    geometry.clone().into_simple().build_data()
-                }
                 _ => panic!("Unsupported geometry"),
             };
 
-            self.buffer
-                .allocate_init(&name, data, &wgpu_context.device, &wgpu_context.queue);
+            let handle =
+                self.buffer
+                    .allocate_init(&name, data, &wgpu_context.device, &wgpu_context.queue);
+
+            part.model.make_alive(handle.clone());
+
+            let code = part.raw.join("\n");
+
+            let line_breaks = code
+                .char_indices()
+                .filter_map(|(index, c)| if c == '\n' { Some(index) } else { None })
+                .collect::<Vec<usize>>();
+
+            self.parts.insert(
+                name.clone(),
+                ToolpathHandle {
+                    path,
+                    code,
+                    line_breaks,
+                    wire_model: part.wire_model,
+                    handle: part.model,
+                },
+            );
+
+            self.focused = Some(name.clone());
+
+            Ok(&self.parts.get(&name).unwrap().handle)
         } else {
             return Err(Error::NoGeometryObject);
         }
-
-        let handle = part.model.req_handle(name.clone());
-
-        let code = part.raw.join("\n");
-
-        let line_breaks = code
-            .char_indices()
-            .filter_map(|(index, c)| if c == '\n' { Some(index) } else { None })
-            .collect::<Vec<usize>>();
-
-        self.parts.insert(
-            name.clone(),
-            ToolpathHandle {
-                path,
-                code,
-                line_breaks,
-                wire_model: part.wire_model,
-                handle: handle.clone(),
-            },
-        );
-
-        self.focused = Some(name);
-
-        Ok(handle)
     }
 
     pub fn remove(&mut self, name: String, wgpu_context: &WgpuContext) {
@@ -286,7 +321,7 @@ impl ToolpathServer {
                     )),
                 );
 
-                self.root_hitbox.add_node(handle.into());
+                self.root_hitbox.add_node(handle);
             }
         }
 

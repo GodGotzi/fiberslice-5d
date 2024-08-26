@@ -18,10 +18,7 @@ use self::{
 
 use crate::geometry::BoundingHitbox;
 
-use super::{
-    part_server::{ToolpathContext, ToolpathContextImpl},
-    ToVisual,
-};
+use super::part_server::ToolpathContext;
 
 pub mod instruction;
 pub mod mesh;
@@ -52,11 +49,6 @@ pub struct Toolpath {
 unsafe impl Sync for Toolpath {}
 unsafe impl Send for Toolpath {}
 
-pub enum ToolpathModelContext {
-    Parent(BoundingHitbox),
-    Path(PathHitbox),
-}
-
 impl Toolpath {
     pub fn from_gcode(
         path: &str,
@@ -74,9 +66,7 @@ impl Toolpath {
             TreeModel::Root {
                 state: ModelState::Dormant(SimpleGeometry::empty()),
                 sub_handles: Vec::new(),
-                ctx: ToolpathContext::from_inner(Box::new(PathContext {
-                    box_: BoundingHitbox::default(),
-                })),
+                ctx: ToolpathContext::Parent(BoundingHitbox::default()),
             };
 
         for modul in raw_path.moduls {
@@ -96,78 +86,6 @@ impl Toolpath {
             model: root,
             center_mass: raw_path.center_mass,
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct PathContext<T> {
-    box_: T,
-}
-
-impl ToolpathContextImpl for PathContext<BoundingHitbox> {}
-
-impl<T: Translate> Translate for PathContext<T> {
-    fn translate(&mut self, translation: Vec3) {
-        self.box_.translate(translation)
-    }
-}
-
-impl<T: Rotate> Rotate for PathContext<T> {
-    fn rotate(&mut self, rotation: glam::Quat) {
-        self.box_.rotate(rotation)
-    }
-}
-
-impl<T: Scale> Scale for PathContext<T> {
-    fn scale(&mut self, scale: Vec3) {
-        self.box_.scale(scale)
-    }
-}
-
-impl<T: Hitbox> Hitbox for PathContext<T> {
-    fn check_hit(&self, ray: &Ray) -> Option<f32> {
-        self.box_.check_hit(ray)
-    }
-
-    fn expand(&mut self, _box: &dyn Hitbox) {
-        self.box_.expand(_box)
-    }
-
-    fn set_enabled(&mut self, enabled: bool) {
-        self.box_.set_enabled(enabled)
-    }
-
-    fn enabled(&self) -> bool {
-        self.box_.enabled()
-    }
-
-    fn min(&self) -> Vec3 {
-        self.box_.min()
-    }
-
-    fn max(&self) -> Vec3 {
-        self.box_.max()
-    }
-}
-
-impl<T: Hitbox> Interactive for PathContext<T> {
-    fn mouse_clicked(
-        &mut self,
-        button: winit::event::MouseButton,
-        // global_state: crate::GlobalState<crate::RootEvent>,
-        // wgpu_context: &WgpuContext,
-    ) {
-        /*
-                    if button == winit::event::MouseButton::Left {
-            let visual = self.box_.to_visual();
-
-            global_state
-                .widget_server
-                .write()
-                .set_select_visual(visual, &wgpu_context.queue);
-        }
-
-        */
     }
 }
 
