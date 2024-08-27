@@ -2,11 +2,12 @@ use core::panic;
 use std::{
     collections::{hash_map::Iter, HashMap},
     path::Path,
+    sync::Arc,
 };
 
 use rether::{
     alloc::{AllocHandle, DynamicAllocHandle},
-    model::{geometry::Geometry, Model, TreeModel},
+    model::{geometry::Geometry, Expandable, Model, TreeModel},
     picking::{interact::Interactive, Hitbox, HitboxNode, HitboxRoot},
     vertex::Vertex,
     Buffer, Rotate, Scale, Translate,
@@ -38,7 +39,7 @@ pub struct ToolpathHandle {
     pub line_breaks: Vec<usize>,
 
     pub wire_model: WireModel,
-    handle: TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>,
+    handle: Arc<TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>>,
 }
 
 impl ToolpathHandle {
@@ -213,7 +214,7 @@ impl ToolpathServer {
         &mut self,
         mut part: Toolpath,
         wgpu_context: &WgpuContext,
-    ) -> Result<&TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>, Error> {
+    ) -> Result<Arc<TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>>, Error> {
         let path: PathBuf = part.origin_path.into();
         let file_name = if let Some(path) = path.file_name() {
             path.to_string()
@@ -241,7 +242,7 @@ impl ToolpathServer {
                 self.buffer
                     .allocate_init(&name, data, &wgpu_context.device, &wgpu_context.queue);
 
-            part.model.make_alive(handle.clone());
+            part.model.wake(handle.clone());
 
             let code = part.raw.join("\n");
 
@@ -250,6 +251,8 @@ impl ToolpathServer {
                 .filter_map(|(index, c)| if c == '\n' { Some(index) } else { None })
                 .collect::<Vec<usize>>();
 
+            let handle = Arc::new(part.model);
+
             self.parts.insert(
                 name.clone(),
                 ToolpathHandle {
@@ -257,13 +260,13 @@ impl ToolpathServer {
                     code,
                     line_breaks,
                     wire_model: part.wire_model,
-                    handle: part.model,
+                    handle: handle.clone(),
                 },
             );
 
             self.focused = Some(name.clone());
 
-            Ok(&self.parts.get(&name).unwrap().handle)
+            Ok(handle.clone())
         } else {
             return Err(Error::NoGeometryObject);
         }
@@ -271,21 +274,16 @@ impl ToolpathServer {
 
     pub fn remove(&mut self, name: String, wgpu_context: &WgpuContext) {
         if let Some(part) = self.parts.remove(&name) {
-            match part.handle {
-                TreeModel::Root { state, .. } => {
-                    let id = match &state {
-                        rether::model::ModelState::Alive(handle) => handle.id(),
-                        rether::model::ModelState::Destroyed => panic!("Already destroyed"),
-                        _ => panic!("Not alive"),
-                    };
+            let state = part.handle.state();
 
-                    self.buffer
-                        .free(&id, &wgpu_context.device, &wgpu_context.queue);
-                }
-                _ => {
-                    panic!("Why am I here?")
-                }
-            }
+            let handle = match &state {
+                rether::model::ModelState::Alive(handle) => handle,
+                rether::model::ModelState::Destroyed => panic!("Already destroyed"),
+                _ => panic!("Not alive"),
+            };
+
+            self.buffer
+                .free(handle.id(), &wgpu_context.device, &wgpu_context.queue);
         }
     }
 

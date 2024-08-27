@@ -4,7 +4,7 @@ use winit::event::{DeviceEvent, ElementState, WindowEvent};
 use crate::{
     camera::CameraResult,
     prelude::{
-        create_event_bundle, Adapter, AdapterCreation, Error, EventReader, FrameHandle, WgpuContext,
+        create_event_bundle, Adapter, AdapterCreation, Error, EventReader, FrameHandle, SharedMut, WgpuContext
     },
     GlobalState, RootEvent,
 };

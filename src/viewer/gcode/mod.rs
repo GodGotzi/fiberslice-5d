@@ -1,13 +1,11 @@
 use std::{fmt::Debug, str::Lines};
 
 use glam::Vec3;
-use mesh::PathHitbox;
 use rether::{
     alloc::DynamicAllocHandle,
     model::{ModelState, TreeModel},
-    picking::{interact::Interactive, Hitbox, Ray},
     vertex::Vertex,
-    Rotate, Scale, SimpleGeometry, Translate,
+    SimpleGeometry,
 };
 
 use self::{
@@ -66,13 +64,17 @@ impl Toolpath {
             TreeModel::Root {
                 state: ModelState::Dormant(SimpleGeometry::empty()),
                 sub_handles: Vec::new(),
-                ctx: ToolpathContext::Parent(BoundingHitbox::default()),
+                ctx: ToolpathContext::Parent {
+                    box_: BoundingHitbox::default(),
+                },
             };
 
         for modul in raw_path.moduls {
             lines.extend(modul.lines.clone());
 
             let model = modul.to_model(display_settings);
+
+            root.add_child(model);
         }
 
         root.translate(-raw_path.center_mass);
