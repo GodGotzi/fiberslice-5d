@@ -2677,7 +2677,7 @@ dependencies = [
 [[package]]
 name = "rether"
 version = "0.1.0"
-source = "git+https://github.com/GodGotzi/rether#6dd44dfacdbf1b1598cb94ada027481af0a52e88"
+source = "git+https://github.com/GodGotzi/rether#e6f3514f4b88a51b9a51a32223aac56e06eb3357"
 dependencies = [
  "bytemuck",
  "glam",

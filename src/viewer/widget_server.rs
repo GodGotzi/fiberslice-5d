@@ -227,10 +227,12 @@ impl Hitbox for WidgetContext {
     }
 }
 
+#[derive(Debug)]
 pub struct WidgetModel {
     handle: TreeModel<Vertex, WidgetContext, StaticAllocHandle<Vertex>>,
 }
 
+#[derive(Debug)]
 pub struct WidgetServer {
     widget_hitbox: HitboxRoot<BaseModel<Vertex, WidgetContext, StaticAllocHandle<Vertex>>>,
     buffer: Buffer<Vertex, layout::VertexAllocator>,

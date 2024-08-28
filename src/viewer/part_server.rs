@@ -212,7 +212,7 @@ impl ToolpathServer {
 
     pub fn insert(
         &mut self,
-        mut part: Toolpath,
+        part: Toolpath,
         wgpu_context: &WgpuContext,
     ) -> Result<Arc<TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>>, Error> {
         let path: PathBuf = part.origin_path.into();
@@ -233,14 +233,17 @@ impl ToolpathServer {
         }
 
         if let TreeModel::Root { state, .. } = &part.model {
-            let data = match state {
-                rether::model::ModelState::Dormant(geometry) => geometry.build_data(),
-                _ => panic!("Unsupported geometry"),
-            };
+            let handle = {
+                let model_state = &*state.read();
 
-            let handle =
+                let data = match model_state {
+                    rether::model::ModelState::Dormant(geometry) => geometry.build_data(),
+                    _ => panic!("Unsupported geometry"),
+                };
+
                 self.buffer
-                    .allocate_init(&name, data, &wgpu_context.device, &wgpu_context.queue);
+                    .allocate_init(&name, data, &wgpu_context.device, &wgpu_context.queue)
+            };
 
             part.model.wake(handle.clone());
 
@@ -276,14 +279,16 @@ impl ToolpathServer {
         if let Some(part) = self.parts.remove(&name) {
             let state = part.handle.state();
 
-            let handle = match &state {
-                rether::model::ModelState::Alive(handle) => handle,
-                rether::model::ModelState::Destroyed => panic!("Already destroyed"),
-                _ => panic!("Not alive"),
-            };
+            {
+                let handle = match &*state.read() {
+                    rether::model::ModelState::Awake(handle) => handle.clone(),
+                    rether::model::ModelState::Destroyed => panic!("Already destroyed"),
+                    _ => panic!("Not alive"),
+                };
 
-            self.buffer
-                .free(handle.id(), &wgpu_context.device, &wgpu_context.queue);
+                self.buffer
+                    .free(handle.id(), &wgpu_context.device, &wgpu_context.queue);
+            }
         }
     }
 
@@ -314,8 +319,8 @@ impl ToolpathServer {
 
                 global_state.camera_event_writer.send(
                     crate::camera::CameraEvent::UpdatePreferredDistance(BoundingHitbox::new(
-                        handle.hitbox().min(),
-                        handle.hitbox().max(),
+                        handle.min_pos(),
+                        handle.max_pos(),
                     )),
                 );
 
@@ -366,5 +371,9 @@ impl ToolpathServer {
 
     pub fn get_focused_mut(&mut self) -> &mut Option<String> {
         &mut self.focused
+    }
+
+    pub fn read_buffer(&self) -> &Buffer<Vertex, rether::alloc::BufferDynamicAllocator<Vertex>> {
+        &self.buffer
     }
 }
