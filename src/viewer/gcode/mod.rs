@@ -3,7 +3,7 @@ use std::{fmt::Debug, str::Lines};
 use glam::Vec3;
 use rether::{
     alloc::DynamicAllocHandle,
-    model::{ModelState, TreeModel},
+    model::{TranslateModel, TreeModel},
     vertex::Vertex,
     SimpleGeometry,
 };
@@ -14,7 +14,7 @@ use self::{
     path::{Line, RawPath},
 };
 
-use crate::geometry::BoundingHitbox;
+use crate::geometry::BoundingBox;
 
 use super::part_server::ToolpathContext;
 
@@ -61,14 +61,10 @@ impl Toolpath {
         // let mut layers: HashMap<usize, LayerModel> = HashMap::new();
 
         let mut root: TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>> =
-            TreeModel::Root {
-                state: ModelState::Dormant(SimpleGeometry::empty()),
-                sub_handles: Vec::new(),
-                ctx: ToolpathContext::Parent {
-                    box_: BoundingHitbox::default(),
-                },
-            };
-
+            TreeModel::create_root(
+                ToolpathContext::parent(BoundingBox::default()),
+                SimpleGeometry::empty(),
+            );
         for modul in raw_path.moduls {
             lines.extend(modul.lines.clone());
 

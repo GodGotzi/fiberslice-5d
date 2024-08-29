@@ -4,7 +4,7 @@ use winit::event::{DeviceEvent, ElementState, WindowEvent};
 use crate::{
     camera::CameraResult,
     prelude::{
-        create_event_bundle, Adapter, AdapterCreation, Error, EventReader, FrameHandle, SharedMut, WgpuContext
+        create_event_bundle, Adapter, AdapterCreation, Error, EventReader, FrameHandle, WgpuContext,
     },
     GlobalState, RootEvent,
 };
@@ -67,15 +67,10 @@ impl FrameHandle<'_, RootEvent, (), &CameraResult> for PickingAdapter {
                         let ray =
                             rether::picking::Ray::from_view(viewport, (x, y), view, proj, eye);
 
-                        global_state.toolpath_server.clone().read_with_fn(|server| {
-                            let hit = server.().check_hit(&ray);
-
-                            if let Some(handle) = hit {
-                                let mut handle_read = handle.write();
-
-                                handle_read.mouse_clicked(*button);
-                            }
-                        });
+                        global_state
+                            .toolpath_server
+                            .clone()
+                            .read_with_fn(|server| {});
 
                         println!("PickingAdapter: Picking took {:?}", now.elapsed());
                     }

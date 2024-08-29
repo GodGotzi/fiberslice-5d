@@ -1,7 +1,7 @@
 use glam::{vec3, Mat4, Vec3};
 
 use super::Camera;
-use crate::geometry::BoundingHitbox;
+use crate::geometry::BoundingBox;
 
 /// An [OrbitCamera] only permits rotation of the eye on a spherical shell around a target.
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -41,7 +41,7 @@ pub struct OrbitCamera {
     pub zfar: f32,
 
     /// The bounding box of the objects the camera should view.
-    pub view_box: BoundingHitbox,
+    pub view_box: BoundingBox,
 }
 
 impl Camera for OrbitCamera {
@@ -75,7 +75,7 @@ impl OrbitCamera {
             fovy: std::f32::consts::PI / 2.0,
             znear: 0.1,
             zfar: 1000.0,
-            view_box: BoundingHitbox::new(vec3(-1.0, -1.0, 0.0), vec3(1.0, 1.0, 2.0)),
+            view_box: BoundingBox::new(vec3(-1.0, -1.0, 0.0), vec3(1.0, 1.0, 2.0)),
         };
         camera.update();
         camera
@@ -94,7 +94,7 @@ impl OrbitCamera {
         self.update();
     }
 
-    pub fn set_preferred_distance(&mut self, bounding_box: &BoundingHitbox) {
+    pub fn set_preferred_distance(&mut self, bounding_box: &BoundingBox) {
         let bounding_box_diagonal = bounding_box.diagonal();
         let half_diagonal = bounding_box_diagonal.length() / 2.0;
         let half_fov = self.fovy / 2.0;

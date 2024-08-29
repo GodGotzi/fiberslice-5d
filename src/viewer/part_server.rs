@@ -18,7 +18,7 @@ use tokio::{
 };
 use uni_path::PathBuf;
 
-use crate::{geometry::BoundingHitbox, prelude::WgpuContext, GlobalState, RootEvent};
+use crate::{geometry::BoundingBox, prelude::WgpuContext, GlobalState, RootEvent};
 
 use super::gcode::{self, mesh::PathHitbox, DisplaySettings, MeshSettings, Toolpath, WireModel};
 
@@ -49,8 +49,14 @@ impl ToolpathHandle {
 }
 
 pub enum ToolpathContext {
-    Parent { box_: BoundingHitbox },
-    Path { box_: PathHitbox },
+    Parent {
+        box_: BoundingBox,
+        enabled: bool,
+    },
+    Path {
+        box_: Box<PathHitbox>,
+        enabled: bool,
+    },
 }
 
 impl std::fmt::Debug for ToolpathContext {
@@ -62,11 +68,27 @@ impl std::fmt::Debug for ToolpathContext {
     }
 }
 
+impl ToolpathContext {
+    pub fn parent(box_: BoundingBox) -> Self {
+        Self::Parent {
+            box_,
+            enabled: true,
+        }
+    }
+
+    pub fn path(box_: PathHitbox) -> Self {
+        Self::Path {
+            box_: Box::new(box_),
+            enabled: true,
+        }
+    }
+}
+
 impl Translate for ToolpathContext {
     fn translate(&mut self, translation: glam::Vec3) {
         match self {
-            Self::Parent { box_ } => box_.translate(translation),
-            Self::Path { box_ } => box_.translate(translation),
+            Self::Parent { box_, .. } => box_.translate(translation),
+            Self::Path { box_, .. } => box_.translate(translation),
         }
     }
 }
@@ -74,8 +96,8 @@ impl Translate for ToolpathContext {
 impl Rotate for ToolpathContext {
     fn rotate(&mut self, rotation: glam::Quat) {
         match self {
-            Self::Parent { box_ } => box_.rotate(rotation),
-            Self::Path { box_ } => box_.rotate(rotation),
+            Self::Parent { box_, .. } => box_.rotate(rotation),
+            Self::Path { box_, .. } => box_.rotate(rotation),
         };
     }
 }
@@ -83,75 +105,66 @@ impl Rotate for ToolpathContext {
 impl Scale for ToolpathContext {
     fn scale(&mut self, scale: glam::Vec3) {
         match self {
-            Self::Parent { box_ } => box_.scale(scale),
-            Self::Path { box_ } => box_.scale(scale),
+            Self::Parent { box_, .. } => box_.scale(scale),
+            Self::Path { box_, .. } => box_.scale(scale),
         };
     }
 }
 
 impl Interactive for ToolpathContext {
-    fn mouse_clicked(&mut self, button: winit::event::MouseButton) {
-        match self {
-            Self::Parent { box_ } => todo!(),
-            Self::Path { box_ } => todo!(),
-        };
+    fn clicked(&mut self, event: rether::picking::interact::ClickEvent) {
+        todo!()
     }
 
-    fn mouse_motion(&mut self, button: winit::event::MouseButton, delta: glam::Vec2) {
-        match self {
-            Self::Parent { box_ } => todo!(),
-            Self::Path { box_ } => todo!(),
-        };
+    fn scroll(&mut self, event: rether::picking::interact::ScrollEvent) {
+        todo!()
     }
 
-    fn mouse_scroll(&mut self, delta: f32) {
-        match self {
-            Self::Parent { box_ } => todo!(),
-            Self::Path { box_ } => todo!(),
-        };
+    fn drag(&mut self, event: rether::picking::interact::DragEvent) {
+        todo!()
     }
 }
 
 impl Hitbox for ToolpathContext {
     fn check_hit(&self, ray: &rether::picking::Ray) -> Option<f32> {
         match self {
-            Self::Parent { box_ } => box_.check_hit(ray),
-            Self::Path { box_ } => box_.check_hit(ray),
+            Self::Parent { box_, .. } => box_.check_hit(ray),
+            Self::Path { box_, .. } => box_.check_hit(ray),
         }
     }
 
-    fn expand(&mut self, _box: &dyn Hitbox) {
+    fn expand_hitbox(&mut self, _box: &dyn Hitbox) {
         match self {
-            Self::Parent { box_ } => (box_ as &mut dyn Hitbox).expand(_box),
-            Self::Path { box_ } => (box_ as &mut dyn Hitbox).expand(_box),
+            Self::Parent { box_, .. } => box_.expand_hitbox(_box),
+            Self::Path { box_, .. } => box_.expand_hitbox(_box),
         }
     }
 
-    fn set_enabled(&mut self, enabled: bool) {
+    fn set_enabled(&mut self, enable: bool) {
         match self {
-            Self::Parent { box_ } => box_.set_enabled(enabled),
-            Self::Path { box_ } => box_.set_enabled(enabled),
+            Self::Parent { enabled, .. } => *enabled = enable,
+            Self::Path { enabled, .. } => *enabled = enable,
         }
     }
 
     fn enabled(&self) -> bool {
         match self {
-            Self::Parent { box_ } => box_.enabled(),
-            Self::Path { box_ } => box_.enabled(),
+            Self::Parent { enabled, .. } => *enabled,
+            Self::Path { enabled, .. } => *enabled,
         }
     }
 
-    fn min(&self) -> glam::Vec3 {
+    fn get_min(&self) -> glam::Vec3 {
         match self {
-            Self::Parent { box_ } => box_.min(),
-            Self::Path { box_ } => box_.min(),
+            Self::Parent { box_, .. } => box_.get_min(),
+            Self::Path { box_, .. } => box_.get_min(),
         }
     }
 
-    fn max(&self) -> glam::Vec3 {
+    fn get_max(&self) -> glam::Vec3 {
         match self {
-            Self::Parent { box_ } => box_.max(),
-            Self::Path { box_ } => box_.max(),
+            Self::Parent { box_, .. } => box_.get_max(),
+            Self::Path { box_, .. } => box_.get_max(),
         }
     }
 }
@@ -318,9 +331,9 @@ impl ToolpathServer {
                     .send(crate::ui::UiEvent::ShowSuccess("Gcode loaded".to_string()));
 
                 global_state.camera_event_writer.send(
-                    crate::camera::CameraEvent::UpdatePreferredDistance(BoundingHitbox::new(
-                        handle.min_pos(),
-                        handle.max_pos(),
+                    crate::camera::CameraEvent::UpdatePreferredDistance(BoundingBox::new(
+                        handle.get_min(),
+                        handle.get_max(),
                     )),
                 );
 

@@ -8,6 +8,8 @@ use rether::{
     Buffer, Rotate, Scale, Translate,
 };
 
+use crate::geometry::BoundingBox;
+
 use super::Visual;
 
 mod layout {
@@ -156,74 +158,64 @@ mod layout {
     }
 }
 
-pub trait WidgetContextImpl: Translate + Rotate + Scale + Interactive + Hitbox {}
-
 #[derive(Debug)]
 pub struct WidgetContext {
-    context: Box<dyn WidgetContextImpl>,
-}
-
-impl WidgetContext {
-    pub fn new(context: Box<dyn WidgetContextImpl>) -> Self {
-        Self { context }
-    }
+    bounding_hitbox: BoundingBox,
 }
 
 impl Translate for WidgetContext {
-    fn translate(&mut self, translation: glam::Vec3) {
-        self.context.translate(translation);
+    fn translate(&mut self, delta: glam::Vec3) {
+        self.bounding_hitbox.translate(delta);
     }
 }
 
 impl Rotate for WidgetContext {
     fn rotate(&mut self, rotation: glam::Quat) {
-        self.context.rotate(rotation);
+        self.bounding_hitbox.rotate(rotation);
     }
 }
 
 impl Scale for WidgetContext {
     fn scale(&mut self, scale: glam::Vec3) {
-        self.context.scale(scale);
+        self.bounding_hitbox.scale(scale);
     }
 }
 
 impl Interactive for WidgetContext {
-    fn mouse_clicked(&mut self, button: winit::event::MouseButton) {
-        self.context.mouse_clicked(button);
+    fn clicked(&mut self, event: rether::picking::interact::ClickEvent) {
+        todo!()
     }
 
-    fn mouse_motion(&mut self, button: winit::event::MouseButton, delta: glam::Vec2) {
-        self.context.mouse_motion(button, delta);
+    fn scroll(&mut self, event: rether::picking::interact::ScrollEvent) {
+        todo!()
     }
 
-    fn mouse_scroll(&mut self, delta: f32) {
-        self.context.mouse_scroll(delta);
+    fn drag(&mut self, event: rether::picking::interact::DragEvent) {
+        todo!()
     }
 }
 
 impl Hitbox for WidgetContext {
     fn check_hit(&self, ray: &rether::picking::Ray) -> Option<f32> {
-        self.context.check_hit(ray)
+        self.bounding_hitbox.check_hit(ray)
     }
 
-    fn expand(&mut self, _box: &dyn Hitbox) {
-        self.context.expand(_box);
+    fn expand_hitbox(&mut self, _box: &dyn Hitbox) {
+        self.bounding_hitbox.expand_hitbox(_box);
     }
 
-    fn set_enabled(&mut self, enabled: bool) {
-        self.context.set_enabled(enabled);
-    }
+    fn set_enabled(&mut self, enabled: bool) {}
 
     fn enabled(&self) -> bool {
-        self.context.enabled()
+        todo!()
     }
 
-    fn min(&self) -> glam::Vec3 {
-        self.context.min()
+    fn get_min(&self) -> glam::Vec3 {
+        todo!()
     }
 
-    fn max(&self) -> glam::Vec3 {
-        self.context.max()
+    fn get_max(&self) -> glam::Vec3 {
+        todo!()
     }
 }
 

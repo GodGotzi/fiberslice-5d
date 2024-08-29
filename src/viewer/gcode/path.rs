@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use glam::{vec3, Vec3};
 
-use crate::{api::math::Average, geometry::BoundingHitbox, slicer::print_type::PrintType};
+use crate::{api::math::Average, geometry::BoundingBox, slicer::print_type::PrintType};
 
 use super::{instruction::InstructionType, movement, state::PrintState, GCode};
 
@@ -52,7 +52,7 @@ impl PathModul {
 pub struct RawPath {
     pub(super) moduls: Vec<PathModul>,
     pub(super) center_mass: Vec3,
-    pub(super) virtual_box: BoundingHitbox,
+    pub(super) virtual_box: BoundingBox,
 }
 
 impl From<&GCode> for RawPath {
@@ -61,7 +61,7 @@ impl From<&GCode> for RawPath {
 
         let mut current_movements = movement::Movements::new();
 
-        let mut toolpath_box = BoundingHitbox::default();
+        let mut toolpath_box = BoundingBox::default();
         let mut toolpath_average = Average::<Vec3>::default();
 
         for instruction_modul in gcode.iter() {
@@ -95,9 +95,9 @@ fn compute_modul(
     points: &mut Vec<Line>,
     current_movements: &mut movement::Movements,
     instruction_modul: &super::instruction::InstructionModul,
-) -> (Average<Vec3>, BoundingHitbox) {
+) -> (Average<Vec3>, BoundingBox) {
     let mut modul_average = Average::<Vec3>::default();
-    let mut virtual_box = BoundingHitbox::default();
+    let mut virtual_box = BoundingBox::default();
 
     for instructions in instruction_modul.borrow_inner().chunks(500) {
         let mut instruction_average = Average::<Vec3>::default();

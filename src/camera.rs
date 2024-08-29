@@ -7,7 +7,7 @@ use wgpu::core::device::global;
 use winit::event::WindowEvent;
 
 use crate::{
-    geometry::BoundingHitbox,
+    geometry::BoundingBox,
     prelude::{
         create_event_bundle, Adapter, AdapterCreation, EventReader, FrameHandle, Viewport,
         WgpuContext,
@@ -37,7 +37,7 @@ pub enum Orientation {
 #[derive(Debug)]
 pub enum CameraEvent {
     CameraOrientationChanged(Orientation),
-    UpdatePreferredDistance(BoundingHitbox),
+    UpdatePreferredDistance(BoundingBox),
 }
 
 #[derive(Debug, Clone)]

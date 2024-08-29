@@ -13,29 +13,23 @@ use super::{
 };
 
 #[derive(Debug, Clone, Copy)]
-pub struct BoundingHitbox {
+pub struct BoundingBox {
     pub max: Vec3,
     pub min: Vec3,
-    enabled: bool,
 }
 
-impl Default for BoundingHitbox {
+impl Default for BoundingBox {
     fn default() -> Self {
         Self {
             max: Vec3::new(f32::MIN, f32::MIN, f32::MIN),
             min: Vec3::new(f32::MAX, f32::MAX, f32::MAX),
-            enabled: true,
         }
     }
 }
 
-impl BoundingHitbox {
+impl BoundingBox {
     pub fn new(min: Vec3, max: Vec3) -> Self {
-        Self {
-            max,
-            min,
-            enabled: true,
-        }
+        Self { max, min }
     }
 
     pub fn center(&self) -> Vec3 {
@@ -115,26 +109,26 @@ impl BoundingHitbox {
     }
 }
 
-impl Translate for BoundingHitbox {
+impl Translate for BoundingBox {
     fn translate(&mut self, translation: Vec3) {
         self.min += translation;
         self.max += translation;
     }
 }
 
-impl Rotate for BoundingHitbox {
+impl Rotate for BoundingBox {
     fn rotate(&mut self, _rotation: glam::Quat) {
         todo!("Implement rotate for BoundingHitbox")
     }
 }
 
-impl Scale for BoundingHitbox {
+impl Scale for BoundingBox {
     fn scale(&mut self, _scale: Vec3) {
         todo!("Implement scale for BoundingHitbox")
     }
 }
 
-impl Hitbox for BoundingHitbox {
+impl Hitbox for BoundingBox {
     fn check_hit(&self, ray: &Ray) -> Option<f32> {
         // bounding box min max
 
@@ -154,45 +148,37 @@ impl Hitbox for BoundingHitbox {
             }
         }
 
-        if min.is_some() {
-            println!("Ray intersects bounding box");
-
-            println!("Distance: {:?}", min.unwrap());
-        }
-
         min
     }
 
-    fn expand(&mut self, box_: &dyn Hitbox) {
-        self.min = self.min.min(box_.min());
-        self.max = self.max.max(box_.max());
+    fn expand_hitbox(&mut self, box_: &dyn Hitbox) {
+        self.min = self.min.min(box_.get_min());
+        self.max = self.max.max(box_.get_max());
     }
 
-    fn set_enabled(&mut self, enabled: bool) {
-        self.enabled = enabled;
-    }
+    fn set_enabled(&mut self, _enabled: bool) {}
 
     fn enabled(&self) -> bool {
-        self.enabled
+        true
     }
 
-    fn min(&self) -> Vec3 {
+    fn get_min(&self) -> Vec3 {
         self.min
     }
 
-    fn max(&self) -> Vec3 {
+    fn get_max(&self) -> Vec3 {
         self.max
     }
 }
 
-impl ToVisual<72, 48> for BoundingHitbox {
+impl ToVisual<72, 48> for BoundingBox {
     fn to_visual(&self) -> Visual<72, 48> {
-        let diagonal = self.max() - self.min();
+        let diagonal = self.max - self.min;
         let distance = diagonal.x.min(diagonal.y).min(diagonal.z);
 
-        let select_smaller_box: SelectBox = SelectBox::from(BoundingHitbox::new(
-            self.min() - distance * 0.1,
-            self.max() + distance * 0.1,
+        let select_smaller_box: SelectBox = SelectBox::from(BoundingBox::new(
+            self.min - distance * 0.1,
+            self.max + distance * 0.1,
         ))
         .with_color(vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0, 1.0, 1.0, 1.0));
 

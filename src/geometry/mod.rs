@@ -4,7 +4,7 @@ use mesh::{construct_triangle_vertices, construct_wire_vertices, WireMesh};
 pub mod r#box;
 pub mod mesh;
 
-pub use r#box::BoundingHitbox;
+pub use r#box::BoundingBox;
 use rether::{
     picking::Hitbox,
     vertex::Vertex,
@@ -30,7 +30,7 @@ impl Translate for QuadFace {
 }
 
 impl Rotate for QuadFace {
-    fn rotate(&mut self, _rotation: glam::Quat) {
+    fn rotate(&mut self, rotation: glam::Quat) {
         todo!("Implement rotate for QuadFace")
     }
 }
@@ -63,7 +63,7 @@ impl Hitbox for QuadFace {
         }
     }
 
-    fn expand(&mut self, _box: &dyn Hitbox) {
+    fn expand_hitbox(&mut self, _box: &dyn Hitbox) {
         panic!("QuadFace does not have an expand method");
     }
 
@@ -75,11 +75,11 @@ impl Hitbox for QuadFace {
         panic!("QuadFace does not have an enabled method");
     }
 
-    fn min(&self) -> Vec3 {
+    fn get_min(&self) -> Vec3 {
         self.min
     }
 
-    fn max(&self) -> Vec3 {
+    fn get_max(&self) -> Vec3 {
         self.max
     }
 }
@@ -134,8 +134,8 @@ pub struct SelectBox {
     corner_expansion: f32,
 }
 
-impl From<BoundingHitbox> for SelectBox {
-    fn from(box_: BoundingHitbox) -> Self {
+impl From<BoundingBox> for SelectBox {
+    fn from(box_: BoundingBox) -> Self {
         // box_.expand_point(box_.max + Vec3::new(2.0, 2.0, 2.0));
         // box_.expand_point(box_.min + Vec3::new(-2.0, -2.0, -2.0));
 

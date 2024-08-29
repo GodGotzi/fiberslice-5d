@@ -1,7 +1,7 @@
 use glam::{vec4, Vec3, Vec4};
 use rether::{
     alloc::DynamicAllocHandle,
-    model::{BufferLocation, ModelState, TreeModel},
+    model::{BufferLocation, TreeModel},
     picking::{Hitbox, Ray},
     vertex::Vertex,
     Rotate, Scale, SimpleGeometry, Translate,
@@ -10,12 +10,12 @@ use rether::{
 use crate::{
     geometry::{
         mesh::{construct_triangle_vertices, Mesh, WireMesh},
-        BoundingHitbox, ProfileExtrusion, QuadFace, SelectBox,
+        BoundingBox, ProfileExtrusion, QuadFace, SelectBox,
     },
     viewer::{part_server::ToolpathContext, ToVisual, Visual},
 };
 
-use super::{path::PathModul, DisplaySettings, PathContext};
+use super::{path::PathModul, DisplaySettings};
 
 #[derive(Debug, Clone)]
 pub struct ProfileCross {
@@ -295,7 +295,7 @@ impl PathModul {
             .as_ref()
             .unwrap_or(&crate::slicer::print_type::PrintType::Unknown);
 
-        let mut bounding_box = BoundingHitbox::default();
+        let mut bounding_box = BoundingBox::default();
 
         let mut last_cross: Option<ProfileCross> = None;
 
@@ -341,20 +341,17 @@ impl PathModul {
 
                 let path_hitbox = PathHitbox::from(path_mesh);
 
-                bounding_box.expand_min(path_hitbox.min());
-                bounding_box.expand_max(path_hitbox.max());
+                bounding_box.expand_min(path_hitbox.get_min());
+                bounding_box.expand_max(path_hitbox.get_max());
 
                 let sub_model =
-                    TreeModel::<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>::Node {
-                        location: BufferLocation {
+                    TreeModel::<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>::create_node(
+                        ToolpathContext::path(path_hitbox),
+                        BufferLocation {
                             offset: vertices.len(),
                             size: path_mesh_vertices.len(),
                         },
-                        sub_handles: Vec::new(),
-                        ctx: ToolpathContext::from_inner(Box::new(PathContext {
-                            box_: path_hitbox,
-                        })),
-                    };
+                    );
 
                 sub_handles.push(sub_model);
 
@@ -370,11 +367,11 @@ impl PathModul {
             }
         }
 
-        TreeModel::<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>::Root {
-            state: ModelState::Dormant(SimpleGeometry::init(vertices)),
+        TreeModel::<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>::create_root_with_models(
+            ToolpathContext::parent(bounding_box),
+            SimpleGeometry::init(vertices),
             sub_handles,
-            ctx: ToolpathContext::from_inner(Box::new(PathContext { box_: bounding_box })),
-        }
+        )
     }
 }
 
@@ -453,8 +450,6 @@ impl From<PathMesh> for PathHitbox {
                 val.profile_start.axis_aligned(),
                 val.profile_end.axis_aligned(),
             ),
-
-            enabled: true,
         }
     }
 }
@@ -467,7 +462,6 @@ pub struct PathHitbox {
     north_east: QuadFace,
     south_west: QuadFace,
     south_east: QuadFace,
-    enabled: bool,
 }
 
 impl Translate for PathHitbox {
@@ -527,20 +521,18 @@ impl Hitbox for PathHitbox {
         min
     }
 
-    fn expand(&mut self, _box: &dyn Hitbox) {
+    fn expand_hitbox(&mut self, _box: &dyn Hitbox) {
         // Not expandable
         // TODO either figure out how to expand this or remove this method for this type or make it clear that this is not expandable
     }
 
-    fn set_enabled(&mut self, enabled: bool) {
-        self.enabled = enabled;
-    }
+    fn set_enabled(&mut self, _enabled: bool) {}
 
     fn enabled(&self) -> bool {
-        self.enabled
+        true
     }
 
-    fn min(&self) -> Vec3 {
+    fn get_min(&self) -> Vec3 {
         self.north_west
             .min
             .min(self.north_east.min)
@@ -548,7 +540,7 @@ impl Hitbox for PathHitbox {
             .min(self.south_east.min)
     }
 
-    fn max(&self) -> Vec3 {
+    fn get_max(&self) -> Vec3 {
         self.north_west
             .max
             .max(self.north_east.max)
