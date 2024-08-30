@@ -7,7 +7,7 @@ use std::{
 
 use rether::{
     alloc::{AllocHandle, DynamicAllocHandle},
-    model::{geometry::Geometry, Expandable, Model, TreeModel},
+    model::{geometry::Geometry, Model, TreeModel},
     picking::{interact::Interactive, Hitbox, HitboxNode, HitboxRoot},
     vertex::Vertex,
     Buffer, Rotate, Scale, Translate,
@@ -112,16 +112,33 @@ impl Scale for ToolpathContext {
 }
 
 impl Interactive for ToolpathContext {
-    fn clicked(&mut self, event: rether::picking::interact::ClickEvent) {
-        todo!()
+    type Model = TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>;
+
+    fn clicked(
+        &mut self,
+        event: rether::picking::interact::ClickEvent,
+    ) -> impl FnOnce(&Self::Model) {
+        move |model| {
+            println!("Clicked");
+            println!("{:?}", event);
+        }
     }
 
-    fn scroll(&mut self, event: rether::picking::interact::ScrollEvent) {
-        todo!()
+    fn scroll(
+        &mut self,
+        event: rether::picking::interact::ScrollEvent,
+    ) -> impl FnOnce(&Self::Model) {
+        move |model| {
+            println!("Scrolled");
+            println!("{:?}", event);
+        }
     }
 
-    fn drag(&mut self, event: rether::picking::interact::DragEvent) {
-        todo!()
+    fn drag(&mut self, event: rether::picking::interact::DragEvent) -> impl FnOnce(&Self::Model) {
+        move |model| {
+            println!("Dragged");
+            println!("{:?}", event);
+        }
     }
 }
 
