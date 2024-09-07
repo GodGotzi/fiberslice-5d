@@ -1,3 +1,4 @@
+use rether::picking::interact::InteractiveModel;
 use tokio::task::JoinHandle;
 use winit::event::{DeviceEvent, ElementState, WindowEvent};
 
@@ -67,10 +68,15 @@ impl FrameHandle<'_, RootEvent, (), &CameraResult> for PickingAdapter {
                         let ray =
                             rether::picking::Ray::from_view(viewport, (x, y), view, proj, eye);
 
-                        global_state
-                            .toolpath_server
-                            .clone()
-                            .read_with_fn(|server| {});
+                        global_state.toolpath_server.clone().read_with_fn(|server| {
+                            let model = server.root_hitbox().check_hit(&ray);
+
+                            if let Some(model) = model {
+                                model.clicked(rether::picking::interact::ClickEvent {
+                                    action: rether::picking::interact::Action::Mouse(*button),
+                                })
+                            }
+                        });
 
                         println!("PickingAdapter: Picking took {:?}", now.elapsed());
                     }

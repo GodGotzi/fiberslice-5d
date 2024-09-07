@@ -121,6 +121,24 @@ impl Interactive for ToolpathContext {
         move |model| {
             println!("Clicked");
             println!("{:?}", event);
+
+            match model {
+                TreeModel::Root {
+                    state,
+                    transform,
+                    sub_handles,
+                    ctx,
+                } => {
+                    println!("ctx locked {}", ctx.is_locked());
+                }
+                TreeModel::Node {
+                    location,
+                    sub_handles,
+                    ctx,
+                } => {
+                    println!("ctx locked {}", ctx.is_locked());
+                }
+            }
         }
     }
 
@@ -301,7 +319,7 @@ impl ToolpathServer {
 
             Ok(handle.clone())
         } else {
-            return Err(Error::NoGeometryObject);
+            Err(Error::NoGeometryObject)
         }
     }
 
@@ -405,5 +423,11 @@ impl ToolpathServer {
 
     pub fn read_buffer(&self) -> &Buffer<Vertex, rether::alloc::BufferDynamicAllocator<Vertex>> {
         &self.buffer
+    }
+
+    pub fn root_hitbox(
+        &self,
+    ) -> &HitboxRoot<TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>> {
+        &self.root_hitbox
     }
 }
