@@ -130,6 +130,11 @@ impl Interactive for ToolpathContext {
                     ctx,
                 } => {
                     println!("ctx locked {}", ctx.is_locked());
+
+                    match ctx.try_write() {
+                        Some(_) => println!("ctx is not locked"),
+                        None => println!("ctx locked"),
+                    }
                 }
                 TreeModel::Node {
                     location,
@@ -137,6 +142,10 @@ impl Interactive for ToolpathContext {
                     ctx,
                 } => {
                     println!("ctx locked {}", ctx.is_locked());
+                    match ctx.try_write() {
+                        Some(_) => println!("ctx is not locked"),
+                        None => println!("ctx locked"),
+                    }
                 }
             }
         }
