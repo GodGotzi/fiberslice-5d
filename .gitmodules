@@ -1,0 +1,3 @@
+[submodule "rether"]
+	path = rether
+	url = https://github.com/GodGotzi/rether.git

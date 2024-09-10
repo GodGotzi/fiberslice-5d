@@ -1,3 +1,5 @@
+use glam::vec3;
+use rether::model::TranslateModel;
 use rether::picking::interact::InteractiveModel;
 use tokio::task::JoinHandle;
 use winit::event::{DeviceEvent, ElementState, WindowEvent};
@@ -71,10 +73,11 @@ impl FrameHandle<'_, RootEvent, (), &CameraResult> for PickingAdapter {
                         global_state.toolpath_server.clone().read_with_fn(|server| {
                             let model = server.root_hitbox().check_hit(&ray);
 
-                            if let Some(model) = model {
-                                model.clicked(rether::picking::interact::ClickEvent {
-                                    action: rether::picking::interact::Action::Mouse(*button),
-                                })
+                            if let Some(_model) = model {
+                                let focused = server.get_focused().unwrap_or("");
+                                if let Some(toolpath) = server.get_toolpath(focused) {
+                                    toolpath.handle.translate(vec3(10.0, 10.0, 10.0))
+                                }
                             }
                         });
 

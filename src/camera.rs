@@ -1,9 +1,7 @@
 use std::f32::consts::PI;
 
 use glam::{Mat4, Vec3};
-use macros::NumEnum;
 use strum_macros::{EnumCount, EnumIter};
-use wgpu::core::device::global;
 use winit::event::WindowEvent;
 
 use crate::{
@@ -24,7 +22,7 @@ pub use self::orbit_camera::OrbitCamera;
 pub use camera_controller::*;
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Copy, NumEnum, EnumCount, EnumIter)] //maybe performance bit worse
+#[derive(Debug, Clone, Copy, EnumCount, EnumIter)] //maybe performance bit worse
 pub enum Orientation {
     Default,
     Diagonal,

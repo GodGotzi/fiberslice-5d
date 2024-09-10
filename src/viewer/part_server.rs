@@ -39,7 +39,7 @@ pub struct ToolpathHandle {
     pub line_breaks: Vec<usize>,
 
     pub wire_model: WireModel,
-    handle: Arc<TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>>,
+    pub handle: Arc<TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>>,
 }
 
 impl ToolpathHandle {
@@ -384,6 +384,9 @@ impl ToolpathServer {
                 self.root_hitbox.add_node(handle);
             }
         }
+
+        self.buffer
+            .update(&wgpu_context.device, &wgpu_context.queue);
 
         Ok(())
     }
