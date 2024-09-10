@@ -75,7 +75,10 @@ impl FrameHandle<'_, RootEvent, (), &CameraResult> for PickingAdapter {
 
                             if let Some(_model) = model {
                                 let focused = server.get_focused().unwrap_or("");
+
                                 if let Some(toolpath) = server.get_toolpath(focused) {
+                                    println!("PickingAdapter: Focused: {}", focused);
+
                                     toolpath.handle.translate(vec3(10.0, 10.0, 10.0))
                                 }
                             }
