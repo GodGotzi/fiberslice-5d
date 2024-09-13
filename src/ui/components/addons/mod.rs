@@ -7,6 +7,7 @@
 
 use egui::*;
 use egui_xml::load_layout;
+use gizmo::GizmoTools;
 use orientation::OrientationAddon;
 
 use crate::config::gui::shaded_color;
@@ -15,6 +16,8 @@ use crate::ui::boundary::Boundary;
 use crate::ui::{ui_temp_mut, AllocateInnerUiRect, UiState};
 use crate::ui::{ComponentState, InnerComponent};
 use crate::{GlobalState, RootEvent};
+
+pub mod gizmo;
 
 pub mod orientation {
     use egui::{Color32, ImageButton, Widget};
@@ -110,12 +113,16 @@ pub mod orientation {
 }
 
 pub struct AddonsState {
+    gizmo_tools: gizmo::GizmoTools,
     enabled: bool,
 }
 
 impl AddonsState {
     pub fn new() -> Self {
-        Self { enabled: true }
+        Self {
+            gizmo_tools: GizmoTools::default(),
+            enabled: true,
+        }
     }
 }
 
@@ -230,14 +237,10 @@ impl<'a> Addons<'a> {
         });
     }
 
-    fn show_left_addon(
-        &mut self,
-        ui: &mut Ui,
-        (ui_state, _global_state): &(UiState, GlobalState<RootEvent>),
-    ) {
+    fn show_left_addon(&mut self, ui: &mut Ui, shared_state: &(UiState, GlobalState<RootEvent>)) {
         let shaded_color = shaded_color(ui.visuals().dark_mode);
 
-        ui_state.mode.read_with_fn(|mode| match mode {
+        shared_state.0.mode.read_with_fn(|mode| match mode {
             Mode::Preview => {}
             Mode::Prepare => {
                 ui.allocate_ui_in_rect(
@@ -246,8 +249,13 @@ impl<'a> Addons<'a> {
                         Pos2::new(ui.available_width(), ui.available_height() * 0.75),
                     ),
                     |ui| {
-                        ui.painter()
-                            .rect_filled(ui.available_rect_before_wrap(), 5.0, shaded_color)
+                        ui.painter().rect_filled(
+                            ui.available_rect_before_wrap(),
+                            5.0,
+                            shaded_color,
+                        );
+
+                        self.state.gizmo_tools.show_icons(ui, shared_state);
                     },
                 );
             }
@@ -272,6 +280,8 @@ impl<'a> Addons<'a> {
 
 impl<'a> InnerComponent for Addons<'a> {
     fn show(&mut self, ui: &mut Ui, shared_state: &(UiState, GlobalState<RootEvent>)) {
+        self.state.gizmo_tools.show_tool_wíndow(ui, shared_state);
+
         if self.state.enabled {
             let available_size = ui.available_size();
 
