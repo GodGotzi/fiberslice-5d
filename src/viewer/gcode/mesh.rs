@@ -1,7 +1,6 @@
 use glam::{vec4, Vec3, Vec4};
 use rether::{
-    alloc::DynamicAllocHandle,
-    model::{BufferLocation, TreeModel},
+    model::BufferLocation,
     picking::{Hitbox, Ray},
     vertex::Vertex,
     Rotate, Scale, SimpleGeometry, Translate,
@@ -12,10 +11,10 @@ use crate::{
         mesh::{construct_triangle_vertices, Mesh, WireMesh},
         BoundingBox, ProfileExtrusion, QuadFace, SelectBox,
     },
-    viewer::{part_server::ToolpathContext, ToVisual, Visual},
+    viewer::{ToVisual, Visual},
 };
 
-use super::{path::PathModul, DisplaySettings};
+use super::{path::PathModul, tree::ToolpathTree, DisplaySettings};
 
 #[derive(Debug, Clone)]
 pub struct ProfileCross {
@@ -281,10 +280,7 @@ impl Mesh<12> for PathConnectionMesh {
 }
 
 impl PathModul {
-    pub(super) fn to_model(
-        &self,
-        settings: &DisplaySettings,
-    ) -> TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>> {
+    pub(super) fn to_model(&self, settings: &DisplaySettings) -> ToolpathTree {
         let mut vertices = Vec::new();
         let mut offsets: Vec<usize> = Vec::new();
         let mut sub_handles = Vec::new();
@@ -344,14 +340,13 @@ impl PathModul {
                 bounding_box.expand_min(path_hitbox.get_min());
                 bounding_box.expand_max(path_hitbox.get_max());
 
-                let sub_model =
-                    TreeModel::<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>::create_node(
-                        ToolpathContext::path(path_hitbox),
-                        BufferLocation {
-                            offset: vertices.len(),
-                            size: path_mesh_vertices.len(),
-                        },
-                    );
+                let sub_model = ToolpathTree::create_path(
+                    path_hitbox,
+                    BufferLocation {
+                        offset: vertices.len(),
+                        size: path_mesh_vertices.len(),
+                    },
+                );
 
                 sub_handles.push(sub_model);
 
@@ -367,8 +362,8 @@ impl PathModul {
             }
         }
 
-        TreeModel::<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>::create_root_with_models(
-            ToolpathContext::parent(bounding_box),
+        ToolpathTree::create_root_with_models(
+            bounding_box,
             SimpleGeometry::init(vertices),
             sub_handles,
         )

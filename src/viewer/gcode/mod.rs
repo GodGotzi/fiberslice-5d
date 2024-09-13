@@ -1,12 +1,8 @@
 use std::{fmt::Debug, str::Lines};
 
 use glam::Vec3;
-use rether::{
-    alloc::DynamicAllocHandle,
-    model::{TranslateModel, TreeModel},
-    vertex::Vertex,
-    SimpleGeometry,
-};
+use rether::{model::TranslateModel, SimpleGeometry};
+use tree::ToolpathTree;
 
 use self::{
     instruction::{InstructionModul, InstructionType},
@@ -16,14 +12,13 @@ use self::{
 
 use crate::geometry::BoundingBox;
 
-use super::part_server::ToolpathContext;
-
 pub mod instruction;
 pub mod mesh;
 pub mod movement;
 pub mod parser;
 pub mod path;
 pub mod state;
+pub mod tree;
 
 pub type GCodeRaw = Vec<String>;
 pub type GCode = Vec<InstructionModul>;
@@ -40,7 +35,7 @@ pub struct Toolpath {
     pub origin_path: String,
     pub raw: GCodeRaw,
     pub wire_model: WireModel,
-    pub model: TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>>,
+    pub model: ToolpathTree,
     pub center_mass: Vec3,
 }
 
@@ -60,11 +55,7 @@ impl Toolpath {
 
         // let mut layers: HashMap<usize, LayerModel> = HashMap::new();
 
-        let mut root: TreeModel<Vertex, ToolpathContext, DynamicAllocHandle<Vertex>> =
-            TreeModel::create_root(
-                ToolpathContext::parent(BoundingBox::default()),
-                SimpleGeometry::empty(),
-            );
+        let mut root = ToolpathTree::create_root(BoundingBox::default(), SimpleGeometry::empty());
         for modul in raw_path.moduls {
             lines.extend(modul.lines.clone());
 

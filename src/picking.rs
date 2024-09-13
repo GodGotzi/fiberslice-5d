@@ -1,6 +1,6 @@
 use glam::vec3;
-use rether::model::TranslateModel;
 use rether::picking::interact::InteractiveModel;
+use rether::{model::TranslateModel, picking::interact::ClickEvent};
 use tokio::task::JoinHandle;
 use winit::event::{DeviceEvent, ElementState, WindowEvent};
 
@@ -64,27 +64,33 @@ impl FrameHandle<'_, RootEvent, (), &CameraResult> for PickingAdapter {
             }) = self.camera_result.clone()
             {
                 if let WindowEvent::MouseInput { button, state, .. } = event {
-                    if let Some((x, y)) = global_state.ctx.mouse_position {
-                        let now = std::time::Instant::now();
+                    if *state == ElementState::Pressed {
+                        if let Some((x, y)) = global_state.ctx.mouse_position {
+                            let now = std::time::Instant::now();
 
-                        let ray =
-                            rether::picking::Ray::from_view(viewport, (x, y), view, proj, eye);
+                            let ray =
+                                rether::picking::Ray::from_view(viewport, (x, y), view, proj, eye);
 
-                        global_state.toolpath_server.clone().read_with_fn(|server| {
-                            let model = server.root_hitbox().check_hit(&ray);
+                            global_state.toolpath_server.clone().read_with_fn(|server| {
+                                let model = server.root_hitbox().check_hit(&ray);
 
-                            if let Some(_model) = model {
-                                let focused = server.get_focused().unwrap_or("");
+                                if let Some(_model) = model {
+                                    let focused = server.get_focused().unwrap_or("");
 
-                                if let Some(toolpath) = server.get_toolpath(focused) {
-                                    println!("PickingAdapter: Focused: {}", focused);
+                                    if let Some(toolpath) = server.get_toolpath(focused) {
+                                        println!("PickingAdapter: Focused: {}", focused);
 
-                                    toolpath.handle.translate(vec3(10.0, 10.0, 10.0))
+                                        toolpath.handle.clicked(ClickEvent {
+                                            action: rether::picking::interact::Action::Mouse(
+                                                *button,
+                                            ),
+                                        })
+                                    }
                                 }
-                            }
-                        });
+                            });
 
-                        println!("PickingAdapter: Picking took {:?}", now.elapsed());
+                            println!("PickingAdapter: Picking took {:?}", now.elapsed());
+                        }
                     }
 
                     match button {

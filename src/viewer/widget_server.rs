@@ -2,13 +2,10 @@ use std::{collections::HashMap, fmt::Debug};
 
 use rether::{
     alloc::{ModifyAction, StaticAllocHandle},
-    model::{geometry::Geometry, BaseModel, TreeModel},
-    picking::{interact::Interactive, Hitbox, HitboxNode, HitboxRoot},
+    model::{geometry::Geometry, BaseModel},
     vertex::Vertex,
-    Buffer, Rotate, Scale, Translate,
+    Buffer,
 };
-
-use crate::geometry::BoundingBox;
 
 use super::Visual;
 
@@ -159,91 +156,12 @@ mod layout {
 }
 
 #[derive(Debug)]
-pub struct WidgetContext {
-    bounding_hitbox: BoundingBox,
-}
-
-impl Translate for WidgetContext {
-    fn translate(&mut self, delta: glam::Vec3) {
-        self.bounding_hitbox.translate(delta);
-    }
-}
-
-impl Rotate for WidgetContext {
-    fn rotate(&mut self, rotation: glam::Quat) {
-        self.bounding_hitbox.rotate(rotation);
-    }
-}
-
-impl Scale for WidgetContext {
-    fn scale(&mut self, scale: glam::Vec3) {
-        self.bounding_hitbox.scale(scale);
-    }
-}
-
-impl Interactive for WidgetContext {
-    type Model = BaseModel<Vertex, WidgetContext, StaticAllocHandle<Vertex>>;
-
-    fn clicked(
-        &mut self,
-        event: rether::picking::interact::ClickEvent,
-    ) -> impl FnOnce(&Self::Model) {
-        move |model| {
-            println!("Clicked");
-            println!("{:?}", event);
-        }
-    }
-
-    fn scroll(
-        &mut self,
-        event: rether::picking::interact::ScrollEvent,
-    ) -> impl FnOnce(&Self::Model) {
-        move |model| {
-            println!("Scrolled");
-            println!("{:?}", event);
-        }
-    }
-
-    fn drag(&mut self, event: rether::picking::interact::DragEvent) -> impl FnOnce(&Self::Model) {
-        move |model| {
-            println!("Dragged");
-            println!("{:?}", event);
-        }
-    }
-}
-
-impl Hitbox for WidgetContext {
-    fn check_hit(&self, ray: &rether::picking::Ray) -> Option<f32> {
-        self.bounding_hitbox.check_hit(ray)
-    }
-
-    fn expand_hitbox(&mut self, _box: &dyn Hitbox) {
-        self.bounding_hitbox.expand_hitbox(_box);
-    }
-
-    fn set_enabled(&mut self, enabled: bool) {}
-
-    fn enabled(&self) -> bool {
-        todo!()
-    }
-
-    fn get_min(&self) -> glam::Vec3 {
-        todo!()
-    }
-
-    fn get_max(&self) -> glam::Vec3 {
-        todo!()
-    }
-}
-
-#[derive(Debug)]
 pub struct WidgetModel {
-    handle: TreeModel<Vertex, WidgetContext, StaticAllocHandle<Vertex>>,
+    handle: BaseModel<Vertex, StaticAllocHandle<Vertex>>,
 }
 
 #[derive(Debug)]
 pub struct WidgetServer {
-    widget_hitbox: HitboxRoot<BaseModel<Vertex, WidgetContext, StaticAllocHandle<Vertex>>>,
     buffer: Buffer<Vertex, layout::VertexAllocator>,
     line_buffer: Buffer<Vertex, layout::WireAllocator>,
 
@@ -258,7 +176,6 @@ impl WidgetServer {
         let (action_sender, action_receiver) = std::sync::mpsc::channel();
 
         Self {
-            widget_hitbox: HitboxRoot::root(),
             buffer: Buffer::new("Widget Buffer", device),
             line_buffer: Buffer::new("Widget Line Buffer", device),
 
