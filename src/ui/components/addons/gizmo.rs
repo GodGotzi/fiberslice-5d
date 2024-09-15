@@ -13,34 +13,29 @@ pub enum GizmoTool {
 }
 
 const GIZMO_TOOL_ICONS: [(&str, char); GizmoTool::COUNT] = [
-    ("Translate", 'T'),
-    ("Rotate", 'R'),
-    ("Scale", 'S'),
+    ("Translate", '⃗'),
+    ("Rotate", '⃕'),
+    ("Scale", '⃡'),
     ("Align Plane", 'A'),
 ];
 
+#[derive(Debug, Default)]
 pub struct GizmoTools {
     selected: Option<GizmoTool>,
-}
-
-impl Default for GizmoTools {
-    fn default() -> Self {
-        Self { selected: None }
-    }
 }
 
 impl GizmoTools {
     pub fn show_icons(
         &mut self,
         ui: &mut egui::Ui,
-        shared_state: &(crate::ui::UiState, crate::GlobalState<crate::RootEvent>),
+        _shared_state: &(crate::ui::UiState, crate::GlobalState<crate::RootEvent>),
     ) {
         for (tool, (name, icon)) in GizmoTool::iter().zip(GIZMO_TOOL_ICONS.iter()) {
             let is_selected = self.selected == Some(tool);
             let button = config::gui::TOOL_TOGGLE_BUTTON;
 
             let image_button = Button::new(RichText::new(*icon).size(35.0))
-                .frame(true)
+                .frame(false)
                 .selected(is_selected)
                 .rounding(5.0);
 
@@ -71,7 +66,7 @@ impl GizmoTools {
     pub fn show_tool_wíndow(
         &mut self,
         ui: &mut egui::Ui,
-        shared_state: &(crate::ui::UiState, crate::GlobalState<crate::RootEvent>),
+        _shared_state: &(crate::ui::UiState, crate::GlobalState<crate::RootEvent>),
     ) {
         let index = self.selected.as_ref().map(|tool| *tool as usize);
 
