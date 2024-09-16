@@ -20,7 +20,7 @@ use crate::{GlobalState, RootEvent};
 pub mod gizmo;
 
 pub mod orientation {
-    use egui::{Color32, ImageButton, Widget};
+    use egui::{Color32, ImageButton, Visuals, Widget};
     use egui_extras::Size;
     use egui_grid::GridBuilder;
     use strum::{EnumCount, IntoEnumIterator};
@@ -66,6 +66,7 @@ pub mod orientation {
                 |builder, _| builder.cell(Size::initial(40.0)),
             );
 
+            *ui.visuals_mut() = Visuals::light();
             ui.visuals_mut().widgets.inactive.weak_bg_fill = Color32::TRANSPARENT;
 
             let response = builder.cell(Size::remainder()).show(ui, |mut grid| {

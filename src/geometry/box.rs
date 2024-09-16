@@ -171,20 +171,20 @@ impl Hitbox for BoundingBox {
     }
 }
 
-impl ToVisual<72, 48> for BoundingBox {
-    fn to_visual(&self) -> Visual<72, 48> {
+impl BoundingBox {
+    pub fn to_select_visual(&self, border_f: f32) -> Visual<72, 48> {
         let diagonal = self.max - self.min;
         let distance = diagonal.x.min(diagonal.y).min(diagonal.z);
 
         let select_smaller_box: SelectBox = SelectBox::from(BoundingBox::new(
-            self.min - distance * 0.1,
-            self.max + distance * 0.1,
+            self.min - distance * border_f,
+            self.max + distance * border_f,
         ))
         .with_color(vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0, 1.0, 1.0, 1.0));
 
         let mut wires = [Vertex::default(); 48];
 
-        wires[..25].copy_from_slice(&select_smaller_box.to_wire_vertices());
+        wires[..24].copy_from_slice(&select_smaller_box.to_wire_vertices());
 
         Visual {
             vertices: select_smaller_box.to_triangle_vertices(),

@@ -1,4 +1,4 @@
-use egui::{Color32, ImageButton};
+use egui::{Color32, ImageButton, Visuals};
 use egui_extras::Size;
 use egui_grid::GridBuilder;
 use strum::{EnumCount, IntoEnumIterator};
@@ -41,6 +41,7 @@ impl GizmoTools {
 
             builder = builder.new_row(Size::remainder());
 
+            *ui.visuals_mut() = Visuals::light();
             ui.visuals_mut().widgets.inactive.weak_bg_fill = Color32::TRANSPARENT;
 
             builder.show(ui, |mut grid| {

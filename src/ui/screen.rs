@@ -91,9 +91,9 @@ impl Screen {
 
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
             addons::Addons::with_state(&mut self.addons_state).show(ui, shared_state);
+            self.tools.show(ctx, shared_state);
         });
 
-        self.tools.show(ctx, shared_state);
         self.toasts.show(ctx);
     }
 

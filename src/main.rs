@@ -11,7 +11,6 @@ use picking::PickingEvent;
 use settings::tree::QuickSettings;
 use std::{sync::Arc, time::Instant};
 use ui::UiEvent;
-use wgpu::Device;
 
 use prelude::{Adapter, EventWriter, FrameHandle, GlobalContext, SharedMut, Viewport, WgpuContext};
 
@@ -26,7 +25,6 @@ mod picking;
 mod prelude;
 mod render;
 mod settings;
-mod shortcut;
 mod slicer;
 mod tools;
 mod ui;
@@ -61,7 +59,7 @@ pub struct GlobalState<T: 'static> {
     pub camera_event_writer: EventWriter<CameraEvent>,
 
     pub toolpath_server: SharedMut<viewer::part_server::ToolpathServer>,
-    pub widget_server: SharedMut<viewer::widget_server::WidgetServer>,
+    pub env_server: SharedMut<viewer::env_server::EnvironmentServer>,
 
     pub fiber_settings: SharedMut<QuickSettings>,
     pub topology_settings: SharedMut<QuickSettings>,
@@ -278,8 +276,9 @@ impl ApplicationHandler<RootEvent> for Application {
             toolpath_server: SharedMut::from_inner(viewer::part_server::ToolpathServer::new(
                 &wgpu_context.device,
             )),
-            widget_server: SharedMut::from_inner(viewer::widget_server::WidgetServer::new(
+            env_server: SharedMut::from_inner(viewer::env_server::EnvironmentServer::new(
                 &wgpu_context.device,
+                &wgpu_context.queue,
             )),
 
             fiber_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),

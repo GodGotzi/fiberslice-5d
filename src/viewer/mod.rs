@@ -3,9 +3,10 @@ use std::collections::BTreeSet;
 use egui_code_editor::Syntax;
 use rether::vertex::Vertex;
 
+pub mod env_server;
 pub mod gcode;
 pub mod part_server;
-pub mod widget_server;
+pub mod volume;
 
 pub struct Visual<const T: usize, const W: usize> {
     pub vertices: [Vertex; T],

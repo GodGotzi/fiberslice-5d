@@ -317,11 +317,11 @@ impl WireMesh<24> for SelectBox {
                 self.box_.profile_end.a,
                 // connection
                 self.box_.profile_start.a,
-                self.box_.profile_end.a,
+                self.box_.profile_end.c,
                 self.box_.profile_start.d,
                 self.box_.profile_end.d,
                 self.box_.profile_start.c,
-                self.box_.profile_end.c,
+                self.box_.profile_end.a,
                 self.box_.profile_start.b,
                 self.box_.profile_end.b,
             ],

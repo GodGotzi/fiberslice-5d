@@ -60,7 +60,7 @@ pub struct RenderAdapter {
 
     back_cull_pipline: wgpu::RenderPipeline,
     no_cull_pipline: wgpu::RenderPipeline,
-    wire_pipline: wgpu::RenderPipeline,
+    line_pipline: wgpu::RenderPipeline,
 
     render_state: RenderState,
 
@@ -77,6 +77,9 @@ impl RenderAdapter {
     ) {
         let toolpath_server = global_state.toolpath_server.read();
         let toolpath_server_buffer = toolpath_server.read_buffer();
+        let widget_server_lock = global_state.env_server.read();
+        let widget_buffer = widget_server_lock.read_buffer();
+        let widget_line_buffer = widget_server_lock.read_line_buffer();
 
         let clear_color = wgpu::Color {
             r: 0.7,
@@ -121,6 +124,12 @@ impl RenderAdapter {
 
             render_pass.set_pipeline(&self.back_cull_pipline);
             toolpath_server_buffer.render(&mut render_pass);
+
+            render_pass.set_pipeline(&self.no_cull_pipline);
+            widget_buffer.render(&mut render_pass);
+
+            render_pass.set_pipeline(&self.line_pipline);
+            widget_line_buffer.render(&mut render_pass);
         }
     }
 
@@ -131,9 +140,8 @@ impl RenderAdapter {
         viewport: &Viewport,
         global_state: &GlobalState<RootEvent>,
     ) {
-        let widget_server_lock = global_state.widget_server.read();
-        let widget_buffer = widget_server_lock.read_buffer();
-        let widget_wire_buffer = widget_server_lock.read_line_buffer();
+        let widget_server_lock = global_state.env_server.read();
+        let widget_line_cover_buffer = widget_server_lock.read_line_cover_buffer();
 
         let (x, y, width, height) = *viewport;
 
@@ -169,11 +177,8 @@ impl RenderAdapter {
             render_pass.set_bind_group(0, &self.render_state.camera_bind_group, &[]);
             render_pass.set_bind_group(1, &self.render_state.light_bind_group, &[]);
 
-            render_pass.set_pipeline(&self.no_cull_pipline);
-            widget_buffer.render(&mut render_pass);
-
-            render_pass.set_pipeline(&self.wire_pipline);
-            widget_wire_buffer.render(&mut render_pass);
+            render_pass.set_pipeline(&self.line_pipline);
+            widget_line_cover_buffer.render(&mut render_pass);
         }
     }
 }
@@ -451,7 +456,7 @@ impl<'a> Adapter<'a, RootEvent, (), (), (Option<UiUpdateOutput>, &CameraResult),
                     wgpu::PrimitiveTopology::TriangleList,
                     None,
                 ),
-                wire_pipline: create_pipline(
+                line_pipline: create_pipline(
                     context,
                     &render_pipeline_layout,
                     &shader,
