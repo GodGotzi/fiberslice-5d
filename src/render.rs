@@ -79,9 +79,9 @@ impl RenderAdapter {
         let toolpath_server_buffer = toolpath_server.read_buffer();
 
         let clear_color = wgpu::Color {
-            r: 0.4,
-            g: 0.5,
-            b: 0.4,
+            r: 0.7,
+            g: 0.7,
+            b: 0.7,
             a: 1.0,
         };
 

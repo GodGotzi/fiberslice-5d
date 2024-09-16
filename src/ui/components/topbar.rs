@@ -1,4 +1,4 @@
-use egui::Context;
+use egui::{Color32, Context, Frame, Visuals};
 use egui::{RichText, TopBottomPanel};
 
 use crate::ui::boundary::Boundary;

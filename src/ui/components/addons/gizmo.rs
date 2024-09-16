@@ -1,23 +1,21 @@
-use egui::{Button, Color32, RichText};
+use egui::{Color32, ImageButton};
+use egui_extras::Size;
+use egui_grid::GridBuilder;
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{EnumCount, EnumIter};
 
-use crate::config;
+use crate::{config, ui::icon::get_gizmo_tool_icon};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, EnumCount)]
 pub enum GizmoTool {
     Translate,
     Rotate,
     Scale,
-    AlignPlane,
+    Flatten,
 }
 
-const GIZMO_TOOL_ICONS: [(&str, char); GizmoTool::COUNT] = [
-    ("Translate", '⃗'),
-    ("Rotate", '⃕'),
-    ("Scale", '⃡'),
-    ("Align Plane", 'A'),
-];
+const GIZMO_TOOL_LABELS: [&str; GizmoTool::COUNT] =
+    [("Translate"), ("Rotate"), ("Scale"), ("Flatten")];
 
 #[derive(Debug, Default)]
 pub struct GizmoTools {
@@ -30,37 +28,46 @@ impl GizmoTools {
         ui: &mut egui::Ui,
         _shared_state: &(crate::ui::UiState, crate::GlobalState<crate::RootEvent>),
     ) {
-        for (tool, (name, icon)) in GizmoTool::iter().zip(GIZMO_TOOL_ICONS.iter()) {
-            let is_selected = self.selected == Some(tool);
-            let button = config::gui::TOOL_TOGGLE_BUTTON;
+        ui.vertical(|ui| {
+            let mut builder = GridBuilder::new();
 
-            let image_button = Button::new(RichText::new(*icon).size(35.0))
-                .frame(false)
-                .selected(is_selected)
-                .rounding(5.0);
+            let button = config::gui::GIZMO_TOGGLE_BUTTON;
 
-            ui.allocate_ui(
-                [button.size.0 + button.border, button.size.1 + button.border].into(),
-                |ui| {
-                    let response = ui.add_sized([button.size.0, button.size.1], image_button);
+            for _ in 0..GizmoTool::COUNT {
+                builder = builder.new_row(Size::remainder());
+                builder = builder.new_row_align(Size::exact(button.size.0), egui::Align::Center);
+                builder = builder.cell(Size::exact(button.size.0));
+            }
 
-                    if response.clicked() {
-                        self.selected = Some(tool);
-                    } else if response.hovered() {
-                        egui::popup::show_tooltip(
-                            ui.ctx(),
-                            ui.layer_id(),
-                            egui::Id::new(format!("popup-{}", name)),
-                            |ui| {
-                                ui.label(name.to_string());
-                            },
-                        );
-                    }
-                },
-            );
+            builder = builder.new_row(Size::remainder());
 
-            ui.add_space(5.0);
-        }
+            ui.visuals_mut().widgets.inactive.weak_bg_fill = Color32::TRANSPARENT;
+
+            builder.show(ui, |mut grid| {
+                for (tool, name) in GizmoTool::iter().zip(GIZMO_TOOL_LABELS.iter()) {
+                    grid.cell(|ui| {
+                        // let is_selected = self.selected == Some(tool);
+
+                        let image_button = ImageButton::new(get_gizmo_tool_icon(tool)).frame(true);
+
+                        let response = ui.add(image_button);
+
+                        if response.clicked() {
+                            self.selected = Some(tool);
+                        } else if response.hovered() {
+                            egui::popup::show_tooltip(
+                                ui.ctx(),
+                                ui.layer_id(),
+                                egui::Id::new(format!("popup-{}", name)),
+                                |ui| {
+                                    ui.label(name.to_string());
+                                },
+                            );
+                        }
+                    });
+                }
+            });
+        });
     }
 
     pub fn show_tool_wíndow(
@@ -71,7 +78,7 @@ impl GizmoTools {
         let index = self.selected.as_ref().map(|tool| *tool as usize);
 
         if let Some(index) = index {
-            let (name, _) = GIZMO_TOOL_ICONS[index];
+            let name = GIZMO_TOOL_LABELS[index];
 
             let mut frame = egui::Frame::window(ui.style());
             frame.fill = Color32::from_rgba_premultiplied(
@@ -81,8 +88,10 @@ impl GizmoTools {
                 220,
             );
 
+            let mut open = true;
+
             egui::Window::new(name)
-                .open(&mut true)
+                .open(&mut open)
                 .movable(true)
                 .collapsible(false)
                 .resizable(false)
@@ -90,6 +99,10 @@ impl GizmoTools {
                 .show(ui.ctx(), |ui| {
                     ui.separator();
                 });
+
+            if !open {
+                self.selected = None;
+            }
         }
     }
 }

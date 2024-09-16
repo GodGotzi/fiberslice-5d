@@ -66,7 +66,6 @@ pub mod orientation {
                 |builder, _| builder.cell(Size::initial(40.0)),
             );
 
-            let before = ui.visuals_mut().widgets.inactive.weak_bg_fill;
             ui.visuals_mut().widgets.inactive.weak_bg_fill = Color32::TRANSPARENT;
 
             let response = builder.cell(Size::remainder()).show(ui, |mut grid| {
@@ -98,8 +97,6 @@ pub mod orientation {
                 });
                 grid.empty();
             });
-
-            ui.visuals_mut().widgets.inactive.weak_bg_fill = before;
 
             response
         }
@@ -299,10 +296,16 @@ impl<'a> InnerComponent for Addons<'a> {
                     </Panel>
                     <Panel size="remainder">
                         <Strip direction="west">
-                            <Panel size="exact" value="80">
-                                if available_size.x >= 80.0 {
-                                    self.show_left_addon(ui, shared_state);
-                                }
+                            <Panel size="exact" value="60">
+                                <Strip direction="north">
+                                    <Panel size="remainder"></Panel>
+                                    <Panel size="exact" value="500">
+                                        if available_size.y >= 500.0 && available_size.x >= 60.0 {
+                                            self.show_left_addon(ui, shared_state);
+                                        }
+                                    </Panel>
+                                    <Panel size="remainder"></Panel>
+                                </Strip>
                             </Panel>
                             <Panel size="remainder"></Panel>
                             <Panel size="exact" value="50">

@@ -12,6 +12,7 @@ pub mod screen;
 pub mod tools;
 pub mod widgets;
 
+pub mod font;
 mod icon;
 pub mod visual;
 
@@ -48,7 +49,7 @@ pub enum UiEvent {
 #[derive(Debug, Clone)]
 pub struct UiState {
     pub pointer_in_use: Shared<AtomicBool>,
-    pub theme: WrappedSharedMut<Option<Theme>>,
+    pub theme: WrappedSharedMut<Theme>,
     pub mode: WrappedSharedMut<Mode>,
 
     pub layer_max: WrappedSharedMut<u16>,
@@ -59,7 +60,7 @@ impl Default for UiState {
     fn default() -> Self {
         Self {
             pointer_in_use: Shared::new(AtomicBool::new(false)),
-            theme: WrappedSharedMut::from_inner(Option::Some(Theme::Light)),
+            theme: WrappedSharedMut::from_inner(Theme::Light),
             mode: WrappedSharedMut::from_inner(Mode::Prepare),
 
             layer_max: WrappedSharedMut::from_inner(u16::MAX),
@@ -71,12 +72,12 @@ impl Default for UiState {
 impl UiState {
     pub fn toggle_theme(&self) {
         self.theme.write_with_fn(|theme| {
-            let current_theme = theme.clone().expect("Theme is not set");
+            let current_theme = theme.clone();
 
-            theme.replace(match current_theme {
+            *theme = match current_theme {
                 Theme::Light => Theme::Dark,
                 Theme::Dark => Theme::Light,
-            });
+            };
         });
     }
 }
@@ -140,6 +141,16 @@ impl<'a> FrameHandle<'a, RootEvent, (UiUpdateOutput, (f32, f32, f32, f32)), ()> 
         self.platform.context().style_mut(|style| {
             // catppuccin_egui::set_style_theme(style, catppuccin_egui::MOCHA);
             // style.visuals = Visuals::light();
+
+            match &self.state.theme.read().inner {
+                Theme::Light => {
+                    style.visuals = Visuals::light();
+                }
+                Theme::Dark => {
+                    style.visuals = Visuals::dark();
+                }
+            }
+
             style.visuals.popup_shadow = egui::epaint::Shadow::NONE;
             style.visuals.window_shadow = egui::epaint::Shadow::NONE;
         });
@@ -204,6 +215,7 @@ impl<'a> Adapter<'a, RootEvent, UiState, (UiUpdateOutput, (f32, f32, f32, f32)),
         });
 
         egui_extras::install_image_loaders(&platform.context());
+        crate::ui::font::setup_symbols(&platform.context());
 
         let state = UiState::default();
         let screen = Screen::new();

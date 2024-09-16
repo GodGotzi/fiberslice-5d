@@ -13,8 +13,8 @@ pub mod gui {
 
     pub const fn shaded_color(darkmode: bool) -> egui::Color32 {
         match darkmode {
-            true => egui::Color32::from_rgba_premultiplied(25, 25, 25, 100),
-            false => egui::Color32::from_rgba_premultiplied(145, 145, 145, 50),
+            true => egui::Color32::from_rgba_premultiplied(200, 200, 200, 50),
+            false => egui::Color32::from_rgba_premultiplied(200, 200, 200, 50),
         }
     }
 
@@ -24,6 +24,11 @@ pub mod gui {
     pub const TOOLBAR_W: f32 = 50.0;
 
     pub const TOOL_TOGGLE_BUTTON: DecoradedButton = DecoradedButton {
+        border: 15.,
+        size: (45., 45.),
+    };
+
+    pub const GIZMO_TOGGLE_BUTTON: DecoradedButton = DecoradedButton {
         border: 15.,
         size: (45., 45.),
     };

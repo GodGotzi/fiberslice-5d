@@ -67,13 +67,10 @@ impl<'a> Component for Taskbar<'a> {
 }
 
 fn theme_button(ui: &mut egui::Ui, ui_state: &UiState) {
-    let clicked =
-        ui_state
-            .theme
-            .read_with_fn(|theme| match theme.as_ref().expect("Theme not set") {
-                Theme::Dark => ui.button("💡").clicked(),
-                Theme::Light => ui.button("🌙").clicked(),
-            });
+    let clicked = ui_state.theme.read_with_fn(|theme| match theme {
+        Theme::Dark => ui.button("💡").clicked(),
+        Theme::Light => ui.button("🌙").clicked(),
+    });
 
     if clicked {
         ui_state.toggle_theme();
