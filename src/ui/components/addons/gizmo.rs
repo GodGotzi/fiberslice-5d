@@ -1,10 +1,10 @@
-use egui::{Color32, ImageButton, Visuals};
+use egui::{Color32, DragValue, ImageButton, Visuals};
 use egui_extras::Size;
 use egui_grid::GridBuilder;
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{EnumCount, EnumIter};
 
-use crate::{config, ui::icon::get_gizmo_tool_icon};
+use crate::{config, ui::icon::get_gizmo_tool_icon, viewer::select::TransformResponse};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, EnumCount)]
 pub enum GizmoTool {
@@ -14,8 +14,12 @@ pub enum GizmoTool {
     Flatten,
 }
 
-const GIZMO_TOOL_LABELS: [&str; GizmoTool::COUNT] =
-    [("Translate"), ("Rotate"), ("Scale"), ("Flatten")];
+const GIZMO_TOOL_LABELS: [(&str, GizmoTool); GizmoTool::COUNT] = [
+    ("Translate", GizmoTool::Translate),
+    ("Rotate", GizmoTool::Rotate),
+    ("Scale", GizmoTool::Scale),
+    ("Flatten", GizmoTool::Flatten),
+];
 
 #[derive(Debug, Default)]
 pub struct GizmoTools {
@@ -45,7 +49,7 @@ impl GizmoTools {
             ui.visuals_mut().widgets.inactive.weak_bg_fill = Color32::TRANSPARENT;
 
             builder.show(ui, |mut grid| {
-                for (tool, name) in GizmoTool::iter().zip(GIZMO_TOOL_LABELS.iter()) {
+                for (tool, (name, _)) in GizmoTool::iter().zip(GIZMO_TOOL_LABELS.iter()) {
                     grid.cell(|ui| {
                         // let is_selected = self.selected == Some(tool);
 
@@ -74,12 +78,12 @@ impl GizmoTools {
     pub fn show_tool_wíndow(
         &mut self,
         ui: &mut egui::Ui,
-        _shared_state: &(crate::ui::UiState, crate::GlobalState<crate::RootEvent>),
+        (_ui_state, global_state): &(crate::ui::UiState, crate::GlobalState<crate::RootEvent>),
     ) {
         let index = self.selected.as_ref().map(|tool| *tool as usize);
 
         if let Some(index) = index {
-            let name = GIZMO_TOOL_LABELS[index];
+            let (name, tool) = GIZMO_TOOL_LABELS[index];
 
             let mut frame = egui::Frame::window(ui.style());
             frame.fill = Color32::from_rgba_premultiplied(
@@ -98,7 +102,100 @@ impl GizmoTools {
                 .resizable(false)
                 .frame(frame)
                 .show(ui.ctx(), |ui| {
-                    ui.separator();
+                    let selector = global_state.viewer.selector().read();
+
+                    selector.transform(|transform| match tool {
+                        GizmoTool::Translate => {
+                            let mut position = transform.translation;
+
+                            let mut changed = false;
+
+                            ui.horizontal(|ui| {
+                                changed |= ui
+                                    .add(DragValue::new(&mut position.x).max_decimals(3))
+                                    .changed();
+                                changed |= ui
+                                    .add(DragValue::new(&mut position.y).max_decimals(3))
+                                    .changed();
+                                changed |= ui
+                                    .add(DragValue::new(&mut position.z).max_decimals(3))
+                                    .changed();
+                            });
+
+                            transform.translation = position;
+
+                            if changed {
+                                TransformResponse::Translate
+                            } else {
+                                TransformResponse::None
+                            }
+                        }
+                        GizmoTool::Rotate => {
+                            let (mut x, mut y, mut z) =
+                                transform.rotation.to_euler(glam::EulerRot::XZY);
+
+                            let mut changed = false;
+
+                            ui.horizontal(|ui| {
+                                changed |= ui.drag_angle(&mut x).changed();
+                                changed |= ui.drag_angle(&mut y).changed();
+                                changed |= ui.drag_angle(&mut z).changed();
+                            });
+
+                            transform.rotation =
+                                glam::Quat::from_euler(glam::EulerRot::XZY, x, y, z);
+
+                            if changed {
+                                TransformResponse::Rotate
+                            } else {
+                                TransformResponse::None
+                            }
+                        }
+                        GizmoTool::Scale => {
+                            let mut scale = transform.scale;
+
+                            let mut changed = false;
+                            ui.horizontal(|ui| {
+                                changed |= ui
+                                    .add(
+                                        DragValue::new(&mut scale.x)
+                                            .speed(0.025)
+                                            .range(0.1..=100.0)
+                                            .max_decimals(3),
+                                    )
+                                    .changed();
+                                changed |= ui
+                                    .add(
+                                        DragValue::new(&mut scale.y)
+                                            .speed(0.025)
+                                            .range(0.1..=100.0)
+                                            .max_decimals(3),
+                                    )
+                                    .changed();
+                                changed |= ui
+                                    .add(
+                                        DragValue::new(&mut scale.z)
+                                            .speed(0.025)
+                                            .range(0.1..=100.0)
+                                            .max_decimals(3),
+                                    )
+                                    .changed();
+                            });
+
+                            transform.scale = scale;
+
+                            if changed {
+                                TransformResponse::Scale
+                            } else {
+                                TransformResponse::None
+                            }
+                        }
+                        GizmoTool::Flatten => {
+                            ui.label("Flatten");
+
+                            TransformResponse::None
+                        }
+                    });
                 });
 
             if !open {

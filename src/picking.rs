@@ -71,7 +71,9 @@ impl FrameHandle<'_, RootEvent, (), &CameraResult> for PickingAdapter {
                             let ray =
                                 rether::picking::Ray::from_view(viewport, (x, y), view, proj, eye);
 
-                            global_state.toolpath_server.clone().read_with_fn(|server| {
+                            {
+                                let server = global_state.viewer.toolpath_server.read();
+
                                 let model = server.root_hitbox().check_hit(&ray);
 
                                 if let Some(_model) = model {
@@ -87,7 +89,7 @@ impl FrameHandle<'_, RootEvent, (), &CameraResult> for PickingAdapter {
                                         })
                                     }
                                 }
-                            });
+                            }
 
                             println!("PickingAdapter: Picking took {:?}", now.elapsed());
                         }

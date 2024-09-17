@@ -31,13 +31,16 @@ impl Translate for QuadFace {
 
 impl Rotate for QuadFace {
     fn rotate(&mut self, rotation: glam::Quat) {
-        todo!("Implement rotate for QuadFace")
+        self.normal = rotation * self.normal;
+        self.point = rotation * self.point;
     }
 }
 
 impl Scale for QuadFace {
     fn scale(&mut self, scale: Vec3) {
-        todo!("Implement scale for QuadFace")
+        self.min *= scale;
+        self.max *= scale;
+        self.point *= scale;
     }
 }
 

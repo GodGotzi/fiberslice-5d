@@ -5,7 +5,7 @@ use rether::{
     {Rotate, Scale, Translate},
 };
 
-use crate::viewer::{ToVisual, Visual};
+use crate::viewer::Visual;
 
 use super::{
     mesh::{Mesh, WireMesh},
@@ -117,14 +117,20 @@ impl Translate for BoundingBox {
 }
 
 impl Rotate for BoundingBox {
-    fn rotate(&mut self, _rotation: glam::Quat) {
-        todo!("Implement rotate for BoundingHitbox")
+    fn rotate(&mut self, rotation: glam::Quat) {
+        let center = self.center();
+
+        self.min = rotation * (self.min - center) + center;
+        self.max = rotation * (self.max - center) + center;
     }
 }
 
 impl Scale for BoundingBox {
-    fn scale(&mut self, _scale: Vec3) {
-        todo!("Implement scale for BoundingHitbox")
+    fn scale(&mut self, scale: Vec3) {
+        let center = self.center();
+
+        self.min = center + (self.min - center) * scale;
+        self.max = center + (self.max - center) * scale;
     }
 }
 
@@ -172,7 +178,7 @@ impl Hitbox for BoundingBox {
 }
 
 impl BoundingBox {
-    pub fn to_select_visual(&self, border_f: f32) -> Visual<72, 48> {
+    pub fn to_select_visual(self, border_f: f32) -> Visual<72, 48> {
         let diagonal = self.max - self.min;
         let distance = diagonal.x.min(diagonal.y).min(diagonal.z);
 

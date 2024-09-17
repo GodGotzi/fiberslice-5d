@@ -11,7 +11,7 @@ use crate::{
         mesh::{construct_triangle_vertices, Mesh, WireMesh},
         BoundingBox, ProfileExtrusion, QuadFace, SelectBox,
     },
-    viewer::{ToVisual, Visual},
+    viewer::Visual,
 };
 
 use super::{path::PathModul, tree::ToolpathTree, DisplaySettings};
@@ -541,26 +541,5 @@ impl Hitbox for PathHitbox {
             .max(self.north_east.max)
             .max(self.south_west.max)
             .max(self.south_east.max)
-    }
-}
-
-impl ToVisual<72, 48> for PathHitbox {
-    fn to_visual(&self) -> Visual<72, 48> {
-        let select_smaller_box: SelectBox = SelectBox::from(self.visual.clone())
-            .with_color(vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0, 0.0, 0.0, 1.0));
-
-        let select_box = SelectBox::from(self.visual.clone().scaled(2.0))
-            .with_corner_expansion(0.35)
-            .with_color(Vec4::W, Vec4::W);
-
-        let vertices = select_box.to_triangle_vertices();
-
-        let mut wires = [Vertex::default(); 48];
-
-        wires[..24].clone_from_slice(&select_smaller_box.to_wire_vertices());
-
-        wires[24..].clone_from_slice(&select_box.to_wire_vertices());
-
-        Visual { vertices, wires }
     }
 }

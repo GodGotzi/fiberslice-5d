@@ -264,6 +264,14 @@ impl Model<Vertex, DynamicAllocHandle<Vertex>> for ToolpathTree {
         }
     }
 
+    fn transform(&self) -> rether::Transform {
+        match self {
+            Self::Root { model, .. } => model.transform(),
+            Self::Node { model, .. } => model.transform(),
+            Self::Path { model, .. } => model.transform(),
+        }
+    }
+
     fn state(&self) -> &parking_lot::RwLock<ModelState<Vertex, DynamicAllocHandle<Vertex>>> {
         match self {
             Self::Root { model, .. } => model.state(),

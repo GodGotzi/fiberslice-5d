@@ -117,11 +117,13 @@ impl Tool for VisibilityTool<'_> {
 
                     ui.separator();
 
-                    if !global_state.toolpath_server.read().is_empty() {
+                    if !global_state.viewer.toolpath_server.read().is_empty() {
                         egui::CollapsingHeader::new("Toolpath Parts")
                             .default_open(true)
                             .show(ui, |ui| {
-                                for (_id, toolpath) in global_state.toolpath_server.read().iter() {
+                                for (_id, toolpath) in
+                                    global_state.viewer.toolpath_server.read().iter()
+                                {
                                     ui.horizontal(|ui| {
                                         let file_name = toolpath.path.file_name().unwrap();
 

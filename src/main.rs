@@ -12,7 +12,9 @@ use settings::tree::QuickSettings;
 use std::{sync::Arc, time::Instant};
 use ui::UiEvent;
 
-use prelude::{Adapter, EventWriter, FrameHandle, GlobalContext, SharedMut, Viewport, WgpuContext};
+use prelude::{
+    Adapter, EventWriter, FrameHandle, GlobalContext, Shared, SharedMut, Viewport, WgpuContext,
+};
 
 mod api;
 mod camera;
@@ -58,8 +60,7 @@ pub struct GlobalState<T: 'static> {
 
     pub camera_event_writer: EventWriter<CameraEvent>,
 
-    pub toolpath_server: SharedMut<viewer::part_server::ToolpathServer>,
-    pub env_server: SharedMut<viewer::env_server::EnvironmentServer>,
+    pub viewer: Shared<viewer::Viewer>,
 
     pub fiber_settings: SharedMut<QuickSettings>,
     pub topology_settings: SharedMut<QuickSettings>,
@@ -115,6 +116,7 @@ struct ApplicationState {
 impl ApplicationState {
     fn update(&mut self) {
         self.global_state
+            .viewer
             .toolpath_server
             .write()
             .update(self.global_state.clone(), &self.wgpu_context)
@@ -273,10 +275,7 @@ impl ApplicationHandler<RootEvent> for Application {
 
             camera_event_writer,
 
-            toolpath_server: SharedMut::from_inner(viewer::part_server::ToolpathServer::new(
-                &wgpu_context.device,
-            )),
-            env_server: SharedMut::from_inner(viewer::env_server::EnvironmentServer::new(
+            viewer: Shared::new(viewer::Viewer::new(
                 &wgpu_context.device,
                 &wgpu_context.queue,
             )),

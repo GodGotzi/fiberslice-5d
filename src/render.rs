@@ -75,9 +75,9 @@ impl RenderAdapter {
         viewport: &Viewport,
         global_state: &GlobalState<RootEvent>,
     ) {
-        let toolpath_server = global_state.toolpath_server.read();
+        let toolpath_server = global_state.viewer.toolpath_server.read();
         let toolpath_server_buffer = toolpath_server.read_buffer();
-        let widget_server_lock = global_state.env_server.read();
+        let widget_server_lock = global_state.viewer.env_server.read();
         let widget_buffer = widget_server_lock.read_buffer();
         let widget_line_buffer = widget_server_lock.read_line_buffer();
 
@@ -140,7 +140,7 @@ impl RenderAdapter {
         viewport: &Viewport,
         global_state: &GlobalState<RootEvent>,
     ) {
-        let widget_server_lock = global_state.env_server.read();
+        let widget_server_lock = global_state.viewer.env_server.read();
         let widget_line_cover_buffer = widget_server_lock.read_line_cover_buffer();
 
         let (x, y, width, height) = *viewport;
