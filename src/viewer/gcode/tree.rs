@@ -371,24 +371,33 @@ impl TranslateModel for ToolpathTree {
 }
 
 impl RotateModel for ToolpathTree {
-    fn rotate(&self, rotation: glam::Quat) {
+    fn rotate(&self, rotation: glam::Quat, _center: Option<glam::Vec3>) {
         match self {
             Self::Root {
                 model,
                 bounding_box,
             } => {
-                model.rotate(rotation);
+                let center = bounding_box.read().center();
+
+                model.rotate(rotation, Some(center));
                 bounding_box.write().rotate(rotation);
             }
             Self::Node {
                 model,
                 bounding_box,
             } => {
-                model.rotate(rotation);
+                let center = bounding_box.read().center();
+
+                model.rotate(rotation, Some(center));
                 bounding_box.write().rotate(rotation);
             }
             Self::Path { model, path_box } => {
-                model.rotate(rotation);
+                let min = path_box.read().get_min();
+                let max = path_box.read().get_max();
+
+                let center = (min + max) / 2.0;
+
+                model.rotate(rotation, Some(center));
                 path_box.write().rotate(rotation);
             }
         }
@@ -396,24 +405,33 @@ impl RotateModel for ToolpathTree {
 }
 
 impl ScaleModel for ToolpathTree {
-    fn scale(&self, scale: glam::Vec3) {
+    fn scale(&self, scale: glam::Vec3, _center: Option<glam::Vec3>) {
         match self {
             Self::Root {
                 model,
                 bounding_box,
             } => {
-                model.scale(scale);
+                let center = bounding_box.read().center();
+
+                model.scale(scale, Some(center));
                 bounding_box.write().scale(scale);
             }
             Self::Node {
                 model,
                 bounding_box,
             } => {
-                model.scale(scale);
+                let center = bounding_box.read().center();
+
+                model.scale(scale, Some(center));
                 bounding_box.write().scale(scale);
             }
             Self::Path { model, path_box } => {
-                model.scale(scale);
+                let min = path_box.read().get_min();
+                let max = path_box.read().get_max();
+
+                let center = (min + max) / 2.0;
+
+                model.scale(scale, Some(center));
                 path_box.write().scale(scale);
             }
         }

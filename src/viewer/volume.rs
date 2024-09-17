@@ -1,4 +1,4 @@
-use glam::{vec3, vec4, Vec2, Vec3, Vec4};
+use glam::{vec3, vec4, Vec2, Vec4};
 use rether::{alloc::StaticAllocHandle, model::BaseModel, vertex::Vertex, SimpleGeometry};
 
 use crate::geometry::{mesh::construct_triangle_vertices, BoundingBox};

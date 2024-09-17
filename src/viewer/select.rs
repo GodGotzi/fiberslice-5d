@@ -40,16 +40,26 @@ impl Selector {
 
             let response = r#fn(&mut transform);
 
+            let translation = transform.translation - before.translation;
+            let rotation = transform.rotation * before.rotation.inverse();
+            let scale = transform.scale / before.scale;
+
             match response {
                 TransformResponse::None => (),
                 TransformResponse::Translate => {
-                    self.selected[0].translate(transform.translation - before.translation);
+                    if translation != glam::Vec3::ZERO {
+                        self.selected[0].translate(translation);
+                    }
                 }
                 TransformResponse::Rotate => {
-                    self.selected[0].rotate(transform.rotation * before.rotation.inverse());
+                    if rotation != glam::Quat::IDENTITY {
+                        self.selected[0].rotate(rotation, None);
+                    }
                 }
                 TransformResponse::Scale => {
-                    self.selected[0].scale(transform.scale / before.scale);
+                    if scale != glam::Vec3::ONE {
+                        self.selected[0].scale(scale, None);
+                    }
                 }
             }
         } else {
@@ -61,13 +71,19 @@ impl Selector {
                 match response {
                     TransformResponse::None => (),
                     TransformResponse::Translate => {
-                        model.translate(transform.translation);
+                        if transform.translation != glam::Vec3::ZERO {
+                            model.translate(transform.translation);
+                        }
                     }
                     TransformResponse::Rotate => {
-                        model.rotate(transform.rotation);
+                        if transform.rotation != glam::Quat::IDENTITY {
+                            model.rotate(transform.rotation, None);
+                        }
                     }
                     TransformResponse::Scale => {
-                        model.scale(transform.scale);
+                        if transform.scale != glam::Vec3::ONE {
+                            model.scale(transform.scale, None);
+                        }
                     }
                 }
             }
