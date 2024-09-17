@@ -111,15 +111,16 @@ impl GizmoTools {
                             let mut changed = false;
 
                             ui.horizontal(|ui| {
-                                changed |= ui
-                                    .add(DragValue::new(&mut position.x).max_decimals(3))
-                                    .changed();
-                                changed |= ui
-                                    .add(DragValue::new(&mut position.y).max_decimals(3))
-                                    .changed();
-                                changed |= ui
-                                    .add(DragValue::new(&mut position.z).max_decimals(3))
-                                    .changed();
+                                fn drag_value(ui: &mut egui::Ui, value: &mut f32) -> bool {
+                                    let response = ui.add(DragValue::new(value).max_decimals(3));
+
+                                    response.changed() && !response.dragged()
+                                }
+
+                                changed |= drag_value(ui, &mut position.x);
+
+                                changed |= drag_value(ui, &mut position.y);
+                                changed |= drag_value(ui, &mut position.z);
                             });
 
                             transform.translation = position;
@@ -137,9 +138,15 @@ impl GizmoTools {
                             let mut changed = false;
 
                             ui.horizontal(|ui| {
-                                changed |= ui.drag_angle(&mut x).changed();
-                                changed |= ui.drag_angle(&mut y).changed();
-                                changed |= ui.drag_angle(&mut z).changed();
+                                fn drag_angle(ui: &mut egui::Ui, value: &mut f32) -> bool {
+                                    let response = ui.drag_angle(value);
+
+                                    response.changed() && !response.dragged()
+                                }
+
+                                changed |= drag_angle(ui, &mut x);
+                                changed |= drag_angle(ui, &mut y);
+                                changed |= drag_angle(ui, &mut z);
                             });
 
                             transform.rotation =
@@ -156,30 +163,20 @@ impl GizmoTools {
 
                             let mut changed = false;
                             ui.horizontal(|ui| {
-                                changed |= ui
-                                    .add(
-                                        DragValue::new(&mut scale.x)
+                                fn drag_value(ui: &mut egui::Ui, value: &mut f32) -> bool {
+                                    let response = ui.add(
+                                        DragValue::new(value)
                                             .speed(0.025)
                                             .range(0.1..=100.0)
                                             .max_decimals(3),
-                                    )
-                                    .changed();
-                                changed |= ui
-                                    .add(
-                                        DragValue::new(&mut scale.y)
-                                            .speed(0.025)
-                                            .range(0.1..=100.0)
-                                            .max_decimals(3),
-                                    )
-                                    .changed();
-                                changed |= ui
-                                    .add(
-                                        DragValue::new(&mut scale.z)
-                                            .speed(0.025)
-                                            .range(0.1..=100.0)
-                                            .max_decimals(3),
-                                    )
-                                    .changed();
+                                    );
+
+                                    response.changed() && !response.dragged()
+                                }
+
+                                changed |= drag_value(ui, &mut scale.x);
+                                changed |= drag_value(ui, &mut scale.y);
+                                changed |= drag_value(ui, &mut scale.z);
                             });
 
                             transform.scale = scale;

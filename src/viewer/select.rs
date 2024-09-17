@@ -36,12 +36,14 @@ impl Selector {
         if self.selected.len() == 1 {
             let mut transform = self.selected[0].transform();
 
+            println!("{:?}", transform.rotation);
+
             let before = transform.clone();
 
             let response = r#fn(&mut transform);
 
             let translation = transform.translation - before.translation;
-            let rotation = transform.rotation * before.rotation.inverse();
+            let rotation = transform.rotation * before.rotation;
             let scale = transform.scale / before.scale;
 
             match response {
