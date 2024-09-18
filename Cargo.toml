@@ -20,7 +20,7 @@ image = { version = "0.25", features = ["jpeg", "png"] }
 thiserror = "1.0.30"
 serde = "1.0.177"
 serde_yaml = "0.9.25"
-stl_io = "0.7.0"
+stl_io = "0.8.2"
 nfde = "0.0.8"
 uni-path = "1.51.1"
 phf = { version = "0.11", features = ["macros"] }
@@ -36,7 +36,7 @@ puffin_http = "0.16.0"
 
 wgpu = "22.0"
 
-glam = "0.28"
+glam = "0.29"
 bytemuck = "1.7.0"
 simple-logging = "2.0.2"
 log = "0.4.21"

@@ -7,7 +7,7 @@ use rether::{
     Buffer,
 };
 
-use super::volume::Volume;
+use crate::viewer::volume::Volume;
 
 mod layout {
 

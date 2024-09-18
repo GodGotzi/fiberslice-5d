@@ -4,10 +4,9 @@ use egui_code_editor::Syntax;
 use parking_lot::RwLock;
 use rether::vertex::Vertex;
 
-pub mod env_server;
 pub mod gcode;
-pub mod part_server;
 pub mod select;
+pub mod server;
 pub mod volume;
 
 pub struct Visual<const T: usize, const W: usize> {
@@ -38,16 +37,18 @@ impl GCodeSyntax for Syntax {
 
 #[derive(Debug)]
 pub struct Viewer {
-    pub env_server: RwLock<env_server::EnvironmentServer>,
-    pub toolpath_server: RwLock<part_server::ToolpathServer>,
+    pub env_server: RwLock<server::EnvironmentServer>,
+    pub toolpath_server: RwLock<server::ToolpathServer>,
+    pub model_server: RwLock<server::CADModelServer>,
     select: RwLock<select::Selector>,
 }
 
 impl Viewer {
     pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
         Self {
-            env_server: RwLock::new(env_server::EnvironmentServer::new(device, queue)),
-            toolpath_server: RwLock::new(part_server::ToolpathServer::new(device)),
+            env_server: RwLock::new(server::EnvironmentServer::new(device, queue)),
+            toolpath_server: RwLock::new(server::ToolpathServer::new(device)),
+            model_server: RwLock::new(server::CADModelServer::new(device)),
             select: RwLock::new(select::Selector::default()),
         }
     }

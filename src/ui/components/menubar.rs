@@ -109,6 +109,20 @@ fn file_button(ui: &mut Ui, (_ui_state, global_state): &(UiState, GlobalState<Ro
         ui.set_min_width(220.0);
         ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
 
+        build_sub_menu(ui, "Import Object", |_ui| {
+            let nfd = Nfd::new().unwrap();
+            let result = nfd.open_file().add_filter("STL", "stl").unwrap().show();
+
+            match result {
+                DialogResult::Ok(path) => {
+                    global_state.viewer.model_server.write().load(path);
+                }
+                _ => {
+                    println!("No file selected")
+                }
+            }
+        });
+
         build_sub_menu(ui, "Import GCode", |_ui| {
             let nfd = Nfd::new().unwrap();
             let result = nfd.open_file().add_filter("Gcode", "gcode").unwrap().show();

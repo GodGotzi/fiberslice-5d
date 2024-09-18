@@ -6,12 +6,14 @@ use std::{
 };
 
 use rether::{
-    alloc::{AllocHandle, DynamicAllocHandle},
+    alloc::DynamicAllocHandle,
     model::{geometry::Geometry, Model},
     picking::{HitboxNode, HitboxRoot},
     vertex::Vertex,
     Buffer,
 };
+
+use rether::alloc::AllocHandle;
 use tokio::{
     sync::oneshot::{error::TryRecvError, Receiver},
     task::JoinHandle,
@@ -20,7 +22,9 @@ use uni_path::PathBuf;
 
 use crate::{geometry::BoundingBox, prelude::WgpuContext, GlobalState, RootEvent};
 
-use super::gcode::{self, tree::ToolpathTree, DisplaySettings, MeshSettings, Toolpath, WireModel};
+use crate::viewer::gcode::{
+    self, tree::ToolpathTree, DisplaySettings, MeshSettings, Toolpath, WireModel,
+};
 
 // const MAIN_LOADED_TOOLPATH: &str = "main"; // HACK: This is a solution to ease the dev when only one toolpath is loaded which is the only supported(for now)
 
