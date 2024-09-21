@@ -46,7 +46,7 @@ impl Toolpath {
     pub fn from_gcode(
         path: &str,
         (raw, gcode): (Lines, GCode),
-        mesh_settings: &MeshSettings,
+        _mesh_settings: &MeshSettings,
         display_settings: &DisplaySettings,
     ) -> Self {
         let raw_path = RawPath::from(&gcode);

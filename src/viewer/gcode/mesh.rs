@@ -1,4 +1,4 @@
-use glam::{vec4, Vec3, Vec4};
+use glam::{Vec3, Vec4};
 use rether::{
     model::BufferLocation,
     picking::{Hitbox, Ray},
@@ -6,12 +6,9 @@ use rether::{
     Rotate, Scale, SimpleGeometry, Translate,
 };
 
-use crate::{
-    geometry::{
-        mesh::{construct_triangle_vertices, Mesh, WireMesh},
-        BoundingBox, ProfileExtrusion, QuadFace, SelectBox,
-    },
-    viewer::Visual,
+use crate::geometry::{
+    mesh::{construct_triangle_vertices, Mesh},
+    BoundingBox, ProfileExtrusion, QuadFace,
 };
 
 use super::{path::PathModul, tree::ToolpathTree, DisplaySettings};

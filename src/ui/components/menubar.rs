@@ -1,7 +1,5 @@
-use egui::Frame;
 use egui::TextWrapMode;
 use egui::Ui;
-use egui::Visuals;
 use nfde::DialogResult;
 use nfde::FilterableDialogBuilder;
 use nfde::Nfd;

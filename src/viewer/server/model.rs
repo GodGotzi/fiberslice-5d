@@ -1,11 +1,15 @@
 use core::panic;
-use std::{collections::HashMap, hash::Hash, path::Path, sync::Arc};
+use std::{
+    collections::{HashMap, LinkedList},
+    path::Path,
+    sync::Arc,
+};
 
-use glam::{vec3, Vec3};
+use glam::{vec3, Vec2, Vec3};
 use rether::{
     alloc::DynamicAllocHandle,
     model::{geometry::Geometry, Model, TreeModel},
-    picking::{HitboxNode, HitboxRoot},
+    picking::{Hitbox, HitboxNode, HitboxRoot},
     vertex::Vertex,
     Buffer,
 };
@@ -20,7 +24,7 @@ use uni_path::PathBuf;
 
 use crate::{geometry::BoundingBox, prelude::WgpuContext, GlobalState, RootEvent};
 
-use crate::viewer::gcode::{self, tree::ToolpathTree, DisplaySettings, MeshSettings, Toolpath};
+use crate::viewer::gcode::{tree::ToolpathTree, Toolpath};
 
 // const MAIN_LOADED_TOOLPATH: &str = "main"; // HACK: This is a solution to ease the dev when only one toolpath is loaded which is the only supported(for now)
 
@@ -87,12 +91,12 @@ impl CADModelServer {
                 }
             };
 
-            stl_model.faces.iter().for_each(|face| face.vertices);
+            let asd = stl_model.clusterize_faces();
         });
 
         self.queue.push((rx, handle));
     }
-
+    // i love you
     pub fn insert(
         &mut self,
         part: Toolpath,
@@ -202,6 +206,7 @@ impl CADModelServer {
                     .selector()
                     .write()
                     .select(&model_trait_handle);
+
                 self.root_hitbox.add_node(handle);
             }
         }
@@ -267,6 +272,7 @@ pub enum CADModelError {
     NoGeometryObject,
 }
 
+#[derive(Debug)]
 struct Plane {
     normal: glam::Vec3,
     point: glam::Vec3,
@@ -333,7 +339,8 @@ impl ClusterizeFaces for IndexedMesh {
             let plane = Plane {
                 normal: Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
                     face.normal,
-                )),
+                ))
+                .normalize(),
                 point: Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
                     v0,
                 )),
@@ -353,31 +360,29 @@ impl ClusterizeFaces for IndexedMesh {
     }
 }
 
-pub struct Polygon {
+#[derive(Debug)]
+pub struct PolygonFace {
     plane: Plane,
     strokes: Vec<Stroke>,
+    min: Vec3,
+    max: Vec3,
 }
 
 #[derive(Debug)]
-pub struct Stroke {
-    start: Vec3,
-    end: Vec3,
-}
+struct Stroke(Vec3, Vec3);
 
 impl PartialEq for Stroke {
     fn eq(&self, other: &Self) -> bool {
-        self.start.distance(other.start) < f32::EPSILON
-            && self.end.distance(other.end) < f32::EPSILON
-            || self.end.distance(other.start) < f32::EPSILON
-                && self.start.distance(other.end) < f32::EPSILON
+        self.0.distance(other.0) < f32::EPSILON && self.1.distance(other.1) < f32::EPSILON
+            || self.1.distance(other.0) < f32::EPSILON && self.0.distance(other.1) < f32::EPSILON
     }
 }
 
 impl Eq for Stroke {}
 
-impl Polygon {
+impl PolygonFace {
     fn from_entry(entry: PlaneEntry, vertices: &[Vector<f32>]) -> Self {
-        let vertices: Vec<[Vec3; 3]> = entry
+        let triangles: Vec<[Vec3; 3]> = entry
             .triangles
             .iter()
             .map(|index| {
@@ -395,46 +400,116 @@ impl Polygon {
             })
             .collect();
 
-        let strokes = determine_contour(&vertices);
+        let strokes = determine_contour(&triangles);
+        let min = strokes
+            .iter()
+            .fold(Vec3::splat(f32::INFINITY), |min, stroke| {
+                min.min(stroke.0.min(stroke.1))
+            });
+
+        let max = strokes
+            .iter()
+            .fold(Vec3::splat(f32::NEG_INFINITY), |max, stroke| {
+                max.max(stroke.0.max(stroke.1))
+            });
 
         Self {
             plane: entry.plane,
             strokes,
+            min,
+            max,
         }
     }
 }
 
-fn determine_contour(vertices: &Vec<[Vec3; 3]>) -> Vec<Stroke> {
-    let mut strokes: Vec<Stroke> = Vec::new();
+impl Hitbox for PolygonFace {
+    fn check_hit(&self, ray: &rether::picking::Ray) -> Option<f32> {
+        let denominator = self.plane.normal.dot(ray.direction);
 
-    for triangle in vertices {
-        let mut stroke = Stroke {
-            start: triangle[0],
-            end: triangle[1],
-        };
-
-        if !strokes.contains(&stroke) {
-            strokes.push(stroke);
+        if denominator.abs() < f32::EPSILON {
+            return None;
         }
 
-        stroke = Stroke {
-            start: triangle[1],
-            end: triangle[2],
-        };
+        let t = (self.plane.point - ray.origin).dot(self.plane.normal) / denominator;
 
-        if !strokes.contains(&stroke) {
-            strokes.push(stroke);
+        if t < 0.0 {
+            return None;
         }
 
-        stroke = Stroke {
-            start: triangle[2],
-            end: triangle[0],
-        };
+        let intersection = ray.origin + ray.direction * t;
 
-        if !strokes.contains(&stroke) {
-            strokes.push(stroke);
+        let ray_dir = self.strokes[0].1 - self.strokes[0].0;
+
+        let mut inside = false;
+
+        for stroke in &self.strokes {
+            let edge = stroke.1 - stroke.0;
+            let normal = edge.cross(ray_dir).normalize();
+        }
+
+        if inside {
+            Some(t)
+        } else {
+            None
         }
     }
 
-    strokes
+    fn expand_hitbox(&mut self, _box: &dyn Hitbox) {
+        panic!("Not implemented")
+    }
+
+    fn set_enabled(&mut self, _enabled: bool) {
+        panic!("Not implemented")
+    }
+
+    fn enabled(&self) -> bool {
+        panic!("Not implemented")
+    }
+
+    fn get_min(&self) -> Vec3 {
+        self.min
+    }
+
+    fn get_max(&self) -> Vec3 {
+        self.max
+    }
+}
+
+struct StrokeEntry(Stroke, usize);
+
+fn determine_contour(vertices: &Vec<[Vec3; 3]>) -> Vec<Stroke> {
+    let mut strokes: Vec<StrokeEntry> = Vec::new();
+
+    for triangle in vertices {
+        let mut stroke = Stroke(triangle[0], triangle[1]);
+
+        if let Some(entry) = strokes.iter_mut().find(|entry| entry.0 == stroke) {
+            entry.1 += 1;
+        } else {
+            strokes.push(StrokeEntry(stroke, 1));
+        }
+
+        stroke = Stroke(triangle[1], triangle[2]);
+
+        if let Some(entry) = strokes.iter_mut().find(|entry| entry.0 == stroke) {
+            entry.1 += 1;
+        } else {
+            strokes.push(StrokeEntry(stroke, 1));
+        }
+
+        stroke = Stroke(triangle[2], triangle[0]);
+
+        if let Some(entry) = strokes.iter_mut().find(|entry| entry.0 == stroke) {
+            entry.1 += 1;
+        } else {
+            strokes.push(StrokeEntry(stroke, 1));
+        }
+    }
+
+    let contour_strokes: Vec<Stroke> = strokes
+        .into_iter()
+        .filter_map(|entry| if entry.1 == 1 { Some(entry.0) } else { None })
+        .collect();
+
+    contour_strokes
 }
