@@ -445,6 +445,15 @@ impl Hitbox for PolygonFace {
         for stroke in &self.strokes {
             let edge = stroke.1 - stroke.0;
             let normal = edge.cross(ray_dir).normalize();
+
+            let to_intersection = intersection - stroke.0;
+
+            // Compute cross product of edge and vector to the intersection point
+            let cross = edge.cross(to_intersection).dot(self.plane.normal);
+
+            if cross.abs() < f32::EPSILON {
+                continue; // The point lies exactly on the edge, treat as inside
+            }
         }
 
         if inside {
