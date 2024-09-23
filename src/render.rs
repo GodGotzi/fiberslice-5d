@@ -81,6 +81,9 @@ impl RenderAdapter {
         let widget_buffer = widget_server_lock.read_buffer();
         let widget_line_buffer = widget_server_lock.read_line_buffer();
 
+        let model_server = global_state.viewer.model_server.read();
+        let model_server_buffer = model_server.read_buffer();
+
         let clear_color = wgpu::Color {
             r: 0.7,
             g: 0.7,
@@ -124,6 +127,7 @@ impl RenderAdapter {
 
             render_pass.set_pipeline(&self.back_cull_pipline);
             toolpath_server_buffer.render(&mut render_pass);
+            model_server_buffer.render(&mut render_pass);
 
             render_pass.set_pipeline(&self.no_cull_pipline);
             widget_buffer.render(&mut render_pass);

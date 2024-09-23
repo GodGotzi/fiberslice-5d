@@ -122,6 +122,13 @@ impl ApplicationState {
             .update(self.global_state.clone(), &self.wgpu_context)
             .unwrap();
 
+        self.global_state
+            .viewer
+            .model_server
+            .write()
+            .update(self.global_state.clone(), &self.wgpu_context)
+            .unwrap();
+
         self.ui_adapter.update(self.start_time);
 
         self.camera_adapter.update(self.start_time);

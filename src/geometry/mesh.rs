@@ -1,6 +1,34 @@
 use glam::{Vec3, Vec4};
 use rether::vertex::Vertex;
 
+pub trait IntoArrayColor {
+    fn to_array(&self) -> [f32; 4];
+}
+
+impl IntoArrayColor for Vec4 {
+    fn to_array(&self) -> [f32; 4] {
+        self.to_array()
+    }
+}
+
+impl IntoArrayColor for [f32; 4] {
+    fn to_array(&self) -> [f32; 4] {
+        *self
+    }
+}
+
+impl IntoArrayColor for [f32; 3] {
+    fn to_array(&self) -> [f32; 4] {
+        [self[0], self[1], self[2], 1.0]
+    }
+}
+
+impl IntoArrayColor for wgpu::Color {
+    fn to_array(&self) -> [f32; 4] {
+        [self.r as f32, self.g as f32, self.b as f32, self.a as f32]
+    }
+}
+
 pub trait Mesh<const V: usize> {
     fn to_triangle_vertices(&self) -> [Vertex; V];
 
@@ -9,7 +37,10 @@ pub trait Mesh<const V: usize> {
     }
 }
 
-pub fn construct_triangle_vertices<const T: usize>(raw: [Vec3; T], color: Vec4) -> [Vertex; T] {
+pub fn construct_triangle_vertices<const T: usize, C: IntoArrayColor>(
+    raw: [Vec3; T],
+    color: C,
+) -> [Vertex; T] {
     let mut vertices = [Vertex::default(); T];
     let color = color.to_array();
 
@@ -31,6 +62,40 @@ pub fn construct_triangle_vertices<const T: usize>(raw: [Vec3; T], color: Vec4) 
         vertices[i].normal = normal.to_array();
         vertices[i + 1].normal = normal.to_array();
         vertices[i + 2].normal = normal.to_array();
+    }
+
+    vertices
+}
+
+pub fn vec3s_into_vertices<C: IntoArrayColor>(v: Vec<Vec3>, color: C) -> Vec<Vertex> {
+    let mut vertices = Vec::with_capacity(v.len());
+
+    let color: [f32; 4] = color.to_array();
+
+    for i in (0..vertices.len()).step_by(3) {
+        let v0 = v[i];
+        let v1 = v[i + 1];
+        let v2 = v[i + 2];
+
+        let normal = (v1 - v0).cross(v2 - v0).normalize();
+
+        vertices.push(Vertex {
+            position: v0.to_array(),
+            color,
+            normal: normal.to_array(),
+        });
+
+        vertices.push(Vertex {
+            position: v1.to_array(),
+            color,
+            normal: normal.to_array(),
+        });
+
+        vertices.push(Vertex {
+            position: v2.to_array(),
+            color,
+            normal: normal.to_array(),
+        });
     }
 
     vertices

@@ -5,13 +5,16 @@ use std::{
     sync::Arc,
 };
 
-use glam::{vec3, Vec2, Vec3};
+use glam::{vec3, vec4, Vec2, Vec3, Vec4};
 use rether::{
-    alloc::DynamicAllocHandle,
-    model::{geometry::Geometry, Model, TreeModel},
+    alloc::{AllocHandle, DynamicAllocHandle},
+    model::{
+        geometry::Geometry, BufferLocation, Model, ModelState, RotateModel, ScaleModel,
+        TranslateModel, TreeModel,
+    },
     picking::{Hitbox, HitboxNode, HitboxRoot},
     vertex::Vertex,
-    Buffer,
+    Buffer, SimpleGeometry,
 };
 
 use stl_io::{IndexedMesh, Vector};
@@ -21,10 +24,13 @@ use tokio::{
 };
 
 use uni_path::PathBuf;
+use wgpu::Color;
 
-use crate::{geometry::BoundingBox, prelude::WgpuContext, GlobalState, RootEvent};
-
-use crate::viewer::gcode::{tree::ToolpathTree, Toolpath};
+use crate::{
+    geometry::{mesh::vec3s_into_vertices, BoundingBox},
+    prelude::WgpuContext,
+    GlobalState, RootEvent,
+};
 
 // const MAIN_LOADED_TOOLPATH: &str = "main"; // HACK: This is a solution to ease the dev when only one toolpath is loaded which is the only supported(for now)
 
@@ -38,19 +44,23 @@ pub enum Error {
 
 #[derive(Debug)]
 pub struct CADModelHandle {
-    handle: Arc<CADModel>,
+    model: CADModel,
+    origin_path: String,
 }
 
 // TODO also use vertex indices
 #[derive(Debug)]
 pub struct CADModelServer {
-    queue: Vec<(Receiver<Toolpath>, JoinHandle<()>)>,
+    queue: Vec<(
+        Receiver<Result<CADModelHandle, CADModelError>>,
+        JoinHandle<()>,
+    )>,
 
     buffer: rether::Buffer<Vertex, rether::alloc::BufferDynamicAllocator<Vertex>>,
 
-    root_hitbox: HitboxRoot<ToolpathTree>,
+    root_hitbox: HitboxRoot<CADModel>,
 
-    models: HashMap<String, CADModelHandle>,
+    models: HashMap<String, Arc<CADModel>>,
     focused: Option<String>,
 }
 
@@ -69,14 +79,13 @@ impl CADModelServer {
     where
         P: AsRef<Path>,
     {
-        let content = std::fs::read_to_string(&path).unwrap();
         let path = path.as_ref().to_str().unwrap_or("").to_string();
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         let handle = tokio::spawn(async move {
             let file = match std::fs::File::open(&path) {
                 Ok(file) => file,
-                Err(e) => {
+                Err(_e) => {
                     tx.send(Err(CADModelError::FileNotFound(path))).unwrap();
                     return;
                 }
@@ -85,13 +94,60 @@ impl CADModelServer {
             let mut reader = std::io::BufReader::new(file);
             let stl_model = match stl_io::read_stl(&mut reader) {
                 Ok(stl_model) => stl_model,
-                Err(e) => {
+                Err(_e) => {
                     tx.send(Err(CADModelError::LoadError(path))).unwrap();
                     return;
                 }
             };
 
-            let asd = stl_model.clusterize_faces();
+            println!("Model loaded 1");
+
+            let plane_entries = stl_model.clusterize_faces();
+
+            println!("Model loaded 1.5");
+
+            let vertices: Vec<Vec3> = stl_model
+                .vertices
+                .iter()
+                .map(|vertex| {
+                    Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
+                        *vertex,
+                    ))
+                })
+                .collect();
+
+            println!("Model loaded 2");
+
+            let triangle_vertices = stl_model.faces.iter().fold(Vec::new(), |mut vec, face| {
+                vec.push(vertices[face.vertices[0]]);
+                vec.push(vertices[face.vertices[1]]);
+                vec.push(vertices[face.vertices[2]]);
+                vec
+            });
+
+            let triangle_vertices = vec3s_into_vertices(triangle_vertices, Color::WHITE);
+
+            println!("Model loaded 3");
+
+            let planes = plane_entries
+                .into_iter()
+                .map(|entry| PolygonFace::from_entry(entry, &vertices))
+                .collect::<Vec<PolygonFace>>();
+
+            let mut models = Vec::with_capacity(planes.len());
+
+            for plane in planes {
+                let model = TreeModel::create_node(BufferLocation { offset: 0, size: 0 });
+                models.push(CADModel::Face { model, face: plane });
+            }
+
+            let root = CADModel::create_root(SimpleGeometry::init(triangle_vertices), models);
+
+            tx.send(Ok(CADModelHandle {
+                model: root,
+                origin_path: path,
+            }))
+            .unwrap();
         });
 
         self.queue.push((rx, handle));
@@ -99,10 +155,10 @@ impl CADModelServer {
     // i love you
     pub fn insert(
         &mut self,
-        part: Toolpath,
+        model_handle: CADModelHandle,
         wgpu_context: &WgpuContext,
-    ) -> Result<Arc<ToolpathTree>, Error> {
-        let path: PathBuf = part.origin_path.into();
+    ) -> Result<Arc<CADModel>, Error> {
+        let path: PathBuf = model_handle.origin_path.into();
         let file_name = if let Some(path) = path.file_name() {
             path.to_string()
         } else {
@@ -120,7 +176,7 @@ impl CADModelServer {
         }
 
         let handle = {
-            let model_state = &*part.model.state().read();
+            let model_state = &*model_handle.model.state().read();
 
             let data = match model_state {
                 rether::model::ModelState::Dormant(geometry) => geometry.build_data(),
@@ -131,27 +187,20 @@ impl CADModelServer {
                 .allocate_init(&name, data, &wgpu_context.device, &wgpu_context.queue)
         };
 
-        part.model.wake(handle.clone());
+        model_handle.model.wake(handle.clone());
 
-        let code = part.raw.join("\n");
+        let handle = Arc::new(model_handle.model);
 
-        let line_breaks = code
-            .char_indices()
-            .filter_map(|(index, c)| if c == '\n' { Some(index) } else { None })
-            .collect::<Vec<usize>>();
-
-        let handle = Arc::new(part.model);
-
-        self.models.insert(name.clone());
+        self.models.insert(name.clone(), handle.clone());
 
         self.focused = Some(name.clone());
 
-        Ok(handle.clone())
+        Ok(handle)
     }
 
     pub fn remove(&mut self, name: String, wgpu_context: &WgpuContext) {
         if let Some(model) = self.models.remove(&name) {
-            let state = model.handle.state();
+            let state = model.state();
 
             {
                 let handle = match &*state.read() {
@@ -184,8 +233,21 @@ impl CADModelServer {
                 _ => true,
             });
 
-            for toolpath in results {
-                let handle = self.insert(toolpath, wgpu_context)?;
+            for model_result in results {
+                let model = match model_result {
+                    Ok(model) => model,
+                    Err(e) => {
+                        global_state
+                            .ui_event_writer
+                            .send(crate::ui::UiEvent::ShowError(format!("{}", e)));
+
+                        continue;
+                    }
+                };
+
+                println!("Model loaded");
+
+                let handle = self.insert(model, wgpu_context)?;
 
                 global_state
                     .ui_event_writer
@@ -247,7 +309,7 @@ impl CADModelServer {
         &self.buffer
     }
 
-    pub fn root_hitbox(&self) -> &HitboxRoot<ToolpathTree> {
+    pub fn root_hitbox(&self) -> &HitboxRoot<CADModel> {
         &self.root_hitbox
     }
 }
@@ -256,10 +318,115 @@ impl CADModelServer {
 pub enum CADModel {
     Root {
         model: TreeModel<Self, Vertex, DynamicAllocHandle<Vertex>>,
+        bounding_box: BoundingBox,
     },
     Face {
         model: TreeModel<Self, Vertex, DynamicAllocHandle<Vertex>>,
+        face: PolygonFace,
     },
+}
+
+impl CADModel {
+    pub fn create_root<T: Into<ModelState<Vertex, DynamicAllocHandle<Vertex>>>>(
+        geometry: T,
+        models: Vec<CADModel>,
+    ) -> Self {
+        let bounding_box = models.iter().fold(BoundingBox::default(), |mut bb, model| {
+            let (min, max) = match model {
+                Self::Root { bounding_box, .. } => (bounding_box.min, bounding_box.max),
+                Self::Face { face, .. } => (face.min, face.max),
+            };
+
+            bb.expand_point(min);
+            bb.expand_point(max);
+            bb
+        });
+
+        Self::Root {
+            model: TreeModel::create_root_with_models(geometry, models),
+            bounding_box,
+        }
+    }
+}
+
+impl HitboxNode<CADModel> for CADModel {
+    fn check_hit(&self, ray: &rether::picking::Ray) -> Option<f32> {
+        match self {
+            Self::Root { bounding_box, .. } => bounding_box.check_hit(ray),
+            Self::Face { face, .. } => face.check_hit(ray),
+        }
+    }
+
+    fn inner_nodes(&self) -> &[CADModel] {
+        match self {
+            Self::Root { model, .. } => model.sub_handles().expect("No sub handles"),
+            Self::Face { model, .. } => model.sub_handles().expect("No sub handles"),
+        }
+    }
+
+    fn get_min(&self) -> Vec3 {
+        match self {
+            Self::Root { bounding_box, .. } => bounding_box.min,
+            Self::Face { face, .. } => face.min,
+        }
+    }
+
+    fn get_max(&self) -> Vec3 {
+        match self {
+            Self::Root { bounding_box, .. } => bounding_box.max,
+            Self::Face { face, .. } => face.max,
+        }
+    }
+}
+
+impl Model<Vertex, DynamicAllocHandle<Vertex>> for CADModel {
+    fn wake(&self, handle: Arc<DynamicAllocHandle<Vertex>>) {
+        match self {
+            Self::Root { model, .. } => model.wake(handle),
+            Self::Face { model, .. } => model.wake(handle),
+        }
+    }
+
+    fn transform(&self) -> rether::Transform {
+        match self {
+            Self::Root { model, .. } => model.transform(),
+            Self::Face { model, .. } => model.transform(),
+        }
+    }
+
+    fn state(&self) -> &parking_lot::RwLock<ModelState<Vertex, DynamicAllocHandle<Vertex>>> {
+        match self {
+            Self::Root { model, .. } => model.state(),
+            Self::Face { model, .. } => model.state(),
+        }
+    }
+}
+
+impl ScaleModel for CADModel {
+    fn scale(&self, scale: Vec3, center: Option<Vec3>) {
+        match self {
+            Self::Root { model, .. } => model.scale(scale, center),
+            Self::Face { model, .. } => model.scale(scale, center),
+        }
+    }
+}
+
+impl TranslateModel for CADModel {
+    fn translate(&self, translation: Vec3) {
+        match self {
+            Self::Root { model, .. } => model.translate(translation),
+            Self::Face { model, .. } => model.translate(translation),
+        }
+    }
+}
+
+impl RotateModel for CADModel {
+    fn rotate(&self, rotation: glam::Quat, center: Option<Vec3>) {
+        match self {
+            Self::Root { model, .. } => model.rotate(rotation, center),
+            Self::Face { model, .. } => model.rotate(rotation, center),
+        }
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -335,6 +502,7 @@ impl ClusterizeFaces for IndexedMesh {
 
         for face in self.faces.iter() {
             let v0 = self.vertices[face.vertices[0]];
+            println!("{:?}", v0);
 
             let plane = Plane {
                 normal: Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
@@ -381,23 +549,11 @@ impl PartialEq for Stroke {
 impl Eq for Stroke {}
 
 impl PolygonFace {
-    fn from_entry(entry: PlaneEntry, vertices: &[Vector<f32>]) -> Self {
+    fn from_entry(entry: PlaneEntry, vertices: &[Vec3]) -> Self {
         let triangles: Vec<[Vec3; 3]> = entry
             .triangles
             .iter()
-            .map(|index| {
-                [
-                    Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
-                        vertices[index[0]],
-                    )),
-                    Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
-                        vertices[index[1]],
-                    )),
-                    Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
-                        vertices[index[2]],
-                    )),
-                ]
-            })
+            .map(|index| [vertices[index[0]], vertices[index[1]], vertices[index[2]]])
             .collect();
 
         let strokes = determine_contour(&triangles);
@@ -444,15 +600,25 @@ impl Hitbox for PolygonFace {
 
         for stroke in &self.strokes {
             let edge = stroke.1 - stroke.0;
-            let normal = edge.cross(ray_dir).normalize();
 
-            let to_intersection = intersection - stroke.0;
+            let cross_dir = ray_dir.cross(edge).normalize();
 
-            // Compute cross product of edge and vector to the intersection point
-            let cross = edge.cross(to_intersection).dot(self.plane.normal);
+            if cross_dir.dot(cross_dir).abs() < f32::EPSILON {
+                continue;
+            }
 
-            if cross.abs() < f32::EPSILON {
-                continue; // The point lies exactly on the edge, treat as inside
+            let t1 =
+                (stroke.0 - intersection).cross(edge).dot(cross_dir) / cross_dir.dot(cross_dir);
+
+            let t2 =
+                (intersection - stroke.0).cross(ray_dir).dot(cross_dir) / cross_dir.dot(cross_dir);
+
+            let intersection_1 = stroke.0 + edge * t1;
+
+            let intersection_2 = intersection + ray_dir * t2;
+
+            if (intersection_1 - intersection_2).length_squared() < f32::EPSILON {
+                inside = !inside;
             }
         }
 
