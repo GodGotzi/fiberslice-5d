@@ -1054,6 +1054,7 @@ dependencies = [
  "puffin 0.19.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "puffin_egui",
  "puffin_http",
+ "rayon",
  "rether",
  "serde",
  "serde_json",

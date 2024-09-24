@@ -1,11 +1,12 @@
 use core::panic;
 use std::{
-    collections::{HashMap, LinkedList},
+    collections::{HashMap, LinkedList, VecDeque},
     path::Path,
     sync::Arc,
 };
 
-use glam::{vec3, vec4, Vec2, Vec3, Vec4};
+use glam::{vec3, Vec3};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use rether::{
     alloc::{AllocHandle, DynamicAllocHandle},
     model::{
@@ -17,7 +18,7 @@ use rether::{
     Buffer, SimpleGeometry,
 };
 
-use stl_io::{IndexedMesh, Vector};
+use stl_io::{IndexedMesh, IndexedTriangle};
 use tokio::{
     sync::oneshot::{error::TryRecvError, Receiver},
     task::JoinHandle,
@@ -48,13 +49,12 @@ pub struct CADModelHandle {
     origin_path: String,
 }
 
+type CADModelResult = Result<CADModelHandle, CADModelError>;
+
 // TODO also use vertex indices
 #[derive(Debug)]
 pub struct CADModelServer {
-    queue: Vec<(
-        Receiver<Result<CADModelHandle, CADModelError>>,
-        JoinHandle<()>,
-    )>,
+    queue: Vec<(Receiver<CADModelResult>, JoinHandle<()>)>,
 
     buffer: rether::Buffer<Vertex, rether::alloc::BufferDynamicAllocator<Vertex>>,
 
@@ -118,28 +118,43 @@ impl CADModelServer {
 
             println!("Model loaded 2");
 
-            let triangle_vertices = stl_model.faces.iter().fold(Vec::new(), |mut vec, face| {
-                vec.push(vertices[face.vertices[0]]);
-                vec.push(vertices[face.vertices[1]]);
-                vec.push(vertices[face.vertices[2]]);
-                vec
-            });
+            let triangle_vertices = stl_model.faces.iter().fold(
+                Vec::with_capacity(stl_model.faces.len() * 3),
+                |mut vec, face| {
+                    vec.push(vertices[face.vertices[0]]);
+                    vec.push(vertices[face.vertices[1]]);
+                    vec.push(vertices[face.vertices[2]]);
+                    vec
+                },
+            );
 
-            let triangle_vertices = vec3s_into_vertices(triangle_vertices, Color::WHITE);
-
-            println!("Model loaded 3");
+            let triangle_vertices = vec3s_into_vertices(triangle_vertices, Color::BLUE);
 
             let planes = plane_entries
                 .into_iter()
                 .map(|entry| PolygonFace::from_entry(entry, &vertices))
                 .collect::<Vec<PolygonFace>>();
 
-            let mut models = Vec::with_capacity(planes.len());
+            let plane_len = planes.len();
 
-            for plane in planes {
-                let model = TreeModel::create_node(BufferLocation { offset: 0, size: 0 });
-                models.push(CADModel::Face { model, face: plane });
-            }
+            let models = planes
+                .into_par_iter()
+                .fold(
+                    || Vec::with_capacity(plane_len),
+                    |mut models, face| {
+                        let model = TreeModel::create_node(BufferLocation { offset: 0, size: 0 });
+                        models.push(CADModel::Face { model, face });
+
+                        models
+                    },
+                )
+                .reduce(
+                    || Vec::with_capacity(plane_len),
+                    |mut models, mut models2| {
+                        models.append(&mut models2);
+                        models
+                    },
+                );
 
             let root = CADModel::create_root(SimpleGeometry::init(triangle_vertices), models);
 
@@ -183,8 +198,6 @@ impl CADModelServer {
                 _ => panic!("Unsupported geometry"),
             };
 
-            println!("data: {:?}", data);
-
             self.buffer
                 .allocate_init(&name, data, &wgpu_context.device, &wgpu_context.queue)
         };
@@ -192,8 +205,6 @@ impl CADModelServer {
         model_handle.model.wake(handle.clone());
 
         let handle = Arc::new(model_handle.model);
-
-        println!("Model loaded 2asdasdasd");
 
         self.models.insert(name.clone(), handle.clone());
 
@@ -249,8 +260,6 @@ impl CADModelServer {
                     }
                 };
 
-                println!("Model loaded");
-
                 let handle = self.insert(model, wgpu_context)?;
 
                 global_state
@@ -274,6 +283,7 @@ impl CADModelServer {
                     .select(&model_trait_handle);
 
                 self.root_hitbox.add_node(handle);
+                global_state.window.request_redraw();
             }
         }
 
@@ -454,7 +464,7 @@ impl PartialEq for Plane {
         // check if the planes are mathematically equal
 
         let cross_product = self.normal.cross(other.normal);
-        if !cross_product.is_nan() {
+        if cross_product.length() > f32::EPSILON {
             return false; // Normals are not parallel
         }
 
@@ -500,35 +510,62 @@ trait ClusterizeFaces {
     fn clusterize_faces(&self) -> LinkedList<PlaneEntry>;
 }
 
+fn determine_plane(triangle: &IndexedTriangle, vertices: &[stl_io::Vector<f32>]) -> Plane {
+    let v0 = vertices[triangle.vertices[0]];
+
+    Plane {
+        normal: Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
+            triangle.normal,
+        ))
+        .normalize(),
+        point: Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
+            v0,
+        )),
+    }
+}
+
 impl ClusterizeFaces for IndexedMesh {
     fn clusterize_faces(&self) -> LinkedList<PlaneEntry> {
-        let mut planes: LinkedList<PlaneEntry> = LinkedList::new();
+        let mut triangles: VecDeque<(&IndexedTriangle, Plane)> = self
+            .faces
+            .iter()
+            .map(|face| (face, determine_plane(face, &self.vertices)))
+            .collect();
 
-        for face in self.faces.iter() {
-            let v0 = self.vertices[face.vertices[0]];
-            // println!("{:?}", v0);
+        if let Some((first, plane)) = triangles.pop_front() {
+            let mut planes: LinkedList<PlaneEntry> = [PlaneEntry {
+                plane,
+                triangles: [first.vertices].into_iter().collect(),
+            }]
+            .into_iter()
+            .collect();
 
-            let plane = Plane {
-                normal: Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
-                    face.normal,
-                ))
-                .normalize(),
-                point: Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
-                    v0,
-                )),
-            };
-
-            if let Some(entry) = planes.iter_mut().find(|entry| entry.plane == plane) {
-                entry.triangles.push_back(face.vertices);
-            } else {
-                planes.push_back(PlaneEntry {
-                    plane,
-                    triangles: [face.vertices].into_iter().collect(),
+            while !triangles.is_empty() {
+                triangles.retain(|(triangle, plane)| {
+                    if plane == &planes.back().unwrap().plane {
+                        planes
+                            .back_mut()
+                            .unwrap()
+                            .triangles
+                            .push_back(triangle.vertices);
+                        false
+                    } else {
+                        true
+                    }
                 });
-            }
-        }
 
-        planes
+                if let Some((first, plane)) = triangles.pop_front() {
+                    planes.push_back(PlaneEntry {
+                        plane,
+                        triangles: [first.vertices].into_iter().collect(),
+                    });
+                }
+            }
+
+            planes
+        } else {
+            LinkedList::new()
+        }
     }
 }
 

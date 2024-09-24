@@ -72,10 +72,14 @@ pub fn vec3s_into_vertices<C: IntoArrayColor>(v: Vec<Vec3>, color: C) -> Vec<Ver
 
     let color: [f32; 4] = color.to_array();
 
-    for i in (0..vertices.len()).step_by(3) {
-        let v0 = v[i];
-        let v1 = v[i + 1];
-        let v2 = v[i + 2];
+    for i in (0..v.len()).step_by(3) {
+        let mut v0 = v[i + 2];
+        let mut v1 = v[i + 1];
+        let mut v2 = v[i];
+
+        std::mem::swap(&mut v0.y, &mut v0.z);
+        std::mem::swap(&mut v1.y, &mut v1.z);
+        std::mem::swap(&mut v2.y, &mut v2.z);
 
         let normal = (v1 - v0).cross(v2 - v0).normalize();
 

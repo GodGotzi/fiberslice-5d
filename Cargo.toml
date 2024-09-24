@@ -48,3 +48,4 @@ egui_code_editor = "0.2.9"
 env_logger = "0.11.3"
 pollster = "0.3.0"
 rether = { path = "rether" }
+rayon = "1.10.0"
