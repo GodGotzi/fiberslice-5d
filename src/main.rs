@@ -120,14 +120,14 @@ impl ApplicationState {
             .toolpath_server
             .write()
             .update(self.global_state.clone(), &self.wgpu_context)
-            .unwrap();
+            .expect("Failed to update toolpath server");
 
         self.global_state
             .viewer
             .model_server
             .write()
             .update(self.global_state.clone(), &self.wgpu_context)
-            .unwrap();
+            .expect("Failed to update model server");
 
         self.ui_adapter.update(self.start_time);
 

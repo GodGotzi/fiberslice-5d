@@ -8,6 +8,7 @@
 pub mod api;
 pub mod boundary;
 pub mod components;
+pub mod custom_toasts;
 pub mod screen;
 pub mod tools;
 pub mod widgets;
@@ -18,6 +19,7 @@ pub mod visual;
 
 use std::sync::atomic::AtomicBool;
 
+use custom_toasts::PROGRESS_BAR_TOAST;
 use egui_toast::ToastOptions;
 use egui_wgpu_backend::ScreenDescriptor;
 use egui_winit_platform::{Platform, PlatformDescriptor};
@@ -42,6 +44,7 @@ pub enum UiEvent {
     ShowInfo(String),
     ShowSuccess(String),
     ShowError(String),
+    ShowProgressBar,
 
     FocusGCode(ReadSection),
 }
@@ -281,6 +284,16 @@ impl<'a> Adapter<'a, RootEvent, UiState, (UiUpdateOutput, (f32, f32, f32, f32)),
                     options: ToastOptions::default()
                         .duration_in_seconds(5.0)
                         .show_progress(true),
+                    ..Default::default()
+                });
+
+                wgpu_context.window.request_redraw();
+            }
+            UiEvent::ShowProgressBar => {
+                self.screen.add_progress_bar_toast(egui_toast::Toast {
+                    kind: egui_toast::ToastKind::Custom(PROGRESS_BAR_TOAST),
+                    text: "Progress bar".into(),
+                    options: ToastOptions::default(),
                     ..Default::default()
                 });
 

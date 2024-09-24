@@ -6,7 +6,7 @@ use std::{
 };
 
 use glam::{vec3, Vec3};
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rether::{
     alloc::{AllocHandle, DynamicAllocHandle},
     model::{
@@ -277,6 +277,10 @@ impl CADModelServer {
                     handle.clone() as Arc<dyn Model<Vertex, DynamicAllocHandle<Vertex>>>;
 
                 global_state
+                    .ui_event_writer
+                    .send(crate::ui::UiEvent::ShowProgressBar);
+
+                global_state
                     .viewer
                     .selector()
                     .write()
@@ -469,25 +473,14 @@ impl PartialEq for Plane {
         }
 
         // Step 2: Check if p2 lies on the first plane and p1 lies on the second plane
-        let p2_on_plane1 = (vec3(
+        (vec3(
             other.point.x - self.point.x,
             other.point.y - self.point.y,
             other.point.z - self.point.z,
         ))
         .dot(self.normal)
         .abs()
-            < f32::EPSILON;
-
-        let p1_on_plane2 = (vec3(
-            self.point.x - other.point.x,
-            self.point.y - other.point.y,
-            self.point.z - other.point.z,
-        ))
-        .dot(other.normal)
-        .abs()
-            < f32::EPSILON;
-
-        p2_on_plane1 && p1_on_plane2
+            < f32::EPSILON
     }
 }
 

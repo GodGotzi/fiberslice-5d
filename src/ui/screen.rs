@@ -12,6 +12,7 @@ use egui_toast::Toasts;
 
 pub struct Screen {
     toasts: Toasts,
+    toasts_progress_bar: Toasts,
 
     tools: tools::Tools,
     addons_state: addons::AddonsState,
@@ -31,6 +32,13 @@ impl Screen {
             toasts: Toasts::new()
                 .anchor(Align2::CENTER_TOP, (0.0, 10.0))
                 .direction(egui::Direction::TopDown),
+            toasts_progress_bar: Toasts::new()
+                .anchor(Align2::RIGHT_BOTTOM, (-10.0, -10.0))
+                .direction(egui::Direction::TopDown)
+                .custom_contents(
+                    crate::ui::custom_toasts::PROGRESS_BAR_TOAST,
+                    crate::ui::custom_toasts::progress_bar_toast,
+                ),
             addons_state: addons::AddonsState::new(),
             quick_settings_state: quick_settingsbar::SettingsbarState::new(),
             menubar_state: MenubarState::new(),
@@ -92,6 +100,7 @@ impl Screen {
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
             addons::Addons::with_state(&mut self.addons_state).show(ui, shared_state);
             self.tools.show(ctx, shared_state);
+            self.toasts_progress_bar.show(ctx);
         });
 
         self.toasts.show(ctx);
@@ -99,6 +108,10 @@ impl Screen {
 
     pub fn add_toast(&mut self, toast: egui_toast::Toast) {
         self.toasts.add(toast);
+    }
+
+    pub fn add_progress_bar_toast(&mut self, toast: egui_toast::Toast) {
+        self.toasts_progress_bar.add(toast);
     }
 
     pub fn construct_viewport(&self, wgpu_context: &WgpuContext) -> (f32, f32, f32, f32) {
