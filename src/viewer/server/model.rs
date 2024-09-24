@@ -183,6 +183,8 @@ impl CADModelServer {
                 _ => panic!("Unsupported geometry"),
             };
 
+            println!("data: {:?}", data);
+
             self.buffer
                 .allocate_init(&name, data, &wgpu_context.device, &wgpu_context.queue)
         };
@@ -190,6 +192,8 @@ impl CADModelServer {
         model_handle.model.wake(handle.clone());
 
         let handle = Arc::new(model_handle.model);
+
+        println!("Model loaded 2asdasdasd");
 
         self.models.insert(name.clone(), handle.clone());
 
@@ -481,7 +485,7 @@ impl Eq for Plane {}
 
 struct PlaneEntry {
     plane: Plane,
-    triangles: Vec<[usize; 3]>,
+    triangles: LinkedList<[usize; 3]>,
 }
 
 impl PartialEq for PlaneEntry {
@@ -493,16 +497,16 @@ impl PartialEq for PlaneEntry {
 impl Eq for PlaneEntry {}
 
 trait ClusterizeFaces {
-    fn clusterize_faces(&self) -> Vec<PlaneEntry>;
+    fn clusterize_faces(&self) -> LinkedList<PlaneEntry>;
 }
 
 impl ClusterizeFaces for IndexedMesh {
-    fn clusterize_faces(&self) -> Vec<PlaneEntry> {
-        let mut planes: Vec<PlaneEntry> = Vec::new();
+    fn clusterize_faces(&self) -> LinkedList<PlaneEntry> {
+        let mut planes: LinkedList<PlaneEntry> = LinkedList::new();
 
         for face in self.faces.iter() {
             let v0 = self.vertices[face.vertices[0]];
-            println!("{:?}", v0);
+            // println!("{:?}", v0);
 
             let plane = Plane {
                 normal: Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
@@ -515,11 +519,11 @@ impl ClusterizeFaces for IndexedMesh {
             };
 
             if let Some(entry) = planes.iter_mut().find(|entry| entry.plane == plane) {
-                entry.triangles.push(face.vertices);
+                entry.triangles.push_back(face.vertices);
             } else {
-                planes.push(PlaneEntry {
+                planes.push_back(PlaneEntry {
                     plane,
-                    triangles: vec![face.vertices],
+                    triangles: [face.vertices].into_iter().collect(),
                 });
             }
         }
