@@ -7,7 +7,7 @@ use components::{
     toolbar::{self, ToolBarState},
     topbar::{self, TopBarState},
 };
-use egui::{Align2, Margin};
+use egui::{Align2, Id, Margin};
 use egui_toast::Toasts;
 
 pub struct Screen {
@@ -29,11 +29,11 @@ impl Screen {
     pub fn new() -> Self {
         Self {
             tools: tools::Tools::default(),
-            toasts: Toasts::new()
+            toasts: Toasts::with_id(Id::new("__default_toasts"))
                 .anchor(Align2::CENTER_TOP, (0.0, 10.0))
                 .direction(egui::Direction::TopDown),
             toasts_progress_bar: Toasts::new()
-                .anchor(Align2::RIGHT_BOTTOM, (-10.0, -10.0))
+                .anchor(Align2::RIGHT_BOTTOM, (0.0, 0.0))
                 .direction(egui::Direction::TopDown)
                 .custom_contents(
                     crate::ui::custom_toasts::PROGRESS_BAR_TOAST,
@@ -98,12 +98,12 @@ impl Screen {
         modebar::Modebar::with_state(&mut self.modebar_state).show(ctx, shared_state);
 
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
+            self.toasts.show_inside(ui);
+            self.toasts_progress_bar.show_inside(ui);
+
             addons::Addons::with_state(&mut self.addons_state).show(ui, shared_state);
             self.tools.show(ctx, shared_state);
-            self.toasts_progress_bar.show(ctx);
         });
-
-        self.toasts.show(ctx);
     }
 
     pub fn add_toast(&mut self, toast: egui_toast::Toast) {

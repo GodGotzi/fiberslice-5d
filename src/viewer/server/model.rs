@@ -264,7 +264,7 @@ impl CADModelServer {
 
                 global_state
                     .ui_event_writer
-                    .send(crate::ui::UiEvent::ShowSuccess("Gcode loaded".to_string()));
+                    .send(crate::ui::UiEvent::ShowSuccess("Object loaded".to_string()));
 
                 global_state.camera_event_writer.send(
                     crate::camera::CameraEvent::UpdatePreferredDistance(BoundingBox::new(
@@ -287,7 +287,7 @@ impl CADModelServer {
                     .select(&model_trait_handle);
 
                 self.root_hitbox.add_node(handle);
-                global_state.window.request_redraw();
+                // global_state.window.request_redraw();
             }
         }
 

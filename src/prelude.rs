@@ -3,7 +3,7 @@ use std::{fmt::Debug, sync::Arc};
 use log::info;
 use wgpu::InstanceDescriptor;
 use winit::{
-    event::{DeviceEvent, Event, WindowEvent},
+    event::{DeviceEvent, WindowEvent},
     window::Window,
 };
 
