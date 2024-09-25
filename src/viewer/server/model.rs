@@ -517,7 +517,7 @@ impl PartialEq for PlaneEntry {
 impl Eq for PlaneEntry {}
 
 fn clusterize_faces(faces: &[IndexedTriangle], vertices: &[Vec3]) -> Vec<PlaneEntry> {
-    let mut plane_map: HashMap<[OrderedFloat<f64>; 6], Vec<[usize; 3]>> = HashMap::new();
+    let mut plane_map: HashMap<[OrderedFloat<f32>; 6], Vec<[usize; 3]>> = HashMap::new();
 
     let now = std::time::Instant::now();
 
@@ -531,18 +531,14 @@ fn clusterize_faces(faces: &[IndexedTriangle], vertices: &[Vec3]) -> Vec<PlaneEn
 
         let ray = rether::picking::Ray {
             origin: Vec3::new(0.0, 0.0, 0.0),
-            direction: if normal.dot(Vec3::new(0.0, 0.0, 1.0)).abs() < f32::EPSILON {
-                vec3(0.0, 1.0, 0.0)
-            } else {
-                vec3(0.0, 0.0, 1.0)
-            },
+            direction: normal,
         };
 
         let intersection = ray.intersection_plane(normal, point);
 
-        fn round_to_4_decimal_places(value: f32) -> f64 {
-            let factor = 10f64.powi(6); // 10^4 = 10000
-            (value as f64 * factor).round() / factor
+        fn round_to_4_decimal_places(value: f32) -> f32 {
+            let factor = 10f32.powi(6); // 10^4 = 10000
+            (value * factor).round() / factor
         }
 
         let key = [
