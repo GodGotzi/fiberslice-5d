@@ -753,7 +753,7 @@ dependencies = [
 [[package]]
 name = "egui-toast"
 version = "0.14.0"
-source = "git+https://github.com/GodGotzi/egui-toast.git?branch=show_inside#b5184057c0ee981b3c074412a9e55d1722e72724"
+source = "git+https://github.com/GodGotzi/egui-toast.git?branch=show_inside#f1c698567f6d12e8417fd4c13c091ba79bcafc6b"
 dependencies = [
  "egui 0.28.1",
 ]

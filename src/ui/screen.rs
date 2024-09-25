@@ -29,11 +29,11 @@ impl Screen {
     pub fn new() -> Self {
         Self {
             tools: tools::Tools::default(),
-            toasts: Toasts::with_id(Id::new("__default_toasts"))
+            toasts: Toasts::with_id(Id::new("__toasts"))
                 .anchor(Align2::CENTER_TOP, (0.0, 10.0))
                 .direction(egui::Direction::TopDown),
-            toasts_progress_bar: Toasts::new()
-                .anchor(Align2::RIGHT_BOTTOM, (0.0, 0.0))
+            toasts_progress_bar: Toasts::with_id(Id::new("__toasts_progress_bar"))
+                .anchor(Align2::RIGHT_BOTTOM, (-10.0, -10.0))
                 .direction(egui::Direction::TopDown)
                 .custom_contents(
                     crate::ui::custom_toasts::PROGRESS_BAR_TOAST,
