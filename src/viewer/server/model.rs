@@ -6,7 +6,11 @@ use std::{
 };
 
 use glam::{vec3, Vec3};
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use image::imageops::FilterType::Triangle;
+use ordered_float::OrderedFloat;
+use rayon::iter::{
+    IntoParallelIterator, IntoParallelRefIterator, ParallelDrainRange, ParallelIterator,
+};
 use rether::{
     alloc::{AllocHandle, DynamicAllocHandle},
     model::{
@@ -28,7 +32,10 @@ use uni_path::PathBuf;
 use wgpu::Color;
 
 use crate::{
-    geometry::{mesh::vec3s_into_vertices, BoundingBox},
+    geometry::{
+        mesh::{vec3s_into_vertices, IntoArrayColor},
+        BoundingBox,
+    },
     prelude::WgpuContext,
     GlobalState, RootEvent,
 };
@@ -92,7 +99,7 @@ impl CADModelServer {
             };
 
             let mut reader = std::io::BufReader::new(file);
-            let stl_model = match stl_io::read_stl(&mut reader) {
+            let mut stl_model = match stl_io::read_stl(&mut reader) {
                 Ok(stl_model) => stl_model,
                 Err(_e) => {
                     tx.send(Err(CADModelError::LoadError(path))).unwrap();
@@ -101,8 +108,6 @@ impl CADModelServer {
             };
 
             println!("Model loaded 1");
-
-            let plane_entries = stl_model.clusterize_faces();
 
             println!("Model loaded 1.5");
 
@@ -118,17 +123,36 @@ impl CADModelServer {
 
             println!("Model loaded 2");
 
-            let triangle_vertices = stl_model.faces.iter().fold(
-                Vec::with_capacity(stl_model.faces.len() * 3),
-                |mut vec, face| {
+            let vertices = stl_model
+                .faces
+                .iter_mut()
+                .fold(Vec::new(), |mut vec, face| {
                     vec.push(vertices[face.vertices[0]]);
+                    face.vertices[0] = vec.len() - 1;
                     vec.push(vertices[face.vertices[1]]);
+                    face.vertices[1] = vec.len() - 1;
                     vec.push(vertices[face.vertices[2]]);
+                    face.vertices[2] = vec.len() - 1;
                     vec
-                },
-            );
+                });
 
-            let triangle_vertices = vec3s_into_vertices(triangle_vertices, Color::BLUE);
+            let plane_entries = clusterize_faces(&stl_model.faces, &vertices);
+
+            let mut triangle_vertices = vec3s_into_vertices(vertices.clone(), Color::BLUE);
+
+            plane_entries.iter().for_each(|entry| {
+                let r = rand::random::<f64>();
+                let g = rand::random::<f64>();
+                let b = rand::random::<f64>();
+
+                for index in &entry.triangles {
+                    triangle_vertices[index[0]].color = Color { r, g, b, a: 1.0 }.to_array();
+
+                    triangle_vertices[index[1]].color = Color { r, g, b, a: 1.0 }.to_array();
+
+                    triangle_vertices[index[2]].color = Color { r, g, b, a: 1.0 }.to_array();
+                }
+            });
 
             let planes = plane_entries
                 .into_iter()
@@ -473,14 +497,7 @@ impl PartialEq for Plane {
         }
 
         // Step 2: Check if p2 lies on the first plane and p1 lies on the second plane
-        (vec3(
-            other.point.x - self.point.x,
-            other.point.y - self.point.y,
-            other.point.z - self.point.z,
-        ))
-        .dot(self.normal)
-        .abs()
-            < f32::EPSILON
+        (other.point - self.point).dot(self.normal).abs() < f32::EPSILON
     }
 }
 
@@ -488,7 +505,7 @@ impl Eq for Plane {}
 
 struct PlaneEntry {
     plane: Plane,
-    triangles: LinkedList<[usize; 3]>,
+    triangles: Vec<[usize; 3]>,
 }
 
 impl PartialEq for PlaneEntry {
@@ -499,67 +516,65 @@ impl PartialEq for PlaneEntry {
 
 impl Eq for PlaneEntry {}
 
-trait ClusterizeFaces {
-    fn clusterize_faces(&self) -> LinkedList<PlaneEntry>;
-}
+fn clusterize_faces(faces: &[IndexedTriangle], vertices: &[Vec3]) -> Vec<PlaneEntry> {
+    let mut plane_map: HashMap<[OrderedFloat<f64>; 6], Vec<[usize; 3]>> = HashMap::new();
 
-fn determine_plane(triangle: &IndexedTriangle, vertices: &[stl_io::Vector<f32>]) -> Plane {
-    let v0 = vertices[triangle.vertices[0]];
+    let now = std::time::Instant::now();
 
-    Plane {
-        normal: Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
+    for triangle in faces.iter() {
+        let normal = Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
             triangle.normal,
         ))
-        .normalize(),
-        point: Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
-            v0,
-        )),
-    }
-}
+        .normalize();
 
-impl ClusterizeFaces for IndexedMesh {
-    fn clusterize_faces(&self) -> LinkedList<PlaneEntry> {
-        let mut triangles: VecDeque<(&IndexedTriangle, Plane)> = self
-            .faces
-            .iter()
-            .map(|face| (face, determine_plane(face, &self.vertices)))
-            .collect();
+        let point = vertices[triangle.vertices[0]];
 
-        if let Some((first, plane)) = triangles.pop_front() {
-            let mut planes: LinkedList<PlaneEntry> = [PlaneEntry {
-                plane,
-                triangles: [first.vertices].into_iter().collect(),
-            }]
-            .into_iter()
-            .collect();
+        let ray = rether::picking::Ray {
+            origin: Vec3::new(0.0, 0.0, 0.0),
+            direction: if normal.dot(Vec3::new(0.0, 0.0, 1.0)).abs() < f32::EPSILON {
+                vec3(0.0, 1.0, 0.0)
+            } else {
+                vec3(0.0, 0.0, 1.0)
+            },
+        };
 
-            while !triangles.is_empty() {
-                triangles.retain(|(triangle, plane)| {
-                    if plane == &planes.back().unwrap().plane {
-                        planes
-                            .back_mut()
-                            .unwrap()
-                            .triangles
-                            .push_back(triangle.vertices);
-                        false
-                    } else {
-                        true
-                    }
-                });
+        let intersection = ray.intersection_plane(normal, point);
 
-                if let Some((first, plane)) = triangles.pop_front() {
-                    planes.push_back(PlaneEntry {
-                        plane,
-                        triangles: [first.vertices].into_iter().collect(),
-                    });
-                }
-            }
-
-            planes
-        } else {
-            LinkedList::new()
+        fn round_to_4_decimal_places(value: f32) -> f64 {
+            let factor = 10f64.powi(6); // 10^4 = 10000
+            (value as f64 * factor).round() / factor
         }
+
+        let key = [
+            OrderedFloat(round_to_4_decimal_places(normal.x)),
+            OrderedFloat(round_to_4_decimal_places(normal.y)),
+            OrderedFloat(round_to_4_decimal_places(normal.z)),
+            OrderedFloat(round_to_4_decimal_places(intersection.x)),
+            OrderedFloat(round_to_4_decimal_places(intersection.y)),
+            OrderedFloat(round_to_4_decimal_places(intersection.z)),
+        ];
+
+        plane_map.entry(key).or_default().push(triangle.vertices);
     }
+
+    println!("planes len: {}", plane_map.len());
+
+    let ret = plane_map
+        .into_iter()
+        .map(|(key, indices)| {
+            let normal = Vec3::new(key[0].0 as f32, key[1].0 as f32, key[2].0 as f32);
+            let point = Vec3::new(key[3].0 as f32, key[4].0 as f32, key[5].0 as f32);
+
+            PlaneEntry {
+                plane: Plane { normal, point },
+                triangles: indices,
+            }
+        })
+        .collect();
+
+    println!("Determine planes took: {:?}", now.elapsed());
+
+    ret
 }
 
 #[derive(Debug)]

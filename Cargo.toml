@@ -49,3 +49,5 @@ env_logger = "0.11.3"
 pollster = "0.3.0"
 rether = { path = "rether" }
 rayon = "1.10.0"
+ordered-float = "4.3.0"
+rand = "0.8.5"

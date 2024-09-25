@@ -1047,12 +1047,14 @@ dependencies = [
  "image",
  "log",
  "nfde",
+ "ordered-float",
  "parking_lot",
  "phf",
  "pollster",
  "puffin 0.19.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "puffin_egui",
  "puffin_http",
+ "rand",
  "rayon",
  "rether",
  "serde",
@@ -2149,6 +2151,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52f0d54bde9774d3a51dcf281a5def240c71996bc6ca05d2c847ec8b2b216166"
 dependencies = [
  "libredox",
+]
+
+[[package]]
+name = "ordered-float"
+version = "4.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44d501f1a72f71d3c063a6bbc8f7271fa73aa09fe5d6283b6571e2ed176a2537"
+dependencies = [
+ "num-traits",
 ]
 
 [[package]]
