@@ -6,7 +6,10 @@ use std::{
 };
 
 use glam::{vec3, Vec3};
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use parking_lot::RwLock;
+use rayon::iter::{
+    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator,
+};
 use rether::{
     alloc::{AllocHandle, DynamicAllocHandle},
     model::{
@@ -486,18 +489,9 @@ impl PartialEq for Plane {
 
 impl Eq for Plane {}
 
-struct PlaneEntry {
-    plane: Plane,
-    triangles: LinkedList<[usize; 3]>,
+struct PlaneEntry<'a> {
+    triangles: LinkedList<&'a IndexedTriangle>,
 }
-
-impl PartialEq for PlaneEntry {
-    fn eq(&self, other: &Self) -> bool {
-        self.plane == other.plane
-    }
-}
-
-impl Eq for PlaneEntry {}
 
 trait ClusterizeFaces {
     fn clusterize_faces(&self) -> LinkedList<PlaneEntry>;
@@ -517,48 +511,107 @@ fn determine_plane(triangle: &IndexedTriangle, vertices: &[stl_io::Vector<f32>])
     }
 }
 
+type TriangleQueue<'a> = VecDeque<([Option<&'a IndexedTriangle>; 3], bool)>;
+
 impl ClusterizeFaces for IndexedMesh {
     fn clusterize_faces(&self) -> LinkedList<PlaneEntry> {
-        let mut triangles: VecDeque<(&IndexedTriangle, Plane)> = self
-            .faces
-            .iter()
-            .map(|face| (face, determine_plane(face, &self.vertices)))
-            .collect();
+        let triangle_neighbors: RwLock<TriangleQueue> =
+            RwLock::new(VecDeque::with_capacity(self.faces.len()));
 
-        if let Some((first, plane)) = triangles.pop_front() {
-            let mut planes: LinkedList<PlaneEntry> = [PlaneEntry {
-                plane,
-                triangles: [first.vertices].into_iter().collect(),
-            }]
-            .into_iter()
-            .collect();
+        self.faces
+            .par_iter()
+            .enumerate()
+            .for_each(|(index, current_triangle)| {
+                let mut neighbor_index = 0;
+                let mut neighbors: [Option<&IndexedTriangle>; 3] = [None, None, None];
 
-            while !triangles.is_empty() {
-                triangles.retain(|(triangle, plane)| {
-                    if plane == &planes.back().unwrap().plane {
-                        planes
-                            .back_mut()
-                            .unwrap()
-                            .triangles
-                            .push_back(triangle.vertices);
-                        false
+                // iter from current index in both directions
+                let iindex = index as i32;
+                let mut step: i32 = 1;
+                while (iindex - step) >= 0 || iindex + step < self.faces.len() as i32 {
+                    let test_index = if (iindex - step) >= 0 {
+                        (iindex - step) as usize
                     } else {
-                        true
-                    }
-                });
+                        (iindex + step) as usize
+                    };
 
-                if let Some((first, plane)) = triangles.pop_front() {
-                    planes.push_back(PlaneEntry {
-                        plane,
-                        triangles: [first.vertices].into_iter().collect(),
-                    });
+                    let neighbor_triangle = &self.faces[test_index];
+
+                    // check if triangles share two vertices without for
+                    let shared_vertices = current_triangle
+                        .vertices
+                        .iter()
+                        .filter(|vertex| neighbor_triangle.vertices.contains(*vertex))
+                        .count();
+
+                    if shared_vertices == 2 {
+                        neighbors[neighbor_index] = Some(neighbor_triangle);
+                        neighbor_index += 1;
+                    }
+
+                    if neighbor_index == 3 {
+                        break;
+                    }
+
+                    step += 1;
                 }
+
+                triangle_neighbors.write()[index] = (neighbors, false);
+            });
+
+        let triangle_neighbors = triangle_neighbors.into_inner();
+
+        let mut planes: LinkedList<PlaneEntry> = LinkedList::new();
+
+        fn recursive_clusterize<'a, 'b: 'a>(
+            triangle_index: usize,
+            neighbors_queue: &'b mut TriangleQueue,
+            plane: &'a mut PlaneEntry<'a>,
+            planes: &'a mut LinkedList<PlaneEntry<'a>>,
+            faces: &[IndexedTriangle],
+        ) {
+            let triangle = &faces[triangle_index];
+            let (neighbors, searched) = neighbors_queue[triangle_index];
+
+            if searched {
+                return;
             }
 
-            planes
-        } else {
-            LinkedList::new()
+            for (index, neighbor) in neighbors.iter().enumerate() {
+                if let Some(neighbor) = neighbor {
+                    if vec3(triangle.normal[0], triangle.normal[1], triangle.normal[2])
+                        .cross(vec3(
+                            neighbor.normal[0],
+                            neighbor.normal[1],
+                            neighbor.normal[2],
+                        ))
+                        .length()
+                        < f32::EPSILON
+                    {
+                        plane.triangles.push_back(neighbor);
+                        neighbors_queue[triangle_index].1 = true;
+                    } else {
+                        let mut new_plane = PlaneEntry {
+                            triangles: LinkedList::new(),
+                        };
+
+                        new_plane.triangles.push_back(neighbor);
+
+                        recursive_clusterize(
+                            faces.iter().position(|face| face == neighbor).unwrap(),
+                            neighbors_queue,
+                            &mut new_plane,
+                            planes,
+                            faces,
+                        );
+
+                        planes.push_back(new_plane);
+                    }
+                }
+            }
         }
+
+        LinkedList::new()
     }
 }
 
