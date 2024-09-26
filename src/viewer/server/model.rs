@@ -151,7 +151,7 @@ impl CADModelServer {
                 .filter(|(_, polygon)| {
                     println!("max_circle: {:?}", polygon.max_circle_radius);
 
-                    polygon.max_circle_radius > 5.0
+                    polygon.max_circle_radius > 2.0
                 })
                 .map(|(entry, _)| entry)
                 .collect();
@@ -612,10 +612,9 @@ impl PolygonFace {
 
         let mut min = Vec3::INFINITY;
         let mut max = Vec3::NEG_INFINITY;
-        let mean = strokes
-            .iter()
-            .fold(Vec3::ZERO, |sum, stroke| sum + (stroke.0 + stroke.1) / 2.0)
-            / strokes.len() as f32;
+        let mean = strokes.iter().fold(Vec3::ZERO, |sum, stroke| {
+            sum + ((stroke.0 + stroke.1) / 2.0 * (stroke.0 - stroke.1))
+        }) / strokes.len() as f32;
 
         let mut min_radius = f32::INFINITY;
 
@@ -624,9 +623,8 @@ impl PolygonFace {
             max = max.max(stroke.0.max(stroke.1));
 
             // distance mean to stroke
-
             let dir = stroke.0 - stroke.1;
-            let distance = (mean - stroke.0).cross(dir).length_squared() / dir.length_squared();
+            let distance = (mean - stroke.0).cross(dir).length() / dir.length();
 
             if distance < min_radius {
                 min_radius = distance;
