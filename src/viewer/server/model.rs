@@ -1,11 +1,11 @@
-use core::{f32, panic};
+use core::{f32, panic, str};
 use std::{
     collections::{HashMap, LinkedList, VecDeque},
     path::Path,
     sync::Arc,
 };
 
-use glam::{vec3, Vec3};
+use glam::{vec3, Vec2, Vec3};
 use image::imageops::FilterType::Triangle;
 use ordered_float::OrderedFloat;
 use rayon::iter::{
@@ -140,25 +140,30 @@ impl CADModelServer {
 
             let planes = plane_entries
                 .iter()
-                .map(|entry| PolygonFace::from_entry(entry, &vertices))
-                .collect::<Vec<PolygonFace>>();
+                .map(|entry| PolygonFace::try_from_entry(entry, &vertices))
+                .collect::<Vec<Option<PolygonFace>>>();
 
             let mut triangle_vertices = vec3s_into_vertices(vertices.clone(), Color::BLACK);
 
-            let plane_entries: Vec<PlaneEntry> = plane_entries
+            let plane_entries: Vec<(PlaneEntry, PolygonFace)> = plane_entries
                 .into_iter()
-                .zip(planes.iter())
-                .filter(|(_, polygon)| {
-                    println!("max_circle: {:?}", polygon.max_circle_radius);
+                .zip(planes)
+                .filter_map(|(entry, polygon)| {
+                    // calculate the area of the polygon
 
-                    polygon.max_circle_radius > 2.0
+                    if let Some(polygon) = polygon {
+                        if polygon.area < 50.0 {
+                            None
+                        } else {
+                            Some((entry, polygon))
+                        }
+                    } else {
+                        None
+                    }
                 })
-                .map(|(entry, _)| entry)
                 .collect();
 
-            println!("entries: {:?}", plane_entries.len());
-
-            plane_entries.iter().for_each(|entry| {
+            plane_entries.iter().for_each(|(entry, _)| {
                 let r = rand::random::<f64>();
                 let g = rand::random::<f64>();
                 let b = rand::random::<f64>();
@@ -172,13 +177,13 @@ impl CADModelServer {
                 }
             });
 
-            let plane_len = planes.len();
+            let plane_len = plane_entries.len();
 
-            let models = planes
+            let models = plane_entries
                 .into_par_iter()
                 .fold(
                     || Vec::with_capacity(plane_len),
-                    |mut models, face| {
+                    |mut models, (_, face)| {
                         let model = TreeModel::create_node(BufferLocation { offset: 0, size: 0 });
                         models.push(CADModel::Face { model, face });
 
@@ -582,8 +587,8 @@ fn clusterize_faces(faces: &[IndexedTriangle], vertices: &[Vec3]) -> Vec<PlaneEn
 #[derive(Debug)]
 pub struct PolygonFace {
     plane: Plane,
-    strokes: Vec<Stroke>,
-    max_circle_radius: f32,
+    contour: Vec<Vec3>,
+    area: f32,
     min: Vec3,
     max: Vec3,
 }
@@ -601,43 +606,55 @@ impl PartialEq for Stroke {
 impl Eq for Stroke {}
 
 impl PolygonFace {
-    fn from_entry(entry: &PlaneEntry, vertices: &[Vec3]) -> Self {
+    fn try_from_entry(entry: &PlaneEntry, vertices: &[Vec3]) -> Option<Self> {
         let triangles: Vec<[Vec3; 3]> = entry
             .triangles
             .iter()
             .map(|index| [vertices[index[0]], vertices[index[1]], vertices[index[2]]])
             .collect();
 
-        let strokes = determine_contour(&triangles);
+        let contour = determine_contour(&triangles);
+
+        let area = {
+            let x_basis = contour[1] - contour[0];
+            let y_basis = contour[2] - contour[0];
+
+            // project the contour to the plane
+            let contour: Vec<Vec2> = contour
+                .iter()
+                .map(|vertex| {
+                    let x = x_basis.dot(*vertex - contour[0]);
+                    let y = y_basis.dot(*vertex - contour[0]);
+
+                    Vec2::new(x, y)
+                })
+                .collect();
+
+            (0..contour.len()).fold(0.0, |mut area, index| {
+                area += contour[index].x * contour[(index + 1) % contour.len()].y
+                    - contour[(index + 1) % contour.len()].x * contour[index].y;
+
+                area
+            }) / 2.0
+        };
+
+        println!("Area: {}", area);
 
         let mut min = Vec3::INFINITY;
         let mut max = Vec3::NEG_INFINITY;
-        let mean = strokes.iter().fold(Vec3::ZERO, |sum, stroke| {
-            sum + ((stroke.0 + stroke.1) / 2.0 * (stroke.0 - stroke.1))
-        }) / strokes.len() as f32;
 
-        let mut min_radius = f32::INFINITY;
-
-        for stroke in &strokes {
-            min = min.min(stroke.0.min(stroke.1));
-            max = max.max(stroke.0.max(stroke.1));
-
-            // distance mean to stroke
-            let dir = stroke.0 - stroke.1;
-            let distance = (mean - stroke.0).cross(dir).length() / dir.length();
-
-            if distance < min_radius {
-                min_radius = distance;
-            }
+        for vertex in &contour {
+            min = min.min(*vertex);
+            max = max.max(*vertex);
         }
 
-        Self {
+        Some(Self {
             plane: entry.plane.clone(),
-            strokes,
-            max_circle_radius: min_radius,
+            contour,
+            area,
             min,
             max,
-        }
+        })
     }
 }
 
@@ -657,12 +674,12 @@ impl Hitbox for PolygonFace {
 
         let intersection = ray.origin + ray.direction * t;
 
-        let ray_dir = self.strokes[0].1 - self.strokes[0].0;
+        let ray_dir = self.contour[1] - self.contour[0];
 
         let mut inside = false;
 
-        for stroke in &self.strokes {
-            let edge = stroke.1 - stroke.0;
+        for index in 0..self.contour.len() {
+            let edge = self.contour[(index + 1) % self.contour.len()] - self.contour[index];
 
             let cross_dir = ray_dir.cross(edge).normalize();
 
@@ -670,13 +687,17 @@ impl Hitbox for PolygonFace {
                 continue;
             }
 
-            let t1 =
-                (stroke.0 - intersection).cross(edge).dot(cross_dir) / cross_dir.dot(cross_dir);
+            let t1 = (self.contour[index] - intersection)
+                .cross(edge)
+                .dot(cross_dir)
+                / cross_dir.dot(cross_dir);
 
-            let t2 =
-                (intersection - stroke.0).cross(ray_dir).dot(cross_dir) / cross_dir.dot(cross_dir);
+            let t2 = (intersection - self.contour[index])
+                .cross(ray_dir)
+                .dot(cross_dir)
+                / cross_dir.dot(cross_dir);
 
-            let intersection_1 = stroke.0 + edge * t1;
+            let intersection_1 = self.contour[index] + edge * t1;
 
             let intersection_2 = intersection + ray_dir * t2;
 
@@ -713,33 +734,59 @@ impl Hitbox for PolygonFace {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
+struct OrderedVec3([OrderedFloat<f32>; 3]);
+
+impl From<Vec3> for OrderedVec3 {
+    fn from(vec: Vec3) -> Self {
+        Self([
+            OrderedFloat(vec.x),
+            OrderedFloat(vec.y),
+            OrderedFloat(vec.z),
+        ])
+    }
+}
+
+impl From<OrderedVec3> for Vec3 {
+    fn from(vec: OrderedVec3) -> Self {
+        Self::new(vec.0[0].0, vec.0[1].0, vec.0[2].0)
+    }
+}
+
+impl From<&OrderedVec3> for Vec3 {
+    fn from(vec: &OrderedVec3) -> Self {
+        Self::new(vec.0[0].0, vec.0[1].0, vec.0[2].0)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 struct OrderedStroke {
-    start: [OrderedFloat<f32>; 3],
-    end: [OrderedFloat<f32>; 3],
+    start: OrderedVec3,
+    end: OrderedVec3,
 }
 
 impl From<Stroke> for OrderedStroke {
     fn from(stroke: Stroke) -> Self {
         fn round(value: f32) -> f32 {
-            let factor = 10f32.powi(4); // 10^4 = 10000
-            (value * factor).round() / factor
+            // let factor = 10f32.powi(6); // 10^4 = 10000
+            //   (value * factor).round() / factor
+            value
         }
 
         let min = stroke.0.min(stroke.1);
         let max = stroke.0.max(stroke.1);
 
         Self {
-            start: [
+            start: OrderedVec3([
                 OrderedFloat(round(min.x)),
                 OrderedFloat(round(min.y)),
                 OrderedFloat(round(min.z)),
-            ],
-            end: [
+            ]),
+            end: OrderedVec3([
                 OrderedFloat(round(max.x)),
                 OrderedFloat(round(max.y)),
                 OrderedFloat(round(max.z)),
-            ],
+            ]),
         }
     }
 }
@@ -747,13 +794,17 @@ impl From<Stroke> for OrderedStroke {
 impl From<OrderedStroke> for Stroke {
     fn from(stroke: OrderedStroke) -> Self {
         Self(
-            Vec3::new(stroke.start[0].0, stroke.start[1].0, stroke.start[2].0),
-            Vec3::new(stroke.end[0].0, stroke.end[1].0, stroke.end[2].0),
+            Vec3::new(
+                stroke.start.0[0].0,
+                stroke.start.0[1].0,
+                stroke.start.0[2].0,
+            ),
+            Vec3::new(stroke.end.0[0].0, stroke.end.0[1].0, stroke.end.0[2].0),
         )
     }
 }
 
-fn determine_contour(vertices: &Vec<[Vec3; 3]>) -> Vec<Stroke> {
+fn determine_contour(vertices: &Vec<[Vec3; 3]>) -> Vec<Vec3> {
     let mut strokes: HashMap<OrderedStroke, usize> = HashMap::new();
 
     for triangle in vertices {
@@ -779,14 +830,45 @@ fn determine_contour(vertices: &Vec<[Vec3; 3]>) -> Vec<Stroke> {
             .or_insert(1);
     }
 
-    strokes
+    let strokes: Vec<OrderedStroke> = strokes
         .into_iter()
-        .filter_map(|(stroke, count)| {
-            if count == 1 {
-                Some(stroke.into())
-            } else {
-                None
-            }
-        })
-        .collect()
+        .filter_map(
+            |(stroke, count)| {
+                if count == 1 {
+                    Some(stroke)
+                } else {
+                    None
+                }
+            },
+        )
+        .collect();
+
+    let mut contour: Vec<Vec3> = Vec::with_capacity(strokes.len());
+
+    let start_to_end: HashMap<OrderedVec3, OrderedVec3> = strokes
+        .iter()
+        .map(|stroke| (stroke.start.clone(), stroke.end.clone()))
+        .collect();
+    let end_to_start: HashMap<OrderedVec3, OrderedVec3> = strokes
+        .iter()
+        .map(|stroke| (stroke.end.clone(), stroke.start.clone()))
+        .collect();
+
+    let mut start = &strokes[0].start;
+
+    for stroke in strokes.iter() {
+        if !end_to_start.contains_key(&stroke.start) {
+            start = &stroke.start;
+            break;
+        }
+    }
+
+    contour.push(start.into());
+
+    while let Some(next) = start_to_end.get(start) {
+        contour.push(next.into());
+        start = next;
+    }
+
+    contour
 }
