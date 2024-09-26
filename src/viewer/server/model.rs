@@ -1,4 +1,4 @@
-use core::panic;
+use core::{f32, panic};
 use std::{
     collections::{HashMap, LinkedList, VecDeque},
     path::Path,
@@ -138,7 +138,25 @@ impl CADModelServer {
 
             let plane_entries = clusterize_faces(&stl_model.faces, &vertices);
 
-            let mut triangle_vertices = vec3s_into_vertices(vertices.clone(), Color::BLUE);
+            let planes = plane_entries
+                .iter()
+                .map(|entry| PolygonFace::from_entry(entry, &vertices))
+                .collect::<Vec<PolygonFace>>();
+
+            let mut triangle_vertices = vec3s_into_vertices(vertices.clone(), Color::BLACK);
+
+            let plane_entries: Vec<PlaneEntry> = plane_entries
+                .into_iter()
+                .zip(planes.iter())
+                .filter(|(_, polygon)| {
+                    println!("max_circle: {:?}", polygon.max_circle_radius);
+
+                    polygon.max_circle_radius > 5.0
+                })
+                .map(|(entry, _)| entry)
+                .collect();
+
+            println!("entries: {:?}", plane_entries.len());
 
             plane_entries.iter().for_each(|entry| {
                 let r = rand::random::<f64>();
@@ -153,11 +171,6 @@ impl CADModelServer {
                     triangle_vertices[index[2]].color = Color { r, g, b, a: 1.0 }.to_array();
                 }
             });
-
-            let planes = plane_entries
-                .into_iter()
-                .map(|entry| PolygonFace::from_entry(entry, &vertices))
-                .collect::<Vec<PolygonFace>>();
 
             let plane_len = planes.len();
 
@@ -481,7 +494,7 @@ pub enum CADModelError {
     NoGeometryObject,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Plane {
     normal: glam::Vec3,
     point: glam::Vec3,
@@ -503,6 +516,7 @@ impl PartialEq for Plane {
 
 impl Eq for Plane {}
 
+#[derive(Debug, Clone)]
 struct PlaneEntry {
     plane: Plane,
     triangles: Vec<[usize; 3]>,
@@ -519,8 +533,6 @@ impl Eq for PlaneEntry {}
 fn clusterize_faces(faces: &[IndexedTriangle], vertices: &[Vec3]) -> Vec<PlaneEntry> {
     let mut plane_map: HashMap<[OrderedFloat<f32>; 6], Vec<[usize; 3]>> = HashMap::new();
 
-    let now = std::time::Instant::now();
-
     for triangle in faces.iter() {
         let normal = Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
             triangle.normal,
@@ -536,47 +548,42 @@ fn clusterize_faces(faces: &[IndexedTriangle], vertices: &[Vec3]) -> Vec<PlaneEn
 
         let intersection = ray.intersection_plane(normal, point);
 
-        fn round_to_4_decimal_places(value: f32) -> f32 {
+        fn round(value: f32) -> f32 {
             let factor = 10f32.powi(6); // 10^4 = 10000
             (value * factor).round() / factor
         }
 
         let key = [
-            OrderedFloat(round_to_4_decimal_places(normal.x)),
-            OrderedFloat(round_to_4_decimal_places(normal.y)),
-            OrderedFloat(round_to_4_decimal_places(normal.z)),
-            OrderedFloat(round_to_4_decimal_places(intersection.x)),
-            OrderedFloat(round_to_4_decimal_places(intersection.y)),
-            OrderedFloat(round_to_4_decimal_places(intersection.z)),
+            OrderedFloat(round(normal.x)),
+            OrderedFloat(round(normal.y)),
+            OrderedFloat(round(normal.z)),
+            OrderedFloat(round(intersection.x)),
+            OrderedFloat(round(intersection.y)),
+            OrderedFloat(round(intersection.z)),
         ];
 
         plane_map.entry(key).or_default().push(triangle.vertices);
     }
 
-    println!("planes len: {}", plane_map.len());
-
-    let ret = plane_map
+    plane_map
         .into_iter()
         .map(|(key, indices)| {
-            let normal = Vec3::new(key[0].0 as f32, key[1].0 as f32, key[2].0 as f32);
-            let point = Vec3::new(key[3].0 as f32, key[4].0 as f32, key[5].0 as f32);
+            let normal = Vec3::new(key[0].0, key[1].0, key[2].0);
+            let point = Vec3::new(key[3].0, key[4].0, key[5].0);
 
             PlaneEntry {
                 plane: Plane { normal, point },
                 triangles: indices,
             }
         })
-        .collect();
-
-    println!("Determine planes took: {:?}", now.elapsed());
-
-    ret
+        .collect()
 }
 
 #[derive(Debug)]
 pub struct PolygonFace {
     plane: Plane,
     strokes: Vec<Stroke>,
+    max_circle_radius: f32,
     min: Vec3,
     max: Vec3,
 }
@@ -594,7 +601,7 @@ impl PartialEq for Stroke {
 impl Eq for Stroke {}
 
 impl PolygonFace {
-    fn from_entry(entry: PlaneEntry, vertices: &[Vec3]) -> Self {
+    fn from_entry(entry: &PlaneEntry, vertices: &[Vec3]) -> Self {
         let triangles: Vec<[Vec3; 3]> = entry
             .triangles
             .iter()
@@ -602,21 +609,34 @@ impl PolygonFace {
             .collect();
 
         let strokes = determine_contour(&triangles);
-        let min = strokes
-            .iter()
-            .fold(Vec3::splat(f32::INFINITY), |min, stroke| {
-                min.min(stroke.0.min(stroke.1))
-            });
 
-        let max = strokes
+        let mut min = Vec3::INFINITY;
+        let mut max = Vec3::NEG_INFINITY;
+        let mean = strokes
             .iter()
-            .fold(Vec3::splat(f32::NEG_INFINITY), |max, stroke| {
-                max.max(stroke.0.max(stroke.1))
-            });
+            .fold(Vec3::ZERO, |sum, stroke| sum + (stroke.0 + stroke.1) / 2.0)
+            / strokes.len() as f32;
+
+        let mut min_radius = f32::INFINITY;
+
+        for stroke in &strokes {
+            min = min.min(stroke.0.min(stroke.1));
+            max = max.max(stroke.0.max(stroke.1));
+
+            // distance mean to stroke
+
+            let dir = stroke.0 - stroke.1;
+            let distance = (mean - stroke.0).cross(dir).length_squared() / dir.length_squared();
+
+            if distance < min_radius {
+                min_radius = distance;
+            }
+        }
 
         Self {
-            plane: entry.plane,
+            plane: entry.plane.clone(),
             strokes,
+            max_circle_radius: min_radius,
             min,
             max,
         }
@@ -695,41 +715,80 @@ impl Hitbox for PolygonFace {
     }
 }
 
-struct StrokeEntry(Stroke, usize);
+#[derive(Debug, PartialEq, Eq, PartialOrd, Hash)]
+struct OrderedStroke {
+    start: [OrderedFloat<f32>; 3],
+    end: [OrderedFloat<f32>; 3],
+}
+
+impl From<Stroke> for OrderedStroke {
+    fn from(stroke: Stroke) -> Self {
+        fn round(value: f32) -> f32 {
+            let factor = 10f32.powi(4); // 10^4 = 10000
+            (value * factor).round() / factor
+        }
+
+        let min = stroke.0.min(stroke.1);
+        let max = stroke.0.max(stroke.1);
+
+        Self {
+            start: [
+                OrderedFloat(round(min.x)),
+                OrderedFloat(round(min.y)),
+                OrderedFloat(round(min.z)),
+            ],
+            end: [
+                OrderedFloat(round(max.x)),
+                OrderedFloat(round(max.y)),
+                OrderedFloat(round(max.z)),
+            ],
+        }
+    }
+}
+
+impl From<OrderedStroke> for Stroke {
+    fn from(stroke: OrderedStroke) -> Self {
+        Self(
+            Vec3::new(stroke.start[0].0, stroke.start[1].0, stroke.start[2].0),
+            Vec3::new(stroke.end[0].0, stroke.end[1].0, stroke.end[2].0),
+        )
+    }
+}
 
 fn determine_contour(vertices: &Vec<[Vec3; 3]>) -> Vec<Stroke> {
-    let mut strokes: Vec<StrokeEntry> = Vec::new();
+    let mut strokes: HashMap<OrderedStroke, usize> = HashMap::new();
 
     for triangle in vertices {
         let mut stroke = Stroke(triangle[0], triangle[1]);
 
-        if let Some(entry) = strokes.iter_mut().find(|entry| entry.0 == stroke) {
-            entry.1 += 1;
-        } else {
-            strokes.push(StrokeEntry(stroke, 1));
-        }
+        strokes
+            .entry(stroke.into())
+            .and_modify(|count| *count += 1)
+            .or_insert(1);
 
         stroke = Stroke(triangle[1], triangle[2]);
 
-        if let Some(entry) = strokes.iter_mut().find(|entry| entry.0 == stroke) {
-            entry.1 += 1;
-        } else {
-            strokes.push(StrokeEntry(stroke, 1));
-        }
+        strokes
+            .entry(stroke.into())
+            .and_modify(|count| *count += 1)
+            .or_insert(1);
 
         stroke = Stroke(triangle[2], triangle[0]);
 
-        if let Some(entry) = strokes.iter_mut().find(|entry| entry.0 == stroke) {
-            entry.1 += 1;
-        } else {
-            strokes.push(StrokeEntry(stroke, 1));
-        }
+        strokes
+            .entry(stroke.into())
+            .and_modify(|count| *count += 1)
+            .or_insert(1);
     }
 
-    let contour_strokes: Vec<Stroke> = strokes
+    strokes
         .into_iter()
-        .filter_map(|entry| if entry.1 == 1 { Some(entry.0) } else { None })
-        .collect();
-
-    contour_strokes
+        .filter_map(|(stroke, count)| {
+            if count == 1 {
+                Some(stroke.into())
+            } else {
+                None
+            }
+        })
+        .collect()
 }

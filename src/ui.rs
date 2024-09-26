@@ -293,7 +293,7 @@ impl<'a> Adapter<'a, RootEvent, UiState, (UiUpdateOutput, (f32, f32, f32, f32)),
                 self.screen.add_progress_bar_toast(egui_toast::Toast {
                     kind: egui_toast::ToastKind::Custom(PROGRESS_BAR_TOAST),
                     text: "Progress bar".into(),
-                    options: ToastOptions::default(),
+                    options: ToastOptions::default().show_progress(false),
                     ..Default::default()
                 });
 
