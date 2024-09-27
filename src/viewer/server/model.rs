@@ -1,6 +1,6 @@
 use core::{f32, panic, str};
 use std::{
-    collections::{HashMap, HashSet, LinkedList, VecDeque},
+    collections::{BinaryHeap, HashMap, HashSet, LinkedList, VecDeque},
     path::Path,
     sync::Arc,
 };
@@ -123,6 +123,8 @@ impl CADModelServer {
 
             println!("Model loaded 2");
 
+            let plane_entries = clusterize_faces(&stl_model.faces);
+
             let vertices = stl_model
                 .faces
                 .iter_mut()
@@ -136,32 +138,15 @@ impl CADModelServer {
                     vec
                 });
 
-            let plane_entries = clusterize_faces(&stl_model.faces, &vertices);
+            println!("vertices: {:?}", vertices);
 
-            let planes = plane_entries
-                .iter()
-                .map(|entry| PolygonFace::try_from_entry(entry, &vertices))
-                .collect::<Vec<Option<PolygonFace>>>();
+            panic!("Not implemented");
+
+            let planes: Vec<Option<PolygonFace>> = Vec::new();
 
             let mut triangle_vertices = vec3s_into_vertices(vertices.clone(), Color::BLACK);
 
-            let plane_entries: Vec<(PlaneEntry, PolygonFace)> = plane_entries
-                .into_iter()
-                .zip(planes)
-                .filter_map(|(entry, polygon)| {
-                    // calculate the area of the polygon
-
-                    if let Some(polygon) = polygon {
-                        if polygon.area < 0.0 {
-                            None
-                        } else {
-                            Some((entry, polygon))
-                        }
-                    } else {
-                        None
-                    }
-                })
-                .collect();
+            let plane_entries: Vec<(PlaneEntry, PolygonFace)> = Vec::new();
 
             plane_entries.iter().for_each(|(entry, _)| {
                 let r = rand::random::<f64>();
@@ -535,53 +520,120 @@ impl PartialEq for PlaneEntry {
 
 impl Eq for PlaneEntry {}
 
-fn clusterize_faces(faces: &[IndexedTriangle], vertices: &[Vec3]) -> Vec<PlaneEntry> {
-    let mut plane_map: HashMap<[OrderedFloat<f32>; 6], Vec<[usize; 3]>> = HashMap::new();
+fn clusterize_faces(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
+    let mut neighbor_map: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
+    let now = std::time::Instant::now();
 
-    for triangle in faces.iter() {
-        let normal = Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
-            triangle.normal,
-        ))
-        .normalize();
+    for (index, triangle) in faces.iter().enumerate() {
+        let t1 = triangle.vertices[0];
+        let t2 = triangle.vertices[1];
+        let t3 = triangle.vertices[2];
 
-        let point = vertices[triangle.vertices[0]];
-
-        let ray = rether::picking::Ray {
-            origin: Vec3::new(0.0, 0.0, 0.0),
-            direction: normal,
+        let mut handle = |t1, t2| {
+            if let Some(neighbors) = neighbor_map.get_mut(&(t1, t2)) {
+                println!("Neighbors: {:?}", neighbors);
+                neighbors.push(index);
+            } else if let Some(neighbors) = neighbor_map.get_mut(&(t2, t1)) {
+                neighbors.push(index);
+                println!("Neighbors: {:?}", neighbors);
+            } else {
+                neighbor_map.insert((t1, t2), vec![index]);
+            }
         };
 
-        let intersection = ray.intersection_plane(normal, point);
-
-        fn round(value: f32) -> f32 {
-            let factor = 10f32.powi(6); // 10^4 = 10000
-            (value * factor).round() / factor
-        }
-
-        let key = [
-            OrderedFloat(round(normal.x)),
-            OrderedFloat(round(normal.y)),
-            OrderedFloat(round(normal.z)),
-            OrderedFloat(round(intersection.x)),
-            OrderedFloat(round(intersection.y)),
-            OrderedFloat(round(intersection.z)),
-        ];
-
-        plane_map.entry(key).or_default().push(triangle.vertices);
+        handle(t1, t2);
+        handle(t2, t3);
+        handle(t3, t1);
     }
 
-    plane_map
-        .into_iter()
-        .map(|(key, indices)| {
-            let normal = Vec3::new(key[0].0, key[1].0, key[2].0);
-            let point = Vec3::new(key[3].0, key[4].0, key[5].0);
+    println!("Neighbor map took: {:?}", now.elapsed());
+    println!("Neighbor map: {:?}", neighbor_map.len());
 
-            PlaneEntry {
-                plane: Plane { normal, point },
-                triangles: indices,
+    let mut visited = vec![false; faces.len()];
+
+    let mut plane_entries: Vec<Vec<usize>> = Vec::new();
+    let mut queue: BinaryHeap<(usize, usize)> = BinaryHeap::new();
+
+    visited[0] = true;
+    plane_entries.push(vec![0]);
+    queue.push((0, 0));
+
+    while let Some((plane_index, index)) = queue.pop() {
+        let triangle = &faces[index];
+
+        println!("queue: {:?}", queue);
+        println!("Triangle: {:?}", triangle);
+
+        let t1 = triangle.vertices[0];
+        let t2 = triangle.vertices[1];
+        let t3 = triangle.vertices[2];
+
+        let mut handle = |t1, t2| {
+            let normal = Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
+                faces[index].normal,
+            ));
+
+            if let Some(neighbors) = neighbor_map.get(&(t1, t2)) {
+                println!("Neighbors: {:?}", neighbors);
+                for neighbor in neighbors {
+                    let neighbor_normal =
+                        Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
+                            faces[*neighbor].normal,
+                        ));
+
+                    if !visited[*neighbor] {
+                        visited[*neighbor] = true;
+
+                        println!(
+                            "Normal: {:?}, Neighbor normal: {:?}",
+                            normal, neighbor_normal
+                        );
+
+                        if normal.cross(neighbor_normal).length_squared() > f32::EPSILON {
+                            plane_entries.push(vec![*neighbor]);
+                            queue.push((plane_entries.len() - 1, *neighbor));
+                        } else {
+                            plane_entries[plane_index].push(*neighbor);
+                            queue.push((plane_index, *neighbor));
+                        }
+                    }
+                }
+            } else if let Some(neighbors) = neighbor_map.get(&(t2, t1)) {
+                for neighbor in neighbors {
+                    let neighbor_normal =
+                        Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
+                            faces[*neighbor].normal,
+                        ));
+
+                    println!(
+                        "Normal: {:?}, Neighbor normal: {:?}",
+                        normal, neighbor_normal
+                    );
+
+                    if !visited[*neighbor] {
+                        visited[*neighbor] = true;
+
+                        if normal.cross(neighbor_normal).length_squared() > f32::EPSILON {
+                            plane_entries.push(vec![*neighbor]);
+                            queue.push((plane_entries.len() - 1, *neighbor));
+                        } else {
+                            plane_entries[plane_index].push(*neighbor);
+                            queue.push((plane_index, *neighbor));
+                        }
+                    }
+                }
             }
-        })
-        .collect()
+        };
+
+        handle(t1, t2);
+        handle(t2, t3);
+        handle(t3, t1);
+    }
+
+    println!("Clusterization took: {:?}", now.elapsed());
+    println!("Plane entries: {:?}", plane_entries.len());
+
+    plane_entries
 }
 
 #[derive(Debug)]
