@@ -1,6 +1,6 @@
 use core::{f32, panic, str};
 use std::{
-    collections::{HashMap, LinkedList, VecDeque},
+    collections::{HashMap, HashSet, LinkedList, VecDeque},
     path::Path,
     sync::Arc,
 };
@@ -152,7 +152,7 @@ impl CADModelServer {
                     // calculate the area of the polygon
 
                     if let Some(polygon) = polygon {
-                        if polygon.area < 50.0 {
+                        if polygon.area < 0.0 {
                             None
                         } else {
                             Some((entry, polygon))
@@ -635,7 +635,7 @@ impl PolygonFace {
                     - contour[(index + 1) % contour.len()].x * contour[index].y;
 
                 area
-            }) / 2.0
+            }) / 4.0
         };
 
         println!("Area: {}", area);
@@ -768,24 +768,19 @@ struct OrderedStroke {
 impl From<Stroke> for OrderedStroke {
     fn from(stroke: Stroke) -> Self {
         fn round(value: f32) -> f32 {
-            // let factor = 10f32.powi(6); // 10^4 = 10000
-            //   (value * factor).round() / factor
             value
         }
 
-        let min = stroke.0.min(stroke.1);
-        let max = stroke.0.max(stroke.1);
-
         Self {
             start: OrderedVec3([
-                OrderedFloat(round(min.x)),
-                OrderedFloat(round(min.y)),
-                OrderedFloat(round(min.z)),
+                OrderedFloat(round(stroke.0.x)),
+                OrderedFloat(round(stroke.0.y)),
+                OrderedFloat(round(stroke.0.z)),
             ]),
             end: OrderedVec3([
-                OrderedFloat(round(max.x)),
-                OrderedFloat(round(max.y)),
-                OrderedFloat(round(max.z)),
+                OrderedFloat(round(stroke.1.x)),
+                OrderedFloat(round(stroke.1.y)),
+                OrderedFloat(round(stroke.1.z)),
             ]),
         }
     }
@@ -808,26 +803,22 @@ fn determine_contour(vertices: &Vec<[Vec3; 3]>) -> Vec<Vec3> {
     let mut strokes: HashMap<OrderedStroke, usize> = HashMap::new();
 
     for triangle in vertices {
-        let mut stroke = Stroke(triangle[0], triangle[1]);
+        fn handle_stroke(strokes: &mut HashMap<OrderedStroke, usize>, p0: Vec3, p1: Vec3) {
+            let stroke: OrderedStroke = Stroke(p0, p1).into();
+            let flipped: OrderedStroke = Stroke(p1, p0).into();
 
-        strokes
-            .entry(stroke.into())
-            .and_modify(|count| *count += 1)
-            .or_insert(1);
+            if strokes.contains_key(&stroke) {
+                *strokes.get_mut(&stroke).unwrap() += 1;
+            } else if strokes.contains_key(&flipped) {
+                *strokes.get_mut(&flipped).unwrap() += 1;
+            } else {
+                strokes.insert(stroke, 1);
+            }
+        }
 
-        stroke = Stroke(triangle[1], triangle[2]);
-
-        strokes
-            .entry(stroke.into())
-            .and_modify(|count| *count += 1)
-            .or_insert(1);
-
-        stroke = Stroke(triangle[2], triangle[0]);
-
-        strokes
-            .entry(stroke.into())
-            .and_modify(|count| *count += 1)
-            .or_insert(1);
+        handle_stroke(&mut strokes, triangle[0], triangle[1]);
+        handle_stroke(&mut strokes, triangle[1], triangle[2]);
+        handle_stroke(&mut strokes, triangle[2], triangle[0]);
     }
 
     let strokes: Vec<OrderedStroke> = strokes
@@ -845,28 +836,18 @@ fn determine_contour(vertices: &Vec<[Vec3; 3]>) -> Vec<Vec3> {
 
     let mut contour: Vec<Vec3> = Vec::with_capacity(strokes.len());
 
-    let start_to_end: HashMap<OrderedVec3, OrderedVec3> = strokes
+    let start_to_end: HashMap<OrderedVec3, OrderedVec3> = strokes[1..strokes.len()]
         .iter()
         .map(|stroke| (stroke.start.clone(), stroke.end.clone()))
         .collect();
-    let end_to_start: HashMap<OrderedVec3, OrderedVec3> = strokes
-        .iter()
-        .map(|stroke| (stroke.end.clone(), stroke.start.clone()))
-        .collect();
 
-    let mut start = &strokes[0].start;
-
-    for stroke in strokes.iter() {
-        if !end_to_start.contains_key(&stroke.start) {
-            start = &stroke.start;
-            break;
-        }
-    }
+    let mut start = &strokes[0].end;
 
     contour.push(start.into());
 
     while let Some(next) = start_to_end.get(start) {
         contour.push(next.into());
+        println!("Next: {:?}, {:?}", next, start_to_end);
         start = next;
     }
 
