@@ -107,9 +107,7 @@ impl CADModelServer {
                 }
             };
 
-            println!("Model loaded 1");
-
-            println!("Model loaded 1.5");
+            let now = std::time::Instant::now();
 
             let vertices: Vec<Vec3> = stl_model
                 .vertices
@@ -121,7 +119,14 @@ impl CADModelServer {
                 })
                 .collect();
 
-            println!("Model loaded 2");
+            let plane_entries = clusterize_faces(&stl_model.faces, &vertices);
+
+            let polygons = plane_entries
+                .iter()
+                .fold(Vec::new(), |mut polygons, entry| {
+                    polygons.extend(determine_polygon_faces(entry, &stl_model.faces, &vertices));
+                    polygons
+                });
 
             let vertices = stl_model
                 .faces
@@ -136,54 +141,32 @@ impl CADModelServer {
                     vec
                 });
 
-            let plane_entries = clusterize_faces(&stl_model.faces, &vertices);
-
-            let planes = plane_entries
-                .iter()
-                .map(|entry| PolygonFace::try_from_entry(entry, &vertices))
-                .collect::<Vec<Option<PolygonFace>>>();
-
             let mut triangle_vertices = vec3s_into_vertices(vertices.clone(), Color::BLACK);
 
-            let plane_entries: Vec<(PlaneEntry, PolygonFace)> = plane_entries
+            let polygon_faces: Vec<(PolygonFace, Vec<usize>)> = polygons
                 .into_iter()
-                .zip(planes)
-                .filter_map(|(entry, polygon)| {
-                    // calculate the area of the polygon
-
-                    if let Some(polygon) = polygon {
-                        if polygon.area < 0.0 {
-                            None
-                        } else {
-                            Some((entry, polygon))
-                        }
-                    } else {
-                        None
-                    }
-                })
+                .filter(|(face, _)| face.area > 5.0)
                 .collect();
 
-            plane_entries.iter().for_each(|(entry, _)| {
+            println!("Faces: {}", polygon_faces.len());
+
+            polygon_faces.iter().for_each(|(_, indices)| {
                 let r = rand::random::<f64>();
                 let g = rand::random::<f64>();
                 let b = rand::random::<f64>();
 
-                for index in &entry.triangles {
-                    triangle_vertices[index[0]].color = Color { r, g, b, a: 1.0 }.to_array();
-
-                    triangle_vertices[index[1]].color = Color { r, g, b, a: 1.0 }.to_array();
-
-                    triangle_vertices[index[2]].color = Color { r, g, b, a: 1.0 }.to_array();
+                for index in indices.iter() {
+                    triangle_vertices[*index].color = Color { r, g, b, a: 1.0 }.to_array();
                 }
             });
 
             let plane_len = plane_entries.len();
 
-            let models = plane_entries
+            let models = polygon_faces
                 .into_par_iter()
                 .fold(
                     || Vec::with_capacity(plane_len),
-                    |mut models, (_, face)| {
+                    |mut models, (face, _)| {
                         let model = TreeModel::create_node(BufferLocation { offset: 0, size: 0 });
                         models.push(CADModel::Face { model, face });
 
@@ -199,6 +182,8 @@ impl CADModelServer {
                 );
 
             let root = CADModel::create_root(SimpleGeometry::init(triangle_vertices), models);
+
+            println!("Loaded in {:?}", now.elapsed());
 
             tx.send(Ok(CADModelHandle {
                 model: root,
@@ -524,7 +509,7 @@ impl Eq for Plane {}
 #[derive(Debug, Clone)]
 struct PlaneEntry {
     plane: Plane,
-    triangles: Vec<[usize; 3]>,
+    triangles: Vec<usize>,
 }
 
 impl PartialEq for PlaneEntry {
@@ -536,9 +521,9 @@ impl PartialEq for PlaneEntry {
 impl Eq for PlaneEntry {}
 
 fn clusterize_faces(faces: &[IndexedTriangle], vertices: &[Vec3]) -> Vec<PlaneEntry> {
-    let mut plane_map: HashMap<[OrderedFloat<f32>; 6], Vec<[usize; 3]>> = HashMap::new();
+    let mut plane_map: HashMap<[OrderedFloat<f32>; 6], Vec<usize>> = HashMap::new();
 
-    for triangle in faces.iter() {
+    for (index, triangle) in faces.iter().enumerate() {
         let normal = Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
             triangle.normal,
         ))
@@ -567,7 +552,7 @@ fn clusterize_faces(faces: &[IndexedTriangle], vertices: &[Vec3]) -> Vec<PlaneEn
             OrderedFloat(round(intersection.z)),
         ];
 
-        plane_map.entry(key).or_default().push(triangle.vertices);
+        plane_map.entry(key).or_default().push(index);
     }
 
     plane_map
@@ -605,15 +590,29 @@ impl PartialEq for Stroke {
 
 impl Eq for Stroke {}
 
-impl PolygonFace {
-    fn try_from_entry(entry: &PlaneEntry, vertices: &[Vec3]) -> Option<Self> {
-        let triangles: Vec<[Vec3; 3]> = entry
-            .triangles
-            .iter()
-            .map(|index| [vertices[index[0]], vertices[index[1]], vertices[index[2]]])
-            .collect();
+fn determine_polygon_faces(
+    entry: &PlaneEntry,
+    faces: &[IndexedTriangle],
+    vertices: &[Vec3],
+) -> Vec<(PolygonFace, Vec<usize>)> {
+    let contours = determine_contours(faces, &entry.triangles);
 
-        let contour = determine_contour(&triangles);
+    contours
+        .into_iter()
+        .map(|contour| (PolygonFace::from_entry(&contour, vertices), contour))
+        .collect::<Vec<(PolygonFace, Contour)>>()
+}
+
+impl PolygonFace {
+    fn from_entry(contour: &Contour, vertices: &[Vec3]) -> PolygonFace {
+        let contour: Vec<Vec3> = contour.iter().map(|index| vertices[*index]).collect();
+
+        let plane = Plane {
+            normal: (contour[1] - contour[0])
+                .cross(contour[2] - contour[0])
+                .normalize(),
+            point: contour[0],
+        };
 
         let area = {
             let x_basis = contour[1] - contour[0];
@@ -638,8 +637,6 @@ impl PolygonFace {
             }) / 4.0
         };
 
-        println!("Area: {}", area);
-
         let mut min = Vec3::INFINITY;
         let mut max = Vec3::NEG_INFINITY;
 
@@ -648,13 +645,13 @@ impl PolygonFace {
             max = max.max(*vertex);
         }
 
-        Some(Self {
-            plane: entry.plane.clone(),
+        Self {
+            plane,
             contour,
             area,
             min,
             max,
-        })
+        }
     }
 }
 
@@ -799,29 +796,30 @@ impl From<OrderedStroke> for Stroke {
     }
 }
 
-fn determine_contour(vertices: &Vec<[Vec3; 3]>) -> Vec<Vec3> {
-    let mut strokes: HashMap<OrderedStroke, usize> = HashMap::new();
+type Contour = Vec<usize>;
 
-    for triangle in vertices {
-        fn handle_stroke(strokes: &mut HashMap<OrderedStroke, usize>, p0: Vec3, p1: Vec3) {
-            let stroke: OrderedStroke = Stroke(p0, p1).into();
-            let flipped: OrderedStroke = Stroke(p1, p0).into();
+fn determine_contours(faces: &[IndexedTriangle], vertices: &[usize]) -> Vec<Contour> {
+    let mut strokes: HashMap<(usize, usize), usize> = HashMap::new();
 
-            if strokes.contains_key(&stroke) {
-                *strokes.get_mut(&stroke).unwrap() += 1;
-            } else if strokes.contains_key(&flipped) {
-                *strokes.get_mut(&flipped).unwrap() += 1;
+    for index in vertices {
+        let triangle = &faces[*index];
+
+        let mut handle_stroke = |t0, t1| {
+            if strokes.contains_key(&(t0, t1)) {
+                *strokes.get_mut(&(t0, t1)).unwrap() += 1;
+            } else if strokes.contains_key(&(t1, t0)) {
+                *strokes.get_mut(&(t1, t0)).unwrap() += 1;
             } else {
-                strokes.insert(stroke, 1);
+                strokes.insert((t0, t1), 1);
             }
-        }
+        };
 
-        handle_stroke(&mut strokes, triangle[0], triangle[1]);
-        handle_stroke(&mut strokes, triangle[1], triangle[2]);
-        handle_stroke(&mut strokes, triangle[2], triangle[0]);
+        handle_stroke(triangle.vertices[0], triangle.vertices[1]);
+        handle_stroke(triangle.vertices[1], triangle.vertices[2]);
+        handle_stroke(triangle.vertices[2], triangle.vertices[0]);
     }
 
-    let strokes: Vec<OrderedStroke> = strokes
+    let strokes: Vec<(usize, usize)> = strokes
         .into_iter()
         .filter_map(
             |(stroke, count)| {
@@ -834,22 +832,42 @@ fn determine_contour(vertices: &Vec<[Vec3; 3]>) -> Vec<Vec3> {
         )
         .collect();
 
-    let mut contour: Vec<Vec3> = Vec::with_capacity(strokes.len());
+    let mut contours: Vec<Contour> = Vec::new();
+    let mut contour: Option<Contour> = Some(Contour::with_capacity(strokes.len()));
 
-    let start_to_end: HashMap<OrderedVec3, OrderedVec3> = strokes[1..strokes.len()]
+    let start_to_end: HashMap<usize, usize> = strokes[0..strokes.len()]
         .iter()
-        .map(|stroke| (stroke.start.clone(), stroke.end.clone()))
+        .map(|stroke| (stroke.0, stroke.1))
         .collect();
 
-    let mut start = &strokes[0].end;
+    let mut vertex_visited = strokes
+        .iter()
+        .map(|stroke| (&stroke.0, false))
+        .collect::<HashMap<&usize, bool>>();
 
-    contour.push(start.into());
+    let mut start = &strokes[0].0;
+
+    *vertex_visited.get_mut(start).unwrap() = true;
+    contour.as_mut().unwrap().push(*start);
 
     while let Some(next) = start_to_end.get(start) {
-        contour.push(next.into());
-        println!("Next: {:?}, {:?}", next, start_to_end);
+        if *vertex_visited.get(next).unwrap() {
+            contours.push(contour.take().unwrap());
+            contour = Some(Contour::with_capacity(strokes.len()));
+
+            if let Some(next) = strokes.iter().find(|stroke| !vertex_visited[&stroke.0]) {
+                start = &next.0;
+            } else {
+                break;
+            }
+
+            continue;
+        }
+
+        *vertex_visited.get_mut(next).unwrap() = true;
+        contour.as_mut().unwrap().push(*next);
         start = next;
     }
 
-    contour
+    contours
 }
