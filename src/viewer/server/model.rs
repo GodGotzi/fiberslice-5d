@@ -24,7 +24,7 @@ use rether::{
     Buffer, SimpleGeometry,
 };
 
-use stl_io::{IndexedMesh, IndexedTriangle};
+use stl_io::IndexedTriangle;
 use tokio::{
     sync::oneshot::{error::TryRecvError, Receiver},
     task::JoinHandle,
@@ -136,25 +136,36 @@ impl CADModelServer {
 
             let mut triangle_vertices = vec3s_into_vertices(vertices.clone(), Color::BLACK);
 
-            plane_entries.iter().for_each(|indices| {
-                let r = rand::random::<f64>();
-                let g = rand::random::<f64>();
-                let b = rand::random::<f64>();
+            let polygons = plane_entries
+                .iter()
+                .map(|indices| PolygonFace::from_entry(indices, &stl_model.faces, &vertices))
+                .collect::<Vec<PolygonFace>>();
 
-                for index in indices.iter() {
-                    stl_model.faces[*index].vertices.iter().for_each(|index| {
-                        triangle_vertices[*index].color = Color { r, g, b, a: 1.0 }.to_array();
-                    });
-                }
-            });
+            plane_entries
+                .iter()
+                .zip(polygons.iter())
+                .for_each(|(indices, face)| {
+                    if face.area > 1.0 {
+                        let r = rand::random::<f64>();
+                        let g = rand::random::<f64>();
+                        let b = rand::random::<f64>();
+
+                        for index in indices.iter() {
+                            stl_model.faces[*index].vertices.iter().for_each(|index| {
+                                triangle_vertices[*index].color =
+                                    Color { r, g, b, a: 1.0 }.to_array();
+                            });
+                        }
+                    }
+                });
 
             let plane_len = plane_entries.len();
 
-            let models = plane_entries
+            let models = polygons
                 .into_par_iter()
                 .fold(
                     || Vec::with_capacity(plane_len),
-                    |mut models, (_, face)| {
+                    |mut models, face| {
                         let model = TreeModel::create_node(BufferLocation { offset: 0, size: 0 });
                         models.push(CADModel::Face { model, face });
 
@@ -169,7 +180,7 @@ impl CADModelServer {
                     },
                 );
 
-            let root = CADModel::create_root(SimpleGeometry::init(triangle_vertices), Vec::new());
+            let root = CADModel::create_root(SimpleGeometry::init(triangle_vertices), models);
 
             tx.send(Ok(CADModelHandle {
                 model: root,
@@ -567,7 +578,6 @@ fn clusterize_faces(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
 
     while let Some(TriangleQueueEntry(plane_key, index)) = queue.pop() {
         let triangle = &faces[index];
-        println!("Triangle: {:?}", triangle);
 
         if last_key != plane_key {
             plane_map.retain(|key, indices| {
@@ -666,25 +676,27 @@ impl PartialEq for Stroke {
 impl Eq for Stroke {}
 
 impl PolygonFace {
-    fn try_from_entry(entry: &PlaneEntry, vertices: &[Vec3]) -> Option<Self> {
-        let triangles: Vec<[Vec3; 3]> = entry
-            .triangles
-            .iter()
-            .map(|index| [vertices[index[0]], vertices[index[1]], vertices[index[2]]])
-            .collect();
+    fn from_entry(indices: &[usize], faces: &[IndexedTriangle], vertices: &[Vec3]) -> Self {
+        let contour = determine_contour(indices, faces);
 
-        let contour = determine_contour(&triangles);
+        let plane = Plane {
+            normal: Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
+                faces[indices[0]].normal,
+            ))
+            .normalize(),
+            point: vertices[faces[indices[0]].vertices[0]],
+        };
 
         let area = {
-            let x_basis = contour[1] - contour[0];
-            let y_basis = contour[2] - contour[0];
+            let x_basis = vertices[contour[1]] - vertices[contour[0]];
+            let y_basis = vertices[contour[2]] - vertices[contour[0]];
 
             // project the contour to the plane
             let contour: Vec<Vec2> = contour
                 .iter()
                 .map(|vertex| {
-                    let x = x_basis.dot(*vertex - contour[0]);
-                    let y = y_basis.dot(*vertex - contour[0]);
+                    let x = x_basis.dot(vertices[*vertex] - vertices[contour[0]]);
+                    let y = y_basis.dot(vertices[*vertex] - vertices[contour[0]]);
 
                     Vec2::new(x, y)
                 })
@@ -704,17 +716,17 @@ impl PolygonFace {
         let mut max = Vec3::NEG_INFINITY;
 
         for vertex in &contour {
-            min = min.min(*vertex);
-            max = max.max(*vertex);
+            min = min.min(vertices[*vertex]);
+            max = max.max(vertices[*vertex]);
         }
 
-        Some(Self {
-            plane: entry.plane.clone(),
-            contour,
+        Self {
+            plane,
+            contour: contour.iter().map(|index| vertices[*index]).collect(),
             area,
             min,
             max,
-        })
+        }
     }
 }
 
@@ -864,29 +876,28 @@ impl From<OrderedStroke> for Stroke {
     }
 }
 
-fn determine_contour(vertices: &Vec<[Vec3; 3]>) -> Vec<Vec3> {
-    let mut strokes: HashMap<OrderedStroke, usize> = HashMap::new();
+fn determine_contour(indices: &[usize], faces: &[IndexedTriangle]) -> Vec<usize> {
+    let mut strokes: HashMap<(usize, usize), usize> = HashMap::new();
 
-    for triangle in vertices {
-        fn handle_stroke(strokes: &mut HashMap<OrderedStroke, usize>, p0: Vec3, p1: Vec3) {
-            let stroke: OrderedStroke = Stroke(p0, p1).into();
-            let flipped: OrderedStroke = Stroke(p1, p0).into();
+    for index in indices {
+        let triangle = &faces[*index];
 
-            if strokes.contains_key(&stroke) {
-                *strokes.get_mut(&stroke).unwrap() += 1;
-            } else if strokes.contains_key(&flipped) {
-                *strokes.get_mut(&flipped).unwrap() += 1;
+        let mut handle_edge = |t1, t2| {
+            if strokes.contains_key(&(t1, t2)) {
+                *strokes.get_mut(&(t1, t2)).unwrap() += 1;
+            } else if strokes.contains_key(&(t2, t1)) {
+                *strokes.get_mut(&(t2, t1)).unwrap() += 1;
             } else {
-                strokes.insert(stroke, 1);
+                strokes.insert((t1, t2), 1);
             }
-        }
+        };
 
-        handle_stroke(&mut strokes, triangle[0], triangle[1]);
-        handle_stroke(&mut strokes, triangle[1], triangle[2]);
-        handle_stroke(&mut strokes, triangle[2], triangle[0]);
+        handle_edge(triangle.vertices[0], triangle.vertices[1]);
+        handle_edge(triangle.vertices[1], triangle.vertices[2]);
+        handle_edge(triangle.vertices[2], triangle.vertices[0]);
     }
 
-    let strokes: Vec<OrderedStroke> = strokes
+    let strokes: Vec<(usize, usize)> = strokes
         .into_iter()
         .filter_map(
             |(stroke, count)| {
@@ -899,20 +910,24 @@ fn determine_contour(vertices: &Vec<[Vec3; 3]>) -> Vec<Vec3> {
         )
         .collect();
 
-    let mut contour: Vec<Vec3> = Vec::with_capacity(strokes.len());
+    let mut contour: Vec<usize> = Vec::with_capacity(strokes.len());
+    let mut visited: HashSet<usize> = HashSet::new();
 
-    let start_to_end: HashMap<OrderedVec3, OrderedVec3> = strokes[1..strokes.len()]
-        .iter()
-        .map(|stroke| (stroke.start.clone(), stroke.end.clone()))
-        .collect();
+    let start_to_end: HashMap<usize, usize> =
+        strokes.iter().map(|stroke| (stroke.0, stroke.1)).collect();
 
-    let mut start = &strokes[0].end;
+    let mut start = &strokes[0].0;
 
-    contour.push(start.into());
+    contour.push(*start);
+    visited.insert(*start);
 
     while let Some(next) = start_to_end.get(start) {
-        contour.push(next.into());
-        println!("Next: {:?}, {:?}", next, start_to_end);
+        if visited.contains(next) {
+            break;
+        }
+
+        contour.push(*next);
+        visited.insert(*next);
         start = next;
     }
 
