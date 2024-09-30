@@ -1,5 +1,6 @@
 use core::{f32, panic, str};
 use std::{
+    cell::RefCell,
     collections::{BinaryHeap, HashMap, HashSet, LinkedList, VecDeque},
     path::Path,
     sync::Arc,
@@ -138,7 +139,7 @@ impl CADModelServer {
                     vec
                 });
 
-            println!("vertices: {:?}", vertices);
+            // println!("vertices: {:?}", vertices);
 
             panic!("Not implemented");
 
@@ -520,6 +521,21 @@ impl PartialEq for PlaneEntry {
 
 impl Eq for PlaneEntry {}
 
+#[derive(Debug, PartialEq, Eq)]
+struct TriangleQueueEntry(usize, usize);
+
+impl PartialOrd for TriangleQueueEntry {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for TriangleQueueEntry {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.cmp(&other.0)
+    }
+}
+
 fn clusterize_faces(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
     let mut neighbor_map: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
     let now = std::time::Instant::now();
@@ -531,11 +547,9 @@ fn clusterize_faces(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
 
         let mut handle = |t1, t2| {
             if let Some(neighbors) = neighbor_map.get_mut(&(t1, t2)) {
-                println!("Neighbors: {:?}", neighbors);
                 neighbors.push(index);
             } else if let Some(neighbors) = neighbor_map.get_mut(&(t2, t1)) {
                 neighbors.push(index);
-                println!("Neighbors: {:?}", neighbors);
             } else {
                 neighbor_map.insert((t1, t2), vec![index]);
             }
@@ -546,35 +560,28 @@ fn clusterize_faces(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
         handle(t3, t1);
     }
 
-    println!("Neighbor map took: {:?}", now.elapsed());
-    println!("Neighbor map: {:?}", neighbor_map.len());
-
     let mut visited = vec![false; faces.len()];
 
     let mut plane_entries: Vec<Vec<usize>> = Vec::new();
-    let mut queue: BinaryHeap<(usize, usize)> = BinaryHeap::new();
+    let mut queue: BinaryHeap<TriangleQueueEntry> = BinaryHeap::new();
 
     visited[0] = true;
     plane_entries.push(vec![0]);
-    queue.push((0, 0));
+    queue.push(TriangleQueueEntry(0, 0));
 
-    while let Some((plane_index, index)) = queue.pop() {
+    while let Some(TriangleQueueEntry(plane_index, index)) = queue.pop() {
         let triangle = &faces[index];
 
-        println!("queue: {:?}", queue);
-        println!("Triangle: {:?}", triangle);
-
-        let t1 = triangle.vertices[0];
-        let t2 = triangle.vertices[1];
-        let t3 = triangle.vertices[2];
-
-        let mut handle = |t1, t2| {
+        for (t1, t2) in [
+            (triangle.vertices[0], triangle.vertices[1]),
+            (triangle.vertices[1], triangle.vertices[2]),
+            (triangle.vertices[2], triangle.vertices[0]),
+        ] {
             let normal = Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
                 faces[index].normal,
             ));
 
             if let Some(neighbors) = neighbor_map.get(&(t1, t2)) {
-                println!("Neighbors: {:?}", neighbors);
                 for neighbor in neighbors {
                     let neighbor_normal =
                         Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
@@ -584,17 +591,12 @@ fn clusterize_faces(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
                     if !visited[*neighbor] {
                         visited[*neighbor] = true;
 
-                        println!(
-                            "Normal: {:?}, Neighbor normal: {:?}",
-                            normal, neighbor_normal
-                        );
-
                         if normal.cross(neighbor_normal).length_squared() > f32::EPSILON {
                             plane_entries.push(vec![*neighbor]);
-                            queue.push((plane_entries.len() - 1, *neighbor));
+                            queue.push(TriangleQueueEntry(plane_entries.len() - 1, *neighbor));
                         } else {
                             plane_entries[plane_index].push(*neighbor);
-                            queue.push((plane_index, *neighbor));
+                            queue.push(TriangleQueueEntry(plane_index, *neighbor));
                         }
                     }
                 }
@@ -605,29 +607,20 @@ fn clusterize_faces(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
                             faces[*neighbor].normal,
                         ));
 
-                    println!(
-                        "Normal: {:?}, Neighbor normal: {:?}",
-                        normal, neighbor_normal
-                    );
-
                     if !visited[*neighbor] {
                         visited[*neighbor] = true;
 
                         if normal.cross(neighbor_normal).length_squared() > f32::EPSILON {
                             plane_entries.push(vec![*neighbor]);
-                            queue.push((plane_entries.len() - 1, *neighbor));
+                            queue.push(TriangleQueueEntry(plane_entries.len() - 1, *neighbor));
                         } else {
                             plane_entries[plane_index].push(*neighbor);
-                            queue.push((plane_index, *neighbor));
+                            queue.push(TriangleQueueEntry(plane_index, *neighbor));
                         }
                     }
                 }
             }
-        };
-
-        handle(t1, t2);
-        handle(t2, t3);
-        handle(t3, t1);
+        }
     }
 
     println!("Clusterization took: {:?}", now.elapsed());
