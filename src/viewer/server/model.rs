@@ -109,10 +109,6 @@ impl CADModelServer {
                 }
             };
 
-            println!("Model loaded 1");
-
-            println!("Model loaded 1.5");
-
             let vertices: Vec<Vec3> = stl_model
                 .vertices
                 .iter()
@@ -122,8 +118,6 @@ impl CADModelServer {
                     ))
                 })
                 .collect();
-
-            println!("Model loaded 2");
 
             let plane_entries = clusterize_faces(&stl_model.faces);
 
@@ -140,27 +134,17 @@ impl CADModelServer {
                     vec
                 });
 
-            // println!("vertices: {:?}", vertices);
-
-            panic!("Not implemented");
-
-            let planes: Vec<Option<PolygonFace>> = Vec::new();
-
             let mut triangle_vertices = vec3s_into_vertices(vertices.clone(), Color::BLACK);
 
-            let plane_entries: Vec<(PlaneEntry, PolygonFace)> = Vec::new();
-
-            plane_entries.iter().for_each(|(entry, _)| {
+            plane_entries.iter().for_each(|indices| {
                 let r = rand::random::<f64>();
                 let g = rand::random::<f64>();
                 let b = rand::random::<f64>();
 
-                for index in &entry.triangles {
-                    triangle_vertices[index[0]].color = Color { r, g, b, a: 1.0 }.to_array();
-
-                    triangle_vertices[index[1]].color = Color { r, g, b, a: 1.0 }.to_array();
-
-                    triangle_vertices[index[2]].color = Color { r, g, b, a: 1.0 }.to_array();
+                for index in indices.iter() {
+                    stl_model.faces[*index].vertices.iter().for_each(|index| {
+                        triangle_vertices[*index].color = Color { r, g, b, a: 1.0 }.to_array();
+                    });
                 }
             });
 
@@ -185,7 +169,7 @@ impl CADModelServer {
                     },
                 );
 
-            let root = CADModel::create_root(SimpleGeometry::init(triangle_vertices), models);
+            let root = CADModel::create_root(SimpleGeometry::init(triangle_vertices), Vec::new());
 
             tx.send(Ok(CADModelHandle {
                 model: root,
@@ -567,29 +551,32 @@ fn clusterize_faces(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
     let mut plane_map: HashMap<OrderedVec3, Vec<usize>> = HashMap::new();
     let mut queue: BinaryHeap<TriangleQueueEntry> = BinaryHeap::new();
 
-    let mut last_key = None;
-
     let normal: OrderedVec3 = Vec3::from(
         <stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(faces[0].normal),
     )
     .normalize()
     .into();
-    plane_map.insert(normal.clone(), vec![0]);
-    visited[0] = true;
 
-    queue.push(TriangleQueueEntry(normal, 0));
+    let mut last_key = normal.clone();
+
+    {
+        plane_map.insert(normal.clone(), vec![0]);
+        visited[0] = true;
+        queue.push(TriangleQueueEntry(normal, 0));
+    }
 
     while let Some(TriangleQueueEntry(plane_key, index)) = queue.pop() {
         let triangle = &faces[index];
+        println!("Triangle: {:?}", triangle);
 
-        if last_key.as_ref() != Some(&plane_key) {
+        if last_key != plane_key {
             plane_map.retain(|key, indices| {
-                if last_key.as_ref() != Some(key) {
+                if &last_key == key {
                     plane_entries.push(indices.clone());
 
-                    true
-                } else {
                     false
+                } else {
+                    true
                 }
             });
         }
@@ -599,28 +586,32 @@ fn clusterize_faces(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
             (triangle.vertices[1], triangle.vertices[2]),
             (triangle.vertices[2], triangle.vertices[0]),
         ] {
-            let normal = Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
-                faces[index].normal,
-            ));
-
             let mut handle_neigbors = |neighbors: &Vec<usize>| {
                 for neighbor in neighbors {
-                    let neighbor_normal =
-                        Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
-                            faces[*neighbor].normal,
-                        ));
-
                     if !visited[*neighbor] {
                         visited[*neighbor] = true;
 
-                        if normal.cross(neighbor_normal).length_squared() > f32::EPSILON {
-                            let key: OrderedVec3 = neighbor_normal.normalize().into();
+                        let neighbor_normal: OrderedVec3 = Vec3::from(
+                            <stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
+                                faces[*neighbor].normal,
+                            ),
+                        )
+                        .normalize()
+                        .into();
 
-                            queue.push(TriangleQueueEntry(key.clone(), *neighbor));
-                            plane_map.entry(key).or_insert(vec![*neighbor]);
+                        if neighbor_normal != plane_key {
+                            queue.push(TriangleQueueEntry(neighbor_normal.clone(), *neighbor));
+                            plane_map
+                                .entry(neighbor_normal)
+                                .or_default()
+                                .push(*neighbor);
                         } else {
-                            plane_map.get_mut(&plane_key).unwrap().push(*neighbor);
                             queue.push(TriangleQueueEntry(plane_key.clone(), *neighbor));
+
+                            plane_map
+                                .entry(plane_key.clone())
+                                .or_default()
+                                .push(*neighbor);
                         }
                     }
                 }
@@ -633,8 +624,19 @@ fn clusterize_faces(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
             }
         }
 
-        last_key = Some(plane_key);
+        last_key = plane_key;
     }
+
+    // push last plane indices
+    plane_map.retain(|key, indices| {
+        if &last_key == key {
+            plane_entries.push(indices.clone());
+
+            false
+        } else {
+            true
+        }
+    });
 
     println!("Clusterization took: {:?}", now.elapsed());
     println!("Plane entries: {:?}", plane_entries.len());
@@ -797,10 +799,15 @@ struct OrderedVec3([OrderedFloat<f32>; 3]);
 
 impl From<Vec3> for OrderedVec3 {
     fn from(vec: Vec3) -> Self {
+        fn round(value: f32) -> f32 {
+            // round to 4 decimal places
+            (value * 100.0).round() / 100.0
+        }
+
         Self([
-            OrderedFloat(vec.x),
-            OrderedFloat(vec.y),
-            OrderedFloat(vec.z),
+            OrderedFloat(round(vec.x)),
+            OrderedFloat(round(vec.y)),
+            OrderedFloat(round(vec.z)),
         ])
     }
 }
