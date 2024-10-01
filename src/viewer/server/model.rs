@@ -1,18 +1,14 @@
 use core::{f32, panic, str};
 use std::{
-    cell::RefCell,
-    collections::{BinaryHeap, HashMap, HashSet, LinkedList, VecDeque},
+    collections::{BinaryHeap, HashMap, HashSet, LinkedList},
     hash::Hash,
     path::Path,
     sync::Arc,
 };
 
-use glam::{vec3, Vec2, Vec3};
-use image::imageops::FilterType::Triangle;
+use glam::{Vec2, Vec3};
 use ordered_float::OrderedFloat;
-use rayon::iter::{
-    IntoParallelIterator, IntoParallelRefIterator, ParallelDrainRange, ParallelIterator,
-};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rether::{
     alloc::{AllocHandle, DynamicAllocHandle},
     model::{
@@ -145,7 +141,7 @@ impl CADModelServer {
                 .iter()
                 .zip(polygons.iter())
                 .for_each(|(indices, face)| {
-                    if face.area > 1.0 {
+                    if face.area > 0.0 {
                         let r = rand::random::<f64>();
                         let g = rand::random::<f64>();
                         let b = rand::random::<f64>();
@@ -518,7 +514,10 @@ impl PartialEq for PlaneEntry {
 impl Eq for PlaneEntry {}
 
 #[derive(Debug, PartialEq, Eq)]
-struct TriangleQueueEntry(OrderedVec3, usize);
+enum TriangleQueueEntry {
+    Queued(usize),
+    Determined(usize),
+}
 
 impl PartialOrd for TriangleQueueEntry {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
@@ -528,7 +527,12 @@ impl PartialOrd for TriangleQueueEntry {
 
 impl Ord for TriangleQueueEntry {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.0.cmp(&other.0)
+        match (self, other) {
+            (Self::Queued(_), Self::Queued(_)) => std::cmp::Ordering::Equal,
+            (Self::Queued(_), Self::Determined(_)) => std::cmp::Ordering::Less,
+            (Self::Determined(_), Self::Queued(_)) => std::cmp::Ordering::Greater,
+            (Self::Determined(_), Self::Determined(_)) => std::cmp::Ordering::Equal,
+        }
     }
 }
 
@@ -558,100 +562,96 @@ fn clusterize_faces(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
 
     let mut visited = vec![false; faces.len()];
 
-    let mut plane_entries: Vec<Vec<usize>> = Vec::new();
-    let mut plane_map: HashMap<OrderedVec3, Vec<usize>> = HashMap::new();
+    let mut plane_faces: LinkedList<Vec<usize>> = LinkedList::new();
     let mut queue: BinaryHeap<TriangleQueueEntry> = BinaryHeap::new();
 
-    let normal: OrderedVec3 = Vec3::from(
-        <stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(faces[0].normal),
-    )
-    .normalize()
-    .into();
+    let normal = Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
+        faces[0].normal,
+    ))
+    .normalize();
 
-    let mut last_key = normal.clone();
+    let mut last_normal = Some(normal);
 
-    {
-        plane_map.insert(normal.clone(), vec![0]);
-        visited[0] = true;
-        queue.push(TriangleQueueEntry(normal, 0));
-    }
+    visited[0] = true;
+    plane_faces.push_back(vec![0]);
+    queue.push(TriangleQueueEntry::Determined(0));
 
-    while let Some(TriangleQueueEntry(plane_key, index)) = queue.pop() {
-        let triangle = &faces[index];
+    while let Some(entry) = queue.pop() {
+        match entry {
+            TriangleQueueEntry::Queued(index) => {
+                let triangle = &faces[index];
 
-        if last_key != plane_key {
-            plane_map.retain(|key, indices| {
-                if &last_key == key {
-                    plane_entries.push(indices.clone());
+                let normal = Vec3::from(
+                    <stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(triangle.normal),
+                )
+                .normalize();
 
-                    false
+                if let Some(last_normal_unwrap) = last_normal {
+                    if normal.cross(last_normal_unwrap).length() < f32::EPSILON {
+                        last_normal = Some((normal + last_normal_unwrap) / 2.0);
+                        plane_faces.back_mut().unwrap().push(index);
+                        queue.push(TriangleQueueEntry::Determined(index));
+                    } else {
+                        last_normal = Some(normal);
+                        plane_faces.push_back(vec![index]);
+                        queue.push(TriangleQueueEntry::Determined(index));
+                    }
                 } else {
-                    true
+                    last_normal = Some(normal);
+                    plane_faces.push_back(vec![index]);
+                    queue.push(TriangleQueueEntry::Determined(index));
                 }
-            });
-        }
+            }
+            TriangleQueueEntry::Determined(index) => {
+                let triangle = &faces[index];
 
-        for (t1, t2) in [
-            (triangle.vertices[0], triangle.vertices[1]),
-            (triangle.vertices[1], triangle.vertices[2]),
-            (triangle.vertices[2], triangle.vertices[0]),
-        ] {
-            let mut handle_neigbors = |neighbors: &Vec<usize>| {
-                for neighbor in neighbors {
-                    if !visited[*neighbor] {
-                        visited[*neighbor] = true;
+                let mut handle_edge = |t1, t2| {
+                    if let Some(neighbors) = neighbor_map.get(&(t1, t2)) {
+                        for neighbor in neighbors {
+                            if !visited[*neighbor] {
+                                visited[*neighbor] = true;
 
-                        let neighbor_normal: OrderedVec3 = Vec3::from(
-                            <stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
-                                faces[*neighbor].normal,
-                            ),
-                        )
-                        .normalize()
-                        .into();
+                                let neighbor_normal =
+                                    Vec3::from(<stl_io::Vector<f32> as std::convert::Into<
+                                        [f32; 3],
+                                    >>::into(
+                                        triangle.normal
+                                    ))
+                                    .normalize();
 
-                        if neighbor_normal != plane_key {
-                            queue.push(TriangleQueueEntry(neighbor_normal.clone(), *neighbor));
-                            plane_map
-                                .entry(neighbor_normal)
-                                .or_default()
-                                .push(*neighbor);
-                        } else {
-                            queue.push(TriangleQueueEntry(plane_key.clone(), *neighbor));
-
-                            plane_map
-                                .entry(plane_key.clone())
-                                .or_default()
-                                .push(*neighbor);
+                                queue.push(TriangleQueueEntry::Queued(*neighbor));
+                            }
+                        }
+                    } else if let Some(neighbors) = neighbor_map.get(&(t2, t1)) {
+                        for neighbor in neighbors {
+                            if !visited[*neighbor] {
+                                visited[*neighbor] = true;
+                                queue.push(TriangleQueueEntry::Queued(*neighbor));
+                            }
                         }
                     }
-                }
-            };
+                };
 
-            if let Some(neighbors) = neighbor_map.get(&(t1, t2)) {
-                handle_neigbors(neighbors);
-            } else if let Some(neighbors) = neighbor_map.get(&(t2, t1)) {
-                handle_neigbors(neighbors);
+                handle_edge(triangle.vertices[0], triangle.vertices[1]);
+                handle_edge(triangle.vertices[1], triangle.vertices[2]);
+                handle_edge(triangle.vertices[2], triangle.vertices[0]);
             }
         }
 
-        last_key = plane_key;
+        if queue.is_empty() {
+            if let Some(index) = (0..faces.len()).find(|index| !visited[*index]) {
+                visited[index] = true;
+                last_normal = None;
+                queue.push(TriangleQueueEntry::Queued(index));
+            }
+        }
     }
 
-    // push last plane indices
-    plane_map.retain(|key, indices| {
-        if &last_key == key {
-            plane_entries.push(indices.clone());
-
-            false
-        } else {
-            true
-        }
-    });
-
     println!("Clusterization took: {:?}", now.elapsed());
-    println!("Plane entries: {:?}", plane_entries.len());
+    println!("Plane entries: {:?}", plane_faces.len());
+    println!("Plane entries: {:?}", plane_faces);
 
-    plane_entries
+    plane_faces.into_iter().collect()
 }
 
 #[derive(Debug)]
@@ -709,8 +709,6 @@ impl PolygonFace {
                 area
             }) / 4.0
         };
-
-        println!("Area: {}", area);
 
         let mut min = Vec3::INFINITY;
         let mut max = Vec3::NEG_INFINITY;
@@ -806,14 +804,33 @@ impl Hitbox for PolygonFace {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialOrd, Ord)]
 struct OrderedVec3([OrderedFloat<f32>; 3]);
+
+impl PartialEq for OrderedVec3 {
+    fn eq(&self, other: &Self) -> bool {
+        (self.0[0] - other.0[0]).abs() < f32::EPSILON
+            && (self.0[1] - other.0[1]).abs() < f32::EPSILON
+            && (self.0[2] - other.0[2]).abs() < f32::EPSILON
+    }
+}
+
+impl Eq for OrderedVec3 {}
+
+impl Hash for OrderedVec3 {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0[0].hash(state);
+        self.0[1].hash(state);
+        self.0[2].hash(state);
+    }
+}
 
 impl From<Vec3> for OrderedVec3 {
     fn from(vec: Vec3) -> Self {
         fn round(value: f32) -> f32 {
             // round to 4 decimal places
-            (value * 100.0).round() / 100.0
+            let factor = 10_f32.powi(8);
+            (value * factor).round() / factor
         }
 
         Self([
