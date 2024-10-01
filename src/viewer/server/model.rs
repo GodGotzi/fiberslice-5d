@@ -20,7 +20,7 @@ use rether::{
     Buffer, SimpleGeometry,
 };
 
-use stl_io::IndexedTriangle;
+use stl_io::{IndexedTriangle, Vector};
 use tokio::{
     sync::oneshot::{error::TryRecvError, Receiver},
     task::JoinHandle,
@@ -115,7 +115,7 @@ impl CADModelServer {
                 })
                 .collect();
 
-            let plane_entries = clusterize_faces(&stl_model.faces);
+            let plane_entries = clusterize_faces(&stl_model.faces, &stl_model.vertices);
 
             let vertices = stl_model
                 .faces
@@ -141,7 +141,7 @@ impl CADModelServer {
                 .iter()
                 .zip(polygons.iter())
                 .for_each(|(indices, face)| {
-                    if face.area > 0.0 {
+                    if face.area > 1.0 {
                         let r = rand::random::<f64>();
                         let g = rand::random::<f64>();
                         let b = rand::random::<f64>();
@@ -483,35 +483,39 @@ struct Plane {
     point: glam::Vec3,
 }
 
+impl Plane {
+    fn new(normal: glam::Vec3, point: glam::Vec3) -> Self {
+        Self { normal, point }
+    }
+
+    fn from_stl_vector(normal: stl_io::Vector<f32>, point: stl_io::Vector<f32>) -> Self {
+        Self {
+            normal: Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
+                normal,
+            ))
+            .normalize(),
+            point: Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
+                point,
+            )),
+        }
+    }
+}
+
 impl PartialEq for Plane {
     fn eq(&self, other: &Self) -> bool {
         // check if the planes are mathematically equal
-
-        let cross_product = self.normal.cross(other.normal);
-        if cross_product.length() > f32::EPSILON {
+        if self.normal.angle_between(other.normal).abs() > ANGLE_THRESHOLD.to_radians() {
             return false; // Normals are not parallel
         }
 
+        const THRESHOLD: f32 = 5.0;
+
         // Step 2: Check if p2 lies on the first plane and p1 lies on the second plane
-        (other.point - self.point).dot(self.normal).abs() < f32::EPSILON
+        (other.point - self.point).dot(self.normal).abs() < THRESHOLD
     }
 }
 
 impl Eq for Plane {}
-
-#[derive(Debug, Clone)]
-struct PlaneEntry {
-    plane: Plane,
-    triangles: Vec<[usize; 3]>,
-}
-
-impl PartialEq for PlaneEntry {
-    fn eq(&self, other: &Self) -> bool {
-        self.plane == other.plane
-    }
-}
-
-impl Eq for PlaneEntry {}
 
 #[derive(Debug, PartialEq, Eq)]
 enum TriangleQueueEntry {
@@ -536,7 +540,9 @@ impl Ord for TriangleQueueEntry {
     }
 }
 
-fn clusterize_faces(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
+const ANGLE_THRESHOLD: f32 = 5_f32;
+
+fn clusterize_faces(faces: &[IndexedTriangle], vertices: &[Vector<f32>]) -> Vec<Vec<usize>> {
     let mut neighbor_map: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
     let now = std::time::Instant::now();
 
@@ -565,45 +571,100 @@ fn clusterize_faces(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
     let mut plane_faces: LinkedList<Vec<usize>> = LinkedList::new();
     let mut queue: BinaryHeap<TriangleQueueEntry> = BinaryHeap::new();
 
-    let normal = Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
+    let mut last_plane = Some(Plane::from_stl_vector(
         faces[0].normal,
-    ))
-    .normalize();
-
-    let mut last_normal = Some(normal);
+        vertices[faces[0].vertices[0]],
+    ));
 
     visited[0] = true;
     plane_faces.push_back(vec![0]);
     queue.push(TriangleQueueEntry::Determined(0));
+
+    let mut determined_before = false;
 
     while let Some(entry) = queue.pop() {
         match entry {
             TriangleQueueEntry::Queued(index) => {
                 let triangle = &faces[index];
 
-                let normal = Vec3::from(
-                    <stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(triangle.normal),
-                )
-                .normalize();
+                if determined_before {
+                    determined_before = false;
+                    last_plane = None;
+                }
 
-                if let Some(last_normal_unwrap) = last_normal {
-                    if normal.cross(last_normal_unwrap).length() < f32::EPSILON {
-                        last_normal = Some((normal + last_normal_unwrap) / 2.0);
+                let plane = Plane::from_stl_vector(triangle.normal, vertices[triangle.vertices[0]]);
+
+                if let Some(last_plane_unwrap) = last_plane.as_ref() {
+                    if last_plane_unwrap == &plane {
                         plane_faces.back_mut().unwrap().push(index);
                         queue.push(TriangleQueueEntry::Determined(index));
                     } else {
-                        last_normal = Some(normal);
+                        last_plane = Some(plane);
                         plane_faces.push_back(vec![index]);
                         queue.push(TriangleQueueEntry::Determined(index));
+
+                        queue = queue
+                            .into_iter()
+                            .map(|entry| match entry {
+                                TriangleQueueEntry::Queued(index) => {
+                                    let plane2 = Plane::from_stl_vector(
+                                        faces[index].normal,
+                                        vertices[faces[index].vertices[0]],
+                                    );
+
+                                    if let Some(last_plane_unwrap) = last_plane.as_ref() {
+                                        if last_plane_unwrap == &plane2 {
+                                            plane_faces.back_mut().unwrap().push(index);
+                                            TriangleQueueEntry::Determined(index)
+                                        } else {
+                                            TriangleQueueEntry::Queued(index)
+                                        }
+                                    } else {
+                                        TriangleQueueEntry::Queued(index)
+                                    }
+                                }
+                                TriangleQueueEntry::Determined(index) => {
+                                    TriangleQueueEntry::Determined(index)
+                                }
+                            })
+                            .collect();
                     }
                 } else {
-                    last_normal = Some(normal);
+                    last_plane = Some(plane);
                     plane_faces.push_back(vec![index]);
                     queue.push(TriangleQueueEntry::Determined(index));
+
+                    queue = queue
+                        .into_iter()
+                        .map(|entry| match entry {
+                            TriangleQueueEntry::Queued(index) => {
+                                let plane2 = Plane::from_stl_vector(
+                                    faces[index].normal,
+                                    vertices[faces[index].vertices[0]],
+                                );
+
+                                if let Some(last_plane_unwrap) = last_plane.as_ref() {
+                                    if last_plane_unwrap == &plane2 {
+                                        plane_faces.back_mut().unwrap().push(index);
+                                        TriangleQueueEntry::Determined(index)
+                                    } else {
+                                        TriangleQueueEntry::Queued(index)
+                                    }
+                                } else {
+                                    TriangleQueueEntry::Queued(index)
+                                }
+                            }
+                            TriangleQueueEntry::Determined(index) => {
+                                TriangleQueueEntry::Determined(index)
+                            }
+                        })
+                        .collect();
                 }
             }
             TriangleQueueEntry::Determined(index) => {
                 let triangle = &faces[index];
+
+                determined_before = true;
 
                 let mut handle_edge = |t1, t2| {
                     if let Some(neighbors) = neighbor_map.get(&(t1, t2)) {
@@ -611,22 +672,47 @@ fn clusterize_faces(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
                             if !visited[*neighbor] {
                                 visited[*neighbor] = true;
 
-                                let neighbor_normal =
-                                    Vec3::from(<stl_io::Vector<f32> as std::convert::Into<
-                                        [f32; 3],
-                                    >>::into(
-                                        triangle.normal
-                                    ))
-                                    .normalize();
+                                let neighbor_plane = Plane::from_stl_vector(
+                                    faces[*neighbor].normal,
+                                    vertices[faces[*neighbor].vertices[0]],
+                                );
 
-                                queue.push(TriangleQueueEntry::Queued(*neighbor));
+                                if let Some(last_plane_unwrap) = last_plane.as_ref() {
+                                    if last_plane_unwrap == &neighbor_plane {
+                                        plane_faces.back_mut().unwrap().push(*neighbor);
+                                        queue.push(TriangleQueueEntry::Determined(*neighbor));
+                                    } else {
+                                        queue.push(TriangleQueueEntry::Queued(*neighbor));
+                                    }
+                                } else {
+                                    last_plane = Some(neighbor_plane);
+                                    plane_faces.push_back(vec![*neighbor]);
+                                    queue.push(TriangleQueueEntry::Determined(*neighbor));
+                                }
                             }
                         }
                     } else if let Some(neighbors) = neighbor_map.get(&(t2, t1)) {
                         for neighbor in neighbors {
                             if !visited[*neighbor] {
                                 visited[*neighbor] = true;
-                                queue.push(TriangleQueueEntry::Queued(*neighbor));
+
+                                let neighbor_plane = Plane::from_stl_vector(
+                                    faces[*neighbor].normal,
+                                    vertices[faces[*neighbor].vertices[0]],
+                                );
+
+                                if let Some(last_plane_unwrap) = last_plane.as_ref() {
+                                    if last_plane_unwrap == &neighbor_plane {
+                                        plane_faces.back_mut().unwrap().push(*neighbor);
+                                        queue.push(TriangleQueueEntry::Determined(*neighbor));
+                                    } else {
+                                        queue.push(TriangleQueueEntry::Queued(*neighbor));
+                                    }
+                                } else {
+                                    last_plane = Some(neighbor_plane);
+                                    plane_faces.push_back(vec![*neighbor]);
+                                    queue.push(TriangleQueueEntry::Determined(*neighbor));
+                                }
                             }
                         }
                     }
@@ -641,7 +727,7 @@ fn clusterize_faces(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
         if queue.is_empty() {
             if let Some(index) = (0..faces.len()).find(|index| !visited[*index]) {
                 visited[index] = true;
-                last_normal = None;
+                last_plane = None;
                 queue.push(TriangleQueueEntry::Queued(index));
             }
         }
