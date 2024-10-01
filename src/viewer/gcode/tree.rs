@@ -380,7 +380,7 @@ impl RotateModel for ToolpathTree {
                 let center = bounding_box.read().center();
 
                 model.rotate(rotation, Some(center));
-                bounding_box.write().rotate(rotation);
+                bounding_box.write().rotate(rotation, center);
             }
             Self::Node {
                 model,
@@ -389,7 +389,7 @@ impl RotateModel for ToolpathTree {
                 let center = bounding_box.read().center();
 
                 model.rotate(rotation, Some(center));
-                bounding_box.write().rotate(rotation);
+                bounding_box.write().rotate(rotation, center);
             }
             Self::Path { model, path_box } => {
                 let min = path_box.read().get_min();
@@ -398,7 +398,7 @@ impl RotateModel for ToolpathTree {
                 let center = (min + max) / 2.0;
 
                 model.rotate(rotation, Some(center));
-                path_box.write().rotate(rotation);
+                path_box.write().rotate(rotation, center);
             }
         }
     }

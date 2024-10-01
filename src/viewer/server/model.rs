@@ -1,28 +1,26 @@
 use core::{f32, panic, str};
 use std::{
-    collections::{HashMap, HashSet, LinkedList, VecDeque},
+    collections::{HashMap, LinkedList, VecDeque},
     path::Path,
     sync::Arc,
 };
 
-use glam::{vec3, Vec2, Vec3};
-use image::imageops::FilterType::Triangle;
+use glam::{vec3, Vec3};
 use ordered_float::OrderedFloat;
-use rayon::iter::{
-    IntoParallelIterator, IntoParallelRefIterator, ParallelDrainRange, ParallelIterator,
-};
+use parking_lot::RwLock;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rether::{
-    alloc::{AllocHandle, DynamicAllocHandle},
+    alloc::{AllocHandle, DynamicAllocHandle, ModifyAction},
     model::{
         geometry::Geometry, BufferLocation, Model, ModelState, RotateModel, ScaleModel,
         TranslateModel, TreeModel,
     },
-    picking::{Hitbox, HitboxNode, HitboxRoot},
+    picking::{interact::InteractiveModel, Hitbox, HitboxNode, HitboxRoot},
     vertex::Vertex,
-    Buffer, SimpleGeometry,
+    Buffer, Rotate, SimpleGeometry,
 };
 
-use stl_io::{IndexedMesh, IndexedTriangle};
+use stl_io::IndexedTriangle;
 use tokio::{
     sync::oneshot::{error::TryRecvError, Receiver},
     task::JoinHandle,
@@ -118,15 +116,7 @@ impl CADModelServer {
                     ))
                 })
                 .collect();
-
-            let plane_entries = clusterize_faces(&stl_model.faces, &vertices);
-
-            let polygons = plane_entries
-                .iter()
-                .fold(Vec::new(), |mut polygons, entry| {
-                    polygons.extend(determine_polygon_faces(entry, &stl_model.faces, &vertices));
-                    polygons
-                });
+            let models = clusterize_models(&stl_model.faces);
 
             let vertices = stl_model
                 .faces
@@ -141,34 +131,62 @@ impl CADModelServer {
                     vec
                 });
 
+            let plane_entries = clusterize_faces(&stl_model.faces, &vertices);
+
+            let polygons: Vec<PolygonFace> = plane_entries
+                .iter()
+                .map(|entry| PolygonFace::from_entry(entry.clone(), &stl_model.faces, &vertices))
+                .collect();
+
             let mut triangle_vertices = vec3s_into_vertices(vertices.clone(), Color::BLACK);
 
-            let polygon_faces: Vec<(PolygonFace, Vec<usize>)> = polygons
+            let polygon_faces: Vec<PolygonFace> = polygons
                 .into_iter()
-                .filter(|(face, _)| face.area > 5.0)
+                .filter(|face| {
+                    let x = face.max.x - face.min.x;
+                    let y = face.max.y - face.min.y;
+                    let z = face.max.z - face.min.z;
+
+                    if x < y && x < z {
+                        z > 2.0 && y > 2.0
+                    } else if y < x && y < z {
+                        x > 2.0 && z > 2.0
+                    } else {
+                        x > 2.0 && y > 2.0
+                    }
+                })
                 .collect();
 
             println!("Faces: {}", polygon_faces.len());
 
-            polygon_faces.iter().for_each(|(_, indices)| {
+            models.iter().for_each(|indices| {
                 let r = rand::random::<f64>();
                 let g = rand::random::<f64>();
                 let b = rand::random::<f64>();
 
-                for index in indices.iter() {
-                    triangle_vertices[*index].color = Color { r, g, b, a: 1.0 }.to_array();
+                for triangle in indices.iter() {
+                    stl_model.faces[*triangle]
+                        .vertices
+                        .iter()
+                        .for_each(|index| {
+                            triangle_vertices[*index].color = Color { r, g, b, a: 1.0 }.to_array();
+                        });
                 }
             });
 
             let plane_len = plane_entries.len();
 
             let models = polygon_faces
+                .clone()
                 .into_par_iter()
                 .fold(
                     || Vec::with_capacity(plane_len),
-                    |mut models, (face, _)| {
+                    |mut models, face| {
                         let model = TreeModel::create_node(BufferLocation { offset: 0, size: 0 });
-                        models.push(CADModel::Face { model, face });
+                        models.push(CADModel::Face {
+                            model,
+                            face: RwLock::new(face),
+                        });
 
                         models
                     },
@@ -182,6 +200,38 @@ impl CADModelServer {
                 );
 
             let root = CADModel::create_root(SimpleGeometry::init(triangle_vertices), models);
+
+            if let Some(max_polygon) = polygon_faces.into_iter().max_by_key(|face| {
+                let x = face.max.x - face.min.x;
+                let y = face.max.y - face.min.y;
+                let z = face.max.z - face.min.z;
+
+                if x < y && x < z {
+                    (z * y) as i32
+                } else if y < x && y < z {
+                    (x * z) as i32
+                } else {
+                    (x * y) as i32
+                }
+            }) {
+                let normal = max_polygon.plane.normal;
+
+                let native = Vec3::new(0.0, 1.0, 0.0);
+
+                println!("Normal: {:?}", normal);
+                println!("Native: {:?}", native);
+
+                let rotation = -glam::Quat::from_rotation_arc(native, normal);
+
+                println!("Rotation: {:?}", rotation.to_euler(glam::EulerRot::XYX));
+
+                root.rotate(rotation, None);
+                let point = max_polygon.plane.point;
+                let center = root.center().unwrap_or(Vec3::ZERO);
+                let rotated_max_point = rotation * (point - center) + center;
+
+                root.translate(vec3(0.0, -rotated_max_point.y - 100.0, 0.0));
+            }
 
             println!("Loaded in {:?}", now.elapsed());
 
@@ -367,7 +417,7 @@ pub enum CADModel {
     },
     Face {
         model: TreeModel<Self, Vertex, DynamicAllocHandle<Vertex>>,
-        face: PolygonFace,
+        face: RwLock<PolygonFace>,
     },
 }
 
@@ -379,7 +429,7 @@ impl CADModel {
         let bounding_box = models.iter().fold(BoundingBox::default(), |mut bb, model| {
             let (min, max) = match model {
                 Self::Root { bounding_box, .. } => (bounding_box.min, bounding_box.max),
-                Self::Face { face, .. } => (face.min, face.max),
+                Self::Face { face, .. } => (face.read().min, face.read().max),
             };
 
             bb.expand_point(min);
@@ -398,7 +448,7 @@ impl HitboxNode<CADModel> for CADModel {
     fn check_hit(&self, ray: &rether::picking::Ray) -> Option<f32> {
         match self {
             Self::Root { bounding_box, .. } => bounding_box.check_hit(ray),
-            Self::Face { face, .. } => face.check_hit(ray),
+            Self::Face { face, .. } => face.read().check_hit(ray),
         }
     }
 
@@ -412,15 +462,49 @@ impl HitboxNode<CADModel> for CADModel {
     fn get_min(&self) -> Vec3 {
         match self {
             Self::Root { bounding_box, .. } => bounding_box.min,
-            Self::Face { face, .. } => face.min,
+            Self::Face { face, .. } => face.read().min,
         }
     }
 
     fn get_max(&self) -> Vec3 {
         match self {
             Self::Root { bounding_box, .. } => bounding_box.max,
-            Self::Face { face, .. } => face.max,
+            Self::Face { face, .. } => face.read().max,
         }
+    }
+}
+
+impl InteractiveModel for CADModel {
+    fn clicked(&self, event: rether::picking::interact::ClickEvent) {
+        match self {
+            Self::Root { .. } => println!("Root clicked"),
+            Self::Face { model, face } => {
+                let handle = match &*model.state().read() {
+                    rether::model::ModelState::Awake(handle) => handle.clone(),
+                    _ => panic!("Not awake"),
+                };
+
+                let indices = face.read().indices.clone();
+
+                let mod_action = Box::new(move |data: &mut [Vertex]| {
+                    for index in indices.iter() {
+                        data[*index].color = Color::RED.to_array();
+                    }
+                });
+
+                let action = ModifyAction::new(0, handle.size(), mod_action);
+
+                handle.send_action(action).expect("Failed to send action");
+            }
+        }
+    }
+
+    fn drag(&self, event: rether::picking::interact::DragEvent) {
+        println!("Clicked");
+    }
+
+    fn scroll(&self, event: rether::picking::interact::ScrollEvent) {
+        println!("Clicked");
     }
 }
 
@@ -450,7 +534,10 @@ impl Model<Vertex, DynamicAllocHandle<Vertex>> for CADModel {
 impl ScaleModel for CADModel {
     fn scale(&self, scale: Vec3, center: Option<Vec3>) {
         match self {
-            Self::Root { model, .. } => model.scale(scale, center),
+            Self::Root {
+                model,
+                bounding_box,
+            } => model.scale(scale, Some(bounding_box.center())),
             Self::Face { model, .. } => model.scale(scale, center),
         }
     }
@@ -468,8 +555,16 @@ impl TranslateModel for CADModel {
 impl RotateModel for CADModel {
     fn rotate(&self, rotation: glam::Quat, center: Option<Vec3>) {
         match self {
-            Self::Root { model, .. } => model.rotate(rotation, center),
-            Self::Face { model, .. } => model.rotate(rotation, center),
+            Self::Root {
+                model,
+                bounding_box,
+            } => {
+                model.rotate(rotation, Some(bounding_box.center()));
+            }
+            Self::Face { model, face } => {
+                model.rotate(rotation, center);
+                face.write().rotate(rotation, center.unwrap_or(Vec3::ZERO));
+            }
         }
     }
 }
@@ -520,6 +615,79 @@ impl PartialEq for PlaneEntry {
 
 impl Eq for PlaneEntry {}
 
+fn clusterize_models(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
+    let mut neighbor_map: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
+
+    for (index, triangle) in faces.iter().enumerate() {
+        let t1 = triangle.vertices[0];
+        let t2 = triangle.vertices[1];
+        let t3 = triangle.vertices[2];
+
+        let mut handle = |t1, t2| {
+            if let Some(neighbors) = neighbor_map.get_mut(&(t1, t2)) {
+                neighbors.push(index);
+            } else if let Some(neighbors) = neighbor_map.get_mut(&(t2, t1)) {
+                neighbors.push(index);
+            } else {
+                neighbor_map.insert((t1, t2), vec![index]);
+            }
+        };
+
+        handle(t1, t2);
+        handle(t2, t3);
+        handle(t3, t1);
+    }
+
+    let mut visited = vec![false; faces.len()];
+
+    let mut model_faces: LinkedList<Vec<usize>> = LinkedList::new();
+    let mut queue: VecDeque<usize> = VecDeque::new();
+
+    visited[0] = true;
+    model_faces.push_back(vec![0]);
+    queue.push_back(0);
+
+    while let Some(index) = queue.pop_front() {
+        let triangle = &faces[index];
+
+        let mut handle_edge = |t1, t2| {
+            if let Some(neighbors) = neighbor_map.get(&(t1, t2)) {
+                for neighbor in neighbors {
+                    if !visited[*neighbor] {
+                        visited[*neighbor] = true;
+
+                        model_faces.back_mut().unwrap().push(*neighbor);
+                        queue.push_back(*neighbor);
+                    }
+                }
+            } else if let Some(neighbors) = neighbor_map.get(&(t2, t1)) {
+                for neighbor in neighbors {
+                    if !visited[*neighbor] {
+                        visited[*neighbor] = true;
+
+                        model_faces.back_mut().unwrap().push(*neighbor);
+                        queue.push_back(*neighbor);
+                    }
+                }
+            }
+        };
+
+        handle_edge(triangle.vertices[0], triangle.vertices[1]);
+        handle_edge(triangle.vertices[1], triangle.vertices[2]);
+        handle_edge(triangle.vertices[2], triangle.vertices[0]);
+
+        if queue.is_empty() {
+            if let Some(index) = (0..faces.len()).find(|index| !visited[*index]) {
+                visited[index] = true;
+                model_faces.push_back(vec![index]);
+                queue.push_back(index);
+            }
+        }
+    }
+
+    model_faces.into_iter().collect()
+}
+
 fn clusterize_faces(faces: &[IndexedTriangle], vertices: &[Vec3]) -> Vec<PlaneEntry> {
     let mut plane_map: HashMap<[OrderedFloat<f32>; 6], Vec<usize>> = HashMap::new();
 
@@ -539,7 +707,7 @@ fn clusterize_faces(faces: &[IndexedTriangle], vertices: &[Vec3]) -> Vec<PlaneEn
         let intersection = ray.intersection_plane(normal, point);
 
         fn round(value: f32) -> f32 {
-            let factor = 10f32.powi(6); // 10^4 = 10000
+            let factor = 10f32.powi(4); // 10^4 = 10000
             (value * factor).round() / factor
         }
 
@@ -569,86 +737,58 @@ fn clusterize_faces(faces: &[IndexedTriangle], vertices: &[Vec3]) -> Vec<PlaneEn
         .collect()
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PolygonFace {
     plane: Plane,
-    contour: Vec<Vec3>,
-    area: f32,
+    indices: Vec<usize>,
     min: Vec3,
     max: Vec3,
 }
 
-#[derive(Debug)]
-struct Stroke(Vec3, Vec3);
-
-impl PartialEq for Stroke {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.distance(other.0) < f32::EPSILON && self.1.distance(other.1) < f32::EPSILON
-            || self.1.distance(other.0) < f32::EPSILON && self.0.distance(other.1) < f32::EPSILON
-    }
-}
-
-impl Eq for Stroke {}
-
-fn determine_polygon_faces(
-    entry: &PlaneEntry,
-    faces: &[IndexedTriangle],
-    vertices: &[Vec3],
-) -> Vec<(PolygonFace, Vec<usize>)> {
-    let contours = determine_contours(faces, &entry.triangles);
-
-    contours
-        .into_iter()
-        .map(|contour| (PolygonFace::from_entry(&contour, vertices), contour))
-        .collect::<Vec<(PolygonFace, Contour)>>()
-}
-
 impl PolygonFace {
-    fn from_entry(contour: &Contour, vertices: &[Vec3]) -> PolygonFace {
-        let contour: Vec<Vec3> = contour.iter().map(|index| vertices[*index]).collect();
-
+    fn from_entry(entry: PlaneEntry, faces: &[IndexedTriangle], vertices: &[Vec3]) -> PolygonFace {
         let plane = Plane {
-            normal: (contour[1] - contour[0])
-                .cross(contour[2] - contour[0])
+            normal: (vertices[faces[entry.triangles[0]].vertices[1]]
+                - vertices[faces[entry.triangles[0]].vertices[0]])
+                .cross(
+                    vertices[faces[entry.triangles[0]].vertices[2]]
+                        - vertices[faces[entry.triangles[0]].vertices[0]],
+                )
                 .normalize(),
-            point: contour[0],
-        };
-
-        let area = {
-            let x_basis = contour[1] - contour[0];
-            let y_basis = contour[2] - contour[0];
-
-            // project the contour to the plane
-            let contour: Vec<Vec2> = contour
-                .iter()
-                .map(|vertex| {
-                    let x = x_basis.dot(*vertex - contour[0]);
-                    let y = y_basis.dot(*vertex - contour[0]);
-
-                    Vec2::new(x, y)
-                })
-                .collect();
-
-            (0..contour.len()).fold(0.0, |mut area, index| {
-                area += contour[index].x * contour[(index + 1) % contour.len()].y
-                    - contour[(index + 1) % contour.len()].x * contour[index].y;
-
-                area
-            }) / 4.0
+            point: vertices[faces[entry.triangles[0]].vertices[0]],
         };
 
         let mut min = Vec3::INFINITY;
         let mut max = Vec3::NEG_INFINITY;
 
-        for vertex in &contour {
-            min = min.min(*vertex);
-            max = max.max(*vertex);
+        for triangle in entry.triangles.iter() {
+            min = min
+                .min(vertices[faces[*triangle].vertices[0]])
+                .min(vertices[faces[*triangle].vertices[1]])
+                .min(vertices[faces[*triangle].vertices[2]]);
+            max = max
+                .max(vertices[faces[*triangle].vertices[0]])
+                .max(vertices[faces[*triangle].vertices[1]])
+                .max(vertices[faces[*triangle].vertices[2]]);
         }
+
+        let indices = entry
+            .triangles
+            .iter()
+            .flat_map(|index| {
+                let triangle = &faces[*index];
+
+                vec![
+                    triangle.vertices[0],
+                    triangle.vertices[1],
+                    triangle.vertices[2],
+                ]
+            })
+            .collect();
 
         Self {
             plane,
-            contour,
-            area,
+            indices,
             min,
             max,
         }
@@ -671,39 +811,13 @@ impl Hitbox for PolygonFace {
 
         let intersection = ray.origin + ray.direction * t;
 
-        let ray_dir = self.contour[1] - self.contour[0];
-
-        let mut inside = false;
-
-        for index in 0..self.contour.len() {
-            let edge = self.contour[(index + 1) % self.contour.len()] - self.contour[index];
-
-            let cross_dir = ray_dir.cross(edge).normalize();
-
-            if cross_dir.dot(cross_dir).abs() < f32::EPSILON {
-                continue;
-            }
-
-            let t1 = (self.contour[index] - intersection)
-                .cross(edge)
-                .dot(cross_dir)
-                / cross_dir.dot(cross_dir);
-
-            let t2 = (intersection - self.contour[index])
-                .cross(ray_dir)
-                .dot(cross_dir)
-                / cross_dir.dot(cross_dir);
-
-            let intersection_1 = self.contour[index] + edge * t1;
-
-            let intersection_2 = intersection + ray_dir * t2;
-
-            if (intersection_1 - intersection_2).length_squared() < f32::EPSILON {
-                inside = !inside;
-            }
-        }
-
-        if inside {
+        if intersection.x > self.min.x
+            && intersection.x < self.max.x
+            && intersection.y > self.min.y
+            && intersection.y < self.max.y
+            && intersection.z > self.min.z
+            && intersection.z < self.max.z
+        {
             Some(t)
         } else {
             None
@@ -731,143 +845,11 @@ impl Hitbox for PolygonFace {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-struct OrderedVec3([OrderedFloat<f32>; 3]);
+impl Rotate for PolygonFace {
+    fn rotate(&mut self, rotation: glam::Quat, center: Vec3) {
+        self.plane.point = rotation * (self.plane.point - center) + center;
 
-impl From<Vec3> for OrderedVec3 {
-    fn from(vec: Vec3) -> Self {
-        Self([
-            OrderedFloat(vec.x),
-            OrderedFloat(vec.y),
-            OrderedFloat(vec.z),
-        ])
+        self.min = rotation * (self.min - center) + center;
+        self.max = rotation * (self.max - center) + center;
     }
-}
-
-impl From<OrderedVec3> for Vec3 {
-    fn from(vec: OrderedVec3) -> Self {
-        Self::new(vec.0[0].0, vec.0[1].0, vec.0[2].0)
-    }
-}
-
-impl From<&OrderedVec3> for Vec3 {
-    fn from(vec: &OrderedVec3) -> Self {
-        Self::new(vec.0[0].0, vec.0[1].0, vec.0[2].0)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-struct OrderedStroke {
-    start: OrderedVec3,
-    end: OrderedVec3,
-}
-
-impl From<Stroke> for OrderedStroke {
-    fn from(stroke: Stroke) -> Self {
-        fn round(value: f32) -> f32 {
-            value
-        }
-
-        Self {
-            start: OrderedVec3([
-                OrderedFloat(round(stroke.0.x)),
-                OrderedFloat(round(stroke.0.y)),
-                OrderedFloat(round(stroke.0.z)),
-            ]),
-            end: OrderedVec3([
-                OrderedFloat(round(stroke.1.x)),
-                OrderedFloat(round(stroke.1.y)),
-                OrderedFloat(round(stroke.1.z)),
-            ]),
-        }
-    }
-}
-
-impl From<OrderedStroke> for Stroke {
-    fn from(stroke: OrderedStroke) -> Self {
-        Self(
-            Vec3::new(
-                stroke.start.0[0].0,
-                stroke.start.0[1].0,
-                stroke.start.0[2].0,
-            ),
-            Vec3::new(stroke.end.0[0].0, stroke.end.0[1].0, stroke.end.0[2].0),
-        )
-    }
-}
-
-type Contour = Vec<usize>;
-
-fn determine_contours(faces: &[IndexedTriangle], vertices: &[usize]) -> Vec<Contour> {
-    let mut strokes: HashMap<(usize, usize), usize> = HashMap::new();
-
-    for index in vertices {
-        let triangle = &faces[*index];
-
-        let mut handle_stroke = |t0, t1| {
-            if strokes.contains_key(&(t0, t1)) {
-                *strokes.get_mut(&(t0, t1)).unwrap() += 1;
-            } else if strokes.contains_key(&(t1, t0)) {
-                *strokes.get_mut(&(t1, t0)).unwrap() += 1;
-            } else {
-                strokes.insert((t0, t1), 1);
-            }
-        };
-
-        handle_stroke(triangle.vertices[0], triangle.vertices[1]);
-        handle_stroke(triangle.vertices[1], triangle.vertices[2]);
-        handle_stroke(triangle.vertices[2], triangle.vertices[0]);
-    }
-
-    let strokes: Vec<(usize, usize)> = strokes
-        .into_iter()
-        .filter_map(
-            |(stroke, count)| {
-                if count == 1 {
-                    Some(stroke)
-                } else {
-                    None
-                }
-            },
-        )
-        .collect();
-
-    let mut contours: Vec<Contour> = Vec::new();
-    let mut contour: Option<Contour> = Some(Contour::with_capacity(strokes.len()));
-
-    let start_to_end: HashMap<usize, usize> = strokes[0..strokes.len()]
-        .iter()
-        .map(|stroke| (stroke.0, stroke.1))
-        .collect();
-
-    let mut vertex_visited = strokes
-        .iter()
-        .map(|stroke| (&stroke.0, false))
-        .collect::<HashMap<&usize, bool>>();
-
-    let mut start = &strokes[0].0;
-
-    *vertex_visited.get_mut(start).unwrap() = true;
-    contour.as_mut().unwrap().push(*start);
-
-    while let Some(next) = start_to_end.get(start) {
-        if *vertex_visited.get(next).unwrap() {
-            contours.push(contour.take().unwrap());
-            contour = Some(Contour::with_capacity(strokes.len()));
-
-            if let Some(next) = strokes.iter().find(|stroke| !vertex_visited[&stroke.0]) {
-                start = &next.0;
-            } else {
-                break;
-            }
-
-            continue;
-        }
-
-        *vertex_visited.get_mut(next).unwrap() = true;
-        contour.as_mut().unwrap().push(*next);
-        start = next;
-    }
-
-    contours
 }

@@ -100,7 +100,7 @@ impl Translate for ProfileCross {
 }
 
 impl Rotate for ProfileCross {
-    fn rotate(&mut self, rotation: glam::Quat) {
+    fn rotate(&mut self, rotation: glam::Quat, _center: Vec3) {
         self.a = rotation * self.a;
         self.c = rotation * self.c;
         self.b = rotation * self.b;
@@ -468,13 +468,13 @@ impl Translate for PathHitbox {
 }
 
 impl Rotate for PathHitbox {
-    fn rotate(&mut self, rotation: glam::Quat) {
-        self.north_west.rotate(rotation);
-        self.north_east.rotate(rotation);
-        self.south_west.rotate(rotation);
-        self.south_east.rotate(rotation);
+    fn rotate(&mut self, rotation: glam::Quat, center: Vec3) {
+        self.north_west.rotate(rotation, center);
+        self.north_east.rotate(rotation, center);
+        self.south_west.rotate(rotation, center);
+        self.south_east.rotate(rotation, center);
 
-        self.visual.rotate(rotation);
+        self.visual.rotate(rotation, center);
     }
 }
 

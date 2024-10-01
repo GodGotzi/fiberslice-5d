@@ -89,6 +89,16 @@ impl FrameHandle<'_, RootEvent, (), &CameraResult> for PickingAdapter {
                                         })
                                     }
                                 }
+
+                                let server = global_state.viewer.model_server.read();
+
+                                let model = server.root_hitbox().check_hit(&ray);
+
+                                if let Some(model) = model {
+                                    model.clicked(ClickEvent {
+                                        action: rether::picking::interact::Action::Mouse(*button),
+                                    });
+                                }
                             }
 
                             println!("PickingAdapter: Picking took {:?}", now.elapsed());

@@ -30,7 +30,7 @@ impl Translate for QuadFace {
 }
 
 impl Rotate for QuadFace {
-    fn rotate(&mut self, rotation: glam::Quat) {
+    fn rotate(&mut self, rotation: glam::Quat, _center: Vec3) {
         self.normal = rotation * self.normal;
         self.point = rotation * self.point;
     }
@@ -117,9 +117,9 @@ impl Translate for ProfileExtrusion {
 }
 
 impl Rotate for ProfileExtrusion {
-    fn rotate(&mut self, rotation: glam::Quat) {
-        self.profile_start.rotate(rotation);
-        self.profile_end.rotate(rotation);
+    fn rotate(&mut self, rotation: glam::Quat, center: Vec3) {
+        self.profile_start.rotate(rotation, center);
+        self.profile_end.rotate(rotation, center);
     }
 }
 
