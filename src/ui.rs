@@ -19,7 +19,6 @@ pub mod visual;
 
 use std::sync::atomic::AtomicBool;
 
-use custom_toasts::PROGRESS_BAR_TOAST;
 use egui_toast::ToastOptions;
 use egui_wgpu_backend::ScreenDescriptor;
 use egui_winit_platform::{Platform, PlatformDescriptor};
@@ -44,7 +43,7 @@ pub enum UiEvent {
     ShowInfo(String),
     ShowSuccess(String),
     ShowError(String),
-    ShowProgressBar,
+    ShowProgressBar(u32, String),
 
     FocusGCode(ReadSection),
 }
@@ -254,48 +253,54 @@ impl<'a> Adapter<'a, RootEvent, UiState, (UiUpdateOutput, (f32, f32, f32, f32)),
     ) {
         match event {
             UiEvent::ShowInfo(message) => {
-                self.screen.add_toast(egui_toast::Toast {
-                    kind: egui_toast::ToastKind::Info,
-                    text: message.into(),
-                    options: ToastOptions::default()
-                        .duration_in_seconds(5.0)
-                        .show_progress(true),
-                    ..Default::default()
-                });
+                self.screen.add_toast(
+                    egui_toast::Toast::with_name("Info".into())
+                        .kind(egui_toast::ToastKind::Info)
+                        .text(message)
+                        .options(
+                            ToastOptions::default()
+                                .duration_in_seconds(5.0)
+                                .show_progress(true),
+                        ),
+                );
 
                 wgpu_context.window.request_redraw();
             }
             UiEvent::ShowSuccess(message) => {
-                self.screen.add_toast(egui_toast::Toast {
-                    kind: egui_toast::ToastKind::Success,
-                    text: message.into(),
-                    options: ToastOptions::default()
-                        .duration_in_seconds(5.0)
-                        .show_progress(false),
-                    ..Default::default()
-                });
+                self.screen.add_toast(
+                    egui_toast::Toast::with_name("Success".into())
+                        .kind(egui_toast::ToastKind::Success)
+                        .text(message)
+                        .options(
+                            ToastOptions::default()
+                                .duration_in_seconds(5.0)
+                                .show_progress(true),
+                        ),
+                );
 
                 wgpu_context.window.request_redraw();
             }
             UiEvent::ShowError(message) => {
-                self.screen.add_toast(egui_toast::Toast {
-                    kind: egui_toast::ToastKind::Error,
-                    text: message.into(),
-                    options: ToastOptions::default()
-                        .duration_in_seconds(5.0)
-                        .show_progress(true),
-                    ..Default::default()
-                });
+                self.screen.add_toast(
+                    egui_toast::Toast::with_name("Error".into())
+                        .kind(egui_toast::ToastKind::Error)
+                        .text(message)
+                        .options(
+                            ToastOptions::default()
+                                .duration_in_seconds(5.0)
+                                .show_progress(true),
+                        ),
+                );
 
                 wgpu_context.window.request_redraw();
             }
-            UiEvent::ShowProgressBar => {
-                self.screen.add_progress_bar_toast(egui_toast::Toast {
-                    kind: egui_toast::ToastKind::Custom(PROGRESS_BAR_TOAST),
-                    text: "Progress bar".into(),
-                    options: ToastOptions::default().show_progress(false),
-                    ..Default::default()
-                });
+            UiEvent::ShowProgressBar(id, name) => {
+                self.screen.add_progress_bar_toast(
+                    egui_toast::Toast::with_name(name.clone())
+                        .kind(egui_toast::ToastKind::Custom(id))
+                        .text(name)
+                        .options(ToastOptions::default().show_progress(true)),
+                );
 
                 wgpu_context.window.request_redraw();
             }

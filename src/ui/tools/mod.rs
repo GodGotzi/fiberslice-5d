@@ -1,6 +1,6 @@
 use egui::Color32;
 
-use crate::{GlobalState, RootEvent};
+use crate::{camera::CameraController, GlobalState, RootEvent};
 
 use super::UiState;
 
@@ -181,7 +181,7 @@ impl Tool for CameraTool<'_> {
                             ui.add(slider);
 
                             if ui.button("Reset").clicked() {
-                                controller.rotate_speed = 0.0;
+                                controller.rotate_speed = CameraController::default().rotate_speed;
                             }
                         });
 
@@ -192,7 +192,7 @@ impl Tool for CameraTool<'_> {
                             ui.add(slider);
 
                             if ui.button("Reset").clicked() {
-                                controller.zoom_speed = 0.0;
+                                controller.zoom_speed = CameraController::default().zoom_speed;
                             }
                         });
 
@@ -203,7 +203,7 @@ impl Tool for CameraTool<'_> {
                             ui.add(slider);
 
                             if ui.button("Reset").clicked() {
-                                controller.move_speed = 0.0;
+                                controller.move_speed = CameraController::default().move_speed;
                             }
                         });
                     });

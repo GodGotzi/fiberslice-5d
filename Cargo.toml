@@ -40,7 +40,7 @@ glam = "0.29"
 bytemuck = "1.7.0"
 simple-logging = "2.0.2"
 log = "0.4.21"
-egui-toast = { git = "https://github.com/GodGotzi/egui-toast.git", branch = "show_inside" }
+egui-toast = { git = "https://github.com/GodGotzi/egui-toast.git", branch = "named_toasts" }
 puffin_egui = { git = "https://github.com/EmbarkStudios/puffin" }
 futures-channel = "0.3.30"
 
@@ -51,3 +51,4 @@ rether = { path = "rether" }
 rayon = "1.10.0"
 ordered-float = "4.3.0"
 rand = "0.8.5"
+atomic_float = "1.1.0"

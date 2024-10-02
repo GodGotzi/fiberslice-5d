@@ -15,7 +15,6 @@ pub mod wrap;
 
 pub use shared::*;
 pub use wrap::*;
-
 pub type Viewport = (f32, f32, f32, f32);
 
 #[derive(Debug, Clone)]
@@ -74,8 +73,6 @@ impl WgpuContext {
             force_fallback_adapter: false,
         }))
         .unwrap();
-
-        println!("Adapter: {:?}", adapter.get_info());
 
         let (device, queue) = pollster::block_on(adapter.request_device(
             &wgpu::DeviceDescriptor {

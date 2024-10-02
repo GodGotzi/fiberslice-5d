@@ -7,6 +7,7 @@ use rether::vertex::Vertex;
 pub mod gcode;
 pub mod select;
 pub mod server;
+pub mod tracker;
 pub mod volume;
 
 pub struct Visual<const T: usize, const W: usize> {

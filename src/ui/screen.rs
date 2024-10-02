@@ -36,8 +36,12 @@ impl Screen {
                 .anchor(Align2::RIGHT_BOTTOM, (-10.0, -10.0))
                 .direction(egui::Direction::TopDown)
                 .custom_contents(
-                    crate::ui::custom_toasts::PROGRESS_BAR_TOAST,
-                    crate::ui::custom_toasts::progress_bar_toast,
+                    crate::ui::custom_toasts::MODEL_LOAD_PROGRESS,
+                    crate::ui::custom_toasts::model_load_progress,
+                )
+                .custom_contents(
+                    crate::ui::custom_toasts::SLICING_PROGRESS,
+                    crate::ui::custom_toasts::slicing_progress,
                 ),
             addons_state: addons::AddonsState::new(),
             quick_settings_state: quick_settingsbar::SettingsbarState::new(),

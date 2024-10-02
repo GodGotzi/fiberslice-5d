@@ -8,11 +8,14 @@ use std::{
 use glam::{vec3, Vec3};
 use ordered_float::OrderedFloat;
 use parking_lot::RwLock;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rayon::{
+    iter::{IntoParallelIterator, ParallelIterator},
+    vec,
+};
 use rether::{
     alloc::{AllocHandle, DynamicAllocHandle, ModifyAction},
     model::{
-        geometry::Geometry, BufferLocation, Model, ModelState, RotateModel, ScaleModel,
+        self, geometry::Geometry, BufferLocation, Model, ModelState, RotateModel, ScaleModel,
         TranslateModel, TreeModel,
     },
     picking::{interact::InteractiveModel, Hitbox, HitboxNode, HitboxRoot},
@@ -35,7 +38,9 @@ use crate::{
         BoundingBox,
     },
     prelude::WgpuContext,
-    GlobalState, RootEvent,
+    ui::{api::trim_text, custom_toasts::MODEL_LOAD_PROGRESS},
+    viewer::tracker::Process,
+    GlobalState, RootEvent, GLOBAL_STATE,
 };
 
 // const MAIN_LOADED_TOOLPATH: &str = "main"; // HACK: This is a solution to ease the dev when only one toolpath is loaded which is the only supported(for now)
@@ -51,6 +56,7 @@ pub enum Error {
 #[derive(Debug)]
 pub struct CADModelHandle {
     model: CADModel,
+    process: Arc<Process>,
     origin_path: String,
 }
 
@@ -105,7 +111,13 @@ impl CADModelServer {
                 }
             };
 
-            let now = std::time::Instant::now();
+            let global_state = GLOBAL_STATE.read();
+            let global_state = global_state.as_ref().unwrap();
+
+            let process_tracking = global_state
+                .progress_tracker
+                .write()
+                .add(MODEL_LOAD_PROGRESS, trim_text::<20, 4>(&path));
 
             let vertices: Vec<Vec3> = stl_model
                 .vertices
@@ -116,8 +128,13 @@ impl CADModelServer {
                     ))
                 })
                 .collect();
+
+            process_tracking.set_task("Clustering models".to_string());
+            process_tracking.set_progress(0.0);
             let models = clusterize_models(&stl_model.faces);
 
+            process_tracking.set_task("Creating vertices".to_string());
+            process_tracking.set_progress(0.2);
             let vertices = stl_model
                 .faces
                 .iter_mut()
@@ -131,8 +148,12 @@ impl CADModelServer {
                     vec
                 });
 
+            process_tracking.set_task("Clustering faces".to_string());
+            process_tracking.set_progress(0.4);
             let plane_entries = clusterize_faces(&stl_model.faces, &vertices);
 
+            process_tracking.set_task("Creating polygons".to_string());
+            process_tracking.set_progress(0.6);
             let polygons: Vec<PolygonFace> = plane_entries
                 .iter()
                 .map(|entry| PolygonFace::from_entry(entry.clone(), &stl_model.faces, &vertices))
@@ -140,6 +161,8 @@ impl CADModelServer {
 
             let mut triangle_vertices = vec3s_into_vertices(vertices.clone(), Color::BLACK);
 
+            process_tracking.set_task("Filtering polygons".to_string());
+            process_tracking.set_progress(0.8);
             let polygon_faces: Vec<PolygonFace> = polygons
                 .into_iter()
                 .filter(|face| {
@@ -157,8 +180,8 @@ impl CADModelServer {
                 })
                 .collect();
 
-            println!("Faces: {}", polygon_faces.len());
-
+            process_tracking.set_task("Coloring polygons".to_string());
+            process_tracking.set_progress(0.85);
             models.iter().for_each(|indices| {
                 let r = rand::random::<f64>();
                 let g = rand::random::<f64>();
@@ -176,6 +199,8 @@ impl CADModelServer {
 
             let plane_len = plane_entries.len();
 
+            process_tracking.set_task("Creating models".to_string());
+            process_tracking.set_progress(0.9);
             let models = polygon_faces
                 .clone()
                 .into_par_iter()
@@ -201,41 +226,18 @@ impl CADModelServer {
 
             let root = CADModel::create_root(SimpleGeometry::init(triangle_vertices), models);
 
-            if let Some(max_polygon) = polygon_faces.into_iter().max_by_key(|face| {
-                let x = face.max.x - face.min.x;
-                let y = face.max.y - face.min.y;
-                let z = face.max.z - face.min.z;
+            process_tracking.set_task("Rotating model to largest face".to_string());
+            process_tracking.set_progress(0.95);
+            let bounding_box = match &root {
+                CADModel::Root { bounding_box, .. } => bounding_box,
+                _ => panic!("Not root"),
+            };
 
-                if x < y && x < z {
-                    (z * y) as i32
-                } else if y < x && y < z {
-                    (x * z) as i32
-                } else {
-                    (x * y) as i32
-                }
-            }) {
-                let normal = max_polygon.plane.normal;
-
-                let native = Vec3::new(0.0, 1.0, 0.0);
-
-                println!("Normal: {:?}", normal);
-                println!("Native: {:?}", native);
-
-                let rotation = -glam::Quat::from_rotation_arc(native, normal);
-
-                println!("Rotation: {:?}", rotation.to_euler(glam::EulerRot::XYX));
-
-                root.rotate(rotation, None);
-                let point = max_polygon.plane.point;
-                let center = root.center().unwrap_or(Vec3::ZERO);
-                let rotated_max_point = rotation * (point - center) + center;
-
-                root.translate(vec3(0.0, -rotated_max_point.y - 100.0, 0.0));
-            }
-
-            println!("Loaded in {:?}", now.elapsed());
+            let center = bounding_box.center();
+            root.translate(-vec3(center.x, center.y, center.z));
 
             tx.send(Ok(CADModelHandle {
+                process: process_tracking,
                 model: root,
                 origin_path: path,
             }))
@@ -257,6 +259,7 @@ impl CADModelServer {
             path.to_string()
         };
 
+        // model_handle.process.set_task("Finding Name".to_string());
         let mut name = file_name.clone();
 
         let mut counter: u8 = 1;
@@ -267,6 +270,8 @@ impl CADModelServer {
             counter += 1;
         }
 
+        model_handle.process.set_task("Write to GPU".to_string());
+        model_handle.process.set_progress(1.0);
         let handle = {
             let model_state = &*model_handle.model.state().read();
 
@@ -278,6 +283,8 @@ impl CADModelServer {
             self.buffer
                 .allocate_init(&name, data, &wgpu_context.device, &wgpu_context.queue)
         };
+
+        model_handle.process.finish();
 
         model_handle.model.wake(handle.clone());
 
@@ -352,10 +359,6 @@ impl CADModelServer {
 
                 let model_trait_handle =
                     handle.clone() as Arc<dyn Model<Vertex, DynamicAllocHandle<Vertex>>>;
-
-                global_state
-                    .ui_event_writer
-                    .send(crate::ui::UiEvent::ShowProgressBar);
 
                 global_state
                     .viewer

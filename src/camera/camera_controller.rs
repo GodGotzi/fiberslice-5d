@@ -16,17 +16,19 @@ pub struct CameraController {
     is_drag_move: bool,
 }
 
-impl CameraController {
-    pub fn new(rotate_speed: f32, zoom_speed: f32, move_speed: f32) -> Self {
+impl Default for CameraController {
+    fn default() -> Self {
         Self {
-            rotate_speed,
-            zoom_speed,
-            move_speed,
+            rotate_speed: 0.01,
+            zoom_speed: -2.0,
+            move_speed: 0.1,
             is_drag_rotate: false,
             is_drag_move: false,
         }
     }
+}
 
+impl CameraController {
     pub fn handle_window_events(
         &mut self,
         event: &WindowEvent,

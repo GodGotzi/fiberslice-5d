@@ -7,10 +7,12 @@
 
 use camera::CameraEvent;
 use log::{info, LevelFilter};
+use parking_lot::RwLock;
 use picking::PickingEvent;
 use settings::tree::QuickSettings;
 use std::{sync::Arc, time::Instant};
 use ui::UiEvent;
+use viewer::tracker::ProcessTracker;
 
 use prelude::{
     Adapter, EventWriter, FrameHandle, GlobalContext, Shared, SharedMut, Viewport, WgpuContext,
@@ -44,6 +46,8 @@ pub enum RootEvent {
     Exit,
 }
 
+pub static GLOBAL_STATE: RwLock<Option<GlobalState<RootEvent>>> = RwLock::new(None);
+
 #[derive(Debug, Clone)]
 pub struct GlobalState<T: 'static> {
     pub proxy: EventLoopProxy<T>,
@@ -68,6 +72,8 @@ pub struct GlobalState<T: 'static> {
 
     pub camera_controller: SharedMut<camera::camera_controller::CameraController>,
     pub viewport: SharedMut<Viewport>,
+
+    pub progress_tracker: SharedMut<ProcessTracker>,
 
     pub ctx: GlobalContext,
 }
@@ -291,12 +297,15 @@ impl ApplicationHandler<RootEvent> for Application {
             topology_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
             view_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
 
-            camera_controller: SharedMut::from_inner(camera::CameraController::new(
-                0.01, -2.0, 0.1,
-            )),
+            camera_controller: SharedMut::from_inner(camera::CameraController::default()),
             viewport: SharedMut::from_inner(Viewport::default()),
+
+            progress_tracker: SharedMut::from_inner(ProcessTracker::new()),
+
             ctx: GlobalContext::default(),
         };
+
+        *GLOBAL_STATE.write() = Some(global_state.clone());
 
         self.state = Some(ApplicationState {
             window,
