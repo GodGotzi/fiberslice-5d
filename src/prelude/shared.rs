@@ -1,4 +1,8 @@
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{Arc, Mutex},
+};
 
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
@@ -28,6 +32,10 @@ impl<T: std::fmt::Debug> SharedMut<T> {
 
     pub fn read(&self) -> RwLockReadGuard<T> {
         self.inner.read()
+    }
+
+    pub unsafe fn read_unsafe(&self) -> *const T {
+        self.inner.data_ptr()
     }
 
     pub fn read_with_fn<F, R>(&self, f: F) -> R

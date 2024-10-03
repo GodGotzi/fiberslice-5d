@@ -1,7 +1,7 @@
 use egui::{Color32, DragValue, ImageButton, Visuals};
 use egui_extras::Size;
 use egui_grid::GridBuilder;
-use glam::Mat4;
+use glam::{Mat4, Quat};
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{EnumCount, EnumIter};
 
@@ -103,7 +103,7 @@ impl GizmoTools {
                 .resizable(false)
                 .frame(frame)
                 .show(ui.ctx(), |ui| {
-                    let selector = global_state.viewer.selector().read();
+                    let mut selector = global_state.viewer.selector().write();
 
                     selector.transform(|transform| {
                         let (mut scale, rotation, mut translation) =
@@ -121,9 +121,8 @@ impl GizmoTools {
                                     }
 
                                     changed |= drag_value(ui, &mut translation.x);
-
-                                    changed |= drag_value(ui, &mut translation.y);
                                     changed |= drag_value(ui, &mut translation.z);
+                                    changed |= drag_value(ui, &mut translation.y);
                                 });
 
                                 *transform = Mat4::from_scale_rotation_translation(
@@ -153,7 +152,7 @@ impl GizmoTools {
 
                                 *transform = Mat4::from_scale_rotation_translation(
                                     scale,
-                                    rotation,
+                                    Quat::from_euler(glam::EulerRot::XZY, x, y, z),
                                     translation,
                                 );
 

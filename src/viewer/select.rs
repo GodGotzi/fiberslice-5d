@@ -16,6 +16,7 @@ pub enum TransformResponse {
 #[derive(Default)]
 pub struct Selector {
     selected: Vec<SharedMut<CADModel>>,
+    grouped_transform: Option<Mat4>,
 }
 
 impl std::fmt::Debug for Selector {
@@ -29,13 +30,20 @@ impl std::fmt::Debug for Selector {
 impl Selector {
     pub fn select(&mut self, model: &SharedMut<CADModel>) {
         self.selected.push(model.clone());
+
+        self.grouped_transform = None;
     }
 
     pub fn deselect(&mut self, model: &SharedMut<CADModel>) {
+        let size = self.selected.len();
         self.selected.retain(|m| !SharedMut::ptr_eq(m, model));
+
+        if size != self.selected.len() {
+            self.grouped_transform = None;
+        }
     }
 
-    pub fn transform(&self, mut r#fn: impl FnMut(&mut Mat4) -> bool) {
+    pub fn transform(&mut self, mut r#fn: impl FnMut(&mut Mat4) -> bool) {
         if self.selected.len() == 1 {
             let mut transform = self.selected[0].read().get_transform();
 
@@ -45,9 +53,13 @@ impl Selector {
                 self.selected[0].write().transform(transform);
             }
         } else {
-            let mut transform = Mat4::from_translation(glam::Vec3::ZERO);
+            let mut transform = self
+                .grouped_transform
+                .unwrap_or(Mat4::from_translation(glam::Vec3::ZERO));
 
             let response = r#fn(&mut transform);
+
+            self.grouped_transform = Some(transform);
 
             if response {
                 for model in &self.selected {

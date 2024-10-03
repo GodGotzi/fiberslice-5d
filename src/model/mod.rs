@@ -181,6 +181,8 @@ impl<T> Transform for Model<T> {
             transform: self.transform.to_cols_array_2d(),
         };
 
+        println!("aksgjhdjkhagsjdhgahjsdg");
+
         queue.write_buffer(
             &self.transform_buffer,
             0,

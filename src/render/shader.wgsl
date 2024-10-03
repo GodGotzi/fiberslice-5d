@@ -41,9 +41,10 @@ fn vs_main(
     var out: VertexOutput;
 
     out.world_normal = in.normal;
-    var world_position: vec4<f32> = vec4<f32>(in.position, 1.0) * transform.matrix;
-    out.world_position = world_position.xyz;
-    out.clip_position = camera.view_proj * vec4<f32>(in.position, 1.0);
+    var pos = transform.matrix * vec4<f32>(in.position, 1.0);
+
+    out.world_position = pos.xyz;
+    out.clip_position = camera.view_proj * pos;
     out.camera_view_pos = camera.view_pos;
     out.color = in.color;
 

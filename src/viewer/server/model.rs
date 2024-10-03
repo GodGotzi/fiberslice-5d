@@ -331,7 +331,7 @@ impl CADModelServer {
         unsafe {
             self.models
                 .values()
-                .for_each(|model| model.read().render(render_pass));
+                .for_each(|model| model.read_unsafe().as_ref().unwrap().render(render_pass));
         }
     }
 }
@@ -387,26 +387,6 @@ impl CADModel {
         match self {
             Self::Root { model, .. } => model.awaken(data),
             Self::Face { .. } => panic!("Cannot awaken face"),
-        }
-    }
-
-    pub fn send(&self, matrix: Mat4) {
-        match self {
-            Self::Root { tx, .. } => {
-                tx.send(matrix);
-            }
-            Self::Face { .. } => panic!("Cannot get sender"),
-        }
-    }
-
-    pub fn update(&mut self) {
-        match self {
-            Self::Root { model, rx, .. } => {
-                if let Ok(new_transform) = rx.try_recv() {
-                    model.transform(new_transform);
-                }
-            }
-            Self::Face { .. } => panic!("Cannot update face"),
         }
     }
 
