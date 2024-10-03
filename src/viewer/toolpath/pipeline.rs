@@ -1,16 +1,9 @@
-use rether::{
-    alloc::BufferDynamicAllocator,
-    model::{geometry::Geometry, Model},
-    Buffer, SimpleGeometry,
-};
+use rether::{alloc::BufferDynamicAllocator, model::geometry::Geometry, Buffer, SimpleGeometry};
 use wgpu::util::DeviceExt;
 
 use crate::{prelude::WgpuContext, slicer::print_type::PrintType};
 
-use super::{
-    tree::ToolpathTree,
-    vertex::{ToolpathContext, ToolpathVertex},
-};
+use super::vertex::{ToolpathContext, ToolpathVertex};
 
 #[derive(Debug)]
 pub struct ToolpathBuffer {
@@ -49,7 +42,7 @@ impl ToolpathBuffer {
                         binding: 0,
                         visibility: wgpu::ShaderStages::VERTEX,
                         ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            ty: wgpu::BufferBindingType::Uniform,
                             has_dynamic_offset: false,
                             min_binding_size: None,
                         },
@@ -82,7 +75,11 @@ impl ToolpathBuffer {
                 .device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("Render Pipeline Layout"),
-                    bind_group_layouts: &[&camera_bind_group_layout, &light_bind_group_layout],
+                    bind_group_layouts: &[
+                        &camera_bind_group_layout,
+                        &light_bind_group_layout,
+                        &toolpath_bind_group_layout,
+                    ],
                     push_constant_ranges: &[],
                 });
 

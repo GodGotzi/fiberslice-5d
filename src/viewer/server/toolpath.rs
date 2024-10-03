@@ -213,14 +213,6 @@ impl ToolpathServer {
                     )),
                 );
 
-                let model_trait_handle =
-                    handle.clone() as Arc<dyn Model<Vertex, DynamicAllocHandle<Vertex>>>;
-
-                global_state
-                    .viewer
-                    .selector()
-                    .write()
-                    .select(&model_trait_handle);
                 self.root_hitbox.add_node(handle);
             }
         }

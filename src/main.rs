@@ -25,6 +25,7 @@ mod control;
 mod env;
 mod error;
 mod geometry;
+mod model;
 mod picking;
 mod prelude;
 mod render;

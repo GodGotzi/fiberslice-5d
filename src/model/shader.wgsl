@@ -13,21 +13,17 @@ struct Light {
 @group(1) @binding(0)
 var<uniform> light: Light;
 
-struct ToolpathContext {
-    visibility: u32,
-    min_layer: u32,
-    max_layer: u32,
+struct Transform {
+    matrix: mat4x4<f32>,
 };
 
 @group(2) @binding(0)
-var<uniform> context: ToolpathContext;  
+var<uniform> transform: Transform;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
     @location(2) color: vec4<f32>,
-    @location(3) print_type: u32,
-    @location(4) layer: u32,
 };
 
 struct VertexOutput {
@@ -44,14 +40,12 @@ fn vs_main(
 ) -> VertexOutput {
     var out: VertexOutput;
 
-    if (in.print_type & context.visibility) && in.layer >= context.min_layer && in.layer <= context.max_layer {
-        out.world_normal = in.normal;
-        var world_position: vec4<f32> = vec4<f32>(in.position, 1.0);
-        out.world_position = world_position.xyz;
-        out.clip_position = camera.view_proj * vec4<f32>(in.position, 1.0);
-        out.camera_view_pos = camera.view_pos;
-        out.color = in.color;
-    }
+    out.world_normal = in.normal;
+    var world_position: vec4<f32> = vec4<f32>(in.position, 1.0) * transform.matrix;
+    out.world_position = world_position.xyz;
+    out.clip_position = camera.view_proj * vec4<f32>(in.position, 1.0);
+    out.camera_view_pos = camera.view_pos;
+    out.color = in.color;
 
     return out;
 }
