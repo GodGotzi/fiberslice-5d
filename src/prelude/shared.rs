@@ -22,6 +22,10 @@ impl<T: std::fmt::Debug> SharedMut<T> {
         }
     }
 
+    pub fn ptr_eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.inner, &other.inner)
+    }
+
     pub fn read(&self) -> RwLockReadGuard<T> {
         self.inner.read()
     }

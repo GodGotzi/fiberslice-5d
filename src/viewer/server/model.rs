@@ -1,4 +1,4 @@
-use core::{f32, panic, str};
+use core::{f32, panic};
 use std::{
     collections::{HashMap, LinkedList, VecDeque},
     path::Path,
@@ -7,17 +7,10 @@ use std::{
 
 use glam::{vec3, Vec3};
 use ordered_float::OrderedFloat;
-use parking_lot::RwLock;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rether::{
-    alloc::{AllocHandle, DynamicAllocHandle, ModifyAction},
-    model::{
-        geometry::Geometry, BufferLocation, Model, ModelState, RotateModel, ScaleModel,
-        TranslateModel, TreeModel,
-    },
-    picking::{interact::InteractiveModel, Hitbox, HitboxNode, HitboxRoot},
+    picking::{Hitbox, HitboxNode, HitboxRoot},
     vertex::Vertex,
-    Buffer, Rotate, SimpleGeometry,
+    Rotate, Scale, Translate,
 };
 
 use stl_io::IndexedTriangle;
@@ -27,13 +20,14 @@ use tokio::{
 };
 
 use uni_path::PathBuf;
-use wgpu::Color;
+use wgpu::{BufferAddress, Color};
 
 use crate::{
     geometry::{
         mesh::{vec3s_into_vertices, IntoArrayColor},
         BoundingBox,
     },
+    model::Model,
     prelude::WgpuContext,
     ui::{api::trim_text, custom_toasts::MODEL_LOAD_PROGRESS},
     viewer::tracker::Process,
@@ -64,22 +58,17 @@ type CADModelResult = Result<CADModelHandle, CADModelError>;
 pub struct CADModelServer {
     queue: Vec<(Receiver<CADModelResult>, JoinHandle<()>)>,
 
-    buffer: rether::Buffer<Vertex, rether::alloc::BufferDynamicAllocator<Vertex>>,
-
     root_hitbox: HitboxRoot<CADModel>,
 
     models: HashMap<String, Arc<CADModel>>,
-    focused: Option<String>,
 }
 
 impl CADModelServer {
-    pub fn new(device: &wgpu::Device) -> Self {
+    pub fn instance(_context: &WgpuContext) -> Self {
         Self {
             queue: Vec::new(),
-            buffer: Buffer::new("CADModel Buffer", device),
             root_hitbox: HitboxRoot::root(),
             models: HashMap::new(),
-            focused: None,
         }
     }
 
@@ -194,34 +183,17 @@ impl CADModelServer {
                 }
             });
 
-            let plane_len = plane_entries.len();
-
             process_tracking.set_task("Creating models".to_string());
             process_tracking.set_progress(0.9);
-            let models = polygon_faces
-                .clone()
-                .into_par_iter()
-                .fold(
-                    || Vec::with_capacity(plane_len),
-                    |mut models, face| {
-                        let model = TreeModel::create_node(BufferLocation { offset: 0, size: 0 });
-                        models.push(CADModel::Face {
-                            model,
-                            face: RwLock::new(face),
-                        });
+            let mut root = polygon_faces.clone().into_iter().fold(
+                CADModel::create_root(),
+                |mut root, face| {
+                    root.push_face(face);
 
-                        models
-                    },
-                )
-                .reduce(
-                    || Vec::with_capacity(plane_len),
-                    |mut models, mut models2| {
-                        models.append(&mut models2);
-                        models
-                    },
-                );
-
-            let root = CADModel::create_root(SimpleGeometry::init(triangle_vertices), models);
+                    root
+                },
+            );
+            root.awaken(&triangle_vertices);
 
             process_tracking.set_task("Rotating model to largest face".to_string());
             process_tracking.set_progress(0.95);
@@ -244,11 +216,7 @@ impl CADModelServer {
         self.queue.push((rx, handle));
     }
     // i love you
-    pub fn insert(
-        &mut self,
-        model_handle: CADModelHandle,
-        wgpu_context: &WgpuContext,
-    ) -> Result<Arc<CADModel>, Error> {
+    pub fn insert(&mut self, model_handle: CADModelHandle) -> Result<Arc<CADModel>, Error> {
         let path: PathBuf = model_handle.origin_path.into();
         let file_name = if let Some(path) = path.file_name() {
             path.to_string()
@@ -269,53 +237,21 @@ impl CADModelServer {
 
         model_handle.process.set_task("Write to GPU".to_string());
         model_handle.process.set_progress(1.0);
-        let handle = {
-            let model_state = &*model_handle.model.state().read();
-
-            let data = match model_state {
-                rether::model::ModelState::Dormant(geometry) => geometry.build_data(),
-                _ => panic!("Unsupported geometry"),
-            };
-
-            self.buffer
-                .allocate_init(&name, data, &wgpu_context.device, &wgpu_context.queue)
-        };
 
         model_handle.process.finish();
-
-        model_handle.model.wake(handle.clone());
 
         let handle = Arc::new(model_handle.model);
 
         self.models.insert(name.clone(), handle.clone());
 
-        self.focused = Some(name.clone());
-
         Ok(handle)
     }
 
-    pub fn remove(&mut self, name: String, wgpu_context: &WgpuContext) {
-        if let Some(model) = self.models.remove(&name) {
-            let state = model.state();
-
-            {
-                let handle = match &*state.read() {
-                    rether::model::ModelState::Awake(handle) => handle.clone(),
-                    rether::model::ModelState::Destroyed => panic!("Already destroyed"),
-                    _ => panic!("Not alive"),
-                };
-
-                self.buffer
-                    .free(handle.id(), &wgpu_context.device, &wgpu_context.queue);
-            }
-        }
+    pub fn remove(&mut self, name: String) {
+        self.models.remove(&name);
     }
 
-    pub fn update(
-        &mut self,
-        global_state: GlobalState<RootEvent>,
-        wgpu_context: &WgpuContext,
-    ) -> Result<(), Error> {
+    pub fn update(&mut self, global_state: GlobalState<RootEvent>) -> Result<(), Error> {
         if !self.queue.is_empty() {
             let mut results = Vec::new();
 
@@ -341,7 +277,7 @@ impl CADModelServer {
                     }
                 };
 
-                let handle = self.insert(model, wgpu_context)?;
+                let handle = self.insert(model)?;
 
                 global_state
                     .ui_event_writer
@@ -354,22 +290,10 @@ impl CADModelServer {
                     )),
                 );
 
-                let model_trait_handle =
-                    handle.clone() as Arc<dyn Model<Vertex, DynamicAllocHandle<Vertex>>>;
-
-                global_state
-                    .viewer
-                    .selector()
-                    .write()
-                    .select(&model_trait_handle);
-
                 self.root_hitbox.add_node(handle);
                 // global_state.window.request_redraw();
             }
         }
-
-        self.buffer
-            .update(&wgpu_context.device, &wgpu_context.queue);
 
         Ok(())
     }
@@ -392,54 +316,69 @@ impl CADModelServer {
         }
     }
 
-    pub fn get_focused(&self) -> Option<&str> {
-        self.focused.as_deref()
-    }
-
-    pub fn get_focused_mut(&mut self) -> &mut Option<String> {
-        &mut self.focused
-    }
-
-    pub fn read_buffer(&self) -> &Buffer<Vertex, rether::alloc::BufferDynamicAllocator<Vertex>> {
-        &self.buffer
-    }
-
     pub fn root_hitbox(&self) -> &HitboxRoot<CADModel> {
         &self.root_hitbox
+    }
+
+    pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+        self.models
+            .values()
+            .for_each(|model| model.render(render_pass));
     }
 }
 
 #[derive(Debug)]
 pub enum CADModel {
     Root {
-        model: TreeModel<Self, Vertex, DynamicAllocHandle<Vertex>>,
+        model: Model<Vertex>,
         bounding_box: BoundingBox,
+        children: Vec<Self>,
+        size: BufferAddress,
     },
     Face {
-        model: TreeModel<Self, Vertex, DynamicAllocHandle<Vertex>>,
-        face: RwLock<PolygonFace>,
+        face: PolygonFace,
     },
 }
 
 impl CADModel {
-    pub fn create_root<T: Into<ModelState<Vertex, DynamicAllocHandle<Vertex>>>>(
-        geometry: T,
-        models: Vec<CADModel>,
-    ) -> Self {
-        let bounding_box = models.iter().fold(BoundingBox::default(), |mut bb, model| {
-            let (min, max) = match model {
-                Self::Root { bounding_box, .. } => (bounding_box.min, bounding_box.max),
-                Self::Face { face, .. } => (face.read().min, face.read().max),
-            };
-
-            bb.expand_point(min);
-            bb.expand_point(max);
-            bb
-        });
-
+    pub fn create_root() -> Self {
         Self::Root {
-            model: TreeModel::create_root_with_models(geometry, models),
-            bounding_box,
+            model: Model::create(),
+            bounding_box: BoundingBox::default(),
+            children: Vec::new(),
+            size: 0,
+        }
+    }
+
+    pub fn push_face(&mut self, face: PolygonFace) {
+        match self {
+            Self::Root {
+                children,
+                bounding_box,
+                size,
+                ..
+            } => {
+                *size += face.size();
+                bounding_box.expand_point(face.get_min());
+                bounding_box.expand_point(face.get_max());
+
+                children.push(Self::Face { face })
+            }
+            _ => panic!("Not root"),
+        }
+    }
+
+    pub fn awaken(&mut self, data: &[Vertex]) {
+        match self {
+            Self::Root { model, .. } => model.awaken(data),
+            Self::Face { .. } => panic!("Cannot awaken face"),
+        }
+    }
+
+    pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+        match self {
+            Self::Root { model, .. } => model.render(render_pass),
+            Self::Face { .. } => panic!("Cannot render face"),
         }
     }
 }
@@ -448,123 +387,46 @@ impl HitboxNode<CADModel> for CADModel {
     fn check_hit(&self, ray: &rether::picking::Ray) -> Option<f32> {
         match self {
             Self::Root { bounding_box, .. } => bounding_box.check_hit(ray),
-            Self::Face { face, .. } => face.read().check_hit(ray),
+            Self::Face { face, .. } => face.check_hit(ray),
         }
     }
 
     fn inner_nodes(&self) -> &[CADModel] {
         match self {
-            Self::Root { model, .. } => model.sub_handles().expect("No sub handles"),
-            Self::Face { model, .. } => model.sub_handles().expect("No sub handles"),
+            Self::Root { children, .. } => children,
+            Self::Face { .. } => &[],
         }
     }
 
     fn get_min(&self) -> Vec3 {
         match self {
             Self::Root { bounding_box, .. } => bounding_box.min,
-            Self::Face { face, .. } => face.read().min,
+            Self::Face { face, .. } => face.min,
         }
     }
 
     fn get_max(&self) -> Vec3 {
         match self {
             Self::Root { bounding_box, .. } => bounding_box.max,
-            Self::Face { face, .. } => face.read().max,
+            Self::Face { face, .. } => face.max,
         }
     }
 }
 
-impl InteractiveModel for CADModel {
-    fn clicked(&self, event: rether::picking::interact::ClickEvent) {
-        match self {
-            Self::Root { .. } => println!("Root clicked"),
-            Self::Face { model, face } => {
-                let handle = match &*model.state().read() {
-                    rether::model::ModelState::Awake(handle) => handle.clone(),
-                    _ => panic!("Not awake"),
-                };
-
-                let indices = face.read().indices.clone();
-
-                let mod_action = Box::new(move |data: &mut [Vertex]| {
-                    for index in indices.iter() {
-                        data[*index].color = Color::RED.to_array();
-                    }
-                });
-
-                let action = ModifyAction::new(0, handle.size(), mod_action);
-
-                handle.send_action(action).expect("Failed to send action");
-            }
-        }
-    }
-
-    fn drag(&self, event: rether::picking::interact::DragEvent) {
-        println!("Clicked");
-    }
-
-    fn scroll(&self, event: rether::picking::interact::ScrollEvent) {
-        println!("Clicked");
-    }
-}
-
-impl Model<Vertex, DynamicAllocHandle<Vertex>> for CADModel {
-    fn wake(&self, handle: Arc<DynamicAllocHandle<Vertex>>) {
-        match self {
-            Self::Root { model, .. } => model.wake(handle),
-            Self::Face { model, .. } => model.wake(handle),
-        }
-    }
-
-    fn transform(&self) -> rether::Transform {
-        match self {
-            Self::Root { model, .. } => model.transform(),
-            Self::Face { model, .. } => model.transform(),
-        }
-    }
-
-    fn state(&self) -> &parking_lot::RwLock<ModelState<Vertex, DynamicAllocHandle<Vertex>>> {
-        match self {
-            Self::Root { model, .. } => model.state(),
-            Self::Face { model, .. } => model.state(),
-        }
-    }
-}
-
-impl ScaleModel for CADModel {
-    fn scale(&self, scale: Vec3, center: Option<Vec3>) {
-        match self {
-            Self::Root {
-                model,
-                bounding_box,
-            } => model.scale(scale, Some(bounding_box.center())),
-            Self::Face { model, .. } => model.scale(scale, center),
-        }
-    }
-}
-
-impl TranslateModel for CADModel {
-    fn translate(&self, translation: Vec3) {
+impl Translate for CADModel {
+    fn translate(&mut self, translation: Vec3) {
         match self {
             Self::Root { model, .. } => model.translate(translation),
-            Self::Face { model, .. } => model.translate(translation),
+            Self::Face { face } => face.translate(translation),
         }
     }
 }
 
-impl RotateModel for CADModel {
-    fn rotate(&self, rotation: glam::Quat, center: Option<Vec3>) {
+impl Rotate for CADModel {
+    fn rotate(&mut self, rotation: glam::Quat) {
         match self {
-            Self::Root {
-                model,
-                bounding_box,
-            } => {
-                model.rotate(rotation, Some(bounding_box.center()));
-            }
-            Self::Face { model, face } => {
-                model.rotate(rotation, center);
-                face.write().rotate(rotation, center.unwrap_or(Vec3::ZERO));
-            }
+            Self::Root { model, .. } => model.rotate(rotation),
+            Self::Face { face } => face.rotate(rotation),
         }
     }
 }
@@ -793,6 +655,10 @@ impl PolygonFace {
             max,
         }
     }
+
+    pub fn size(&self) -> BufferAddress {
+        self.indices.len() as BufferAddress
+    }
 }
 
 impl Hitbox for PolygonFace {
@@ -846,10 +712,25 @@ impl Hitbox for PolygonFace {
 }
 
 impl Rotate for PolygonFace {
-    fn rotate(&mut self, rotation: glam::Quat, center: Vec3) {
-        self.plane.point = rotation * (self.plane.point - center) + center;
+    fn rotate(&mut self, rotation: glam::Quat) {
+        self.plane.normal = rotation * self.plane.normal;
+        self.plane.point = rotation * self.plane.point;
 
-        self.min = rotation * (self.min - center) + center;
-        self.max = rotation * (self.max - center) + center;
+        self.min = rotation * self.min;
+        self.max = rotation * self.max;
+    }
+}
+
+impl Translate for PolygonFace {
+    fn translate(&mut self, translation: Vec3) {
+        self.plane.point += translation;
+        self.min += translation;
+        self.max += translation;
+    }
+}
+
+impl Scale for PolygonFace {
+    fn scale(&mut self, _scale: Vec3) {
+        panic!("Not implemented")
     }
 }

@@ -1,19 +1,22 @@
 use glam::{vec3, vec4, Vec2, Vec4};
-use rether::{alloc::StaticAllocHandle, model::BaseModel, vertex::Vertex, SimpleGeometry};
+use rether::vertex::Vertex;
 
-use crate::geometry::{mesh::construct_triangle_vertices, BoundingBox};
+use crate::{
+    geometry::{mesh::construct_triangle_vertices, BoundingBox},
+    model::Model,
+};
 
 #[derive(Debug)]
 pub struct Volume {
-    pub bed: BaseModel<Vertex, StaticAllocHandle<Vertex>>,
-    pub grid_model: BaseModel<Vertex, StaticAllocHandle<Vertex>>,
-    pub r#box: BaseModel<Vertex, StaticAllocHandle<Vertex>>,
+    pub bed: Model<Vertex>,
+    pub grid_model: Model<Vertex>,
+    pub r#box: Model<Vertex>,
 
     pub bounding_box: BoundingBox,
 }
 
-impl Default for Volume {
-    fn default() -> Self {
+impl Volume {
+    pub fn instance() -> Self {
         let bounding_box =
             BoundingBox::new(vec3(-110.0, -100.0, -110.0), vec3(110.0, 150.0, 110.0));
 
@@ -33,12 +36,27 @@ impl Default for Volume {
 
         let grid = Grid::from(bounding_box);
 
+        let mut bed = Model::create();
+        bed.awaken(&vertices);
+
+        let mut r#box = Model::create();
+        r#box.awaken(&visual.wires);
+
+        let mut grid_model = Model::create();
+        grid_model.awaken(&grid.to_visual(10.0));
+
         Self {
-            bed: BaseModel::simple(SimpleGeometry::init(vertices.to_vec())),
-            r#box: BaseModel::simple(SimpleGeometry::init(visual.wires.to_vec())),
-            grid_model: BaseModel::simple(SimpleGeometry::init(grid.to_visual(10.0))),
+            bed,
+            r#box,
+            grid_model,
             bounding_box,
         }
+    }
+
+    pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+        self.bed.render(render_pass);
+        self.r#box.render(render_pass);
+        self.grid_model.render(render_pass);
     }
 }
 

@@ -126,14 +126,14 @@ impl ApplicationState {
             .viewer
             .toolpath_server
             .write()
-            .update(self.global_state.clone(), &self.wgpu_context)
+            .update(self.global_state.clone())
             .expect("Failed to update toolpath server");
 
         self.global_state
             .viewer
             .model_server
             .write()
-            .update(self.global_state.clone(), &self.wgpu_context)
+            .update(self.global_state.clone())
             .expect("Failed to update model server");
 
         self.ui_adapter.update(self.start_time);
@@ -265,6 +265,9 @@ impl ApplicationHandler<RootEvent> for Application {
 
         let wgpu_context = WgpuContext::new(window.clone()).unwrap();
 
+        model::set_device(wgpu_context.device.clone());
+        model::set_queue(wgpu_context.queue.clone());
+
         let (_, _, render_adapter) = render::RenderAdapter::create(&wgpu_context);
 
         let (_, camera_event_writer, camera_adapter) = camera::CameraAdapter::create(&wgpu_context);
@@ -289,10 +292,7 @@ impl ApplicationHandler<RootEvent> for Application {
 
             camera_event_writer,
 
-            viewer: Shared::new(viewer::Viewer::new(
-                &wgpu_context.device,
-                &wgpu_context.queue,
-            )),
+            viewer: Shared::new(viewer::Viewer::instance(&wgpu_context)),
 
             fiber_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
             topology_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),

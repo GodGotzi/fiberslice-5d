@@ -1,6 +1,4 @@
-use glam::vec3;
-use rether::picking::interact::InteractiveModel;
-use rether::{model::TranslateModel, picking::interact::ClickEvent};
+use rether::picking::interact::{ClickEvent, InteractiveModel};
 use tokio::task::JoinHandle;
 use winit::event::{DeviceEvent, ElementState, WindowEvent};
 
@@ -73,32 +71,6 @@ impl FrameHandle<'_, RootEvent, (), &CameraResult> for PickingAdapter {
 
                             {
                                 let server = global_state.viewer.toolpath_server.read();
-
-                                let model = server.root_hitbox().check_hit(&ray);
-
-                                if let Some(_model) = model {
-                                    let focused = server.get_focused().unwrap_or("");
-
-                                    if let Some(toolpath) = server.get_toolpath(focused) {
-                                        println!("PickingAdapter: Focused: {}", focused);
-
-                                        toolpath.handle.clicked(ClickEvent {
-                                            action: rether::picking::interact::Action::Mouse(
-                                                *button,
-                                            ),
-                                        })
-                                    }
-                                }
-
-                                let server = global_state.viewer.model_server.read();
-
-                                let model = server.root_hitbox().check_hit(&ray);
-
-                                if let Some(model) = model {
-                                    model.clicked(ClickEvent {
-                                        action: rether::picking::interact::Action::Mouse(*button),
-                                    });
-                                }
                             }
 
                             println!("PickingAdapter: Picking took {:?}", now.elapsed());

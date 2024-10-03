@@ -1,7 +1,7 @@
 use std::{fmt::Debug, str::Lines};
 
 use glam::Vec3;
-use rether::{model::TranslateModel, SimpleGeometry};
+use rether::Translate;
 use tree::ToolpathTree;
 
 use self::{
@@ -10,14 +10,11 @@ use self::{
     path::{Line, RawPath},
 };
 
-use crate::geometry::BoundingBox;
-
 pub mod instruction;
 pub mod mesh;
 pub mod movement;
 pub mod parser;
 pub mod path;
-pub mod pipeline;
 pub mod state;
 pub mod tree;
 pub mod vertex;
@@ -57,7 +54,7 @@ impl Toolpath {
 
         // let mut layers: HashMap<usize, LayerModel> = HashMap::new();
 
-        let mut root = ToolpathTree::create_root(BoundingBox::default(), SimpleGeometry::empty());
+        let mut root = ToolpathTree::create_root();
         for modul in raw_path.moduls {
             lines.extend(modul.lines.clone());
 

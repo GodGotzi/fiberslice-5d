@@ -117,7 +117,7 @@ impl Translate for BoundingBox {
 }
 
 impl Rotate for BoundingBox {
-    fn rotate(&mut self, rotation: glam::Quat, _center: Vec3) {
+    fn rotate(&mut self, rotation: glam::Quat) {
         let center = self.center();
 
         self.min = rotation * (self.min - center) + center;

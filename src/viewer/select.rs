@@ -1,6 +1,7 @@
-use std::sync::Arc;
+use glam::Mat4;
+use rether::{vertex::Vertex, Transform};
 
-use rether::{alloc::DynamicAllocHandle, model::Model, vertex::Vertex, Transform};
+use crate::{model::Model, prelude::SharedMut};
 
 #[derive(Debug)]
 pub enum TransformResponse {
@@ -12,7 +13,7 @@ pub enum TransformResponse {
 
 #[derive(Default)]
 pub struct Selector {
-    selected: Vec<Arc<dyn Model<Vertex, DynamicAllocHandle<Vertex>>>>,
+    selected: Vec<SharedMut<Model<Vertex>>>,
 }
 
 impl std::fmt::Debug for Selector {
@@ -24,67 +25,31 @@ impl std::fmt::Debug for Selector {
 }
 
 impl Selector {
-    pub fn select(&mut self, model: &Arc<dyn Model<Vertex, DynamicAllocHandle<Vertex>>>) {
+    pub fn select(&mut self, model: &SharedMut<Model<Vertex>>) {
         self.selected.push(model.clone());
     }
 
-    pub fn deselect(&mut self, model: &Arc<dyn Model<Vertex, DynamicAllocHandle<Vertex>>>) {
-        self.selected.retain(|m| !Arc::ptr_eq(m, model));
+    pub fn deselect(&mut self, model: &SharedMut<Model<Vertex>>) {
+        self.selected.retain(|m| !SharedMut::ptr_eq(m, model));
     }
 
-    pub fn transform(&self, mut r#fn: impl FnMut(&mut Transform) -> TransformResponse) {
+    pub fn transform(&mut self, mut r#fn: impl FnMut(&mut Mat4) -> bool) {
         if self.selected.len() == 1 {
-            let mut transform = self.selected[0].transform();
-
-            let before = transform.clone();
+            let mut transform = self.selected[0].read().get_transform();
 
             let response = r#fn(&mut transform);
 
-            let translation = transform.translation - before.translation;
-            let rotation = transform.rotation * before.rotation;
-            let scale = transform.scale / before.scale;
-
-            match response {
-                TransformResponse::None => (),
-                TransformResponse::Translate => {
-                    if translation != glam::Vec3::ZERO {
-                        self.selected[0].translate(translation);
-                    }
-                }
-                TransformResponse::Rotate => {
-                    if rotation != glam::Quat::IDENTITY {
-                        self.selected[0].rotate(rotation, None);
-                    }
-                }
-                TransformResponse::Scale => {
-                    if scale != glam::Vec3::ONE {
-                        self.selected[0].scale(scale, None);
-                    }
-                }
+            if response {
+                self.selected[0].write().transform(transform);
             }
         } else {
-            let mut transform = Transform::default();
+            let mut transform = Mat4::from_translation(glam::Vec3::ZERO);
 
             let response = r#fn(&mut transform);
 
-            for model in &self.selected {
-                match response {
-                    TransformResponse::None => (),
-                    TransformResponse::Translate => {
-                        if transform.translation != glam::Vec3::ZERO {
-                            model.translate(transform.translation);
-                        }
-                    }
-                    TransformResponse::Rotate => {
-                        if transform.rotation != glam::Quat::IDENTITY {
-                            model.rotate(transform.rotation, None);
-                        }
-                    }
-                    TransformResponse::Scale => {
-                        if transform.scale != glam::Vec3::ONE {
-                            model.scale(transform.scale, None);
-                        }
-                    }
+            if response {
+                for model in &self.selected {
+                    model.write().transform(transform);
                 }
             }
         }
@@ -94,7 +59,7 @@ impl Selector {
         self.selected.clear();
     }
 
-    pub fn selected(&self) -> &[Arc<dyn Model<Vertex, DynamicAllocHandle<Vertex>>>] {
+    pub fn selected(&self) -> &[SharedMut<Model<Vertex>>] {
         &self.selected
     }
 }

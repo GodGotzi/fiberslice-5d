@@ -4,6 +4,8 @@ use egui_code_editor::Syntax;
 use parking_lot::RwLock;
 use rether::vertex::Vertex;
 
+use crate::prelude::WgpuContext;
+
 pub mod select;
 pub mod server;
 pub mod toolpath;
@@ -36,6 +38,11 @@ impl GCodeSyntax for Syntax {
     }
 }
 
+pub trait Server {
+    fn instance(context: &WgpuContext) -> Self;
+    fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>);
+}
+
 #[derive(Debug)]
 pub struct Viewer {
     pub env_server: RwLock<server::EnvironmentServer>,
@@ -45,11 +52,11 @@ pub struct Viewer {
 }
 
 impl Viewer {
-    pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+    pub fn instance(context: &WgpuContext) -> Self {
         Self {
-            env_server: RwLock::new(server::EnvironmentServer::new(device, queue)),
-            toolpath_server: RwLock::new(server::ToolpathServer::new(device)),
-            model_server: RwLock::new(server::CADModelServer::new(device)),
+            env_server: RwLock::new(server::EnvironmentServer::instance(context)),
+            toolpath_server: RwLock::new(server::ToolpathServer::instance(context)),
+            model_server: RwLock::new(server::CADModelServer::instance(context)),
             select: RwLock::new(select::Selector::default()),
         }
     }

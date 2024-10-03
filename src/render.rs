@@ -8,6 +8,7 @@ use crate::{
     camera::{self, CameraResult, CameraUniform},
     prelude::*,
     ui::UiUpdateOutput,
+    viewer::Server,
     GlobalState, RootEvent,
 };
 
@@ -75,14 +76,9 @@ impl RenderAdapter {
         viewport: &Viewport,
         global_state: &GlobalState<RootEvent>,
     ) {
-        let toolpath_server = global_state.viewer.toolpath_server.read();
-        let toolpath_server_buffer = toolpath_server.read_buffer();
-        let widget_server_lock = global_state.viewer.env_server.read();
-        let widget_buffer = widget_server_lock.read_buffer();
-        let widget_line_buffer = widget_server_lock.read_line_buffer();
-
-        let model_server = global_state.viewer.model_server.read();
-        let model_server_buffer = model_server.read_buffer();
+        let toolpath_server_read = global_state.viewer.toolpath_server.read();
+        let env_server_read = global_state.viewer.env_server.read();
+        let model_server_read = global_state.viewer.model_server.read();
 
         let clear_color = wgpu::Color {
             r: 0.7,
@@ -125,15 +121,19 @@ impl RenderAdapter {
             render_pass.set_bind_group(0, &self.render_state.camera_bind_group, &[]);
             render_pass.set_bind_group(1, &self.render_state.light_bind_group, &[]);
 
-            render_pass.set_pipeline(&self.back_cull_pipline);
-            toolpath_server_buffer.render(&mut render_pass);
-            model_server_buffer.render(&mut render_pass);
-
-            render_pass.set_pipeline(&self.no_cull_pipline);
-            widget_buffer.render(&mut render_pass);
-
-            render_pass.set_pipeline(&self.line_pipline);
-            widget_line_buffer.render(&mut render_pass);
+            global_state.ui_state.mode.read_with_fn(|mode| match mode {
+                Mode::Preview => {
+                    render_pass.set_pipeline(&self.back_cull_pipline);
+                    env_server_read.render(&mut render_pass);
+                    toolpath_server_read.render(&mut render_pass);
+                }
+                Mode::Prepare => {
+                    render_pass.set_pipeline(&self.back_cull_pipline);
+                    env_server_read.render(&mut render_pass);
+                    model_server_read.render(&mut render_pass);
+                }
+                Mode::ForceAnalytics => todo!(),
+            });
         }
     }
 
@@ -144,8 +144,7 @@ impl RenderAdapter {
         viewport: &Viewport,
         global_state: &GlobalState<RootEvent>,
     ) {
-        let widget_server_lock = global_state.viewer.env_server.read();
-        let widget_line_cover_buffer = widget_server_lock.read_line_cover_buffer();
+        let env_server_read = global_state.viewer.env_server.read();
 
         let (x, y, width, height) = *viewport;
 
@@ -182,7 +181,7 @@ impl RenderAdapter {
             render_pass.set_bind_group(1, &self.render_state.light_bind_group, &[]);
 
             render_pass.set_pipeline(&self.line_pipline);
-            widget_line_cover_buffer.render(&mut render_pass);
+            env_server_read.render(&mut render_pass);
         }
     }
 }

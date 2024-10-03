@@ -1,9 +1,8 @@
 use glam::{Vec3, Vec4};
 use rether::{
-    model::BufferLocation,
     picking::{Hitbox, Ray},
     vertex::Vertex,
-    Rotate, Scale, SimpleGeometry, Translate,
+    Rotate, Scale, Translate,
 };
 
 use crate::geometry::{
@@ -100,7 +99,7 @@ impl Translate for ProfileCross {
 }
 
 impl Rotate for ProfileCross {
-    fn rotate(&mut self, rotation: glam::Quat, _center: Vec3) {
+    fn rotate(&mut self, rotation: glam::Quat) {
         self.a = rotation * self.a;
         self.c = rotation * self.c;
         self.b = rotation * self.b;
@@ -337,13 +336,7 @@ impl PathModul {
                 bounding_box.expand_min(path_hitbox.get_min());
                 bounding_box.expand_max(path_hitbox.get_max());
 
-                let sub_model = ToolpathTree::create_path(
-                    path_hitbox,
-                    BufferLocation {
-                        offset: vertices.len(),
-                        size: path_mesh_vertices.len(),
-                    },
-                );
+                let sub_model = ToolpathTree::create_path(path_hitbox);
 
                 sub_handles.push(sub_model);
 
@@ -359,7 +352,7 @@ impl PathModul {
             }
         }
 
-        ToolpathTree::create_root_with_models(
+        ToolpathTree::create_root_with_children(
             bounding_box,
             SimpleGeometry::init(vertices),
             sub_handles,
@@ -468,13 +461,13 @@ impl Translate for PathHitbox {
 }
 
 impl Rotate for PathHitbox {
-    fn rotate(&mut self, rotation: glam::Quat, center: Vec3) {
-        self.north_west.rotate(rotation, center);
-        self.north_east.rotate(rotation, center);
-        self.south_west.rotate(rotation, center);
-        self.south_east.rotate(rotation, center);
+    fn rotate(&mut self, rotation: glam::Quat) {
+        self.north_west.rotate(rotation);
+        self.north_east.rotate(rotation);
+        self.south_west.rotate(rotation);
+        self.south_east.rotate(rotation);
 
-        self.visual.rotate(rotation, center);
+        self.visual.rotate(rotation);
     }
 }
 

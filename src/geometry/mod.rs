@@ -11,7 +11,7 @@ use rether::{
     {Rotate, Scale, Translate},
 };
 
-use crate::viewer::gcode::mesh::ProfileCross;
+use crate::viewer::toolpath::mesh::ProfileCross;
 
 #[derive(Debug, Clone, Copy)]
 pub struct QuadFace {
@@ -30,7 +30,7 @@ impl Translate for QuadFace {
 }
 
 impl Rotate for QuadFace {
-    fn rotate(&mut self, rotation: glam::Quat, _center: Vec3) {
+    fn rotate(&mut self, rotation: glam::Quat) {
         self.normal = rotation * self.normal;
         self.point = rotation * self.point;
     }
@@ -117,9 +117,9 @@ impl Translate for ProfileExtrusion {
 }
 
 impl Rotate for ProfileExtrusion {
-    fn rotate(&mut self, rotation: glam::Quat, center: Vec3) {
-        self.profile_start.rotate(rotation, center);
-        self.profile_end.rotate(rotation, center);
+    fn rotate(&mut self, rotation: glam::Quat) {
+        self.profile_start.rotate(rotation);
+        self.profile_end.rotate(rotation);
     }
 }
 

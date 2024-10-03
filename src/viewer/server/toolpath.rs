@@ -1,33 +1,18 @@
-use core::panic;
-use std::{
-    collections::{hash_map::Iter, HashMap},
-    path::Path,
-    sync::Arc,
-};
+use std::path::Path;
 
-use rether::{
-    alloc::DynamicAllocHandle,
-    model::{geometry::Geometry, Model},
-    picking::{HitboxNode, HitboxRoot},
-    vertex::Vertex,
-    Buffer,
-};
+use rether::picking::{HitboxNode, HitboxRoot};
+use tokio::sync::oneshot::Receiver;
+use tokio::task::JoinHandle;
+use wgpu::util::DeviceExt;
 
-use rether::alloc::AllocHandle;
-use tokio::{
-    sync::oneshot::{error::TryRecvError, Receiver},
-    task::JoinHandle,
-};
-use uni_path::PathBuf;
-
+use crate::viewer::toolpath::vertex::{ToolpathContext, ToolpathVertex};
+use crate::viewer::Server;
 use crate::{
-    geometry::BoundingBox, prelude::WgpuContext, viewer::toolpath::pipeline::ToolpathBuffer,
-    GlobalState, RootEvent,
+    geometry::BoundingBox, prelude::WgpuContext, slicer::print_type::PrintType, GlobalState,
+    RootEvent,
 };
 
-use crate::viewer::toolpath::{
-    self, tree::ToolpathTree, DisplaySettings, MeshSettings, Toolpath, WireModel,
-};
+use crate::viewer::toolpath::{self, tree::ToolpathTree, DisplaySettings, MeshSettings};
 
 // const MAIN_LOADED_TOOLPATH: &str = "main"; // HACK: This is a solution to ease the dev when only one toolpath is loaded which is the only supported(for now)
 
@@ -40,49 +25,157 @@ pub enum Error {
 }
 
 #[derive(Debug)]
-pub struct ToolpathHandle {
-    pub path: PathBuf,
-    pub code: String,
-    pub line_breaks: Vec<usize>,
-
-    pub wire_model: WireModel,
-    pub handle: Arc<ToolpathTree>,
-}
-
-impl ToolpathHandle {
-    pub fn code(&self) -> &String {
-        &self.code
-    }
-}
-
-// TODO also use vertex indices
-#[derive(Debug)]
 pub struct ToolpathServer {
-    queue: Option<(Receiver<Toolpath>, JoinHandle<()>)>,
+    queue: Option<(Receiver<ToolpathTree>, JoinHandle<()>)>,
 
-    buffer: ToolpathBuffer,
+    pipeline: wgpu::RenderPipeline,
+    toolpath: Option<ToolpathTree>,
+    hitbox: HitboxRoot<ToolpathTree>,
 
-    root_hitbox: HitboxRoot<ToolpathTree>,
-
-    parts: HashMap<String, ToolpathHandle>,
-    focused: Option<String>,
+    toolpath_context_buffer: wgpu::Buffer,
+    toolpath_context: ToolpathContext,
+    toolpath_context_bind_group: wgpu::BindGroup,
 }
 
-impl ToolpathServer {
-    pub fn new(
-        context: &WgpuContext,
-        camera_bind_group_layout: &wgpu::BindGroupLayout,
-        light_bind_group_layout: &wgpu::BindGroupLayout,
-    ) -> Self {
+impl Server for ToolpathServer {
+    fn instance(context: &WgpuContext) -> Self {
+        let toolpath_context = ToolpathContext::default();
+
+        let toolpath_context_buffer =
+            context
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Light VB"),
+                    contents: bytemuck::cast_slice(&[toolpath_context]),
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                });
+
+        let toolpath_bind_group_layout =
+            context
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    entries: &[wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    }],
+                    label: None,
+                });
+
+        let toolpath_context_bind_group =
+            context
+                .device
+                .create_bind_group(&wgpu::BindGroupDescriptor {
+                    layout: &toolpath_bind_group_layout,
+                    entries: &[wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: toolpath_context_buffer.as_entire_binding(),
+                    }],
+                    label: None,
+                });
+
+        let shader = context
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Toolpath Shader"),
+                source: wgpu::ShaderSource::Wgsl(include_str!("toolpath_shader.wgsl").into()),
+            });
+
+        let render_pipeline_layout =
+            context
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Render Pipeline Layout"),
+                    bind_group_layouts: &[
+                        &context.camera_bind_group_layout,
+                        &context.light_bind_group_layout,
+                        &toolpath_bind_group_layout,
+                    ],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = context
+            .device
+            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("Render Pipeline"),
+                layout: Some(&render_pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: "vs_main",
+                    buffers: &[ToolpathVertex::desc()],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: "fs_main",
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: context.surface_format,
+                        blend: Some(wgpu::BlendState {
+                            color: wgpu::BlendComponent {
+                                src_factor: wgpu::BlendFactor::SrcAlpha,
+                                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                                operation: wgpu::BlendOperation::Add,
+                            },
+                            alpha: wgpu::BlendComponent::OVER,
+                        }),
+
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Cw,
+                    cull_mode: Some(wgpu::Face::Back),
+                    // Requires Features::NON_FILL_POLYGON_MODE
+                    polygon_mode: wgpu::PolygonMode::Fill,
+                    // Requires Features::DEPTH_CLIP_CONTROL
+                    unclipped_depth: false,
+                    // Requires Features::CONSERVATIVE_RASTERIZATION
+                    conservative: false,
+                },
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: wgpu::TextureFormat::Depth32Float,
+                    depth_write_enabled: true,
+                    depth_compare: wgpu::CompareFunction::Less,
+                    stencil: wgpu::StencilState::default(),
+                    bias: wgpu::DepthBiasState::default(),
+                }),
+                multisample: wgpu::MultisampleState {
+                    count: 1,
+                    ..Default::default()
+                },
+                multiview: None,
+                cache: None,
+            });
+
         Self {
             queue: None,
-            buffer: ToolpathBuffer::new(context, camera_bind_group_layout, light_bind_group_layout),
-            root_hitbox: HitboxRoot::root(),
-            parts: HashMap::new(),
-            focused: None,
+            toolpath: None,
+            hitbox: HitboxRoot::root(),
+            pipeline,
+            toolpath_context,
+            toolpath_context_bind_group,
+            toolpath_context_buffer,
         }
     }
 
+    fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+        if let Some(toolpath) = &self.toolpath {
+            render_pass.set_pipeline(&self.pipeline);
+            render_pass.set_bind_group(4, &self.toolpath_context_bind_group, &[]);
+            toolpath.render(render_pass);
+        }
+    }
+}
+
+impl ToolpathServer {
     pub fn load<P>(&mut self, path: P)
     where
         P: AsRef<Path>,
@@ -107,169 +200,54 @@ impl ToolpathServer {
                 &display_settings,
             );
 
-            tx.send(part).unwrap();
+            tx.send(ToolpathTree::create_root()).unwrap();
         });
 
         self.queue = Some((rx, handle));
     }
 
-    pub fn insert(
-        &mut self,
-        part: Toolpath,
-        wgpu_context: &WgpuContext,
-    ) -> Result<Arc<ToolpathTree>, Error> {
-        let path: PathBuf = part.origin_path.into();
-        let file_name = if let Some(path) = path.file_name() {
-            path.to_string()
-        } else {
-            path.to_string()
-        };
-
-        let mut name = file_name.clone();
-
-        let mut counter: u8 = 1;
-
-        while self.parts.contains_key(&name) {
-            name = format!("{} ({counter})", file_name);
-
-            counter += 1;
-        }
-
-        let handle = {
-            let model_state = &*part.model.state().read();
-
-            let data = match model_state {
-                rether::model::ModelState::Dormant(geometry) => geometry.build_data(),
-                _ => panic!("Unsupported geometry"),
-            };
-
-            self.buffer
-                .allocate_init(&name, data, &wgpu_context.device, &wgpu_context.queue)
-        };
-
-        part.model.wake(handle.clone());
-
-        let code = part.raw.join("\n");
-
-        let line_breaks = code
-            .char_indices()
-            .filter_map(|(index, c)| if c == '\n' { Some(index) } else { None })
-            .collect::<Vec<usize>>();
-
-        let handle = Arc::new(part.model);
-
-        self.parts.insert(
-            name.clone(),
-            ToolpathHandle {
-                path,
-                code,
-                line_breaks,
-                wire_model: part.wire_model,
-                handle: handle.clone(),
-            },
-        );
-
-        self.focused = Some(name.clone());
-
-        Ok(handle.clone())
-    }
-
-    pub fn remove(&mut self, name: String, wgpu_context: &WgpuContext) {
-        if let Some(part) = self.parts.remove(&name) {
-            let state = part.handle.state();
-
-            {
-                let handle = match &*state.read() {
-                    rether::model::ModelState::Awake(handle) => handle.clone(),
-                    rether::model::ModelState::Destroyed => panic!("Already destroyed"),
-                    _ => panic!("Not alive"),
-                };
-
-                self.buffer
-                    .free(handle.id(), &wgpu_context.device, &wgpu_context.queue);
-            }
-        }
-    }
-
-    pub fn update(
-        &mut self,
-        global_state: GlobalState<RootEvent>,
-        wgpu_context: &WgpuContext,
-    ) -> Result<(), Error> {
-        if let Some((rx, _)) = &self.queue {
-            let mut results = Vec::new();
-
+    pub fn update(&mut self, global_state: GlobalState<RootEvent>) -> Result<(), Error> {
+        if let Some((rx, _)) = &mut self.queue {
             if let Ok(toolpath) = rx.try_recv() {
-                let handle = self.insert(toolpath, wgpu_context)?;
-
                 global_state
                     .ui_event_writer
                     .send(crate::ui::UiEvent::ShowSuccess("Gcode loaded".to_string()));
 
                 global_state.camera_event_writer.send(
                     crate::camera::CameraEvent::UpdatePreferredDistance(BoundingBox::new(
-                        handle.get_min(),
-                        handle.get_max(),
+                        toolpath.get_min(),
+                        toolpath.get_max(),
                     )),
                 );
 
-                self.root_hitbox.add_node(handle);
+                self.toolpath = Some(toolpath);
+
+                // self.hitbox.add_node();
             }
         }
-
-        self.buffer
-            .update(&wgpu_context.device, &wgpu_context.queue);
 
         Ok(())
     }
 
-    pub fn iter(&self) -> Iter<'_, String, ToolpathHandle> {
-        self.parts.iter()
+    pub fn set_visibility(&mut self, value: u32) {
+        self.toolpath_context.visibility = value;
     }
 
-    pub fn iter_keys(&self) -> impl Iterator<Item = &String> {
-        self.parts.keys()
-    }
+    pub fn set_visibility_type(&mut self, ty: PrintType, visible: bool) {
+        let index = ty as usize;
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&String, &mut ToolpathHandle)> {
-        self.parts.iter_mut()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.parts.is_empty()
-    }
-
-    pub fn len(&self) -> usize {
-        self.parts.len()
-    }
-
-    pub fn kill(&mut self) {
-        for (_, handle) in self.queue.drain(..) {
-            handle.abort();
+        if visible {
+            self.toolpath_context.visibility |= 1 << index;
+        } else {
+            self.toolpath_context.visibility &= !(1 << index);
         }
     }
 
-    pub fn get_toolpath(&self, name: &str) -> Option<&ToolpathHandle> {
-        self.parts.get(name)
+    pub fn set_min_layer(&mut self, min: u32) {
+        self.toolpath_context.min_layer = min;
     }
 
-    pub fn get_toolpath_mut(&mut self, name: &str) -> Option<&mut ToolpathHandle> {
-        self.parts.get_mut(name)
-    }
-
-    pub fn get_focused(&self) -> Option<&str> {
-        self.focused.as_deref()
-    }
-
-    pub fn get_focused_mut(&mut self) -> &mut Option<String> {
-        &mut self.focused
-    }
-
-    pub fn read_buffer(&self) -> &Buffer<Vertex, rether::alloc::BufferDynamicAllocator<Vertex>> {
-        &self.buffer
-    }
-
-    pub fn root_hitbox(&self) -> &HitboxRoot<ToolpathTree> {
-        &self.root_hitbox
+    pub fn set_max_layer(&mut self, max: u32) {
+        self.toolpath_context.max_layer = max;
     }
 }

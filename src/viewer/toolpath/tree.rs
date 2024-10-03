@@ -1,302 +1,156 @@
-use parking_lot::RwLock;
+use std::{ops::Deref, sync::Arc};
+
 use rether::{
-    alloc::DynamicAllocHandle,
-    model::{
-        geometry::Geometry, BufferLocation, Expandable, Model, ModelState, RotateModel, ScaleModel,
-        TranslateModel, TreeModel,
-    },
     picking::{interact::InteractiveModel, Hitbox, HitboxNode},
-    vertex::Vertex,
     Rotate, Scale, Translate,
 };
+use wgpu::{BufferAddress, Queue};
 
-use crate::geometry::BoundingBox;
+use crate::{geometry::BoundingBox, model::Model};
 
 use super::{mesh::PathHitbox, vertex::ToolpathVertex};
 
 #[derive(Debug)]
 pub enum ToolpathTree {
     Root {
-        model: TreeModel<Self, ToolpathVertex, DynamicAllocHandle<ToolpathVertex>>,
-        bounding_box: RwLock<BoundingBox>,
+        model: Model<ToolpathVertex>,
+        bounding_box: BoundingBox,
+        children: Vec<Self>,
+        size: BufferAddress,
     },
     Node {
-        model: TreeModel<Self, ToolpathVertex, DynamicAllocHandle<ToolpathVertex>>,
-        bounding_box: RwLock<BoundingBox>,
+        offset: BufferAddress,
+        size: BufferAddress,
+        bounding_box: BoundingBox,
+        children: Vec<Self>,
     },
     Path {
-        model: TreeModel<Self, ToolpathVertex, DynamicAllocHandle<ToolpathVertex>>,
-        path_box: RwLock<Box<PathHitbox>>,
+        offset: BufferAddress,
+        size: BufferAddress,
+        path_box: PathHitbox,
     },
+}
+
+impl Deref for ToolpathTree {
+    type Target = Model<ToolpathVertex>;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Root { model, .. } => model,
+            Self::Node { .. } => panic!("Cannot deref node"),
+            Self::Path { .. } => panic!("Cannot deref path"),
+        }
+    }
 }
 
 impl ToolpathTree {
-    pub fn create_root<M: Into<ModelState<ToolpathVertex, DynamicAllocHandle<ToolpathVertex>>>>(
+    pub fn create_root() -> Self {
+        Self::Root {
+            model: Model::create(),
+            children: Vec::new(),
+            bounding_box: BoundingBox::default(),
+            size: 0,
+        }
+    }
+
+    pub fn create_root_with_children<T>(
+        device: &wgpu::Device,
+        queue: Arc<Queue>,
         bounding_box: BoundingBox,
-        geometry: M,
+        children: Vec<Self>,
     ) -> Self {
         Self::Root {
-            model: TreeModel::create_root(geometry),
-            bounding_box: RwLock::new(bounding_box),
+            model: Model::create(),
+            children,
+            bounding_box: BoundingBox::default(),
+            size: 0,
         }
     }
 
-    pub fn create_root_with_models<
-        M: Into<ModelState<ToolpathVertex, DynamicAllocHandle<ToolpathVertex>>>,
-    >(
-        bounding_box: BoundingBox,
-        geometry: M,
-        models: Vec<ToolpathTree>,
-    ) -> Self {
-        Self::Root {
-            model: TreeModel::create_root_with_models(geometry, models),
-            bounding_box: RwLock::new(bounding_box),
-        }
-    }
-
-    pub fn create_node(bounding_box: BoundingBox, location: BufferLocation) -> Self {
+    pub fn create_node() -> Self {
         Self::Node {
-            model: TreeModel::create_node(location),
-            bounding_box: RwLock::new(bounding_box),
+            offset: 0,
+            size: 0,
+            children: Vec::new(),
+            bounding_box: BoundingBox::default(),
         }
     }
 
-    pub fn create_node_with_models(
-        bounding_box: BoundingBox,
-        location: BufferLocation,
-        models: Vec<ToolpathTree>,
-    ) -> Self {
+    pub fn create_node_with_children(children: Vec<Self>) -> Self {
         Self::Node {
-            model: TreeModel::create_node_with_models(location, models),
-            bounding_box: RwLock::new(bounding_box),
+            offset: 0,
+            size: 0,
+            children,
+            bounding_box: BoundingBox::default(),
         }
     }
 
-    pub fn create_path(path_box: PathHitbox, location: BufferLocation) -> Self {
+    pub fn create_path(path_box: PathHitbox) -> Self {
         Self::Path {
-            model: TreeModel::create_node(location),
-            path_box: RwLock::new(Box::new(path_box)),
+            offset: 0,
+            size: 0,
+            path_box,
         }
     }
 
-    pub fn add_child(&mut self, child: Self) {
-        let other_bounding_box = match &child {
-            Self::Root { bounding_box, .. } => *bounding_box.read(),
-            Self::Node { bounding_box, .. } => *bounding_box.read(),
-            Self::Path { path_box, .. } => {
-                let min = path_box.read().get_min();
-                let max = path_box.read().get_max();
-                BoundingBox::new(min, max)
-            }
-        };
-
-        let model = match self {
+    pub fn extend_root(&mut self, child: Self) {
+        match self {
             Self::Root {
-                model,
+                children,
                 bounding_box,
+                size,
+                ..
             } => {
-                bounding_box.get_mut().expand(&other_bounding_box);
-                model
+                *size += child.size();
+                bounding_box.expand_point(child.get_min());
+                bounding_box.expand_point(child.get_max());
+                children.push(child);
             }
+            Self::Node { .. } => panic!("Cannot extend node"),
+            Self::Path { .. } => panic!("Cannot extend path"),
+        }
+    }
+
+    pub fn extend_node(&mut self, mut child: Self) {
+        match self {
+            Self::Root { .. } => panic!("Cannot extend root"),
             Self::Node {
-                model,
+                children,
                 bounding_box,
+                size,
+                ..
             } => {
-                bounding_box.get_mut().expand(&other_bounding_box);
-                model
+                child.set_offset(*size);
+                bounding_box.expand_point(child.get_min());
+                bounding_box.expand_point(child.get_max());
+                *size += child.size();
+                children.push(child);
             }
-            Self::Path { .. } => {
-                panic!("Cannot add child to path");
-            }
-        };
-
-        match model {
-            TreeModel::Root {
-                state, sub_handles, ..
-            } => {
-                let other_model = match child {
-                    Self::Root { model, .. } => model,
-                    Self::Node { model, .. } => model,
-                    Self::Path { model, .. } => model,
-                };
-
-                let node = match other_model {
-                    TreeModel::Root {
-                        state: mut other_state,
-                        mut sub_handles,
-                        ..
-                    } => {
-                        let (offset, size) = match state.get_mut() {
-                            ModelState::Dormant(geometry) => {
-                                match other_state.get_mut() {
-                                    ModelState::Dormant(other_geometry) => {
-                                        let offset = geometry.data_len();
-
-                                        geometry.expand(other_geometry);
-
-                                        (offset, other_geometry.data_len())
-                                    }
-                                    ModelState::DormantIndexed(_) => {
-                                        panic!("Cannot expand a dormant geometry with an indexed geometry");
-                                    }
-                                    _ => panic!("Cannot expand an alive or dead handle"),
-                                }
-                            }
-                            ModelState::DormantIndexed(geometry) => {
-                                match other_state.get_mut() {
-                                    ModelState::Dormant(_) => {
-                                        panic!("Cannot expand a dormant geometry with an indexed geometry");
-                                    }
-                                    ModelState::DormantIndexed(other_geometry) => {
-                                        let offset = geometry.data_len();
-
-                                        geometry.expand(other_geometry);
-
-                                        (offset, other_geometry.data_len())
-                                    }
-                                    _ => panic!("Cannot expand an alive or dead handle"),
-                                }
-                            }
-                            _ => panic!("Cannot expand an alive or dead handle"),
-                        };
-
-                        for other_child in sub_handles.iter_mut() {
-                            let model = match other_child {
-                                Self::Root { model, .. } => model,
-                                Self::Node { model, .. } => model,
-                                Self::Path { model, .. } => model,
-                            };
-
-                            let location = match model {
-                                TreeModel::Root { .. } => {
-                                    panic!("Cannot add root as child to node")
-                                }
-                                TreeModel::Node { location, .. } => location,
-                                TreeModel::Leaf { location } => location,
-                            };
-
-                            location.offset += offset;
-                        }
-
-                        Self::create_node_with_models(
-                            other_bounding_box,
-                            BufferLocation { offset, size },
-                            sub_handles,
-                        )
-                    }
-                    TreeModel::Node { .. } | TreeModel::Leaf { .. } => {
-                        panic!(
-                            "Cannot add node or leaf as child to root cause geometry is not known"
-                        )
-                    }
-                };
-
-                sub_handles.push(node);
-            }
-            TreeModel::Node {
-                location,
-                sub_handles,
-            } => {
-                let other_model = match child {
-                    Self::Root { model, .. } => model,
-                    Self::Node { model, .. } => model,
-                    Self::Path { model, .. } => model,
-                };
-
-                let node = match other_model {
-                    TreeModel::Root { .. } => panic!("Cannot add root as child to node"),
-                    TreeModel::Node {
-                        location: mut other_location,
-                        mut sub_handles,
-                    } => {
-                        other_location.offset = location.size;
-                        location.size += location.size;
-
-                        for other_child in sub_handles.iter_mut() {
-                            let model = match other_child {
-                                Self::Root { model, .. } => model,
-                                Self::Node { model, .. } => model,
-                                Self::Path { model, .. } => model,
-                            };
-
-                            let location = match model {
-                                TreeModel::Root { .. } => {
-                                    panic!("Cannot add root as child to node")
-                                }
-                                TreeModel::Node { location, .. } => location,
-                                TreeModel::Leaf { location } => location,
-                            };
-
-                            location.offset += other_location.size;
-                        }
-
-                        Self::create_node_with_models(
-                            other_bounding_box,
-                            other_location,
-                            sub_handles,
-                        )
-                    }
-                    TreeModel::Leaf {
-                        location: mut other_location,
-                    } => {
-                        other_location.offset = location.size;
-                        location.size += other_location.size;
-
-                        Self::create_node_with_models(
-                            other_bounding_box,
-                            other_location,
-                            Vec::new(),
-                        )
-                    }
-                };
-
-                sub_handles.push(node);
-            }
-            TreeModel::Leaf { .. } => panic!("Cannot add child to leaf"),
-        }
-    }
-}
-
-impl Model<ToolpathVertex, DynamicAllocHandle<ToolpathVertex>> for ToolpathTree {
-    fn wake(&self, handle: std::sync::Arc<DynamicAllocHandle<ToolpathVertex>>) {
-        match self {
-            Self::Root { model, .. } => model.wake(handle),
-            Self::Node { model, .. } => model.wake(handle),
-            Self::Path { model, .. } => model.wake(handle),
+            Self::Path { .. } => panic!("Cannot extend path"),
         }
     }
 
-    fn transform(&self) -> rether::Transform {
+    fn set_offset(&mut self, offset: BufferAddress) {
         match self {
-            Self::Root { model, .. } => model.transform(),
-            Self::Node { model, .. } => model.transform(),
-            Self::Path { model, .. } => model.transform(),
+            Self::Root { .. } => panic!("Cannot set offset for root"),
+            Self::Node { offset: o, .. } => *o = offset,
+            Self::Path { offset: o, .. } => *o = offset,
         }
     }
 
-    fn state(
-        &self,
-    ) -> &parking_lot::RwLock<ModelState<ToolpathVertex, DynamicAllocHandle<ToolpathVertex>>> {
+    fn set_size(&mut self, size: BufferAddress) {
         match self {
-            Self::Root { model, .. } => model.state(),
-            Self::Node { model, .. } => model.state(),
-            Self::Path { model, .. } => model.state(),
+            Self::Root { .. } => panic!("Cannot set size for root"),
+            Self::Node { size: s, .. } => *s = size,
+            Self::Path { size: s, .. } => *s = size,
         }
     }
 
-    fn destroy(&self) {
+    pub fn size(&self) -> BufferAddress {
         match self {
-            Self::Root { model, .. } => model.destroy(),
-            Self::Node { model, .. } => model.destroy(),
-            Self::Path { model, .. } => model.destroy(),
-        }
-    }
-
-    fn is_destroyed(&self) -> bool {
-        match self {
-            Self::Root { model, .. } => model.is_destroyed(),
-            Self::Node { model, .. } => model.is_destroyed(),
-            Self::Path { model, .. } => model.is_destroyed(),
+            Self::Root { size, .. } => *size,
+            Self::Node { size, .. } => *size,
+            Self::Path { size, .. } => *size,
         }
     }
 }
@@ -304,33 +158,33 @@ impl Model<ToolpathVertex, DynamicAllocHandle<ToolpathVertex>> for ToolpathTree 
 impl HitboxNode<Self> for ToolpathTree {
     fn check_hit(&self, ray: &rether::picking::Ray) -> Option<f32> {
         match self {
-            Self::Root { bounding_box, .. } => bounding_box.read().check_hit(ray),
-            Self::Node { bounding_box, .. } => bounding_box.read().check_hit(ray),
-            Self::Path { path_box, .. } => path_box.read().check_hit(ray),
+            Self::Root { bounding_box, .. } => bounding_box.check_hit(ray),
+            Self::Node { bounding_box, .. } => bounding_box.check_hit(ray),
+            Self::Path { path_box, .. } => path_box.check_hit(ray),
         }
     }
 
     fn inner_nodes(&self) -> &[Self] {
         match self {
-            Self::Root { model, .. } => model.sub_handles().expect("Root should have children"),
-            Self::Node { model, .. } => model.sub_handles().expect("Node should have children"),
+            Self::Root { children, .. } => children,
+            Self::Node { children, .. } => children,
             Self::Path { .. } => &[],
         }
     }
 
     fn get_min(&self) -> glam::Vec3 {
         match self {
-            Self::Root { bounding_box, .. } => bounding_box.read().get_min(),
-            Self::Node { bounding_box, .. } => bounding_box.read().get_min(),
-            Self::Path { path_box, .. } => path_box.read().get_min(),
+            Self::Root { bounding_box, .. } => bounding_box.get_min(),
+            Self::Node { bounding_box, .. } => bounding_box.get_min(),
+            Self::Path { path_box, .. } => path_box.get_min(),
         }
     }
 
     fn get_max(&self) -> glam::Vec3 {
         match self {
-            Self::Root { bounding_box, .. } => bounding_box.read().get_max(),
-            Self::Node { bounding_box, .. } => bounding_box.read().get_max(),
-            Self::Path { path_box, .. } => path_box.read().get_max(),
+            Self::Root { bounding_box, .. } => bounding_box.get_max(),
+            Self::Node { bounding_box, .. } => bounding_box.get_max(),
+            Self::Path { path_box, .. } => path_box.get_max(),
         }
     }
 }
@@ -349,94 +203,103 @@ impl InteractiveModel for ToolpathTree {
     }
 }
 
-impl TranslateModel for ToolpathTree {
-    fn translate(&self, translation: glam::Vec3) {
+impl Translate for ToolpathTree {
+    fn translate(&mut self, translation: glam::Vec3) {
         match self {
-            Self::Root {
+            ToolpathTree::Root {
                 model,
+                children,
                 bounding_box,
+                ..
             } => {
                 model.translate(translation);
-                bounding_box.write().translate(translation);
+                bounding_box.translate(translation);
+
+                for child in children {
+                    child.translate(translation);
+                }
             }
-            Self::Node {
-                model,
+            ToolpathTree::Node {
+                children,
                 bounding_box,
+                ..
             } => {
-                model.translate(translation);
-                bounding_box.write().translate(translation);
+                bounding_box.translate(translation);
+
+                for child in children {
+                    child.translate(translation);
+                }
             }
-            Self::Path { model, path_box } => {
-                model.translate(translation);
-                path_box.write().translate(translation);
+            ToolpathTree::Path { path_box, .. } => {
+                path_box.translate(translation);
             }
         }
     }
 }
 
-impl RotateModel for ToolpathTree {
-    fn rotate(&self, rotation: glam::Quat, _center: Option<glam::Vec3>) {
+impl Rotate for ToolpathTree {
+    fn rotate(&mut self, rotation: glam::Quat) {
         match self {
-            Self::Root {
+            ToolpathTree::Root {
                 model,
+                children,
                 bounding_box,
+                ..
             } => {
-                let center = bounding_box.read().center();
+                model.rotate(rotation);
+                bounding_box.rotate(rotation);
 
-                model.rotate(rotation, Some(center));
-                bounding_box.write().rotate(rotation, center);
+                for child in children {
+                    child.rotate(rotation);
+                }
             }
-            Self::Node {
-                model,
+            ToolpathTree::Node {
+                children,
                 bounding_box,
+                ..
             } => {
-                let center = bounding_box.read().center();
+                bounding_box.rotate(rotation);
 
-                model.rotate(rotation, Some(center));
-                bounding_box.write().rotate(rotation, center);
+                for child in children {
+                    child.rotate(rotation);
+                }
             }
-            Self::Path { model, path_box } => {
-                let min = path_box.read().get_min();
-                let max = path_box.read().get_max();
-
-                let center = (min + max) / 2.0;
-
-                model.rotate(rotation, Some(center));
-                path_box.write().rotate(rotation, center);
+            ToolpathTree::Path { path_box, .. } => {
+                path_box.rotate(rotation);
             }
         }
     }
 }
 
-impl ScaleModel for ToolpathTree {
-    fn scale(&self, scale: glam::Vec3, _center: Option<glam::Vec3>) {
+impl Scale for ToolpathTree {
+    fn scale(&mut self, scale: glam::Vec3) {
         match self {
-            Self::Root {
+            ToolpathTree::Root {
                 model,
+                children,
                 bounding_box,
+                ..
             } => {
-                let center = bounding_box.read().center();
+                model.scale(scale);
+                bounding_box.scale(scale);
 
-                model.scale(scale, Some(center));
-                bounding_box.write().scale(scale);
+                for child in children {
+                    child.scale(scale);
+                }
             }
-            Self::Node {
-                model,
+            ToolpathTree::Node {
+                children,
                 bounding_box,
+                ..
             } => {
-                let center = bounding_box.read().center();
+                bounding_box.scale(scale);
 
-                model.scale(scale, Some(center));
-                bounding_box.write().scale(scale);
+                for child in children {
+                    child.scale(scale);
+                }
             }
-            Self::Path { model, path_box } => {
-                let min = path_box.read().get_min();
-                let max = path_box.read().get_max();
-
-                let center = (min + max) / 2.0;
-
-                model.scale(scale, Some(center));
-                path_box.write().scale(scale);
+            ToolpathTree::Path { path_box, .. } => {
+                path_box.scale(scale);
             }
         }
     }

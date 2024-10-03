@@ -55,6 +55,9 @@ pub struct WgpuContext {
     pub surface: wgpu::Surface<'static>,
     pub surface_config: wgpu::SurfaceConfiguration,
     pub surface_format: wgpu::TextureFormat,
+
+    pub light_bind_group_layout: wgpu::BindGroupLayout,
+    pub camera_bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl WgpuContext {
@@ -88,6 +91,36 @@ impl WgpuContext {
         ))
         .unwrap();
 
+        let camera_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+                label: Some("camera_bind_group_layout"),
+            });
+
+        let light_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+                label: None,
+            });
+
         let size = window.inner_size();
         let surface_format = surface.get_capabilities(&adapter).formats[0];
         let surface_config = wgpu::SurfaceConfiguration {
@@ -110,6 +143,9 @@ impl WgpuContext {
             surface,
             surface_config,
             surface_format,
+
+            light_bind_group_layout,
+            camera_bind_group_layout,
         })
     }
 }
