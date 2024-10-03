@@ -59,13 +59,28 @@ impl Selector {
 
             let response = r#fn(&mut transform);
 
-            self.grouped_transform = Some(transform);
-
             if response {
                 for model in &self.selected {
+                    let (scale, rotate, translate) =
+                        model.read().get_transform().to_scale_rotation_translation();
+
+                    let (grouped_scale, grouped_rotate, grouped_translate) = (transform.inverse()
+                        * self
+                            .grouped_transform
+                            .unwrap_or(Mat4::from_translation(glam::Vec3::ZERO)))
+                    .to_scale_rotation_translation();
+
+                    let transform = Mat4::from_scale_rotation_translation(
+                        scale * grouped_scale,
+                        rotate * grouped_rotate,
+                        translate + grouped_translate,
+                    );
+
                     model.write().transform(transform);
                 }
             }
+
+            self.grouped_transform = Some(transform);
         }
     }
 
