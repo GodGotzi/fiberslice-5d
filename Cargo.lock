@@ -2712,6 +2712,7 @@ dependencies = [
  "log",
  "parking_lot",
  "pollster",
+ "rayon",
  "wgpu",
  "winit",
 ]

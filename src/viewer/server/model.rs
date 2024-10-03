@@ -8,14 +8,11 @@ use std::{
 use glam::{vec3, Vec3};
 use ordered_float::OrderedFloat;
 use parking_lot::RwLock;
-use rayon::{
-    iter::{IntoParallelIterator, ParallelIterator},
-    vec,
-};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use rether::{
     alloc::{AllocHandle, DynamicAllocHandle, ModifyAction},
     model::{
-        self, geometry::Geometry, BufferLocation, Model, ModelState, RotateModel, ScaleModel,
+        geometry::Geometry, BufferLocation, Model, ModelState, RotateModel, ScaleModel,
         TranslateModel, TreeModel,
     },
     picking::{interact::InteractiveModel, Hitbox, HitboxNode, HitboxRoot},

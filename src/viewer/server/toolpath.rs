@@ -20,9 +20,12 @@ use tokio::{
 };
 use uni_path::PathBuf;
 
-use crate::{geometry::BoundingBox, prelude::WgpuContext, GlobalState, RootEvent};
+use crate::{
+    geometry::BoundingBox, prelude::WgpuContext, viewer::toolpath::pipeline::ToolpathBuffer,
+    GlobalState, RootEvent,
+};
 
-use crate::viewer::gcode::{
+use crate::viewer::toolpath::{
     self, tree::ToolpathTree, DisplaySettings, MeshSettings, Toolpath, WireModel,
 };
 
@@ -55,9 +58,9 @@ impl ToolpathHandle {
 // TODO also use vertex indices
 #[derive(Debug)]
 pub struct ToolpathServer {
-    queue: Vec<(Receiver<Toolpath>, JoinHandle<()>)>,
+    queue: Option<(Receiver<Toolpath>, JoinHandle<()>)>,
 
-    buffer: rether::Buffer<Vertex, rether::alloc::BufferDynamicAllocator<Vertex>>,
+    buffer: ToolpathBuffer,
 
     root_hitbox: HitboxRoot<ToolpathTree>,
 
@@ -66,10 +69,14 @@ pub struct ToolpathServer {
 }
 
 impl ToolpathServer {
-    pub fn new(device: &wgpu::Device) -> Self {
+    pub fn new(
+        context: &WgpuContext,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
+        light_bind_group_layout: &wgpu::BindGroupLayout,
+    ) -> Self {
         Self {
-            queue: Vec::new(),
-            buffer: Buffer::new("Toolpath Buffer", device),
+            queue: None,
+            buffer: ToolpathBuffer::new(context, camera_bind_group_layout, light_bind_group_layout),
             root_hitbox: HitboxRoot::root(),
             parts: HashMap::new(),
             focused: None,
@@ -91,9 +98,9 @@ impl ToolpathServer {
                 vertical: 0.325,
             };
 
-            let gcode: gcode::GCode = gcode::parser::parse_content(&content).unwrap();
+            let gcode: toolpath::GCode = toolpath::parser::parse_content(&content).unwrap();
 
-            let part = gcode::Toolpath::from_gcode(
+            let part = toolpath::Toolpath::from_gcode(
                 &path,
                 (content.lines(), gcode),
                 &mesh_settings,
@@ -103,7 +110,7 @@ impl ToolpathServer {
             tx.send(part).unwrap();
         });
 
-        self.queue.push((rx, handle));
+        self.queue = Some((rx, handle));
     }
 
     pub fn insert(
@@ -189,20 +196,10 @@ impl ToolpathServer {
         global_state: GlobalState<RootEvent>,
         wgpu_context: &WgpuContext,
     ) -> Result<(), Error> {
-        if !self.queue.is_empty() {
+        if let Some((rx, _)) = &self.queue {
             let mut results = Vec::new();
 
-            self.queue.retain_mut(|(rx, ..)| match rx.try_recv() {
-                Ok(result) => {
-                    results.push(result);
-
-                    false
-                }
-                Err(TryRecvError::Closed) => false,
-                _ => true,
-            });
-
-            for toolpath in results {
+            if let Ok(toolpath) = rx.try_recv() {
                 let handle = self.insert(toolpath, wgpu_context)?;
 
                 global_state

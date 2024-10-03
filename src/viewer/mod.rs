@@ -4,9 +4,9 @@ use egui_code_editor::Syntax;
 use parking_lot::RwLock;
 use rether::vertex::Vertex;
 
-pub mod gcode;
 pub mod select;
 pub mod server;
+pub mod toolpath;
 pub mod tracker;
 pub mod volume;
 

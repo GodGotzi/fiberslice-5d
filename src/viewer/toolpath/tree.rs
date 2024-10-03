@@ -12,26 +12,26 @@ use rether::{
 
 use crate::geometry::BoundingBox;
 
-use super::mesh::PathHitbox;
+use super::{mesh::PathHitbox, vertex::ToolpathVertex};
 
 #[derive(Debug)]
 pub enum ToolpathTree {
     Root {
-        model: TreeModel<Self, Vertex, DynamicAllocHandle<Vertex>>,
+        model: TreeModel<Self, ToolpathVertex, DynamicAllocHandle<ToolpathVertex>>,
         bounding_box: RwLock<BoundingBox>,
     },
     Node {
-        model: TreeModel<Self, Vertex, DynamicAllocHandle<Vertex>>,
+        model: TreeModel<Self, ToolpathVertex, DynamicAllocHandle<ToolpathVertex>>,
         bounding_box: RwLock<BoundingBox>,
     },
     Path {
-        model: TreeModel<Self, Vertex, DynamicAllocHandle<Vertex>>,
+        model: TreeModel<Self, ToolpathVertex, DynamicAllocHandle<ToolpathVertex>>,
         path_box: RwLock<Box<PathHitbox>>,
     },
 }
 
 impl ToolpathTree {
-    pub fn create_root<M: Into<ModelState<Vertex, DynamicAllocHandle<Vertex>>>>(
+    pub fn create_root<M: Into<ModelState<ToolpathVertex, DynamicAllocHandle<ToolpathVertex>>>>(
         bounding_box: BoundingBox,
         geometry: M,
     ) -> Self {
@@ -41,7 +41,9 @@ impl ToolpathTree {
         }
     }
 
-    pub fn create_root_with_models<M: Into<ModelState<Vertex, DynamicAllocHandle<Vertex>>>>(
+    pub fn create_root_with_models<
+        M: Into<ModelState<ToolpathVertex, DynamicAllocHandle<ToolpathVertex>>>,
+    >(
         bounding_box: BoundingBox,
         geometry: M,
         models: Vec<ToolpathTree>,
@@ -255,8 +257,8 @@ impl ToolpathTree {
     }
 }
 
-impl Model<Vertex, DynamicAllocHandle<Vertex>> for ToolpathTree {
-    fn wake(&self, handle: std::sync::Arc<DynamicAllocHandle<Vertex>>) {
+impl Model<ToolpathVertex, DynamicAllocHandle<ToolpathVertex>> for ToolpathTree {
+    fn wake(&self, handle: std::sync::Arc<DynamicAllocHandle<ToolpathVertex>>) {
         match self {
             Self::Root { model, .. } => model.wake(handle),
             Self::Node { model, .. } => model.wake(handle),
@@ -272,7 +274,9 @@ impl Model<Vertex, DynamicAllocHandle<Vertex>> for ToolpathTree {
         }
     }
 
-    fn state(&self) -> &parking_lot::RwLock<ModelState<Vertex, DynamicAllocHandle<Vertex>>> {
+    fn state(
+        &self,
+    ) -> &parking_lot::RwLock<ModelState<ToolpathVertex, DynamicAllocHandle<ToolpathVertex>>> {
         match self {
             Self::Root { model, .. } => model.state(),
             Self::Node { model, .. } => model.state(),

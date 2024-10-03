@@ -17,8 +17,10 @@ pub mod mesh;
 pub mod movement;
 pub mod parser;
 pub mod path;
+pub mod pipeline;
 pub mod state;
 pub mod tree;
+pub mod vertex;
 
 pub type GCodeRaw = Vec<String>;
 pub type GCode = Vec<InstructionModul>;
