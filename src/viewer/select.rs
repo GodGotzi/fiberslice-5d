@@ -3,6 +3,8 @@ use rether::{vertex::Vertex, Transform};
 
 use crate::{model::Model, prelude::SharedMut};
 
+use super::server::model::CADModel;
+
 #[derive(Debug)]
 pub enum TransformResponse {
     None,
@@ -13,7 +15,7 @@ pub enum TransformResponse {
 
 #[derive(Default)]
 pub struct Selector {
-    selected: Vec<SharedMut<Model<Vertex>>>,
+    selected: Vec<SharedMut<CADModel>>,
 }
 
 impl std::fmt::Debug for Selector {
@@ -25,15 +27,15 @@ impl std::fmt::Debug for Selector {
 }
 
 impl Selector {
-    pub fn select(&mut self, model: &SharedMut<Model<Vertex>>) {
+    pub fn select(&mut self, model: &SharedMut<CADModel>) {
         self.selected.push(model.clone());
     }
 
-    pub fn deselect(&mut self, model: &SharedMut<Model<Vertex>>) {
+    pub fn deselect(&mut self, model: &SharedMut<CADModel>) {
         self.selected.retain(|m| !SharedMut::ptr_eq(m, model));
     }
 
-    pub fn transform(&mut self, mut r#fn: impl FnMut(&mut Mat4) -> bool) {
+    pub fn transform(&self, mut r#fn: impl FnMut(&mut Mat4) -> bool) {
         if self.selected.len() == 1 {
             let mut transform = self.selected[0].read().get_transform();
 
@@ -59,7 +61,7 @@ impl Selector {
         self.selected.clear();
     }
 
-    pub fn selected(&self) -> &[SharedMut<Model<Vertex>>] {
+    pub fn selected(&self) -> &[SharedMut<CADModel>] {
         &self.selected
     }
 }

@@ -1,25 +1,10 @@
-use std::sync::Arc;
-
 use glam::{Mat4, Quat, Vec3};
-use parking_lot::RwLock;
 use rether::{Rotate, Scale, Transform, Translate};
 use wgpu::util::DeviceExt;
 
-mod tree;
+use crate::{DEVICE, QUEUE};
 
-static DEVICE: RwLock<Option<Arc<wgpu::Device>>> = RwLock::new(None);
-static QUEUE: RwLock<Option<Arc<wgpu::Queue>>> = RwLock::new(None);
-
-// HACK with this using Model is way easier than before you don't have to worry about the device and queue
-pub fn set_device(device: Arc<wgpu::Device>) {
-    *DEVICE.write() = Some(device);
-}
-// HACK with this using Model is way easier than before you don't have to worry about the device and queue
-pub fn set_queue(queue: Arc<wgpu::Queue>) {
-    *QUEUE.write() = Some(queue);
-}
-
-pub const TRANSFORM_INDEX: u32 = 0;
+pub const TRANSFORM_INDEX: u32 = 2;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -30,7 +15,7 @@ pub struct TransformUniform {
 #[derive(Debug)]
 pub enum ModelState {
     Dormant,
-    Awake(wgpu::Buffer),
+    Awake(wgpu::Buffer, u32),
 }
 
 #[derive(Debug)]
@@ -42,7 +27,7 @@ pub struct Model<T> {
     _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T: bytemuck::Pod + bytemuck::Zeroable> Model<T> {
+impl<T: std::fmt::Debug + bytemuck::Pod + bytemuck::Zeroable> Model<T> {
     pub fn create() -> Self {
         let device_read = DEVICE.read();
         let device = device_read.as_ref().unwrap();
@@ -106,17 +91,18 @@ impl<T: bytemuck::Pod + bytemuck::Zeroable> Model<T> {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        self.state = ModelState::Awake(buffer);
+        self.state = ModelState::Awake(buffer, data.len() as u32);
     }
 
     pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
-        let buffer = match &self.state {
+        let (buffer, size) = match &self.state {
             ModelState::Dormant => return,
-            ModelState::Awake(buffer) => buffer,
+            ModelState::Awake(buffer, size) => (buffer, size),
         };
+
         render_pass.set_bind_group(TRANSFORM_INDEX, &self.transform_bind_group, &[]);
         render_pass.set_vertex_buffer(0, buffer.slice(..));
-        render_pass.draw(0..buffer.size() as u32, 0..1);
+        render_pass.draw(0..*size, 0..1);
     }
 }
 
@@ -124,7 +110,7 @@ impl<T> Drop for Model<T> {
     fn drop(&mut self) {
         match &self.state {
             ModelState::Dormant => {}
-            ModelState::Awake(buffer) => {
+            ModelState::Awake(buffer, ..) => {
                 buffer.destroy();
             }
         }
@@ -136,7 +122,7 @@ impl<T> Translate for Model<T> {
         let queue_read = QUEUE.read();
         let queue = queue_read.as_ref().unwrap();
 
-        self.transform = self.transform * Mat4::from_translation(translation);
+        self.transform *= Mat4::from_translation(translation);
         let transform_uniform = TransformUniform {
             transform: self.transform.to_cols_array_2d(),
         };
@@ -154,7 +140,7 @@ impl<T> Rotate for Model<T> {
         let queue_read = QUEUE.read();
         let queue = queue_read.as_ref().unwrap();
 
-        self.transform = self.transform * Mat4::from_quat(rotation);
+        self.transform *= Mat4::from_quat(rotation);
         let transform_uniform = TransformUniform {
             transform: self.transform.to_cols_array_2d(),
         };
@@ -172,7 +158,7 @@ impl<T> Scale for Model<T> {
         let queue_read = QUEUE.read();
         let queue = queue_read.as_ref().unwrap();
 
-        self.transform = self.transform * Mat4::from_scale(scale);
+        self.transform *= Mat4::from_scale(scale);
         let transform_uniform = TransformUniform {
             transform: self.transform.to_cols_array_2d(),
         };

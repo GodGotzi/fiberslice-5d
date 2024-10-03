@@ -1,4 +1,4 @@
-use std::{ops::Deref, sync::Arc};
+use std::sync::Arc;
 
 use rether::{
     picking::{interact::InteractiveModel, Hitbox, HitboxNode},
@@ -31,18 +31,6 @@ pub enum ToolpathTree {
     },
 }
 
-impl Deref for ToolpathTree {
-    type Target = Model<ToolpathVertex>;
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Self::Root { model, .. } => model,
-            Self::Node { .. } => panic!("Cannot deref node"),
-            Self::Path { .. } => panic!("Cannot deref path"),
-        }
-    }
-}
-
 impl ToolpathTree {
     pub fn create_root() -> Self {
         Self::Root {
@@ -67,7 +55,7 @@ impl ToolpathTree {
         }
     }
 
-    pub fn create_node() -> Self {
+    pub fn create_node(offset: BufferAddress, size: BufferAddress) -> Self {
         Self::Node {
             offset: 0,
             size: 0,
@@ -76,24 +64,28 @@ impl ToolpathTree {
         }
     }
 
-    pub fn create_node_with_children(children: Vec<Self>) -> Self {
+    pub fn create_node_with_children(
+        children: Vec<Self>,
+        offset: BufferAddress,
+        size: BufferAddress,
+    ) -> Self {
         Self::Node {
-            offset: 0,
-            size: 0,
+            offset,
+            size,
             children,
             bounding_box: BoundingBox::default(),
         }
     }
 
-    pub fn create_path(path_box: PathHitbox) -> Self {
+    pub fn create_path(path_box: PathHitbox, offset: BufferAddress, size: BufferAddress) -> Self {
         Self::Path {
-            offset: 0,
-            size: 0,
+            offset,
+            size,
             path_box,
         }
     }
 
-    pub fn extend_root(&mut self, child: Self) {
+    pub fn push_node(&mut self, node: Self) {
         match self {
             Self::Root {
                 children,
@@ -101,48 +93,71 @@ impl ToolpathTree {
                 size,
                 ..
             } => {
-                *size += child.size();
-                bounding_box.expand_point(child.get_min());
-                bounding_box.expand_point(child.get_max());
-                children.push(child);
+                *size += node.size();
+                bounding_box.expand_point(node.get_min());
+                bounding_box.expand_point(node.get_max());
+                children.push(node);
             }
-            Self::Node { .. } => panic!("Cannot extend node"),
-            Self::Path { .. } => panic!("Cannot extend path"),
-        }
-    }
-
-    pub fn extend_node(&mut self, mut child: Self) {
-        match self {
-            Self::Root { .. } => panic!("Cannot extend root"),
             Self::Node {
                 children,
                 bounding_box,
                 size,
                 ..
             } => {
-                child.set_offset(*size);
-                bounding_box.expand_point(child.get_min());
-                bounding_box.expand_point(child.get_max());
-                *size += child.size();
-                children.push(child);
+                *size += node.size();
+                bounding_box.expand_point(node.get_min());
+                bounding_box.expand_point(node.get_max());
+                children.push(node);
             }
-            Self::Path { .. } => panic!("Cannot extend path"),
+            Self::Path { .. } => panic!("Cannot push node to path"),
         }
     }
 
-    fn set_offset(&mut self, offset: BufferAddress) {
+    pub fn push_path(&mut self, path: Self) {
         match self {
-            Self::Root { .. } => panic!("Cannot set offset for root"),
-            Self::Node { offset: o, .. } => *o = offset,
+            Self::Root {
+                children,
+                bounding_box,
+                size,
+                ..
+            } => {
+                *size += path.size();
+                bounding_box.expand_point(path.get_min());
+                bounding_box.expand_point(path.get_max());
+                children.push(path);
+            }
+            Self::Node {
+                children,
+                bounding_box,
+                size,
+                ..
+            } => {
+                *size += path.size();
+                bounding_box.expand_point(path.get_min());
+                bounding_box.expand_point(path.get_max());
+                children.push(path);
+            }
+            Self::Path { .. } => panic!("Cannot push path to path"),
+        }
+    }
+
+    pub fn update_offset(&mut self, offset: BufferAddress) {
+        match self {
+            Self::Root { children, .. } => {
+                let mut current_offset = offset;
+                for child in children {
+                    child.update_offset(current_offset);
+                    current_offset += child.size();
+                }
+            }
+            Self::Node { children, .. } => {
+                let mut current_offset = offset;
+                for child in children {
+                    child.update_offset(current_offset);
+                    current_offset += child.size();
+                }
+            }
             Self::Path { offset: o, .. } => *o = offset,
-        }
-    }
-
-    fn set_size(&mut self, size: BufferAddress) {
-        match self {
-            Self::Root { .. } => panic!("Cannot set size for root"),
-            Self::Node { size: s, .. } => *s = size,
-            Self::Path { size: s, .. } => *s = size,
         }
     }
 
@@ -151,6 +166,22 @@ impl ToolpathTree {
             Self::Root { size, .. } => *size,
             Self::Node { size, .. } => *size,
             Self::Path { size, .. } => *size,
+        }
+    }
+
+    pub fn awaken(&mut self, data: &[ToolpathVertex]) {
+        match self {
+            Self::Root { model, .. } => model.awaken(data),
+            Self::Node { .. } => panic!("Cannot awaken node"),
+            Self::Path { .. } => panic!("Cannot awaken path"),
+        }
+    }
+
+    pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+        match self {
+            Self::Root { model, .. } => model.render(render_pass),
+            Self::Node { .. } => panic!("Cannot render node"),
+            Self::Path { .. } => panic!("Cannot render path"),
         }
     }
 }

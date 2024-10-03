@@ -1,6 +1,7 @@
 use std::u32;
 
 use bytemuck::Zeroable;
+use rether::vertex::Vertex;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -19,6 +20,16 @@ impl Default for ToolpathVertex {
 }
 
 impl ToolpathVertex {
+    pub fn from_vertex(vertex: Vertex, print_type: u32, layer: u32) -> Self {
+        ToolpathVertex {
+            position: vertex.position,
+            normal: vertex.normal,
+            color: vertex.color,
+            print_type,
+            layer,
+        }
+    }
+
     pub fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
         use std::mem;
         wgpu::VertexBufferLayout {

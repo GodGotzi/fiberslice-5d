@@ -1,6 +1,7 @@
 use egui::{Color32, DragValue, ImageButton, Visuals};
 use egui_extras::Size;
 use egui_grid::GridBuilder;
+use glam::Mat4;
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{EnumCount, EnumIter};
 
@@ -104,93 +105,92 @@ impl GizmoTools {
                 .show(ui.ctx(), |ui| {
                     let selector = global_state.viewer.selector().read();
 
-                    selector.transform(|transform| match tool {
-                        GizmoTool::Translate => {
-                            let mut position = transform.translation;
+                    selector.transform(|transform| {
+                        let (mut scale, rotation, mut translation) =
+                            transform.to_scale_rotation_translation();
+                        match tool {
+                            GizmoTool::Translate => {
+                                let mut changed = false;
 
-                            let mut changed = false;
+                                ui.horizontal(|ui| {
+                                    fn drag_value(ui: &mut egui::Ui, value: &mut f32) -> bool {
+                                        let response =
+                                            ui.add(DragValue::new(value).max_decimals(3));
 
-                            ui.horizontal(|ui| {
-                                fn drag_value(ui: &mut egui::Ui, value: &mut f32) -> bool {
-                                    let response = ui.add(DragValue::new(value).max_decimals(3));
+                                        response.changed()
+                                    }
 
-                                    response.changed() && !response.dragged()
-                                }
+                                    changed |= drag_value(ui, &mut translation.x);
 
-                                changed |= drag_value(ui, &mut position.x);
+                                    changed |= drag_value(ui, &mut translation.y);
+                                    changed |= drag_value(ui, &mut translation.z);
+                                });
 
-                                changed |= drag_value(ui, &mut position.y);
-                                changed |= drag_value(ui, &mut position.z);
-                            });
+                                *transform = Mat4::from_scale_rotation_translation(
+                                    scale,
+                                    rotation,
+                                    translation,
+                                );
 
-                            transform.translation = position;
-
-                            if changed {
-                                TransformResponse::Translate
-                            } else {
-                                TransformResponse::None
+                                changed
                             }
-                        }
-                        GizmoTool::Rotate => {
-                            let (mut x, mut y, mut z) =
-                                transform.rotation.to_euler(glam::EulerRot::XZY);
+                            GizmoTool::Rotate => {
+                                let (mut x, mut y, mut z) = rotation.to_euler(glam::EulerRot::XZY);
 
-                            let mut changed = false;
+                                let mut changed = false;
 
-                            ui.horizontal(|ui| {
-                                fn drag_angle(ui: &mut egui::Ui, value: &mut f32) -> bool {
-                                    let response = ui.drag_angle(value);
+                                ui.horizontal(|ui| {
+                                    fn drag_angle(ui: &mut egui::Ui, value: &mut f32) -> bool {
+                                        let response = ui.drag_angle(value);
 
-                                    response.changed() && !response.dragged()
-                                }
+                                        response.changed()
+                                    }
 
-                                changed |= drag_angle(ui, &mut x);
-                                changed |= drag_angle(ui, &mut y);
-                                changed |= drag_angle(ui, &mut z);
-                            });
+                                    changed |= drag_angle(ui, &mut x);
+                                    changed |= drag_angle(ui, &mut y);
+                                    changed |= drag_angle(ui, &mut z);
+                                });
 
-                            transform.rotation =
-                                glam::Quat::from_euler(glam::EulerRot::XZY, x, y, z);
+                                *transform = Mat4::from_scale_rotation_translation(
+                                    scale,
+                                    rotation,
+                                    translation,
+                                );
 
-                            if changed {
-                                TransformResponse::Rotate
-                            } else {
-                                TransformResponse::None
+                                changed
                             }
-                        }
-                        GizmoTool::Scale => {
-                            let mut scale = transform.scale;
+                            GizmoTool::Scale => {
+                                let mut changed = false;
+                                ui.horizontal(|ui| {
+                                    fn drag_value(ui: &mut egui::Ui, value: &mut f32) -> bool {
+                                        let response = ui.add(
+                                            DragValue::new(value)
+                                                .speed(0.025)
+                                                .range(0.1..=100.0)
+                                                .max_decimals(3),
+                                        );
 
-                            let mut changed = false;
-                            ui.horizontal(|ui| {
-                                fn drag_value(ui: &mut egui::Ui, value: &mut f32) -> bool {
-                                    let response = ui.add(
-                                        DragValue::new(value)
-                                            .speed(0.025)
-                                            .range(0.1..=100.0)
-                                            .max_decimals(3),
-                                    );
+                                        response.changed()
+                                    }
 
-                                    response.changed() && !response.dragged()
-                                }
+                                    changed |= drag_value(ui, &mut scale.x);
+                                    changed |= drag_value(ui, &mut scale.y);
+                                    changed |= drag_value(ui, &mut scale.z);
+                                });
 
-                                changed |= drag_value(ui, &mut scale.x);
-                                changed |= drag_value(ui, &mut scale.y);
-                                changed |= drag_value(ui, &mut scale.z);
-                            });
+                                *transform = Mat4::from_scale_rotation_translation(
+                                    scale,
+                                    rotation,
+                                    translation,
+                                );
 
-                            transform.scale = scale;
-
-                            if changed {
-                                TransformResponse::Scale
-                            } else {
-                                TransformResponse::None
+                                changed
                             }
-                        }
-                        GizmoTool::Flatten => {
-                            ui.label("Flatten");
+                            GizmoTool::Flatten => {
+                                ui.label("Flatten");
 
-                            TransformResponse::None
+                                false
+                            }
                         }
                     });
                 });

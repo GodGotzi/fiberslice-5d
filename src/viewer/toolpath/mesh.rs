@@ -4,13 +4,14 @@ use rether::{
     vertex::Vertex,
     Rotate, Scale, Translate,
 };
+use wgpu::BufferAddress;
 
 use crate::geometry::{
     mesh::{construct_triangle_vertices, Mesh},
     BoundingBox, ProfileExtrusion, QuadFace,
 };
 
-use super::{path::PathModul, tree::ToolpathTree, DisplaySettings};
+use super::{path::PathModul, tree::ToolpathTree, vertex::ToolpathVertex, DisplaySettings};
 
 #[derive(Debug, Clone)]
 pub struct ProfileCross {
@@ -276,18 +277,20 @@ impl Mesh<12> for PathConnectionMesh {
 }
 
 impl PathModul {
-    pub(super) fn to_model(&self, settings: &DisplaySettings) -> ToolpathTree {
+    pub(super) fn to_model(
+        &self,
+        settings: &DisplaySettings,
+    ) -> (ToolpathTree, Vec<ToolpathVertex>) {
+        let mut bounding_box = BoundingBox::default();
         let mut vertices = Vec::new();
-        let mut offsets: Vec<usize> = Vec::new();
-        let mut sub_handles = Vec::new();
+        let mut children = Vec::new();
 
-        let color = self
+        let print_type = self
             .state
             .print_type
             .as_ref()
             .unwrap_or(&crate::slicer::print_type::PrintType::Unknown);
-
-        let mut bounding_box = BoundingBox::default();
+        let layer = self.state.layer.unwrap_or(0);
 
         let mut last_cross: Option<ProfileCross> = None;
 
@@ -304,20 +307,19 @@ impl PathModul {
             let profile_end = profile.with_offset(line.end);
 
             let profile_start_mesh =
-                ProfileCrossMesh::from_profile(profile_start.clone()).with_color(color.into());
+                ProfileCrossMesh::from_profile(profile_start.clone()).with_color(print_type.into());
             let profile_end_mesh =
-                ProfileCrossMesh::from_profile(profile_end.clone()).with_color(color.into());
+                ProfileCrossMesh::from_profile(profile_end.clone()).with_color(print_type.into());
 
             if index == self.lines.len() - 1 {
                 vertices.extend_from_slice(&profile_end_mesh.to_triangle_vertices());
-                offsets.push(vertices.len());
             }
 
             if line.print {
                 if let Some(last) = last_cross.take() {
                     vertices.extend_from_slice(
                         &PathConnectionMesh::from_profiles(last, profile_start.clone())
-                            .with_color(color.into())
+                            .with_color(print_type.into())
                             .to_triangle_vertices(),
                     );
                 } else {
@@ -325,10 +327,11 @@ impl PathModul {
                 }
 
                 let path_mesh = PathMesh::from_profiles(profile_start, profile_end.clone())
-                    .with_color(color.into());
+                    .with_color(print_type.into());
 
                 let path_mesh_vertices = path_mesh.to_triangle_vertices();
 
+                let offset = vertices.len();
                 vertices.extend_from_slice(&path_mesh_vertices);
 
                 let path_hitbox = PathHitbox::from(path_mesh);
@@ -336,26 +339,35 @@ impl PathModul {
                 bounding_box.expand_min(path_hitbox.get_min());
                 bounding_box.expand_max(path_hitbox.get_max());
 
-                let sub_model = ToolpathTree::create_path(path_hitbox);
+                let path = ToolpathTree::create_path(
+                    path_hitbox,
+                    offset as BufferAddress,
+                    path_mesh_vertices.len() as BufferAddress,
+                );
 
-                sub_handles.push(sub_model);
+                children.push(path);
 
                 last_cross = Some(profile_end);
             } else if let Some(last) = last_cross.take() {
                 vertices.extend_from_slice(
                     &ProfileCrossMesh::from_profile(last)
-                        .with_color(color.into())
+                        .with_color(print_type.into())
                         .to_triangle_vertices(),
                 );
-
-                offsets.push(vertices.len());
             }
         }
 
-        ToolpathTree::create_root_with_children(
-            bounding_box,
-            SimpleGeometry::init(vertices),
-            sub_handles,
+        let mut node = ToolpathTree::create_node(0, vertices.len() as BufferAddress);
+        children.into_iter().for_each(|child| node.push_node(child));
+
+        let print_type_bit = 1 << (print_type.clone() as usize);
+
+        (
+            node,
+            vertices
+                .into_iter()
+                .map(|v| ToolpathVertex::from_vertex(v, print_type_bit, layer as u32))
+                .collect(),
         )
     }
 }

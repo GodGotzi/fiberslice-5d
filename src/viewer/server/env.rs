@@ -17,4 +17,8 @@ impl EnvironmentServer {
     pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
         self.volume.render(render_pass);
     }
+
+    pub fn render_lines<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+        self.volume.render_lines(render_pass);
+    }
 }

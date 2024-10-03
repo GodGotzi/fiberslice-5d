@@ -42,6 +42,18 @@ use winit::{
     event_loop::{EventLoop, EventLoopProxy},
 };
 
+pub static DEVICE: RwLock<Option<Arc<wgpu::Device>>> = RwLock::new(None);
+pub static QUEUE: RwLock<Option<Arc<wgpu::Queue>>> = RwLock::new(None);
+
+// HACK with this using Model is way easier than before you don't have to worry about the device and queue
+fn set_device(device: Arc<wgpu::Device>) {
+    *DEVICE.write() = Some(device);
+}
+// HACK with this using Model is way easier than before you don't have to worry about the device and queue
+fn set_queue(queue: Arc<wgpu::Queue>) {
+    *QUEUE.write() = Some(queue);
+}
+
 #[derive(Debug, Clone)]
 pub enum RootEvent {
     Exit,
@@ -265,8 +277,8 @@ impl ApplicationHandler<RootEvent> for Application {
 
         let wgpu_context = WgpuContext::new(window.clone()).unwrap();
 
-        model::set_device(wgpu_context.device.clone());
-        model::set_queue(wgpu_context.queue.clone());
+        set_device(wgpu_context.device.clone());
+        set_queue(wgpu_context.queue.clone());
 
         let (_, _, render_adapter) = render::RenderAdapter::create(&wgpu_context);
 

@@ -1,5 +1,3 @@
-// Vertex shader
-
 struct Camera {
     view_pos: vec4<f32>,
     view_proj: mat4x4<f32>,
@@ -14,6 +12,13 @@ struct Light {
 };
 @group(1) @binding(0)
 var<uniform> light: Light;
+
+struct Transform {
+    matrix: mat4x4<f32>,
+};
+
+@group(2) @binding(0)
+var<uniform> transform: Transform;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
@@ -31,20 +36,23 @@ struct VertexOutput {
 
 @vertex
 fn vs_main(
-    model: VertexInput,
+    in: VertexInput,
 ) -> VertexOutput {
     var out: VertexOutput;
-    out.world_normal = model.normal;
-    var world_position: vec4<f32> = vec4<f32>(model.position, 1.0);
+
+    out.world_normal = in.normal;
+    var world_position: vec4<f32> = vec4<f32>(in.position, 1.0) * transform.matrix;
     out.world_position = world_position.xyz;
-    out.clip_position = camera.view_proj * vec4<f32>(model.position, 1.0);
+    out.clip_position = camera.view_proj * vec4<f32>(in.position, 1.0);
     out.camera_view_pos = camera.view_pos;
-    out.color = model.color;
+    out.color = in.color;
+
     return out;
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+
     let ambient_color = light.color.xyz * light.color.a;
 
     let light_dir = normalize(light.position.xyz - in.world_position);

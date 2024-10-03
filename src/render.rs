@@ -126,13 +126,22 @@ impl RenderAdapter {
                     render_pass.set_pipeline(&self.back_cull_pipline);
                     env_server_read.render(&mut render_pass);
                     toolpath_server_read.render(&mut render_pass);
+
+                    render_pass.set_pipeline(&self.line_pipline);
+                    env_server_read.render_lines(&mut render_pass);
                 }
                 Mode::Prepare => {
                     render_pass.set_pipeline(&self.back_cull_pipline);
                     env_server_read.render(&mut render_pass);
                     model_server_read.render(&mut render_pass);
+
+                    render_pass.set_pipeline(&self.line_pipline);
+                    env_server_read.render_lines(&mut render_pass);
                 }
-                Mode::ForceAnalytics => todo!(),
+                Mode::ForceAnalytics => {
+                    render_pass.set_pipeline(&self.line_pipline);
+                    env_server_read.render_lines(&mut render_pass);
+                }
             });
         }
     }
@@ -325,27 +334,10 @@ impl<'a> Adapter<'a, RootEvent, (), (), (Option<UiUpdateOutput>, &CameraResult),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
 
-        let camera_bind_group_layout =
-            context
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    entries: &[wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::VERTEX,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    }],
-                    label: Some("camera_bind_group_layout"),
-                });
-
         let camera_bind_group = context
             .device
             .create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: &camera_bind_group_layout,
+                layout: &context.camera_bind_group_layout,
                 entries: &[wgpu::BindGroupEntry {
                     binding: 0,
                     resource: camera_buffer.as_entire_binding(),
@@ -366,27 +358,10 @@ impl<'a> Adapter<'a, RootEvent, (), (), (Option<UiUpdateOutput>, &CameraResult),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
 
-        let light_bind_group_layout =
-            context
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    entries: &[wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    }],
-                    label: None,
-                });
-
         let light_bind_group = context
             .device
             .create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: &light_bind_group_layout,
+                layout: &context.light_bind_group_layout,
                 entries: &[wgpu::BindGroupEntry {
                     binding: 0,
                     resource: light_buffer.as_entire_binding(),
@@ -418,7 +393,11 @@ impl<'a> Adapter<'a, RootEvent, (), (), (Option<UiUpdateOutput>, &CameraResult),
                 .device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("Render Pipeline Layout"),
-                    bind_group_layouts: &[&camera_bind_group_layout, &light_bind_group_layout],
+                    bind_group_layouts: &[
+                        &context.camera_bind_group_layout,
+                        &context.light_bind_group_layout,
+                        &context.transform_bind_group_layout,
+                    ],
                     push_constant_ranges: &[],
                 });
 

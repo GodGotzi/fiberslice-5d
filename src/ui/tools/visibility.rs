@@ -79,6 +79,8 @@ impl Tool for VisibilityTool<'_> {
                     egui::CollapsingHeader::new("Print Types")
                         .default_open(true)
                         .show(ui, |ui| {
+                            let old = self.state.print_types;
+
                             for print_type in PrintType::iter() {
                                 let str_type: &'static str = (&print_type).into();
                                 let color: wgpu::Color = (&print_type).into();
@@ -113,46 +115,58 @@ impl Tool for VisibilityTool<'_> {
                                     );
                                 });
                             }
+
+                            if old != self.state.print_types {
+                                let mut visibility = 0;
+
+                                for (index, visible) in self.state.print_types.iter().enumerate() {
+                                    if *visible {
+                                        visibility |= 1 << index;
+                                    }
+                                }
+
+                                global_state
+                                    .viewer
+                                    .toolpath_server
+                                    .write()
+                                    .set_visibility(visibility);
+                            }
                         });
 
                     ui.separator();
 
-                    if !global_state.viewer.toolpath_server.read().is_empty() {
+                    if let Some(toolpath) =
+                        global_state.viewer.toolpath_server.read().get_toolpath()
+                    {
                         egui::CollapsingHeader::new("Toolpath Parts")
                             .default_open(true)
                             .show(ui, |ui| {
-                                for (_id, toolpath) in
-                                    global_state.viewer.toolpath_server.read().iter()
-                                {
-                                    ui.horizontal(|ui| {
-                                        let file_name = toolpath.path.file_name().unwrap();
+                                ui.horizontal(|ui| {
+                                    let file_name = toolpath.origin_path.clone();
 
-                                        let text = trim_text::<20, 4>(file_name);
+                                    let text = trim_text::<20, 4>(&file_name);
 
-                                        ui.checkbox(
-                                            &mut true,
-                                            RichText::new(text)
+                                    ui.checkbox(
+                                        &mut true,
+                                        RichText::new(text).font(FontId::monospace(15.0)).strong(),
+                                    );
+
+                                    ui.add_space(15.0);
+
+                                    ui.with_layout(
+                                        egui::Layout::right_to_left(egui::Align::Center),
+                                        |ui| {
+                                            ui.label(
+                                                RichText::new(format!(
+                                                    "{:7}",
+                                                    toolpath.wire_model.len()
+                                                ))
                                                 .font(FontId::monospace(15.0))
                                                 .strong(),
-                                        );
-
-                                        ui.add_space(15.0);
-
-                                        ui.with_layout(
-                                            egui::Layout::right_to_left(egui::Align::Center),
-                                            |ui| {
-                                                ui.label(
-                                                    RichText::new(format!(
-                                                        "{:7}",
-                                                        toolpath.wire_model.len()
-                                                    ))
-                                                    .font(FontId::monospace(15.0))
-                                                    .strong(),
-                                                );
-                                            },
-                                        );
-                                    });
-                                }
+                                            );
+                                        },
+                                    );
+                                });
                             });
 
                         ui.separator();

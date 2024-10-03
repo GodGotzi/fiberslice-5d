@@ -59,40 +59,8 @@ impl Tool for GCodeTool<'_> {
                 .show(ctx, |ui| {
                     let mut server = global_state.viewer.toolpath_server.write();
 
-                    let focused_toolpath = server.get_focused().map(|key| key.to_string());
-
-                    let text = if let Some(toolpath_key) = focused_toolpath.as_ref() {
-                        toolpath_key.to_string()
-                    } else {
-                        "None".to_string()
-                    };
-
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new("Selected").size(15.0));
-
-                        egui::ComboBox::from_label("") // When created from a label the text will b shown on the side of the combobox
-                            .selected_text(RichText::new(text).size(15.0)) // This is the currently selected option (in text form)
-                            .show_ui(ui, |ui| {
-                                // In this closure the various options can be added
-
-                                let keys = server.iter_keys().cloned().collect::<Vec<_>>();
-
-                                for key in keys {
-                                    // The first parameter is a mutable reference to allow the choice to be modified when the user selects
-                                    // something else. The second parameter is the actual value of the option (to be compared with the currently)
-                                    // selected one to allow egui to highlight the correct label. The third parameter is the string to show.
-                                    ui.selectable_value(
-                                        server.get_focused_mut(),
-                                        Some(key.to_string()),
-                                        key.to_string(),
-                                    );
-                                }
-                            });
-                    });
-
-                    if let Some(toolpath_key) = focused_toolpath {
-                        let toolpath = server.get_toolpath(&toolpath_key).unwrap();
-                        let line_breaks = &toolpath.line_breaks;
+                    if let Some(toolpath) = server.get_toolpath() {
+                        // let line_breaks = &toolpath.line_breaks;
 
                         EfficientReader::new(&mut self.state.view)
                             .id_source("code editor")
@@ -101,7 +69,7 @@ impl Tool for GCodeTool<'_> {
                             .with_syntax(Syntax::gcode())
                             .with_numlines(true)
                             // .with_focus(Some(ReadSection::new(0, 20)))
-                            .show(ui, &toolpath.code, line_breaks);
+                            .show(ui, &"", &[]);
                     }
 
                     pointer_over_tool = ui.ui_contains_pointer();

@@ -54,15 +54,17 @@ impl Toolpath {
 
         // let mut layers: HashMap<usize, LayerModel> = HashMap::new();
 
+        let mut root_vertices = Vec::new();
         let mut root = ToolpathTree::create_root();
         for modul in raw_path.moduls {
             lines.extend(modul.lines.clone());
 
-            let model = modul.to_model(display_settings);
+            let (model, vertices) = modul.to_model(display_settings);
 
-            root.add_child(model);
+            root_vertices.extend(vertices);
+            root.push_node(model);
         }
-
+        root.update_offset(0);
         root.translate(-raw_path.center_mass);
 
         let wire_model = WireModel::new(lines);

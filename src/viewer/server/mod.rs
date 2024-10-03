@@ -1,5 +1,5 @@
 mod env;
-mod model;
+pub mod model;
 mod toolpath;
 
 pub use env::EnvironmentServer;

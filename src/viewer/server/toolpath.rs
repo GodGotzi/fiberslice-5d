@@ -6,7 +6,9 @@ use tokio::task::JoinHandle;
 use wgpu::util::DeviceExt;
 
 use crate::viewer::toolpath::vertex::{ToolpathContext, ToolpathVertex};
+use crate::viewer::toolpath::Toolpath;
 use crate::viewer::Server;
+use crate::QUEUE;
 use crate::{
     geometry::BoundingBox, prelude::WgpuContext, slicer::print_type::PrintType, GlobalState,
     RootEvent,
@@ -26,10 +28,10 @@ pub enum Error {
 
 #[derive(Debug)]
 pub struct ToolpathServer {
-    queue: Option<(Receiver<ToolpathTree>, JoinHandle<()>)>,
+    queue: Option<(Receiver<Toolpath>, JoinHandle<()>)>,
 
     pipeline: wgpu::RenderPipeline,
-    toolpath: Option<ToolpathTree>,
+    toolpath: Option<Toolpath>,
     hitbox: HitboxRoot<ToolpathTree>,
 
     toolpath_context_buffer: wgpu::Buffer,
@@ -169,8 +171,8 @@ impl Server for ToolpathServer {
     fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
         if let Some(toolpath) = &self.toolpath {
             render_pass.set_pipeline(&self.pipeline);
-            render_pass.set_bind_group(4, &self.toolpath_context_bind_group, &[]);
-            toolpath.render(render_pass);
+            render_pass.set_bind_group(2, &self.toolpath_context_bind_group, &[]);
+            toolpath.model.render(render_pass);
         }
     }
 }
@@ -200,7 +202,7 @@ impl ToolpathServer {
                 &display_settings,
             );
 
-            tx.send(ToolpathTree::create_root()).unwrap();
+            tx.send(part).unwrap();
         });
 
         self.queue = Some((rx, handle));
@@ -215,8 +217,8 @@ impl ToolpathServer {
 
                 global_state.camera_event_writer.send(
                     crate::camera::CameraEvent::UpdatePreferredDistance(BoundingBox::new(
-                        toolpath.get_min(),
-                        toolpath.get_max(),
+                        toolpath.model.get_min(),
+                        toolpath.model.get_max(),
                     )),
                 );
 
@@ -231,6 +233,15 @@ impl ToolpathServer {
 
     pub fn set_visibility(&mut self, value: u32) {
         self.toolpath_context.visibility = value;
+
+        let queue_read = QUEUE.read();
+        let queue = queue_read.as_ref().unwrap();
+
+        queue.write_buffer(
+            &self.toolpath_context_buffer,
+            0,
+            bytemuck::cast_slice(&[self.toolpath_context]),
+        );
     }
 
     pub fn set_visibility_type(&mut self, ty: PrintType, visible: bool) {
@@ -241,13 +252,44 @@ impl ToolpathServer {
         } else {
             self.toolpath_context.visibility &= !(1 << index);
         }
+
+        let queue_read = QUEUE.read();
+        let queue = queue_read.as_ref().unwrap();
+
+        queue.write_buffer(
+            &self.toolpath_context_buffer,
+            0,
+            bytemuck::cast_slice(&[self.toolpath_context]),
+        );
     }
 
     pub fn set_min_layer(&mut self, min: u32) {
         self.toolpath_context.min_layer = min;
+
+        let queue_read = QUEUE.read();
+        let queue = queue_read.as_ref().unwrap();
+
+        queue.write_buffer(
+            &self.toolpath_context_buffer,
+            0,
+            bytemuck::cast_slice(&[self.toolpath_context]),
+        );
     }
 
     pub fn set_max_layer(&mut self, max: u32) {
         self.toolpath_context.max_layer = max;
+
+        let queue_read = QUEUE.read();
+        let queue = queue_read.as_ref().unwrap();
+
+        queue.write_buffer(
+            &self.toolpath_context_buffer,
+            0,
+            bytemuck::cast_slice(&[self.toolpath_context]),
+        );
+    }
+
+    pub fn get_toolpath(&self) -> Option<&Toolpath> {
+        self.toolpath.as_ref()
     }
 }

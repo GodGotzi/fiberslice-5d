@@ -2,22 +2,22 @@ use core::{f32, panic};
 use std::{
     collections::{HashMap, LinkedList, VecDeque},
     path::Path,
-    sync::Arc,
+    sync::{
+        mpsc::{Receiver, Sender},
+        Arc,
+    },
 };
 
-use glam::{vec3, Vec3};
+use glam::{vec3, Mat4, Vec3};
 use ordered_float::OrderedFloat;
 use rether::{
     picking::{Hitbox, HitboxNode, HitboxRoot},
     vertex::Vertex,
-    Rotate, Scale, Translate,
+    Rotate, Scale, Transform, Translate,
 };
 
 use stl_io::IndexedTriangle;
-use tokio::{
-    sync::oneshot::{error::TryRecvError, Receiver},
-    task::JoinHandle,
-};
+use tokio::{sync::oneshot::error::TryRecvError, task::JoinHandle};
 
 use uni_path::PathBuf;
 use wgpu::{BufferAddress, Color};
@@ -28,7 +28,7 @@ use crate::{
         BoundingBox,
     },
     model::Model,
-    prelude::WgpuContext,
+    prelude::{SharedMut, WgpuContext},
     ui::{api::trim_text, custom_toasts::MODEL_LOAD_PROGRESS},
     viewer::tracker::Process,
     GlobalState, RootEvent, GLOBAL_STATE,
@@ -56,11 +56,14 @@ type CADModelResult = Result<CADModelHandle, CADModelError>;
 // TODO also use vertex indices
 #[derive(Debug)]
 pub struct CADModelServer {
-    queue: Vec<(Receiver<CADModelResult>, JoinHandle<()>)>,
+    queue: Vec<(
+        tokio::sync::oneshot::Receiver<CADModelResult>,
+        JoinHandle<()>,
+    )>,
 
     root_hitbox: HitboxRoot<CADModel>,
 
-    models: HashMap<String, Arc<CADModel>>,
+    models: HashMap<String, SharedMut<CADModel>>,
 }
 
 impl CADModelServer {
@@ -216,7 +219,7 @@ impl CADModelServer {
         self.queue.push((rx, handle));
     }
     // i love you
-    pub fn insert(&mut self, model_handle: CADModelHandle) -> Result<Arc<CADModel>, Error> {
+    pub fn insert(&mut self, model_handle: CADModelHandle) -> Result<SharedMut<CADModel>, Error> {
         let path: PathBuf = model_handle.origin_path.into();
         let file_name = if let Some(path) = path.file_name() {
             path.to_string()
@@ -240,7 +243,7 @@ impl CADModelServer {
 
         model_handle.process.finish();
 
-        let handle = Arc::new(model_handle.model);
+        let handle = SharedMut::from_inner(model_handle.model);
 
         self.models.insert(name.clone(), handle.clone());
 
@@ -285,15 +288,19 @@ impl CADModelServer {
 
                 global_state.camera_event_writer.send(
                     crate::camera::CameraEvent::UpdatePreferredDistance(BoundingBox::new(
-                        handle.get_min(),
-                        handle.get_max(),
+                        handle.read().get_min(),
+                        handle.read().get_max(),
                     )),
                 );
 
-                self.root_hitbox.add_node(handle);
+                global_state.viewer.selector().write().select(&handle);
+
+                // self.root_hitbox.add_node(handle);
                 // global_state.window.request_redraw();
             }
         }
+
+        // self.models.values_mut().for_each(|model| model.update());
 
         Ok(())
     }
@@ -321,9 +328,11 @@ impl CADModelServer {
     }
 
     pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
-        self.models
-            .values()
-            .for_each(|model| model.render(render_pass));
+        unsafe {
+            self.models
+                .values()
+                .for_each(|model| model.read().render(render_pass));
+        }
     }
 }
 
@@ -333,6 +342,8 @@ pub enum CADModel {
         model: Model<Vertex>,
         bounding_box: BoundingBox,
         children: Vec<Self>,
+        rx: tokio::sync::mpsc::Receiver<Mat4>,
+        tx: tokio::sync::mpsc::Sender<Mat4>,
         size: BufferAddress,
     },
     Face {
@@ -342,10 +353,14 @@ pub enum CADModel {
 
 impl CADModel {
     pub fn create_root() -> Self {
+        let (tx, rx) = tokio::sync::mpsc::channel(3);
+
         Self::Root {
             model: Model::create(),
             bounding_box: BoundingBox::default(),
             children: Vec::new(),
+            rx,
+            tx,
             size: 0,
         }
     }
@@ -375,10 +390,37 @@ impl CADModel {
         }
     }
 
+    pub fn send(&self, matrix: Mat4) {
+        match self {
+            Self::Root { tx, .. } => {
+                tx.send(matrix);
+            }
+            Self::Face { .. } => panic!("Cannot get sender"),
+        }
+    }
+
+    pub fn update(&mut self) {
+        match self {
+            Self::Root { model, rx, .. } => {
+                if let Ok(new_transform) = rx.try_recv() {
+                    model.transform(new_transform);
+                }
+            }
+            Self::Face { .. } => panic!("Cannot update face"),
+        }
+    }
+
     pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
         match self {
             Self::Root { model, .. } => model.render(render_pass),
             Self::Face { .. } => panic!("Cannot render face"),
+        }
+    }
+
+    pub fn get_transform(&self) -> glam::Mat4 {
+        match self {
+            Self::Root { model, .. } => model.get_transform(),
+            Self::Face { .. } => panic!("Cannot get transform"),
         }
     }
 }
@@ -427,6 +469,15 @@ impl Rotate for CADModel {
         match self {
             Self::Root { model, .. } => model.rotate(rotation),
             Self::Face { face } => face.rotate(rotation),
+        }
+    }
+}
+
+impl Transform for CADModel {
+    fn transform(&mut self, transform: glam::Mat4) {
+        match self {
+            Self::Root { model, .. } => model.transform(transform),
+            Self::Face { face } => face.transform(transform),
         }
     }
 }
@@ -732,5 +783,15 @@ impl Translate for PolygonFace {
 impl Scale for PolygonFace {
     fn scale(&mut self, _scale: Vec3) {
         panic!("Not implemented")
+    }
+}
+
+impl Transform for PolygonFace {
+    fn transform(&mut self, transform: glam::Mat4) {
+        self.plane.normal = (transform * self.plane.normal.extend(0.0)).truncate();
+        self.plane.point = (transform * self.plane.point.extend(0.0)).truncate();
+
+        self.min = (transform * self.min.extend(0.0)).truncate();
+        self.max = (transform * self.max.extend(0.0)).truncate();
     }
 }

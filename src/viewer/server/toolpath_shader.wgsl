@@ -44,7 +44,7 @@ fn vs_main(
 ) -> VertexOutput {
     var out: VertexOutput;
 
-    if (in.print_type & context.visibility) && in.layer >= context.min_layer && in.layer <= context.max_layer {
+    if (in.print_type & context.visibility) > 0 && in.layer >= context.min_layer && in.layer <= context.max_layer {
         out.world_normal = in.normal;
         var world_position: vec4<f32> = vec4<f32>(in.position, 1.0);
         out.world_position = world_position.xyz;

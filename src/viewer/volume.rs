@@ -55,6 +55,9 @@ impl Volume {
 
     pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
         self.bed.render(render_pass);
+    }
+
+    pub fn render_lines<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
         self.r#box.render(render_pass);
         self.grid_model.render(render_pass);
     }
