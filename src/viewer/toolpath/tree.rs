@@ -6,7 +6,7 @@ use rether::{
 };
 use wgpu::{BufferAddress, Queue};
 
-use crate::{geometry::BoundingBox, model::Model};
+use crate::{geometry::BoundingBox, model::Model, render::Renderable};
 
 use super::{mesh::PathHitbox, vertex::ToolpathVertex};
 
@@ -183,6 +183,12 @@ impl ToolpathTree {
             Self::Node { .. } => panic!("Cannot render node"),
             Self::Path { .. } => panic!("Cannot render path"),
         }
+    }
+}
+
+impl Renderable for ToolpathTree {
+    fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+        self.render(render_pass);
     }
 }
 

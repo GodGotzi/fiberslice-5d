@@ -47,7 +47,7 @@ impl Server for ToolpathServer {
             context
                 .device
                 .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Light VB"),
+                    label: Some("Toolpath Context Buffer"),
                     contents: bytemuck::cast_slice(&[toolpath_context]),
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                 });
@@ -96,6 +96,8 @@ impl Server for ToolpathServer {
                     bind_group_layouts: &[
                         &context.camera_bind_group_layout,
                         &context.light_bind_group_layout,
+                        &context.transform_bind_group_layout,
+                        &context.color_bind_group_layout,
                         &toolpath_bind_group_layout,
                     ],
                     push_constant_ranges: &[],
@@ -171,7 +173,7 @@ impl Server for ToolpathServer {
     fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
         if let Some(toolpath) = &self.toolpath {
             render_pass.set_pipeline(&self.pipeline);
-            render_pass.set_bind_group(2, &self.toolpath_context_bind_group, &[]);
+            render_pass.set_bind_group(4, &self.toolpath_context_bind_group, &[]);
             toolpath.model.render(render_pass);
         }
     }
@@ -217,8 +219,8 @@ impl ToolpathServer {
 
                 global_state.camera_event_writer.send(
                     crate::camera::CameraEvent::UpdatePreferredDistance(BoundingBox::new(
-                        toolpath.model.get_min(),
-                        toolpath.model.get_max(),
+                        toolpath.model.read().get_min(),
+                        toolpath.model.read().get_max(),
                     )),
                 );
 

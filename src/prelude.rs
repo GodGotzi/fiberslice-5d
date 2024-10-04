@@ -59,6 +59,7 @@ pub struct WgpuContext {
     pub light_bind_group_layout: wgpu::BindGroupLayout,
     pub camera_bind_group_layout: wgpu::BindGroupLayout,
     pub transform_bind_group_layout: wgpu::BindGroupLayout,
+    pub color_bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl WgpuContext {
@@ -83,6 +84,7 @@ impl WgpuContext {
                 required_features: wgpu::Features::default(),
                 required_limits: wgpu::Limits {
                     max_buffer_size: u32::MAX as u64,
+                    max_bind_groups: 5,
                     ..Default::default()
                 },
                 label: None,
@@ -137,6 +139,21 @@ impl WgpuContext {
                 label: None,
             });
 
+        let color_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+                label: None,
+            });
+
         let size = window.inner_size();
         let surface_format = surface.get_capabilities(&adapter).formats[0];
         let surface_config = wgpu::SurfaceConfiguration {
@@ -163,6 +180,7 @@ impl WgpuContext {
             light_bind_group_layout,
             camera_bind_group_layout,
             transform_bind_group_layout,
+            color_bind_group_layout,
         })
     }
 }

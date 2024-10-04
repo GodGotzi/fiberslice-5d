@@ -69,7 +69,7 @@ impl Tool for GCodeTool<'_> {
                             .with_syntax(Syntax::gcode())
                             .with_numlines(true)
                             // .with_focus(Some(ReadSection::new(0, 20)))
-                            .show(ui, &"", &[]);
+                            .show(ui, "", &[]);
                     }
 
                     pointer_over_tool = ui.ui_contains_pointer();

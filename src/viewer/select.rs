@@ -1,7 +1,10 @@
 use glam::Mat4;
 use rether::{vertex::Vertex, Transform};
 
-use crate::{model::Model, prelude::SharedMut};
+use crate::{
+    model::Model,
+    prelude::{ArcModel, SharedMut},
+};
 
 use super::server::model::CADModel;
 
@@ -15,7 +18,7 @@ pub enum TransformResponse {
 
 #[derive(Default)]
 pub struct Selector {
-    selected: Vec<SharedMut<CADModel>>,
+    selected: Vec<ArcModel<CADModel>>,
     grouped_transform: Option<Mat4>,
 }
 
@@ -28,15 +31,15 @@ impl std::fmt::Debug for Selector {
 }
 
 impl Selector {
-    pub fn select(&mut self, model: &SharedMut<CADModel>) {
+    pub fn select(&mut self, model: &ArcModel<CADModel>) {
         self.selected.push(model.clone());
 
         self.grouped_transform = None;
     }
 
-    pub fn deselect(&mut self, model: &SharedMut<CADModel>) {
+    pub fn deselect(&mut self, model: &ArcModel<CADModel>) {
         let size = self.selected.len();
-        self.selected.retain(|m| !SharedMut::ptr_eq(m, model));
+        self.selected.retain(|m| !ArcModel::ptr_eq(m, model));
 
         if size != self.selected.len() {
             self.grouped_transform = None;
@@ -88,7 +91,7 @@ impl Selector {
         self.selected.clear();
     }
 
-    pub fn selected(&self) -> &[SharedMut<CADModel>] {
+    pub fn selected(&self) -> &[ArcModel<CADModel>] {
         &self.selected
     }
 }

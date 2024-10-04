@@ -4,6 +4,8 @@ use glam::Vec3;
 use rether::Translate;
 use tree::ToolpathTree;
 
+use crate::prelude::ArcModel;
+
 use self::{
     instruction::{InstructionModul, InstructionType},
     movement::Movements,
@@ -34,7 +36,7 @@ pub struct Toolpath {
     pub origin_path: String,
     pub raw: GCodeRaw,
     pub wire_model: WireModel,
-    pub model: ToolpathTree,
+    pub model: ArcModel<ToolpathTree>,
     pub center_mass: Vec3,
 }
 
@@ -64,6 +66,11 @@ impl Toolpath {
             root_vertices.extend(vertices);
             root.push_node(model);
         }
+        root.awaken(&root_vertices);
+        println!("{:?}", root_vertices.len());
+        // println!("{:?}", root);
+        drop(root_vertices);
+
         root.update_offset(0);
         root.translate(-raw_path.center_mass);
 
@@ -73,7 +80,7 @@ impl Toolpath {
             origin_path: path.to_string(),
             raw: raw.map(|s| s.to_string()).collect(),
             wire_model,
-            model: root,
+            model: ArcModel::new(root),
             center_mass: raw_path.center_mass,
         }
     }

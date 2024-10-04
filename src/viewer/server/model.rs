@@ -2,10 +2,7 @@ use core::{f32, panic};
 use std::{
     collections::{HashMap, LinkedList, VecDeque},
     path::Path,
-    sync::{
-        mpsc::{Receiver, Sender},
-        Arc,
-    },
+    sync::Arc,
 };
 
 use glam::{vec3, Mat4, Vec3};
@@ -28,7 +25,8 @@ use crate::{
         BoundingBox,
     },
     model::Model,
-    prelude::{SharedMut, WgpuContext},
+    prelude::{ArcModel, SharedMut, WgpuContext},
+    render::Renderable,
     ui::{api::trim_text, custom_toasts::MODEL_LOAD_PROGRESS},
     viewer::tracker::Process,
     GlobalState, RootEvent, GLOBAL_STATE,
@@ -62,8 +60,7 @@ pub struct CADModelServer {
     )>,
 
     root_hitbox: HitboxRoot<CADModel>,
-
-    models: HashMap<String, SharedMut<CADModel>>,
+    models: HashMap<String, ArcModel<CADModel>>,
 }
 
 impl CADModelServer {
@@ -219,7 +216,10 @@ impl CADModelServer {
         self.queue.push((rx, handle));
     }
     // i love you
-    pub fn insert(&mut self, model_handle: CADModelHandle) -> Result<SharedMut<CADModel>, Error> {
+    pub fn insert(
+        &mut self,
+        mut model_handle: CADModelHandle,
+    ) -> Result<ArcModel<CADModel>, Error> {
         let path: PathBuf = model_handle.origin_path.into();
         let file_name = if let Some(path) = path.file_name() {
             path.to_string()
@@ -243,7 +243,7 @@ impl CADModelServer {
 
         model_handle.process.finish();
 
-        let handle = SharedMut::from_inner(model_handle.model);
+        let handle = ArcModel::new(model_handle.model);
 
         self.models.insert(name.clone(), handle.clone());
 
@@ -328,11 +328,9 @@ impl CADModelServer {
     }
 
     pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
-        unsafe {
-            self.models
-                .values()
-                .for_each(|model| model.read_unsafe().as_ref().unwrap().render(render_pass));
-        }
+        self.models
+            .values()
+            .for_each(|model| model.render(render_pass));
     }
 }
 
@@ -401,6 +399,36 @@ impl CADModel {
         match self {
             Self::Root { model, .. } => model.get_transform(),
             Self::Face { .. } => panic!("Cannot get transform"),
+        }
+    }
+
+    pub fn get_color(&self) -> [f32; 4] {
+        match self {
+            Self::Root { model, .. } => model.get_color(),
+            Self::Face { .. } => panic!("Cannot get color"),
+        }
+    }
+
+    pub fn set_transparency(&mut self, transparency: f32) {
+        match self {
+            Self::Root { model, .. } => model.set_transparency(transparency),
+            Self::Face { .. } => panic!("Cannot set transparency"),
+        }
+    }
+
+    pub fn set_color(&mut self, color: [f32; 4]) {
+        match self {
+            Self::Root { model, .. } => model.set_color(color),
+            Self::Face { .. } => panic!("Cannot set color"),
+        }
+    }
+}
+
+impl Renderable for CADModel {
+    fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+        match self {
+            Self::Root { model, .. } => model.render(render_pass),
+            Self::Face { .. } => panic!("Cannot render face"),
         }
     }
 }

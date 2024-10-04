@@ -20,6 +20,13 @@ struct Transform {
 @group(2) @binding(0)
 var<uniform> transform: Transform;
 
+struct Color {
+    color: vec4<f32>,
+};
+
+@group(3) @binding(0)
+var<uniform> color: Color;
+
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
@@ -74,5 +81,5 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let specular_color = light.color.xyz * specular_strength;
 
     let result = (ambient_color + diffuse_color + specular_color) * in.color.xyz;
-    return vec4<f32>(result, in.color.a);
+    return vec4<f32>(result.r * color.color.r, result.g * color.color.g, result.b * color.color.b, in.color.a * color.color.a);
 }

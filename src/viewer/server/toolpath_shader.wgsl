@@ -13,14 +13,28 @@ struct Light {
 @group(1) @binding(0)
 var<uniform> light: Light;
 
+struct Transform {
+    matrix: mat4x4<f32>,
+};
+
+@group(2) @binding(0)
+var<uniform> transform: Transform;
+
+struct Color {
+    color: vec4<f32>,
+};
+
+@group(3) @binding(0)
+var<uniform> color: Color;
+
 struct ToolpathContext {
     visibility: u32,
     min_layer: u32,
     max_layer: u32,
 };
 
-@group(2) @binding(0)
-var<uniform> context: ToolpathContext;  
+@group(4) @binding(0)
+var<uniform> context: ToolpathContext; 
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
@@ -46,9 +60,10 @@ fn vs_main(
 
     if (in.print_type & context.visibility) > 0 && in.layer >= context.min_layer && in.layer <= context.max_layer {
         out.world_normal = in.normal;
-        var world_position: vec4<f32> = vec4<f32>(in.position, 1.0);
-        out.world_position = world_position.xyz;
-        out.clip_position = camera.view_proj * vec4<f32>(in.position, 1.0);
+        var pos = transform.matrix * vec4<f32>(in.position, 1.0);
+
+        out.world_position = pos.xyz;
+        out.clip_position = camera.view_proj * pos;
         out.camera_view_pos = camera.view_pos;
         out.color = in.color;
     }
@@ -79,5 +94,5 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let specular_color = light.color.xyz * specular_strength;
 
     let result = (ambient_color + diffuse_color + specular_color) * in.color.xyz;
-    return vec4<f32>(result, in.color.a);
+    return vec4<f32>(result.r * color.color.r, result.g * color.color.g, result.b * color.color.b, in.color.a * color.color.a);
 }

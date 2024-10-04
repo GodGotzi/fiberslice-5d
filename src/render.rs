@@ -12,6 +12,10 @@ use crate::{
     GlobalState, RootEvent,
 };
 
+pub trait Renderable {
+    fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>);
+}
+
 const MSAA_SAMPLE_COUNT: u32 = 1;
 
 #[derive(Debug)]
@@ -69,7 +73,7 @@ pub struct RenderAdapter {
 }
 
 impl RenderAdapter {
-    fn render_main(
+    fn render(
         &self,
         encoder: &mut CommandEncoder,
         view: &wgpu::TextureView,
@@ -124,21 +128,28 @@ impl RenderAdapter {
             global_state.ui_state.mode.read_with_fn(|mode| match mode {
                 Mode::Preview => {
                     render_pass.set_pipeline(&self.back_cull_pipline);
-                    env_server_read.render(&mut render_pass);
                     toolpath_server_read.render(&mut render_pass);
+
+                    render_pass.set_pipeline(&self.no_cull_pipline);
+                    env_server_read.render(&mut render_pass);
 
                     render_pass.set_pipeline(&self.line_pipline);
                     env_server_read.render_lines(&mut render_pass);
                 }
                 Mode::Prepare => {
                     render_pass.set_pipeline(&self.back_cull_pipline);
-                    env_server_read.render(&mut render_pass);
                     model_server_read.render(&mut render_pass);
+
+                    render_pass.set_pipeline(&self.no_cull_pipline);
+                    env_server_read.render(&mut render_pass);
 
                     render_pass.set_pipeline(&self.line_pipline);
                     env_server_read.render_lines(&mut render_pass);
                 }
                 Mode::ForceAnalytics => {
+                    render_pass.set_pipeline(&self.no_cull_pipline);
+                    env_server_read.render(&mut render_pass);
+
                     render_pass.set_pipeline(&self.line_pipline);
                     env_server_read.render_lines(&mut render_pass);
                 }
@@ -146,6 +157,7 @@ impl RenderAdapter {
         }
     }
 
+    #[allow(dead_code)]
     fn render_widgets(
         &self,
         encoder: &mut CommandEncoder,
@@ -189,8 +201,29 @@ impl RenderAdapter {
             render_pass.set_bind_group(0, &self.render_state.camera_bind_group, &[]);
             render_pass.set_bind_group(1, &self.render_state.light_bind_group, &[]);
 
-            render_pass.set_pipeline(&self.line_pipline);
-            env_server_read.render(&mut render_pass);
+            global_state.ui_state.mode.read_with_fn(|mode| match mode {
+                Mode::Preview => {
+                    render_pass.set_pipeline(&self.no_cull_pipline);
+                    env_server_read.render(&mut render_pass);
+
+                    render_pass.set_pipeline(&self.line_pipline);
+                    env_server_read.render_lines(&mut render_pass);
+                }
+                Mode::Prepare => {
+                    render_pass.set_pipeline(&self.no_cull_pipline);
+                    env_server_read.render(&mut render_pass);
+
+                    render_pass.set_pipeline(&self.line_pipline);
+                    env_server_read.render_lines(&mut render_pass);
+                }
+                Mode::ForceAnalytics => {
+                    render_pass.set_pipeline(&self.no_cull_pipline);
+                    env_server_read.render(&mut render_pass);
+
+                    render_pass.set_pipeline(&self.line_pipline);
+                    env_server_read.render_lines(&mut render_pass);
+                }
+            });
         }
     }
 }
@@ -236,8 +269,8 @@ impl<'a> FrameHandle<'a, RootEvent, (), (Option<UiUpdateOutput>, &CameraResult)>
             screen_descriptor,
         } = ui_output.unwrap();
 
-        self.render_main(&mut encoder, &view, &viewport, &state);
-        self.render_widgets(&mut encoder, &view, &viewport, &state);
+        self.render(&mut encoder, &view, &viewport, &state);
+        // self.render_widgets(&mut encoder, &view, &viewport, &state);
 
         self.egui_rpass
             .add_textures(&wgpu_context.device, &wgpu_context.queue, &tdelta)
@@ -397,6 +430,7 @@ impl<'a> Adapter<'a, RootEvent, (), (), (Option<UiUpdateOutput>, &CameraResult),
                         &context.camera_bind_group_layout,
                         &context.light_bind_group_layout,
                         &context.transform_bind_group_layout,
+                        &context.color_bind_group_layout,
                     ],
                     push_constant_ranges: &[],
                 });

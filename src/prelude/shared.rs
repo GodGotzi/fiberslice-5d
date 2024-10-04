@@ -1,10 +1,8 @@
-use std::{
-    cell::RefCell,
-    rc::Rc,
-    sync::{Arc, Mutex},
-};
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+
+use crate::render::Renderable;
 
 #[derive(Default, Debug)]
 pub struct SharedMut<T: std::fmt::Debug> {
@@ -32,10 +30,6 @@ impl<T: std::fmt::Debug> SharedMut<T> {
 
     pub fn read(&self) -> RwLockReadGuard<T> {
         self.inner.read()
-    }
-
-    pub unsafe fn read_unsafe(&self) -> *const T {
-        self.inner.data_ptr()
     }
 
     pub fn read_with_fn<F, R>(&self, f: F) -> R
@@ -108,5 +102,63 @@ impl<T> UnparallelSharedMut<T> {
 
     pub fn inner(&self) -> &RefCell<T> {
         &self.inner
+    }
+}
+
+#[derive(Debug)]
+pub struct ArcModel<T> {
+    inner: Arc<RwLock<T>>,
+}
+
+impl<T> Clone for ArcModel<T> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+        }
+    }
+}
+
+impl<T: Renderable> ArcModel<T> {
+    pub fn new(inner: T) -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(inner)),
+        }
+    }
+
+    pub fn ptr_eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.inner, &other.inner)
+    }
+
+    pub fn read(&self) -> RwLockReadGuard<T> {
+        self.inner.read()
+    }
+
+    pub fn read_with_fn<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(&T) -> R,
+    {
+        let inner = self.inner.read();
+        f(&*inner)
+    }
+
+    pub fn write(&self) -> RwLockWriteGuard<T> {
+        self.inner.write()
+    }
+
+    pub fn write_with_fn<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(&mut T) -> R,
+    {
+        let mut inner = self.inner.write();
+        f(&mut *inner)
+    }
+
+    pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+        let inner = self.inner.read();
+
+        unsafe {
+            self.inner.data_ptr().as_ref().unwrap().render(render_pass);
+        }
+        drop(inner);
     }
 }
