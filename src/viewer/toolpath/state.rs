@@ -1,4 +1,4 @@
-use crate::slicer::print_type::PrintType;
+use crate::slicer::path::{PathType, PrintType};
 
 #[derive(Debug, Clone)]
 #[allow(clippy::upper_case_acronyms)]
@@ -72,8 +72,8 @@ impl TryFrom<String> for StateField {
 
 #[derive(Debug, Clone)]
 pub struct PrintState {
+    pub path_type: PathType,
     pub layer: Option<usize>,
-    pub print_type: Option<PrintType>,
     pub mesh: Option<String>,
 }
 
@@ -81,7 +81,7 @@ impl PrintState {
     pub fn empty() -> Self {
         Self {
             layer: None,
-            print_type: None,
+            path_type: PathType::Setup,
             mesh: None,
         }
     }
@@ -97,7 +97,7 @@ impl PrintState {
                 self.layer = Some(self.layer.unwrap_or(0) + 1);
             }
             StateField::TYPE(value) => {
-                self.print_type = Some(value);
+                self.path_type.update_type(value);
             }
             StateField::MESH(value) => {
                 self.mesh = Some(value);

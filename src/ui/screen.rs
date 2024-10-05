@@ -87,6 +87,8 @@ impl Screen {
         quick_settingsbar::Settingsbar::with_state(&mut self.quick_settings_state)
             .show(ctx, shared_state);
 
+        modebar::Modebar::with_state(&mut self.modebar_state).show(ctx, shared_state);
+
         toolbar::Toolbar::with_state(&mut self.toolbar_state)
             .with_tools(&mut [
                 &mut self.tools.gcode_tool,
@@ -98,8 +100,6 @@ impl Screen {
                 &mut self.tools.debug_tool,
             ])
             .show(ctx, shared_state);
-
-        modebar::Modebar::with_state(&mut self.modebar_state).show(ctx, shared_state);
 
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
             self.toasts.show_inside(ui);

@@ -1,66 +1,69 @@
-use std::sync::Arc;
+use parking_lot::RwLock;
+use wgpu::BufferAddress;
 
-use rether::{
-    picking::{interact::InteractiveModel, Hitbox, HitboxNode},
-    Rotate, Scale, Translate,
+use crate::{
+    geometry::BoundingBox,
+    model::{Model, Rotate, RotateMut, Scale, ScaleMut, Translate, TranslateMut},
+    picking::{
+        hitbox::{Hitbox, HitboxNode},
+        interact::InteractiveModel,
+    },
+    prelude::LockModel,
+    render::Renderable,
 };
-use wgpu::{BufferAddress, Queue};
-
-use crate::{geometry::BoundingBox, model::Model, render::Renderable};
 
 use super::{mesh::PathHitbox, vertex::ToolpathVertex};
 
 #[derive(Debug)]
 pub enum ToolpathTree {
     Root {
-        model: Model<ToolpathVertex>,
-        bounding_box: BoundingBox,
+        model: LockModel<ToolpathVertex>,
+        bounding_box: RwLock<BoundingBox>,
         children: Vec<Self>,
         size: BufferAddress,
     },
     Node {
         offset: BufferAddress,
         size: BufferAddress,
-        bounding_box: BoundingBox,
+        bounding_box: RwLock<BoundingBox>,
         children: Vec<Self>,
     },
     Path {
         offset: BufferAddress,
         size: BufferAddress,
-        path_box: PathHitbox,
+        path_box: RwLock<Box<PathHitbox>>,
     },
 }
 
 impl ToolpathTree {
     pub fn create_root() -> Self {
         Self::Root {
-            model: Model::create(),
+            model: LockModel::new(Model::create()),
             children: Vec::new(),
-            bounding_box: BoundingBox::default(),
+            bounding_box: RwLock::new(BoundingBox::default()),
             size: 0,
         }
     }
 
-    pub fn create_root_with_children<T>(
-        device: &wgpu::Device,
-        queue: Arc<Queue>,
+    pub fn create_root_with_children(
         bounding_box: BoundingBox,
         children: Vec<Self>,
+        size: BufferAddress,
     ) -> Self {
         Self::Root {
-            model: Model::create(),
+            model: LockModel::new(Model::create()),
             children,
-            bounding_box: BoundingBox::default(),
-            size: 0,
+            bounding_box: RwLock::new(bounding_box),
+            size,
         }
     }
 
     pub fn create_node(offset: BufferAddress, size: BufferAddress) -> Self {
         Self::Node {
-            offset: 0,
-            size: 0,
+            offset,
+            size,
             children: Vec::new(),
-            bounding_box: BoundingBox::default(),
+            bounding_box: RwLock::new(BoundingBox::default()),
         }
     }
 
@@ -73,7 +76,7 @@ impl ToolpathTree {
             offset,
             size,
             children,
-            bounding_box: BoundingBox::default(),
+            bounding_box: RwLock::new(BoundingBox::default()),
         }
     }
 
@@ -81,7 +84,7 @@ impl ToolpathTree {
         Self::Path {
             offset,
             size,
-            path_box,
+            path_box: RwLock::new(Box::new(path_box)),
         }
     }
 
@@ -94,8 +97,8 @@ impl ToolpathTree {
                 ..
             } => {
                 *size += node.size();
-                bounding_box.expand_point(node.get_min());
-                bounding_box.expand_point(node.get_max());
+                bounding_box.get_mut().expand_point(node.get_min());
+                bounding_box.get_mut().expand_point(node.get_max());
                 children.push(node);
             }
             Self::Node {
@@ -105,8 +108,8 @@ impl ToolpathTree {
                 ..
             } => {
                 *size += node.size();
-                bounding_box.expand_point(node.get_min());
-                bounding_box.expand_point(node.get_max());
+                bounding_box.get_mut().expand_point(node.get_min());
+                bounding_box.get_mut().expand_point(node.get_max());
                 children.push(node);
             }
             Self::Path { .. } => panic!("Cannot push node to path"),
@@ -122,8 +125,8 @@ impl ToolpathTree {
                 ..
             } => {
                 *size += path.size();
-                bounding_box.expand_point(path.get_min());
-                bounding_box.expand_point(path.get_max());
+                bounding_box.get_mut().expand_point(path.get_min());
+                bounding_box.get_mut().expand_point(path.get_max());
                 children.push(path);
             }
             Self::Node {
@@ -133,8 +136,8 @@ impl ToolpathTree {
                 ..
             } => {
                 *size += path.size();
-                bounding_box.expand_point(path.get_min());
-                bounding_box.expand_point(path.get_max());
+                bounding_box.get_mut().expand_point(path.get_min());
+                bounding_box.get_mut().expand_point(path.get_max());
                 children.push(path);
             }
             Self::Path { .. } => panic!("Cannot push path to path"),
@@ -171,13 +174,15 @@ impl ToolpathTree {
 
     pub fn awaken(&mut self, data: &[ToolpathVertex]) {
         match self {
-            Self::Root { model, .. } => model.awaken(data),
+            Self::Root { model, .. } => model.write().awaken(data),
             Self::Node { .. } => panic!("Cannot awaken node"),
             Self::Path { .. } => panic!("Cannot awaken path"),
         }
     }
+}
 
-    pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+impl Renderable for ToolpathTree {
+    fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
         match self {
             Self::Root { model, .. } => model.render(render_pass),
             Self::Node { .. } => panic!("Cannot render node"),
@@ -186,18 +191,12 @@ impl ToolpathTree {
     }
 }
 
-impl Renderable for ToolpathTree {
-    fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
-        self.render(render_pass);
-    }
-}
-
 impl HitboxNode<Self> for ToolpathTree {
-    fn check_hit(&self, ray: &rether::picking::Ray) -> Option<f32> {
+    fn check_hit(&self, ray: &crate::picking::Ray) -> Option<f32> {
         match self {
-            Self::Root { bounding_box, .. } => bounding_box.check_hit(ray),
-            Self::Node { bounding_box, .. } => bounding_box.check_hit(ray),
-            Self::Path { path_box, .. } => path_box.check_hit(ray),
+            Self::Root { bounding_box, .. } => bounding_box.read().check_hit(ray),
+            Self::Node { bounding_box, .. } => bounding_box.read().check_hit(ray),
+            Self::Path { path_box, .. } => path_box.read().check_hit(ray),
         }
     }
 
@@ -211,36 +210,138 @@ impl HitboxNode<Self> for ToolpathTree {
 
     fn get_min(&self) -> glam::Vec3 {
         match self {
-            Self::Root { bounding_box, .. } => bounding_box.get_min(),
-            Self::Node { bounding_box, .. } => bounding_box.get_min(),
-            Self::Path { path_box, .. } => path_box.get_min(),
+            Self::Root { bounding_box, .. } => bounding_box.read().get_min(),
+            Self::Node { bounding_box, .. } => bounding_box.read().get_min(),
+            Self::Path { path_box, .. } => path_box.read().get_min(),
         }
     }
 
     fn get_max(&self) -> glam::Vec3 {
         match self {
-            Self::Root { bounding_box, .. } => bounding_box.get_max(),
-            Self::Node { bounding_box, .. } => bounding_box.get_max(),
-            Self::Path { path_box, .. } => path_box.get_max(),
+            Self::Root { bounding_box, .. } => bounding_box.read().get_max(),
+            Self::Node { bounding_box, .. } => bounding_box.read().get_max(),
+            Self::Path { path_box, .. } => path_box.read().get_max(),
         }
     }
 }
 
 impl InteractiveModel for ToolpathTree {
-    fn clicked(&self, _event: rether::picking::interact::ClickEvent) {
+    fn clicked(&self, _event: crate::picking::interact::ClickEvent) {
         println!("ToolpathTree: Clicked");
     }
 
-    fn drag(&self, _event: rether::picking::interact::DragEvent) {
+    fn drag(&self, _event: crate::picking::interact::DragEvent) {
         println!("ToolpathTree: Dragged");
     }
 
-    fn scroll(&self, _event: rether::picking::interact::ScrollEvent) {
+    fn scroll(&self, _event: crate::picking::interact::ScrollEvent) {
         println!("ToolpathTree: Scrolled");
     }
 }
 
 impl Translate for ToolpathTree {
+    fn translate(&self, translation: glam::Vec3) {
+        match self {
+            ToolpathTree::Root {
+                model,
+                children,
+                bounding_box,
+                ..
+            } => {
+                model.write().translate(translation);
+                bounding_box.write().translate(translation);
+
+                for child in children {
+                    child.translate(translation);
+                }
+            }
+            ToolpathTree::Node {
+                children,
+                bounding_box,
+                ..
+            } => {
+                bounding_box.write().translate(translation);
+
+                for child in children {
+                    child.translate(translation);
+                }
+            }
+            ToolpathTree::Path { path_box, .. } => {
+                path_box.write().translate(translation);
+            }
+        }
+    }
+}
+
+impl Rotate for ToolpathTree {
+    fn rotate(&self, rotation: glam::Quat) {
+        match self {
+            ToolpathTree::Root {
+                model,
+                children,
+                bounding_box,
+                ..
+            } => {
+                model.write().rotate(rotation);
+                bounding_box.write().rotate(rotation);
+
+                for child in children {
+                    child.rotate(rotation);
+                }
+            }
+            ToolpathTree::Node {
+                children,
+                bounding_box,
+                ..
+            } => {
+                bounding_box.write().rotate(rotation);
+
+                for child in children {
+                    child.rotate(rotation);
+                }
+            }
+            ToolpathTree::Path { path_box, .. } => {
+                path_box.write().rotate(rotation);
+            }
+        }
+    }
+}
+
+impl Scale for ToolpathTree {
+    fn scale(&self, scale: glam::Vec3) {
+        match self {
+            ToolpathTree::Root {
+                model,
+                children,
+                bounding_box,
+                ..
+            } => {
+                model.write().scale(scale);
+                bounding_box.write().scale(scale);
+
+                for child in children {
+                    child.scale(scale);
+                }
+            }
+            ToolpathTree::Node {
+                children,
+                bounding_box,
+                ..
+            } => {
+                bounding_box.write().scale(scale);
+
+                for child in children {
+                    child.scale(scale);
+                }
+            }
+            ToolpathTree::Path { path_box, .. } => {
+                path_box.write().scale(scale);
+            }
+        }
+    }
+}
+
+impl TranslateMut for ToolpathTree {
     fn translate(&mut self, translation: glam::Vec3) {
         match self {
             ToolpathTree::Root {
@@ -249,8 +350,8 @@ impl Translate for ToolpathTree {
                 bounding_box,
                 ..
             } => {
-                model.translate(translation);
-                bounding_box.translate(translation);
+                model.get_mut().translate(translation);
+                bounding_box.get_mut().translate(translation);
 
                 for child in children {
                     child.translate(translation);
@@ -261,20 +362,20 @@ impl Translate for ToolpathTree {
                 bounding_box,
                 ..
             } => {
-                bounding_box.translate(translation);
+                bounding_box.get_mut().translate(translation);
 
                 for child in children {
                     child.translate(translation);
                 }
             }
             ToolpathTree::Path { path_box, .. } => {
-                path_box.translate(translation);
+                path_box.get_mut().translate(translation);
             }
         }
     }
 }
 
-impl Rotate for ToolpathTree {
+impl RotateMut for ToolpathTree {
     fn rotate(&mut self, rotation: glam::Quat) {
         match self {
             ToolpathTree::Root {
@@ -283,8 +384,8 @@ impl Rotate for ToolpathTree {
                 bounding_box,
                 ..
             } => {
-                model.rotate(rotation);
-                bounding_box.rotate(rotation);
+                model.get_mut().rotate(rotation);
+                bounding_box.get_mut().rotate(rotation);
 
                 for child in children {
                     child.rotate(rotation);
@@ -295,20 +396,20 @@ impl Rotate for ToolpathTree {
                 bounding_box,
                 ..
             } => {
-                bounding_box.rotate(rotation);
+                bounding_box.get_mut().rotate(rotation);
 
                 for child in children {
                     child.rotate(rotation);
                 }
             }
             ToolpathTree::Path { path_box, .. } => {
-                path_box.rotate(rotation);
+                path_box.get_mut().rotate(rotation);
             }
         }
     }
 }
 
-impl Scale for ToolpathTree {
+impl ScaleMut for ToolpathTree {
     fn scale(&mut self, scale: glam::Vec3) {
         match self {
             ToolpathTree::Root {
@@ -317,8 +418,8 @@ impl Scale for ToolpathTree {
                 bounding_box,
                 ..
             } => {
-                model.scale(scale);
-                bounding_box.scale(scale);
+                model.get_mut().scale(scale);
+                bounding_box.get_mut().scale(scale);
 
                 for child in children {
                     child.scale(scale);
@@ -329,14 +430,14 @@ impl Scale for ToolpathTree {
                 bounding_box,
                 ..
             } => {
-                bounding_box.scale(scale);
+                bounding_box.get_mut().scale(scale);
 
                 for child in children {
                     child.scale(scale);
                 }
             }
             ToolpathTree::Path { path_box, .. } => {
-                path_box.scale(scale);
+                path_box.get_mut().scale(scale);
             }
         }
     }

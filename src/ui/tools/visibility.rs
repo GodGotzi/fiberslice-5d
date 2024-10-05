@@ -1,9 +1,9 @@
 use egui::{Color32, FontId, RichText};
-use strum::{EnumCount, IntoEnumIterator};
+use strum::EnumCount;
 
 use crate::{
-    slicer::print_type::PrintType,
-    ui::{api::trim_text, UiState},
+    slicer::path::{PathType, PrintType},
+    ui::UiState,
     GlobalState, RootEvent,
 };
 
@@ -14,6 +14,8 @@ pub struct VisibilityToolState {
     enabled: bool,
     anchored: bool,
     print_types: [bool; PrintType::COUNT],
+    travel: bool,
+    setup: bool,
 }
 
 impl Default for VisibilityToolState {
@@ -22,6 +24,8 @@ impl Default for VisibilityToolState {
             enabled: Default::default(),
             anchored: Default::default(),
             print_types: [true; PrintType::COUNT],
+            travel: false,
+            setup: false,
         }
     }
 }
@@ -76,101 +80,151 @@ impl Tool for VisibilityTool<'_> {
                 .show(ctx, |ui| {
                     ui.separator();
 
-                    egui::CollapsingHeader::new("Print Types")
-                        .default_open(true)
-                        .show(ui, |ui| {
-                            let old = self.state.print_types;
+                    let old_print_types = self.state.print_types;
+                    let old_travel = self.state.travel;
+                    let old_setup = self.state.setup;
 
-                            for print_type in PrintType::iter() {
-                                let str_type: &'static str = (&print_type).into();
-                                let color: wgpu::Color = (&print_type).into();
-
-                                let egui_color = Color32::from_rgba_premultiplied(
-                                    (color.r * 255.0) as u8,
-                                    (color.g * 255.0) as u8,
-                                    (color.b * 255.0) as u8,
-                                    (color.a * 255.0) as u8,
-                                );
-
-                                ui.horizontal(|ui| {
-                                    ui.checkbox(
-                                        &mut self.state.print_types[print_type as usize],
-                                        RichText::new(str_type)
-                                            .font(FontId::monospace(15.0))
-                                            .strong()
-                                            .color(egui_color),
-                                    );
-
-                                    ui.add_space(25.0);
-
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Center),
-                                        |ui| {
-                                            ui.label(
-                                                RichText::new(format!("{:7}", 0))
-                                                    .font(FontId::monospace(15.0))
-                                                    .strong(),
-                                            );
-                                        },
-                                    );
-                                });
-                            }
-
-                            if old != self.state.print_types {
-                                let mut visibility = 0;
-
-                                for (index, visible) in self.state.print_types.iter().enumerate() {
-                                    if *visible {
-                                        visibility |= 1 << index;
-                                    }
-                                }
-
-                                global_state
-                                    .viewer
-                                    .toolpath_server
-                                    .write()
-                                    .set_visibility(visibility);
-                            }
-                        });
-
-                    ui.separator();
-
-                    if let Some(toolpath) =
-                        global_state.viewer.toolpath_server.read().get_toolpath()
+                    if let Some(count_map) = global_state
+                        .viewer
+                        .toolpath_server
+                        .read()
+                        .get_toolpath()
+                        .map(|toolpath| &toolpath.count_map)
                     {
-                        egui::CollapsingHeader::new("Toolpath Parts")
+                        egui::CollapsingHeader::new("Print Types")
                             .default_open(true)
                             .show(ui, |ui| {
-                                ui.horizontal(|ui| {
-                                    let file_name = toolpath.origin_path.clone();
+                                for (print_type, count) in
+                                    count_map.iter().filter_map(|(path_type, count)| {
+                                        if let PathType::Work { print_type, travel } = path_type {
+                                            if !travel {
+                                                Some((print_type, count))
+                                            } else {
+                                                None
+                                            }
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                {
+                                    let str_type: &'static str = (print_type).into();
+                                    let color: wgpu::Color = (print_type).into();
 
-                                    let text = trim_text::<20, 4>(&file_name);
-
-                                    ui.checkbox(
-                                        &mut true,
-                                        RichText::new(text).font(FontId::monospace(15.0)).strong(),
+                                    let egui_color = Color32::from_rgba_premultiplied(
+                                        (color.r * 255.0) as u8,
+                                        (color.g * 255.0) as u8,
+                                        (color.b * 255.0) as u8,
+                                        (color.a * 255.0) as u8,
                                     );
 
-                                    ui.add_space(15.0);
-
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Center),
-                                        |ui| {
-                                            ui.label(
-                                                RichText::new(format!(
-                                                    "{:7}",
-                                                    toolpath.wire_model.len()
-                                                ))
+                                    ui.horizontal(|ui| {
+                                        ui.checkbox(
+                                            &mut self.state.print_types
+                                                [print_type.clone() as usize],
+                                            RichText::new(str_type)
                                                 .font(FontId::monospace(15.0))
-                                                .strong(),
-                                            );
-                                        },
-                                    );
-                                });
+                                                .strong()
+                                                .color(egui_color),
+                                        );
+
+                                        ui.add_space(25.0);
+
+                                        ui.with_layout(
+                                            egui::Layout::right_to_left(egui::Align::Center),
+                                            |ui| {
+                                                ui.label(
+                                                    RichText::new(format!("{:7}", count))
+                                                        .font(FontId::monospace(15.0))
+                                                        .strong(),
+                                                );
+                                            },
+                                        );
+                                    });
+                                }
+
+                                ui.separator();
                             });
 
-                        ui.separator();
+                        if let Some(count) = count_map.get(&PathType::Work {
+                            print_type: PrintType::Unknown,
+                            travel: true,
+                        }) {
+                            ui.horizontal(|ui| {
+                                ui.checkbox(
+                                    &mut self.state.travel,
+                                    RichText::new("Travel")
+                                        .font(FontId::monospace(15.0))
+                                        .strong()
+                                        .color(Color32::BLACK),
+                                );
+
+                                ui.add_space(25.0);
+
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        ui.label(
+                                            RichText::new(format!("{:7}", count))
+                                                .font(FontId::monospace(15.0))
+                                                .strong(),
+                                        );
+                                    },
+                                );
+                            });
+                        }
+
+                        if let Some(count) = count_map.get(&PathType::Setup) {
+                            ui.horizontal(|ui| {
+                                ui.checkbox(
+                                    &mut self.state.setup,
+                                    RichText::new("Setup")
+                                        .font(FontId::monospace(15.0))
+                                        .strong()
+                                        .color(Color32::BLACK),
+                                );
+
+                                ui.add_space(25.0);
+
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        ui.label(
+                                            RichText::new(format!("{:7}", count))
+                                                .font(FontId::monospace(15.0))
+                                                .strong(),
+                                        );
+                                    },
+                                );
+                            });
+                        }
                     }
+
+                    if old_print_types != self.state.print_types
+                        || old_travel != self.state.travel
+                        || old_setup != self.state.setup
+                    {
+                        let mut visibility = 0;
+
+                        for (index, visible) in self.state.print_types.iter().enumerate() {
+                            if *visible {
+                                visibility |= 1 << index;
+                            }
+                        }
+
+                        visibility <<= 2;
+
+                        visibility |= if self.state.travel { 0x02 } else { 0 };
+
+                        visibility |= if self.state.setup { 0x01 } else { 0 };
+
+                        global_state
+                            .viewer
+                            .toolpath_server
+                            .write()
+                            .set_visibility(visibility);
+                    }
+
+                    ui.separator();
 
                     pointer_over_tool = ui.ui_contains_pointer();
                 });

@@ -317,7 +317,7 @@ impl NodeValue {
 }
 
 mod test {
-    use crate::settings::tree::NodeValue;
+    use crate::slicer::settings::tree::NodeValue;
 
     use super::SettingTree;
 

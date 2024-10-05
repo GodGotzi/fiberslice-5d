@@ -26,13 +26,13 @@ pub mod orientation {
     use strum::{EnumCount, IntoEnumIterator};
 
     use crate::{
-        camera::CameraEvent,
         config::{self, gui::shaded_color},
         ui::{icon::get_orientation_asset, UiState},
+        viewer::CameraEvent,
         GlobalState, RootEvent,
     };
 
-    use crate::camera::Orientation;
+    use crate::viewer::Orientation;
 
     pub struct OrientationAddon<'a> {
         shared_state: &'a (UiState, GlobalState<RootEvent>),
@@ -205,7 +205,7 @@ impl<'a> Addons<'a> {
     fn show_right_addon(
         &mut self,
         ui: &mut Ui,
-        (ui_state, _global_state): &(UiState, GlobalState<RootEvent>),
+        (ui_state, global_state): &(UiState, GlobalState<RootEvent>),
     ) {
         ui_state.mode.read_with_fn(|mode| match mode {
             Mode::Preview => {
@@ -221,9 +221,27 @@ impl<'a> Addons<'a> {
                                 ui.available_height(),
                                 |ui| &mut ui.spacing_mut().slider_width,
                                 |ui| {
-                                    let slider = egui::Slider::new(layer_max, 0..=120)
-                                        .orientation(egui::SliderOrientation::Vertical);
-                                    ui.add_sized(ui.available_size(), slider);
+                                    let max = global_state
+                                        .viewer
+                                        .toolpath_server
+                                        .read()
+                                        .get_toolpath()
+                                        .map(|toolpath| toolpath.max_layer as u32);
+
+                                    if let Some(max) = max {
+                                        let slider = egui::Slider::new(layer_max, 0..=max)
+                                            .orientation(egui::SliderOrientation::Vertical);
+
+                                        let response = ui.add_sized(ui.available_size(), slider);
+
+                                        if response.changed() {
+                                            global_state
+                                                .viewer
+                                                .toolpath_server
+                                                .write()
+                                                .set_max_layer(*layer_max);
+                                        }
+                                    }
                                 },
                             );
                         });

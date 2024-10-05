@@ -1,18 +1,16 @@
 use std::path::Path;
 
-use rether::picking::{HitboxNode, HitboxRoot};
 use tokio::sync::oneshot::Receiver;
 use tokio::task::JoinHandle;
 use wgpu::util::DeviceExt;
 
+use crate::picking::hitbox::HitboxRoot;
+use crate::render::Renderable;
 use crate::viewer::toolpath::vertex::{ToolpathContext, ToolpathVertex};
 use crate::viewer::toolpath::Toolpath;
 use crate::viewer::Server;
 use crate::QUEUE;
-use crate::{
-    geometry::BoundingBox, prelude::WgpuContext, slicer::print_type::PrintType, GlobalState,
-    RootEvent,
-};
+use crate::{prelude::WgpuContext, slicer::path::PrintType, GlobalState, RootEvent};
 
 use crate::viewer::toolpath::{self, tree::ToolpathTree, DisplaySettings, MeshSettings};
 
@@ -171,7 +169,7 @@ impl Server for ToolpathServer {
     }
 
     fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
-        if let Some(toolpath) = &self.toolpath {
+        if let Some(toolpath) = self.toolpath.as_ref() {
             render_pass.set_pipeline(&self.pipeline);
             render_pass.set_bind_group(4, &self.toolpath_context_bind_group, &[]);
             toolpath.model.render(render_pass);
@@ -217,16 +215,9 @@ impl ToolpathServer {
                     .ui_event_writer
                     .send(crate::ui::UiEvent::ShowSuccess("Gcode loaded".to_string()));
 
-                global_state.camera_event_writer.send(
-                    crate::camera::CameraEvent::UpdatePreferredDistance(BoundingBox::new(
-                        toolpath.model.read().get_min(),
-                        toolpath.model.read().get_max(),
-                    )),
-                );
+                self.hitbox.add_node(toolpath.model.clone());
 
                 self.toolpath = Some(toolpath);
-
-                // self.hitbox.add_node();
             }
         }
 
@@ -293,5 +284,9 @@ impl ToolpathServer {
 
     pub fn get_toolpath(&self) -> Option<&Toolpath> {
         self.toolpath.as_ref()
+    }
+
+    pub fn check_hit(&self, ray: &crate::picking::Ray) -> Option<&ToolpathTree> {
+        self.hitbox.check_hit(ray)
     }
 }

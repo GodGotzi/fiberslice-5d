@@ -1,10 +1,8 @@
-use glam::Mat4;
-use rether::{vertex::Vertex, Transform};
+use std::sync::Arc;
 
-use crate::{
-    model::Model,
-    prelude::{ArcModel, SharedMut},
-};
+use glam::Mat4;
+
+use crate::model::Transform;
 
 use super::server::model::CADModel;
 
@@ -18,7 +16,7 @@ pub enum TransformResponse {
 
 #[derive(Default)]
 pub struct Selector {
-    selected: Vec<ArcModel<CADModel>>,
+    selected: Vec<Arc<CADModel>>,
     grouped_transform: Option<Mat4>,
 }
 
@@ -31,15 +29,15 @@ impl std::fmt::Debug for Selector {
 }
 
 impl Selector {
-    pub fn select(&mut self, model: &ArcModel<CADModel>) {
+    pub fn select(&mut self, model: &Arc<CADModel>) {
         self.selected.push(model.clone());
 
         self.grouped_transform = None;
     }
 
-    pub fn deselect(&mut self, model: &ArcModel<CADModel>) {
+    pub fn deselect(&mut self, model: &Arc<CADModel>) {
         let size = self.selected.len();
-        self.selected.retain(|m| !ArcModel::ptr_eq(m, model));
+        self.selected.retain(|m| !Arc::ptr_eq(m, model));
 
         if size != self.selected.len() {
             self.grouped_transform = None;
@@ -48,12 +46,12 @@ impl Selector {
 
     pub fn transform(&mut self, mut r#fn: impl FnMut(&mut Mat4) -> bool) {
         if self.selected.len() == 1 {
-            let mut transform = self.selected[0].read().get_transform();
+            let mut transform = self.selected[0].get_transform();
 
             let response = r#fn(&mut transform);
 
             if response {
-                self.selected[0].write().transform(transform);
+                self.selected[0].transform(transform);
             }
         } else {
             let mut transform = self
@@ -65,7 +63,7 @@ impl Selector {
             if response {
                 for model in &self.selected {
                     let (scale, rotate, translate) =
-                        model.read().get_transform().to_scale_rotation_translation();
+                        model.get_transform().to_scale_rotation_translation();
 
                     let (grouped_scale, grouped_rotate, grouped_translate) = (transform.inverse()
                         * self
@@ -79,7 +77,7 @@ impl Selector {
                         translate + grouped_translate,
                     );
 
-                    model.write().transform(transform);
+                    model.transform(transform);
                 }
             }
 
@@ -91,7 +89,7 @@ impl Selector {
         self.selected.clear();
     }
 
-    pub fn selected(&self) -> &[ArcModel<CADModel>] {
+    pub fn selected(&self) -> &[Arc<CADModel>] {
         &self.selected
     }
 }

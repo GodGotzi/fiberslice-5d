@@ -5,13 +5,13 @@ pub mod r#box;
 pub mod mesh;
 
 pub use r#box::BoundingBox;
-use rether::{
-    picking::Hitbox,
-    vertex::Vertex,
-    {Rotate, Scale, Translate},
-};
 
-use crate::viewer::toolpath::mesh::ProfileCross;
+use crate::{
+    model::{RotateMut, ScaleMut, TranslateMut},
+    picking::hitbox::Hitbox,
+    render::Vertex,
+    viewer::toolpath::mesh::ProfileCross,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct QuadFace {
@@ -21,7 +21,7 @@ pub struct QuadFace {
     pub max: Vec3,
 }
 
-impl Translate for QuadFace {
+impl TranslateMut for QuadFace {
     fn translate(&mut self, translation: Vec3) {
         self.min += translation;
         self.max += translation;
@@ -29,14 +29,14 @@ impl Translate for QuadFace {
     }
 }
 
-impl Rotate for QuadFace {
+impl RotateMut for QuadFace {
     fn rotate(&mut self, rotation: glam::Quat) {
         self.normal = rotation * self.normal;
         self.point = rotation * self.point;
     }
 }
 
-impl Scale for QuadFace {
+impl ScaleMut for QuadFace {
     fn scale(&mut self, scale: Vec3) {
         self.min *= scale;
         self.max *= scale;
@@ -45,7 +45,7 @@ impl Scale for QuadFace {
 }
 
 impl Hitbox for QuadFace {
-    fn check_hit(&self, ray: &rether::picking::Ray) -> Option<f32> {
+    fn check_hit(&self, ray: &crate::picking::Ray) -> Option<f32> {
         let intersection = ray.intersection_plane(self.normal, self.point);
 
         const EPSILON: f32 = 0.0001;
@@ -109,21 +109,21 @@ impl ProfileExtrusion {
     }
 }
 
-impl Translate for ProfileExtrusion {
+impl TranslateMut for ProfileExtrusion {
     fn translate(&mut self, translation: Vec3) {
         self.profile_start.translate(translation);
         self.profile_end.translate(translation);
     }
 }
 
-impl Rotate for ProfileExtrusion {
+impl RotateMut for ProfileExtrusion {
     fn rotate(&mut self, rotation: glam::Quat) {
         self.profile_start.rotate(rotation);
         self.profile_end.rotate(rotation);
     }
 }
 
-impl Scale for ProfileExtrusion {
+impl ScaleMut for ProfileExtrusion {
     fn scale(&mut self, scale: Vec3) {
         self.profile_start.scale(scale);
         self.profile_end.scale(scale);

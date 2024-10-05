@@ -2,9 +2,11 @@ use std::collections::BTreeSet;
 
 use egui_code_editor::Syntax;
 use parking_lot::RwLock;
-use rether::vertex::Vertex;
 
-use crate::prelude::WgpuContext;
+use crate::{prelude::WgpuContext, render::Vertex};
+
+mod camera;
+pub use camera::*;
 
 pub mod select;
 pub mod server;

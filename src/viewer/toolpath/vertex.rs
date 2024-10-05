@@ -1,7 +1,8 @@
 use std::u32;
 
 use bytemuck::Zeroable;
-use rether::vertex::Vertex;
+
+use crate::render::Vertex;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -80,7 +81,7 @@ pub struct ToolpathContext {
 impl Default for ToolpathContext {
     fn default() -> Self {
         ToolpathContext {
-            visibility: u32::MAX,
+            visibility: u32::MAX & !0x03,
             min_layer: 0,
             max_layer: u32::MAX,
         }

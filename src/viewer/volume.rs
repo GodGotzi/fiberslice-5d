@@ -1,9 +1,9 @@
-use glam::{vec3, vec4, Vec2, Vec4};
-use rether::vertex::Vertex;
+use glam::{vec3, vec4, Vec2, Vec3, Vec4};
 
 use crate::{
     geometry::{mesh::construct_triangle_vertices, BoundingBox},
     model::Model,
+    render::{Renderable, Vertex},
 };
 
 #[derive(Debug)]
@@ -14,6 +14,8 @@ pub struct Volume {
 
     pub bounding_box: BoundingBox,
 }
+
+pub const REFERENCE_POINT_BED: Vec3 = vec3(-110.0, -100.0, -110.0);
 
 impl Volume {
     pub fn instance() -> Self {

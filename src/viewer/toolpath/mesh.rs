@@ -1,14 +1,14 @@
 use glam::{Vec3, Vec4};
-use rether::{
-    picking::{Hitbox, Ray},
-    vertex::Vertex,
-    Rotate, Scale, Translate,
-};
 use wgpu::BufferAddress;
 
-use crate::geometry::{
-    mesh::{construct_triangle_vertices, Mesh},
-    BoundingBox, ProfileExtrusion, QuadFace,
+use crate::{
+    geometry::{
+        mesh::{construct_triangle_vertices, Mesh},
+        BoundingBox, ProfileExtrusion, QuadFace,
+    },
+    model::{RotateMut, ScaleMut, TranslateMut},
+    picking::{hitbox::Hitbox, Ray},
+    render::Vertex,
 };
 
 use super::{path::PathModul, tree::ToolpathTree, vertex::ToolpathVertex, DisplaySettings};
@@ -90,7 +90,7 @@ impl ProfileCross {
     }
 }
 
-impl Translate for ProfileCross {
+impl TranslateMut for ProfileCross {
     fn translate(&mut self, translation: Vec3) {
         self.a += translation;
         self.c += translation;
@@ -99,7 +99,7 @@ impl Translate for ProfileCross {
     }
 }
 
-impl Rotate for ProfileCross {
+impl RotateMut for ProfileCross {
     fn rotate(&mut self, rotation: glam::Quat) {
         self.a = rotation * self.a;
         self.c = rotation * self.c;
@@ -108,7 +108,7 @@ impl Rotate for ProfileCross {
     }
 }
 
-impl Scale for ProfileCross {
+impl ScaleMut for ProfileCross {
     fn scale(&mut self, scale: Vec3) {
         let diagonal_1 = (self.a - self.c) * scale;
         let diagonal_2 = (self.b - self.d) * scale;
@@ -280,16 +280,12 @@ impl PathModul {
     pub(super) fn to_model(
         &self,
         settings: &DisplaySettings,
-    ) -> (ToolpathTree, Vec<ToolpathVertex>) {
+    ) -> (ToolpathTree, Vec<ToolpathVertex>, usize) {
         let mut bounding_box = BoundingBox::default();
         let mut vertices = Vec::new();
         let mut children = Vec::new();
 
-        let print_type = self
-            .state
-            .print_type
-            .as_ref()
-            .unwrap_or(&crate::slicer::print_type::PrintType::Unknown);
+        let path_type = &self.state.path_type;
         let layer = self.state.layer.unwrap_or(0);
 
         let mut last_cross: Option<ProfileCross> = None;
@@ -307,60 +303,62 @@ impl PathModul {
             let profile_end = profile.with_offset(line.end);
 
             let profile_start_mesh =
-                ProfileCrossMesh::from_profile(profile_start.clone()).with_color(print_type.into());
+                ProfileCrossMesh::from_profile(profile_start.clone()).with_color(path_type.into());
             let profile_end_mesh =
-                ProfileCrossMesh::from_profile(profile_end.clone()).with_color(print_type.into());
+                ProfileCrossMesh::from_profile(profile_end.clone()).with_color(path_type.into());
 
             if index == self.lines.len() - 1 {
                 vertices.extend_from_slice(&profile_end_mesh.to_triangle_vertices());
             }
 
-            if line.print {
-                if let Some(last) = last_cross.take() {
-                    vertices.extend_from_slice(
-                        &PathConnectionMesh::from_profiles(last, profile_start.clone())
-                            .with_color(print_type.into())
-                            .to_triangle_vertices(),
-                    );
-                } else {
-                    vertices.extend_from_slice(&profile_start_mesh.to_triangle_vertices_flipped());
-                }
-
-                let path_mesh = PathMesh::from_profiles(profile_start, profile_end.clone())
-                    .with_color(print_type.into());
-
-                let path_mesh_vertices = path_mesh.to_triangle_vertices();
-
-                let offset = vertices.len();
-                vertices.extend_from_slice(&path_mesh_vertices);
-
-                let path_hitbox = PathHitbox::from(path_mesh);
-
-                bounding_box.expand_min(path_hitbox.get_min());
-                bounding_box.expand_max(path_hitbox.get_max());
-
-                let path = ToolpathTree::create_path(
-                    path_hitbox,
-                    offset as BufferAddress,
-                    path_mesh_vertices.len() as BufferAddress,
-                );
-
-                children.push(path);
-
-                last_cross = Some(profile_end);
-            } else if let Some(last) = last_cross.take() {
+            if let Some(last) = last_cross.take() {
                 vertices.extend_from_slice(
-                    &ProfileCrossMesh::from_profile(last)
-                        .with_color(print_type.into())
+                    &PathConnectionMesh::from_profiles(last, profile_start.clone())
+                        .with_color(path_type.into())
                         .to_triangle_vertices(),
                 );
+            } else {
+                vertices.extend_from_slice(&profile_start_mesh.to_triangle_vertices_flipped());
+            }
+
+            let path_mesh = PathMesh::from_profiles(profile_start, profile_end.clone())
+                .with_color(path_type.into());
+
+            let path_mesh_vertices = path_mesh.to_triangle_vertices();
+
+            let offset = vertices.len();
+            vertices.extend_from_slice(&path_mesh_vertices);
+
+            let path_hitbox = PathHitbox::from(path_mesh);
+
+            bounding_box.expand_min(path_hitbox.get_min());
+            bounding_box.expand_max(path_hitbox.get_max());
+
+            let path = ToolpathTree::create_path(
+                path_hitbox,
+                offset as BufferAddress,
+                path_mesh_vertices.len() as BufferAddress,
+            );
+
+            children.push(path);
+
+            last_cross = Some(profile_end);
+
+            if !line.print {
+                if let Some(last) = last_cross.take() {
+                    vertices.extend_from_slice(
+                        &ProfileCrossMesh::from_profile(last)
+                            .with_color(path_type.into())
+                            .to_triangle_vertices(),
+                    );
+                }
             }
         }
 
         let mut node = ToolpathTree::create_node(0, vertices.len() as BufferAddress);
         children.into_iter().for_each(|child| node.push_node(child));
 
-        let print_type_bit = 1 << (print_type.clone() as usize);
+        let print_type_bit = path_type.bit_representation();
 
         (
             node,
@@ -368,6 +366,7 @@ impl PathModul {
                 .into_iter()
                 .map(|v| ToolpathVertex::from_vertex(v, print_type_bit, layer as u32))
                 .collect(),
+            self.lines.len(),
         )
     }
 }
@@ -461,7 +460,7 @@ pub struct PathHitbox {
     south_east: QuadFace,
 }
 
-impl Translate for PathHitbox {
+impl TranslateMut for PathHitbox {
     fn translate(&mut self, translation: Vec3) {
         self.north_west.translate(translation);
         self.north_east.translate(translation);
@@ -472,7 +471,7 @@ impl Translate for PathHitbox {
     }
 }
 
-impl Rotate for PathHitbox {
+impl RotateMut for PathHitbox {
     fn rotate(&mut self, rotation: glam::Quat) {
         self.north_west.rotate(rotation);
         self.north_east.rotate(rotation);
@@ -483,7 +482,7 @@ impl Rotate for PathHitbox {
     }
 }
 
-impl Scale for PathHitbox {
+impl ScaleMut for PathHitbox {
     fn scale(&mut self, scale: Vec3) {
         self.north_west.scale(scale);
         self.north_east.scale(scale);

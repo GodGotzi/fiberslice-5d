@@ -123,8 +123,8 @@ impl TabbedSettings {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
                             // TODO data.borrow_shared_state().settings.main.show(ui);
-                            global_state.fiber_settings.write_with_fn(|settings| {
-                                settings.show(ui);
+                            global_state.slicer.write_with_fn(|slicer| {
+                                slicer.fiber_settings.show(ui);
                             });
                         });
                     });
@@ -135,8 +135,8 @@ impl TabbedSettings {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
                             // TODO data.borrow_shared_state().settings.main.show(ui);
-                            global_state.topology_settings.write_with_fn(|settings| {
-                                settings.show(ui);
+                            global_state.slicer.write_with_fn(|slicer| {
+                                slicer.topology_settings.show(ui);
                             });
                         });
                     });
@@ -149,8 +149,8 @@ impl TabbedSettings {
                             // let now = Instant::now();
                             // TODO data.borrow_shared_state().settings.main.show(ui);
                             // println!("Tree Time: {:?}", now.elapsed());
-                            global_state.view_settings.write_with_fn(|settings| {
-                                settings.show(ui);
+                            global_state.slicer.write_with_fn(|slicer| {
+                                slicer.view_settings.show(ui);
                             });
                         });
                     });

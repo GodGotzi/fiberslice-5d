@@ -1,8 +1,39 @@
 use glam::{Mat4, Quat, Vec3};
-use rether::{Rotate, Scale, Transform, Translate};
 use wgpu::util::DeviceExt;
 
-use crate::{DEVICE, QUEUE};
+use crate::{render::Renderable, DEVICE, QUEUE};
+
+pub trait TranslateMut {
+    fn translate(&mut self, translation: glam::Vec3);
+}
+
+pub trait RotateMut {
+    fn rotate(&mut self, rotation: glam::Quat);
+}
+
+pub trait ScaleMut {
+    fn scale(&mut self, scale: glam::Vec3);
+}
+
+pub trait TransformMut {
+    fn transform(&mut self, transform: glam::Mat4);
+}
+
+pub trait Translate {
+    fn translate(&self, translation: glam::Vec3);
+}
+
+pub trait Rotate {
+    fn rotate(&self, rotation: glam::Quat);
+}
+
+pub trait Scale {
+    fn scale(&self, scale: glam::Vec3);
+}
+
+pub trait Transform {
+    fn transform(&self, transform: glam::Mat4);
+}
 
 pub const TRANSFORM_INDEX: u32 = 2;
 
@@ -181,23 +212,6 @@ impl<T: std::fmt::Debug + bytemuck::Pod + bytemuck::Zeroable> Model<T> {
         self.state = ModelState::Awake(buffer, data.len() as u32);
     }
 
-    pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
-        if self.destroyed {
-            return;
-        }
-
-        let (buffer, size) = match &self.state {
-            ModelState::Dormant => return,
-            ModelState::Awake(buffer, size) => (buffer, size),
-        };
-
-        render_pass.set_bind_group(2, &self.transform_bind_group, &[]);
-        render_pass.set_bind_group(3, &self.color_bind_group, &[]);
-
-        render_pass.set_vertex_buffer(0, buffer.slice(..));
-        render_pass.draw(0..*size, 0..1);
-    }
-
     pub fn set_enabled(&mut self, enabled: bool) {
         self.enabled = enabled;
     }
@@ -222,6 +236,25 @@ impl<T: std::fmt::Debug + bytemuck::Pod + bytemuck::Zeroable> Model<T> {
     }
 }
 
+impl<T> Renderable for Model<T> {
+    fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+        if self.destroyed {
+            return;
+        }
+
+        let (buffer, size) = match &self.state {
+            ModelState::Dormant => return,
+            ModelState::Awake(buffer, size) => (buffer, size),
+        };
+
+        render_pass.set_bind_group(2, &self.transform_bind_group, &[]);
+        render_pass.set_bind_group(3, &self.color_bind_group, &[]);
+
+        render_pass.set_vertex_buffer(0, buffer.slice(..));
+        render_pass.draw(0..*size, 0..1);
+    }
+}
+
 impl<T> Drop for Model<T> {
     fn drop(&mut self) {
         match &self.state {
@@ -235,7 +268,7 @@ impl<T> Drop for Model<T> {
     }
 }
 
-impl<T> Translate for Model<T> {
+impl<T> TranslateMut for Model<T> {
     fn translate(&mut self, translation: Vec3) {
         let queue_read = QUEUE.read();
         let queue = queue_read.as_ref().unwrap();
@@ -253,7 +286,7 @@ impl<T> Translate for Model<T> {
     }
 }
 
-impl<T> Rotate for Model<T> {
+impl<T> RotateMut for Model<T> {
     fn rotate(&mut self, rotation: Quat) {
         let queue_read = QUEUE.read();
         let queue = queue_read.as_ref().unwrap();
@@ -271,7 +304,7 @@ impl<T> Rotate for Model<T> {
     }
 }
 
-impl<T> Scale for Model<T> {
+impl<T> ScaleMut for Model<T> {
     fn scale(&mut self, scale: Vec3) {
         let queue_read = QUEUE.read();
         let queue = queue_read.as_ref().unwrap();
@@ -289,7 +322,7 @@ impl<T> Scale for Model<T> {
     }
 }
 
-impl<T> Transform for Model<T> {
+impl<T> TransformMut for Model<T> {
     fn transform(&mut self, transform: Mat4) {
         let queue_read = QUEUE.read();
         let queue = queue_read.as_ref().unwrap();

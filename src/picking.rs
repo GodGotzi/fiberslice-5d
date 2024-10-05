@@ -1,14 +1,20 @@
-use rether::picking::interact::{ClickEvent, InteractiveModel};
 use tokio::task::JoinHandle;
 use winit::event::{DeviceEvent, ElementState, WindowEvent};
 
 use crate::{
-    camera::CameraResult,
     prelude::{
         create_event_bundle, Adapter, AdapterCreation, Error, EventReader, FrameHandle, WgpuContext,
     },
+    viewer::CameraResult,
     GlobalState, RootEvent,
 };
+
+pub mod hitbox;
+pub mod interact;
+mod queue;
+mod ray;
+
+pub use ray::Ray;
 
 #[derive(Debug)]
 pub enum PickingEvent {
@@ -66,11 +72,14 @@ impl FrameHandle<'_, RootEvent, (), &CameraResult> for PickingAdapter {
                         if let Some((x, y)) = global_state.ctx.mouse_position {
                             let now = std::time::Instant::now();
 
-                            let ray =
-                                rether::picking::Ray::from_view(viewport, (x, y), view, proj, eye);
+                            let ray = Ray::from_view(viewport, (x, y), view, proj, eye);
 
                             {
                                 let server = global_state.viewer.toolpath_server.read();
+
+                                let model = server.check_hit(&ray);
+
+                                print!("Hit: {:?}", model);
                             }
 
                             println!("PickingAdapter: Picking took {:?}", now.elapsed());

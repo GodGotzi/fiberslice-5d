@@ -1,6 +1,6 @@
 use winit::{
     dpi::PhysicalPosition,
-    event::{DeviceEvent, ElementState, Event, MouseScrollDelta, WindowEvent},
+    event::{DeviceEvent, ElementState, MouseScrollDelta, WindowEvent},
     window::Window,
 };
 

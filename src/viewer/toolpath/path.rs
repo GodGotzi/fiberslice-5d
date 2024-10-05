@@ -2,7 +2,11 @@ use std::collections::HashMap;
 
 use glam::{vec3, Vec3};
 
-use crate::{api::math::Average, geometry::BoundingBox, slicer::print_type::PrintType};
+use crate::{
+    api::math::Average,
+    geometry::BoundingBox,
+    slicer::path::{PathType, PrintType},
+};
 
 use super::{instruction::InstructionType, movement, state::PrintState, GCode};
 
@@ -118,15 +122,15 @@ fn compute_modul(
                 && current_movements.E.is_some_and(|e| e > 0.0);
 
             if print {
-                if let Some(print_type) = instruction_modul.state.print_type.as_ref() {
-                    if print_type == &PrintType::WallOuter
-                        || print_type == &PrintType::ExternalPerimeter
+                if let PathType::Work { print_type, travel } = &instruction_modul.state.path_type {
+                    if (print_type == &PrintType::WallOuter
+                        || print_type == &PrintType::ExternalPerimeter)
+                        && !travel
                     {
                         instruction_average.add((current_point + last_point) / 2.0);
+                        virtual_box.expand_point(current_point);
                     }
                 }
-
-                virtual_box.expand_point(current_point);
             }
 
             points.push(Line {

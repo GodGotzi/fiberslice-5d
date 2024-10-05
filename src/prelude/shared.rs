@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use crate::render::Renderable;
+use crate::{model::Model, render::Renderable};
 
 #[derive(Default, Debug)]
 pub struct SharedMut<T: std::fmt::Debug> {
@@ -106,51 +106,43 @@ impl<T> UnparallelSharedMut<T> {
 }
 
 #[derive(Debug)]
-pub struct ArcModel<T> {
-    inner: Arc<RwLock<T>>,
+pub struct LockModel<T: std::fmt::Debug + bytemuck::Pod + bytemuck::Zeroable> {
+    inner: RwLock<Model<T>>,
 }
 
-impl<T> Clone for ArcModel<T> {
-    fn clone(&self) -> Self {
+impl<T: std::fmt::Debug + bytemuck::Pod + bytemuck::Zeroable> LockModel<T> {
+    pub fn new(inner: Model<T>) -> Self {
         Self {
-            inner: self.inner.clone(),
-        }
-    }
-}
-
-impl<T: Renderable> ArcModel<T> {
-    pub fn new(inner: T) -> Self {
-        Self {
-            inner: Arc::new(RwLock::new(inner)),
+            inner: RwLock::new(inner),
         }
     }
 
-    pub fn ptr_eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.inner, &other.inner)
-    }
-
-    pub fn read(&self) -> RwLockReadGuard<T> {
+    pub fn read(&self) -> RwLockReadGuard<Model<T>> {
         self.inner.read()
     }
 
     pub fn read_with_fn<F, R>(&self, f: F) -> R
     where
-        F: FnOnce(&T) -> R,
+        F: FnOnce(&Model<T>) -> R,
     {
         let inner = self.inner.read();
         f(&*inner)
     }
 
-    pub fn write(&self) -> RwLockWriteGuard<T> {
+    pub fn write(&self) -> RwLockWriteGuard<Model<T>> {
         self.inner.write()
     }
 
     pub fn write_with_fn<F, R>(&self, f: F) -> R
     where
-        F: FnOnce(&mut T) -> R,
+        F: FnOnce(&mut Model<T>) -> R,
     {
         let mut inner = self.inner.write();
         f(&mut *inner)
+    }
+
+    pub fn get_mut(&mut self) -> &mut Model<T> {
+        self.inner.get_mut()
     }
 
     pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {

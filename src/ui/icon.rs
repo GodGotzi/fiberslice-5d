@@ -1,6 +1,6 @@
 use egui::ImageSource;
 
-use crate::camera::Orientation;
+use crate::viewer::Orientation;
 
 use super::components::addons::gizmo::GizmoTool;
 

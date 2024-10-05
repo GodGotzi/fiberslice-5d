@@ -5,31 +5,25 @@
     Please refer to the terms and conditions stated therein.
 */
 
-use camera::CameraEvent;
 use log::{info, LevelFilter};
 use parking_lot::RwLock;
 use picking::PickingEvent;
-use settings::tree::QuickSettings;
 use std::{sync::Arc, time::Instant};
 use ui::UiEvent;
-use viewer::tracker::ProcessTracker;
+use viewer::{tracker::ProcessTracker, CameraEvent};
 
 use prelude::{
     Adapter, EventWriter, FrameHandle, GlobalContext, Shared, SharedMut, Viewport, WgpuContext,
 };
 
 mod api;
-mod camera;
 mod config;
-mod control;
-mod env;
 mod error;
 mod geometry;
 mod model;
 mod picking;
 mod prelude;
 mod render;
-mod settings;
 mod slicer;
 mod tools;
 mod ui;
@@ -78,12 +72,9 @@ pub struct GlobalState<T: 'static> {
     pub camera_event_writer: EventWriter<CameraEvent>,
 
     pub viewer: Shared<viewer::Viewer>,
+    pub slicer: SharedMut<slicer::Slicer>,
 
-    pub fiber_settings: SharedMut<QuickSettings>,
-    pub topology_settings: SharedMut<QuickSettings>,
-    pub view_settings: SharedMut<QuickSettings>,
-
-    pub camera_controller: SharedMut<camera::camera_controller::CameraController>,
+    pub camera_controller: SharedMut<viewer::camera_controller::CameraController>,
     pub viewport: SharedMut<Viewport>,
 
     pub progress_tracker: SharedMut<ProcessTracker>,
@@ -125,7 +116,7 @@ struct ApplicationState {
     global_state: GlobalState<RootEvent>,
 
     ui_adapter: ui::UiAdapter,
-    camera_adapter: camera::CameraAdapter,
+    camera_adapter: viewer::CameraAdapter,
     render_adapter: render::RenderAdapter,
     picking_adapter: picking::PickingAdapter,
 
@@ -282,7 +273,7 @@ impl ApplicationHandler<RootEvent> for Application {
 
         let (_, _, render_adapter) = render::RenderAdapter::create(&wgpu_context);
 
-        let (_, camera_event_writer, camera_adapter) = camera::CameraAdapter::create(&wgpu_context);
+        let (_, camera_event_writer, camera_adapter) = viewer::CameraAdapter::create(&wgpu_context);
 
         let (picking_state, picking_event_writer, picking_adapter) =
             picking::PickingAdapter::create(&wgpu_context);
@@ -306,11 +297,11 @@ impl ApplicationHandler<RootEvent> for Application {
 
             viewer: Shared::new(viewer::Viewer::instance(&wgpu_context)),
 
-            fiber_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
-            topology_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
-            view_settings: SharedMut::from_inner(QuickSettings::new("settings/main.yaml")),
+            slicer: SharedMut::from_inner(slicer::Slicer::default()),
 
-            camera_controller: SharedMut::from_inner(camera::CameraController::default()),
+            camera_controller: SharedMut::from_inner(
+                viewer::camera_controller::CameraController::default(),
+            ),
             viewport: SharedMut::from_inner(Viewport::default()),
 
             progress_tracker: SharedMut::from_inner(ProcessTracker::new()),

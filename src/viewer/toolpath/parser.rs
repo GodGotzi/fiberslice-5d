@@ -1,7 +1,7 @@
 use std::str::SplitWhitespace;
 
 use super::{
-    instruction::{InstructionModul, InstructionType},
+    instruction::{Instruction, InstructionModul, InstructionType},
     movement::Movements,
     state::PrintState,
     GCode,
@@ -16,17 +16,38 @@ pub fn parse_content(content: &str) -> Result<GCode, crate::error::Error> {
 
     for (index, line) in lines.iter_mut().enumerate() {
         *line = line.trim();
+        let current_state = modul.as_ref().unwrap().state.clone();
 
         if line.starts_with(';') {
             compute_comment_with_prefix(line, index, &mut modul, &mut moduls);
         } else if let Some((instruction, comment)) = line.split_once(';') {
-            compute_instruction(instruction, index, &mut modul)?;
+            if let Some(instruction_result) =
+                compute_instruction(instruction, index, current_state)?
+            {
+                match instruction_result {
+                    InstructionResult::Instruction(instruction) => {
+                        modul.as_mut().unwrap().push(instruction);
+                    }
+                    InstructionResult::NewInstructionModul(new_modul) => {
+                        moduls.push(modul.take().unwrap());
+                        modul = Some(new_modul);
+                    }
+                }
+            }
 
             if !comment.is_empty() {
                 compute_comment(comment, index, &mut modul, &mut moduls);
             }
-        } else {
-            compute_instruction(line, index, &mut modul)?;
+        } else if let Some(instruction_result) = compute_instruction(line, index, current_state)? {
+            match instruction_result {
+                InstructionResult::Instruction(instruction) => {
+                    modul.as_mut().unwrap().push(instruction);
+                }
+                InstructionResult::NewInstructionModul(new_modul) => {
+                    moduls.push(modul.take().unwrap());
+                    modul = Some(new_modul);
+                }
+            }
         }
     }
 
@@ -64,11 +85,16 @@ fn compute_comment(
     }
 }
 
+enum InstructionResult {
+    Instruction(Instruction),
+    NewInstructionModul(InstructionModul),
+}
+
 fn compute_instruction(
     line: &str,
     index: usize,
-    modul: &mut Option<InstructionModul>,
-) -> Result<(), crate::prelude::Error> {
+    mut current_state: PrintState,
+) -> Result<Option<InstructionResult>, crate::prelude::Error> {
     let mut parameters = line.split_whitespace();
     if let Some(next) = parameters.next() {
         if let Ok(main_instruction) = next.try_into() {
@@ -78,16 +104,45 @@ fn compute_instruction(
 
             compute_parameters(parameters, &mut child_instructions, &mut movements, index)?;
 
-            let instruction = super::instruction::Instruction::new(
-                main_instruction,
-                child_instructions,
-                movements,
-            );
+            if (main_instruction == InstructionType::G0 || movements.E.unwrap_or(0.0) <= 0.0)
+                && !current_state.path_type.is_travel()
+            {
+                current_state.path_type.set_travel(true);
 
-            modul.as_mut().unwrap().push(instruction);
+                let mut new_modul = InstructionModul::new(index, current_state);
+
+                new_modul.push(Instruction::new(
+                    main_instruction,
+                    child_instructions,
+                    movements,
+                ));
+
+                return Ok(Some(InstructionResult::NewInstructionModul(new_modul)));
+            } else if (main_instruction == InstructionType::G1 && movements.E.unwrap_or(0.0) > 0.0)
+                && current_state.path_type.is_travel()
+            {
+                current_state.path_type.set_travel(false);
+
+                let mut new_modul = InstructionModul::new(index, current_state);
+
+                new_modul.push(Instruction::new(
+                    main_instruction,
+                    child_instructions,
+                    movements,
+                ));
+
+                return Ok(Some(InstructionResult::NewInstructionModul(new_modul)));
+            } else {
+                return Ok(Some(InstructionResult::Instruction(Instruction::new(
+                    main_instruction,
+                    child_instructions,
+                    movements,
+                ))));
+            }
         }
     };
-    Ok(())
+
+    Ok(None)
 }
 
 fn parse_comment_to_state(

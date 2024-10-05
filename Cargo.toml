@@ -47,7 +47,7 @@ futures-channel = "0.3.30"
 egui_code_editor = "0.2.9"
 env_logger = "0.11.3"
 pollster = "0.3.0"
-rether = { path = "rether" }
+# rether = { path = "rether" }
 rayon = "1.10.0"
 ordered-float = "4.3.0"
 rand = "0.8.5"

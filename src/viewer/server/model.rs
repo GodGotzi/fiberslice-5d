@@ -5,14 +5,10 @@ use std::{
     sync::Arc,
 };
 
-use glam::{vec3, Mat4, Vec3};
+use glam::{vec3, Vec3};
 use ordered_float::OrderedFloat;
-use rether::{
-    picking::{Hitbox, HitboxNode, HitboxRoot},
-    vertex::Vertex,
-    Rotate, Scale, Transform, Translate,
-};
 
+use parking_lot::RwLock;
 use stl_io::IndexedTriangle;
 use tokio::{sync::oneshot::error::TryRecvError, task::JoinHandle};
 
@@ -24,9 +20,15 @@ use crate::{
         mesh::{vec3s_into_vertices, IntoArrayColor},
         BoundingBox,
     },
-    model::Model,
-    prelude::{ArcModel, SharedMut, WgpuContext},
-    render::Renderable,
+    model::{
+        Model, Rotate, RotateMut, Scale, ScaleMut, Transform, TransformMut, Translate, TranslateMut,
+    },
+    picking::{
+        self,
+        hitbox::{Hitbox, HitboxNode, HitboxRoot},
+    },
+    prelude::{LockModel, WgpuContext},
+    render::{Renderable, Vertex},
     ui::{api::trim_text, custom_toasts::MODEL_LOAD_PROGRESS},
     viewer::tracker::Process,
     GlobalState, RootEvent, GLOBAL_STATE,
@@ -60,7 +62,7 @@ pub struct CADModelServer {
     )>,
 
     root_hitbox: HitboxRoot<CADModel>,
-    models: HashMap<String, ArcModel<CADModel>>,
+    models: HashMap<String, Arc<CADModel>>,
 }
 
 impl CADModelServer {
@@ -115,7 +117,11 @@ impl CADModelServer {
                 })
                 .collect();
 
-            process_tracking.set_task("Clustering models".to_string());
+            process_tracking.set_task(
+                "
+Clustering models"
+                    .to_string(),
+            );
             process_tracking.set_progress(0.0);
             let models = clusterize_models(&stl_model.faces);
 
@@ -202,7 +208,7 @@ impl CADModelServer {
                 _ => panic!("Not root"),
             };
 
-            let center = bounding_box.center();
+            let center = bounding_box.read().center();
             root.translate(-vec3(center.x, center.y, center.z));
 
             tx.send(Ok(CADModelHandle {
@@ -216,10 +222,7 @@ impl CADModelServer {
         self.queue.push((rx, handle));
     }
     // i love you
-    pub fn insert(
-        &mut self,
-        mut model_handle: CADModelHandle,
-    ) -> Result<ArcModel<CADModel>, Error> {
+    pub fn insert(&mut self, model_handle: CADModelHandle) -> Result<Arc<CADModel>, Error> {
         let path: PathBuf = model_handle.origin_path.into();
         let file_name = if let Some(path) = path.file_name() {
             path.to_string()
@@ -243,7 +246,7 @@ impl CADModelServer {
 
         model_handle.process.finish();
 
-        let handle = ArcModel::new(model_handle.model);
+        let handle = Arc::new(model_handle.model);
 
         self.models.insert(name.clone(), handle.clone());
 
@@ -287,9 +290,9 @@ impl CADModelServer {
                     .send(crate::ui::UiEvent::ShowSuccess("Object loaded".to_string()));
 
                 global_state.camera_event_writer.send(
-                    crate::camera::CameraEvent::UpdatePreferredDistance(BoundingBox::new(
-                        handle.read().get_min(),
-                        handle.read().get_max(),
+                    crate::viewer::camera::CameraEvent::UpdatePreferredDistance(BoundingBox::new(
+                        handle.get_min(),
+                        handle.get_max(),
                     )),
                 );
 
@@ -337,28 +340,22 @@ impl CADModelServer {
 #[derive(Debug)]
 pub enum CADModel {
     Root {
-        model: Model<Vertex>,
-        bounding_box: BoundingBox,
+        model: LockModel<Vertex>,
+        bounding_box: RwLock<BoundingBox>,
         children: Vec<Self>,
-        rx: tokio::sync::mpsc::Receiver<Mat4>,
-        tx: tokio::sync::mpsc::Sender<Mat4>,
         size: BufferAddress,
     },
     Face {
-        face: PolygonFace,
+        face: RwLock<PolygonFace>,
     },
 }
 
 impl CADModel {
     pub fn create_root() -> Self {
-        let (tx, rx) = tokio::sync::mpsc::channel(3);
-
         Self::Root {
-            model: Model::create(),
-            bounding_box: BoundingBox::default(),
+            model: LockModel::new(Model::create()),
+            bounding_box: RwLock::new(BoundingBox::default()),
             children: Vec::new(),
-            rx,
-            tx,
             size: 0,
         }
     }
@@ -372,10 +369,12 @@ impl CADModel {
                 ..
             } => {
                 *size += face.size();
-                bounding_box.expand_point(face.get_min());
-                bounding_box.expand_point(face.get_max());
+                bounding_box.get_mut().expand_point(face.get_min());
+                bounding_box.get_mut().expand_point(face.get_max());
 
-                children.push(Self::Face { face })
+                children.push(Self::Face {
+                    face: RwLock::new(face),
+                });
             }
             _ => panic!("Not root"),
         }
@@ -383,7 +382,7 @@ impl CADModel {
 
     pub fn awaken(&mut self, data: &[Vertex]) {
         match self {
-            Self::Root { model, .. } => model.awaken(data),
+            Self::Root { model, .. } => model.get_mut().awaken(data),
             Self::Face { .. } => panic!("Cannot awaken face"),
         }
     }
@@ -397,28 +396,28 @@ impl CADModel {
 
     pub fn get_transform(&self) -> glam::Mat4 {
         match self {
-            Self::Root { model, .. } => model.get_transform(),
+            Self::Root { model, .. } => model.read().get_transform(),
             Self::Face { .. } => panic!("Cannot get transform"),
         }
     }
 
     pub fn get_color(&self) -> [f32; 4] {
         match self {
-            Self::Root { model, .. } => model.get_color(),
+            Self::Root { model, .. } => model.read().get_color(),
             Self::Face { .. } => panic!("Cannot get color"),
         }
     }
 
     pub fn set_transparency(&mut self, transparency: f32) {
         match self {
-            Self::Root { model, .. } => model.set_transparency(transparency),
+            Self::Root { model, .. } => model.write().set_transparency(transparency),
             Self::Face { .. } => panic!("Cannot set transparency"),
         }
     }
 
     pub fn set_color(&mut self, color: [f32; 4]) {
         match self {
-            Self::Root { model, .. } => model.set_color(color),
+            Self::Root { model, .. } => model.write().set_color(color),
             Self::Face { .. } => panic!("Cannot set color"),
         }
     }
@@ -434,10 +433,10 @@ impl Renderable for CADModel {
 }
 
 impl HitboxNode<CADModel> for CADModel {
-    fn check_hit(&self, ray: &rether::picking::Ray) -> Option<f32> {
+    fn check_hit(&self, ray: &crate::picking::Ray) -> Option<f32> {
         match self {
-            Self::Root { bounding_box, .. } => bounding_box.check_hit(ray),
-            Self::Face { face, .. } => face.check_hit(ray),
+            Self::Root { bounding_box, .. } => bounding_box.read().check_hit(ray),
+            Self::Face { face, .. } => face.read().check_hit(ray),
         }
     }
 
@@ -450,42 +449,87 @@ impl HitboxNode<CADModel> for CADModel {
 
     fn get_min(&self) -> Vec3 {
         match self {
-            Self::Root { bounding_box, .. } => bounding_box.min,
-            Self::Face { face, .. } => face.min,
+            Self::Root { bounding_box, .. } => bounding_box.read().min,
+            Self::Face { face, .. } => face.read().min,
         }
     }
 
     fn get_max(&self) -> Vec3 {
         match self {
-            Self::Root { bounding_box, .. } => bounding_box.max,
-            Self::Face { face, .. } => face.max,
+            Self::Root { bounding_box, .. } => bounding_box.read().max,
+            Self::Face { face, .. } => face.read().max,
         }
     }
 }
 
 impl Translate for CADModel {
-    fn translate(&mut self, translation: Vec3) {
+    fn translate(&self, translation: Vec3) {
         match self {
-            Self::Root { model, .. } => model.translate(translation),
-            Self::Face { face } => face.translate(translation),
+            Self::Root { model, .. } => model.write().translate(translation),
+            Self::Face { face } => face.write().translate(translation),
         }
     }
 }
 
 impl Rotate for CADModel {
-    fn rotate(&mut self, rotation: glam::Quat) {
+    fn rotate(&self, rotation: glam::Quat) {
         match self {
-            Self::Root { model, .. } => model.rotate(rotation),
-            Self::Face { face } => face.rotate(rotation),
+            Self::Root { model, .. } => model.write().rotate(rotation),
+            Self::Face { face } => face.write().rotate(rotation),
+        }
+    }
+}
+
+impl Scale for CADModel {
+    fn scale(&self, scale: Vec3) {
+        match self {
+            Self::Root { model, .. } => model.write().scale(scale),
+            Self::Face { face } => face.write().scale(scale),
         }
     }
 }
 
 impl Transform for CADModel {
+    fn transform(&self, transform: glam::Mat4) {
+        match self {
+            Self::Root { model, .. } => model.write().transform(transform),
+            Self::Face { face } => face.write().transform(transform),
+        }
+    }
+}
+
+impl TranslateMut for CADModel {
+    fn translate(&mut self, translation: Vec3) {
+        match self {
+            Self::Root { model, .. } => model.get_mut().translate(translation),
+            Self::Face { face } => face.get_mut().translate(translation),
+        }
+    }
+}
+
+impl RotateMut for CADModel {
+    fn rotate(&mut self, rotation: glam::Quat) {
+        match self {
+            Self::Root { model, .. } => model.get_mut().rotate(rotation),
+            Self::Face { face } => face.get_mut().rotate(rotation),
+        }
+    }
+}
+
+impl ScaleMut for CADModel {
+    fn scale(&mut self, scale: Vec3) {
+        match self {
+            Self::Root { model, .. } => model.get_mut().scale(scale),
+            Self::Face { face } => face.get_mut().scale(scale),
+        }
+    }
+}
+
+impl TransformMut for CADModel {
     fn transform(&mut self, transform: glam::Mat4) {
         match self {
-            Self::Root { model, .. } => model.transform(transform),
-            Self::Face { face } => face.transform(transform),
+            Self::Root { model, .. } => model.get_mut().transform(transform),
+            Self::Face { face } => face.get_mut().transform(transform),
         }
     }
 }
@@ -620,7 +664,7 @@ fn clusterize_faces(faces: &[IndexedTriangle], vertices: &[Vec3]) -> Vec<PlaneEn
 
         let point = vertices[triangle.vertices[0]];
 
-        let ray = rether::picking::Ray {
+        let ray = picking::Ray {
             origin: Vec3::new(0.0, 0.0, 0.0),
             direction: normal,
         };
@@ -721,7 +765,7 @@ impl PolygonFace {
 }
 
 impl Hitbox for PolygonFace {
-    fn check_hit(&self, ray: &rether::picking::Ray) -> Option<f32> {
+    fn check_hit(&self, ray: &picking::Ray) -> Option<f32> {
         let denominator = self.plane.normal.dot(ray.direction);
 
         if denominator.abs() < f32::EPSILON {
@@ -770,7 +814,7 @@ impl Hitbox for PolygonFace {
     }
 }
 
-impl Rotate for PolygonFace {
+impl RotateMut for PolygonFace {
     fn rotate(&mut self, rotation: glam::Quat) {
         self.plane.normal = rotation * self.plane.normal;
         self.plane.point = rotation * self.plane.point;
@@ -780,7 +824,7 @@ impl Rotate for PolygonFace {
     }
 }
 
-impl Translate for PolygonFace {
+impl TranslateMut for PolygonFace {
     fn translate(&mut self, translation: Vec3) {
         self.plane.point += translation;
         self.min += translation;
@@ -788,13 +832,13 @@ impl Translate for PolygonFace {
     }
 }
 
-impl Scale for PolygonFace {
+impl ScaleMut for PolygonFace {
     fn scale(&mut self, _scale: Vec3) {
         panic!("Not implemented")
     }
 }
 
-impl Transform for PolygonFace {
+impl TransformMut for PolygonFace {
     fn transform(&mut self, transform: glam::Mat4) {
         self.plane.normal = (transform * self.plane.normal.extend(0.0)).truncate();
         self.plane.point = (transform * self.plane.point.extend(0.0)).truncate();

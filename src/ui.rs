@@ -54,7 +54,7 @@ pub struct UiState {
     pub theme: WrappedSharedMut<Theme>,
     pub mode: WrappedSharedMut<Mode>,
 
-    pub layer_max: WrappedSharedMut<u16>,
+    pub layer_max: WrappedSharedMut<u32>,
     pub time_stamp: WrappedSharedMut<u16>,
 }
 
@@ -65,7 +65,7 @@ impl Default for UiState {
             theme: WrappedSharedMut::from_inner(Theme::Light),
             mode: WrappedSharedMut::from_inner(Mode::Prepare),
 
-            layer_max: WrappedSharedMut::from_inner(u16::MAX),
+            layer_max: WrappedSharedMut::from_inner(u32::MAX),
             time_stamp: WrappedSharedMut::from_inner(u16::MAX),
         }
     }

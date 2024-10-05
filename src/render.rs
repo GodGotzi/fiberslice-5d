@@ -1,16 +1,24 @@
 use std::time::Instant;
 
 use glam::{Mat4, Vec3};
-use rether::{light::LightUniform, texture::Texture, vertex::Vertex};
 use wgpu::{util::DeviceExt, CommandEncoder};
 
 use crate::{
-    camera::{self, CameraResult, CameraUniform},
     prelude::*,
     ui::UiUpdateOutput,
-    viewer::Server,
+    viewer::{
+        Server, {CameraResult, CameraUniform},
+    },
     GlobalState, RootEvent,
 };
+
+mod light;
+mod texture;
+mod vertex;
+
+pub use light::*;
+pub use texture::*;
+pub use vertex::*;
 
 pub trait Renderable {
     fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>);
@@ -24,7 +32,7 @@ pub enum RenderEvent {}
 struct RenderState {
     depth_texture_view: wgpu::TextureView,
 
-    camera_uniform: camera::CameraUniform,
+    camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
 

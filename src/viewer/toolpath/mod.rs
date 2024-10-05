@@ -1,16 +1,18 @@
-use std::{fmt::Debug, str::Lines};
+use std::{fmt::Debug, str::Lines, sync::Arc};
 
+use egui::ahash::{HashMap, HashMapExt};
 use glam::Vec3;
-use rether::Translate;
 use tree::ToolpathTree;
 
-use crate::prelude::ArcModel;
+use crate::{model::TranslateMut, slicer::path::PathType};
 
 use self::{
     instruction::{InstructionModul, InstructionType},
     movement::Movements,
     path::{Line, RawPath},
 };
+
+use super::volume::REFERENCE_POINT_BED;
 
 pub mod instruction;
 pub mod mesh;
@@ -33,10 +35,12 @@ pub struct MeshSettings {}
 
 #[derive(Debug)]
 pub struct Toolpath {
-    pub origin_path: String,
+    pub model: Arc<ToolpathTree>,
+    pub count_map: HashMap<PathType, usize>,
+    pub max_layer: usize,
     pub raw: GCodeRaw,
+    pub origin_path: String,
     pub wire_model: WireModel,
-    pub model: ArcModel<ToolpathTree>,
     pub center_mass: Vec3,
 }
 
@@ -56,31 +60,45 @@ impl Toolpath {
 
         // let mut layers: HashMap<usize, LayerModel> = HashMap::new();
 
+        let mut count_map = HashMap::new();
+        let mut layer = 0;
+
         let mut root_vertices = Vec::new();
         let mut root = ToolpathTree::create_root();
+
         for modul in raw_path.moduls {
             lines.extend(modul.lines.clone());
 
-            let (model, vertices) = modul.to_model(display_settings);
+            let (model, vertices, count) = modul.to_model(display_settings);
+
+            count_map
+                .entry(modul.state.path_type)
+                .and_modify(|c| *c += count)
+                .or_insert(count);
+
+            layer = modul.state.layer.unwrap_or(layer);
 
             root_vertices.extend(vertices);
             root.push_node(model);
         }
+
         root.awaken(&root_vertices);
-        println!("{:?}", root_vertices.len());
+        // println!("{:?}", root_vertices.len());
         // println!("{:?}", root);
         drop(root_vertices);
 
         root.update_offset(0);
-        root.translate(-raw_path.center_mass);
+        root.translate(REFERENCE_POINT_BED);
 
         let wire_model = WireModel::new(lines);
 
         Self {
+            model: Arc::new(root),
+            count_map,
+            max_layer: layer,
             origin_path: path.to_string(),
             raw: raw.map(|s| s.to_string()).collect(),
             wire_model,
-            model: ArcModel::new(root),
             center_mass: raw_path.center_mass,
         }
     }

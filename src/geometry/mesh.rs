@@ -1,5 +1,6 @@
 use glam::{Vec3, Vec4};
-use rether::vertex::Vertex;
+
+use crate::render::Vertex;
 
 pub trait IntoArrayColor {
     fn to_array(&self) -> [f32; 4];

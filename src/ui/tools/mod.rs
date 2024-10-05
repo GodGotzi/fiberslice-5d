@@ -1,6 +1,6 @@
 use egui::Color32;
 
-use crate::{camera::CameraController, GlobalState, RootEvent};
+use crate::{viewer::camera_controller::CameraController, GlobalState, RootEvent};
 
 use super::UiState;
 
