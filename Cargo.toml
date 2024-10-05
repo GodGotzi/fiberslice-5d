@@ -42,13 +42,19 @@ simple-logging = "2.0.2"
 log = "0.4.21"
 egui-toast = { git = "https://github.com/GodGotzi/egui-toast.git", branch = "named_toasts" }
 puffin_egui = { git = "https://github.com/EmbarkStudios/puffin" }
-futures-channel = "0.3.30"
+futures-channel = "0.3.31"
 
 egui_code_editor = "0.2.9"
-env_logger = "0.11.3"
+env_logger = "0.11.5"
 pollster = "0.3.0"
 # rether = { path = "rether" }
 rayon = "1.10.0"
 ordered-float = "4.3.0"
 rand = "0.8.5"
 atomic_float = "1.1.0"
+
+geo = { version = "0.28.0", features = ["use-serde"] }
+geo-clipper = "0.8.0"
+geo-svg = "0.6.3"
+
+itertools = "0.13.0"
