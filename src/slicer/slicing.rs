@@ -1,4 +1,4 @@
-use crate::*;
+use super::tower::TriangleTower;
 
 pub fn slice(towers: &[TriangleTower], settings: &Settings) -> Result<Vec<Object>, SlicerErrors> {
     towers

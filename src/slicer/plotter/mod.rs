@@ -5,19 +5,19 @@ mod perimeter;
 pub mod polygon_operations;
 pub(crate) mod support;
 
-pub use crate::plotter::infill::*;
-use crate::plotter::perimeter::*;
-use crate::plotter::polygon_operations::PolygonOperations;
-use crate::{Object, Settings, StateChange};
+use super::{Object, Settings, StateChange};
 use geo::coordinate_position::CoordPos;
 use geo::coordinate_position::CoordinatePosition;
 use geo::prelude::*;
 use geo::*;
 use gladius_shared::settings::SkirtSettings;
 use gladius_shared::types::{Command, Move, MoveChain, MoveType, Slice};
+pub use infill::*;
 use itertools::Itertools;
 use log::info;
 use ordered_float::OrderedFloat;
+use perimeter::*;
+use polygon_operations::PolygonOperations;
 
 pub trait Plotter {
     fn slice_perimeters_into_chains(&mut self, number_of_perimeters: usize);

@@ -20,7 +20,7 @@ pub fn linear_fill_polygon(
     fill_type: MoveType,
     angle: f64,
 ) -> Vec<MoveChain> {
-    let rotate_poly = poly.rotate_around_point(angle, Point(Coordinate::zero()));
+    let rotate_poly = poly.rotate_around_point(angle, Point(Coord::zero()));
 
     let mut new_moves: Vec<MoveChain> = rotate_poly
         .offset_from(

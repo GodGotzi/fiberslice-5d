@@ -1,6 +1,16 @@
 pub mod path;
 pub mod settings;
 
+mod calculation;
+mod command_pass;
+mod coverter;
+mod input;
+mod optimizer;
+mod plotter;
+mod slice_pass;
+mod slicing;
+mod tower;
+
 use settings::tree::QuickSettings;
 
 #[derive(Debug)]
