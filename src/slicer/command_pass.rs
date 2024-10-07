@@ -1,5 +1,14 @@
-use crate::optimizer::*;
-use crate::*;
+use std::collections::HashMap;
+
+use geo::Coord;
+use itertools::Itertools;
+use ordered_float::OrderedFloat;
+
+use super::{
+    optimizer::{binary_optimizer, state_optomizer, unary_optimizer},
+    settings::settings::Settings,
+    Command,
+};
 
 pub trait CommandPass {
     fn pass(cmds: &mut Vec<Command>, settings: &Settings);
@@ -30,7 +39,7 @@ impl CommandPass for SlowDownLayerPass {
         let mut layer_height = 0.0;
         //Slow down on small layers
         let mut current_speed = 0.0;
-        let mut current_pos = Coordinate { x: 0.0, y: 0.0 };
+        let mut current_pos = Coord { x: 0.0, y: 0.0 };
 
         {
             let reduction: Vec<(f64, usize, usize)> = cmds

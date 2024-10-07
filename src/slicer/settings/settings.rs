@@ -1,8 +1,8 @@
 #![deny(missing_docs)]
 
-use crate::error::SlicerErrors;
-use crate::types::PartialInfillTypes;
 use serde::{Deserialize, Serialize};
+
+use crate::slicer::PartialInfillTypes;
 
 ///A complete settings file for the entire slicer.
 #[derive(Serialize, Deserialize, Debug)]

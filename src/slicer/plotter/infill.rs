@@ -1,8 +1,8 @@
-use crate::plotter::monotone::get_monotone_sections;
-use gladius_shared::settings::LayerSettings;
-use gladius_shared::types::{Move, MoveChain, MoveType, PartialInfillTypes};
+use crate::slicer::settings::settings::LayerSettings;
+use crate::slicer::{Move, MoveChain, MoveType, PartialInfillTypes};
 
-use crate::PolygonOperations;
+use super::monotone::get_monotone_sections;
+use super::polygon_operations::PolygonOperations;
 use geo::prelude::*;
 use geo::*;
 
@@ -48,7 +48,7 @@ pub fn partial_linear_fill_polygon(
     angle: f64,
     offset: f64,
 ) -> Vec<MoveChain> {
-    let rotate_poly = poly.rotate_around_point(angle, Point(Coordinate::zero()));
+    let rotate_poly = poly.rotate_around_point(angle, Point(Coord::zero()));
 
     let mut new_moves: Vec<MoveChain> = rotate_poly
         .offset_from(
@@ -74,7 +74,7 @@ pub fn support_linear_fill_polygon(
     angle: f64,
     offset: f64,
 ) -> Vec<MoveChain> {
-    let rotate_poly = poly.rotate_around_point(angle, Point(Coordinate::zero()));
+    let rotate_poly = poly.rotate_around_point(angle, Point(Coord::zero()));
 
     let mut new_moves: Vec<MoveChain> = rotate_poly
         .offset_from(-settings.layer_width / 2.0)
@@ -279,14 +279,14 @@ pub fn spaced_fill_polygon(
                     }
                 }
 
-                start_point = start_point.or(Some(Coordinate {
+                start_point = start_point.or(Some(Coord {
                     x: left_point.x,
                     y: current_y,
                 }));
 
                 if orient {
                     moves.push(Move {
-                        end: Coordinate {
+                        end: Coord {
                             x: left_point.x,
                             y: current_y,
                         },
@@ -295,7 +295,7 @@ pub fn spaced_fill_polygon(
                     });
 
                     moves.push(Move {
-                        end: Coordinate {
+                        end: Coord {
                             x: right_point.x,
                             y: current_y,
                         },
@@ -304,7 +304,7 @@ pub fn spaced_fill_polygon(
                     });
                 } else {
                     moves.push(Move {
-                        end: Coordinate {
+                        end: Coord {
                             x: right_point.x,
                             y: current_y,
                         },
@@ -313,7 +313,7 @@ pub fn spaced_fill_polygon(
                     });
 
                     moves.push(Move {
-                        end: Coordinate {
+                        end: Coord {
                             x: left_point.x,
                             y: current_y,
                         },
@@ -334,8 +334,8 @@ pub fn spaced_fill_polygon(
 }
 
 #[inline]
-fn point_lerp(a: &Coordinate<f64>, b: &Coordinate<f64>, y: f64) -> Coordinate<f64> {
-    Coordinate {
+fn point_lerp(a: &Coord<f64>, b: &Coord<f64>, y: f64) -> Coord<f64> {
+    Coord {
         x: lerp(a.x, b.x, (y - a.y) / (b.y - a.y)),
         y,
     }

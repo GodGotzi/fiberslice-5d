@@ -1,3 +1,6 @@
+use geo::Coord;
+use slicer::{settings::settings::Settings, CalculatedValues, Command};
+
 use crate::*;
 
 pub fn calculate_values(moves: &[Command], settings: &Settings) -> CalculatedValues {
@@ -9,7 +12,7 @@ pub fn calculate_values(moves: &[Command], settings: &Settings) -> CalculatedVal
     };
 
     let mut current_speed = 0.0;
-    let mut current_pos = Coordinate { x: 0.0, y: 0.0 };
+    let mut current_pos = Coord { x: 0.0, y: 0.0 };
 
     for cmd in moves {
         match cmd {

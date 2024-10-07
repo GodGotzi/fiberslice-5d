@@ -5,13 +5,14 @@ mod perimeter;
 pub mod polygon_operations;
 pub(crate) mod support;
 
-use super::{Object, Settings, StateChange};
+use crate::slicer::{Move, MoveChain};
+
+use super::settings::settings::SkirtSettings;
+use super::{Command, MoveType, Object, Settings, Slice, StateChange};
 use geo::coordinate_position::CoordPos;
 use geo::coordinate_position::CoordinatePosition;
 use geo::prelude::*;
 use geo::*;
-use gladius_shared::settings::SkirtSettings;
-use gladius_shared::types::{Command, Move, MoveChain, MoveType, Slice};
 pub use infill::*;
 use itertools::Itertools;
 use log::info;
@@ -284,7 +285,7 @@ fn get_optimal_bridge_angle(fill_area: &Polygon<f64>, unsupported_area: &MultiPo
             line_string
                 .0
                 .iter()
-                .circular_tuple_windows::<(&Coordinate<f64>, &Coordinate<f64>)>()
+                .circular_tuple_windows::<(&Coord<f64>, &Coord<f64>)>()
         })
         .filter(|(&s, &f)| {
             //test the midpoint if it supported

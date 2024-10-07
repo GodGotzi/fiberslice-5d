@@ -1,5 +1,6 @@
-use crate::{Command, Settings};
 use std::io::{BufWriter, Write};
+
+use super::{settings::settings::Settings, Command};
 
 pub fn convert(
     cmds: &[Command],

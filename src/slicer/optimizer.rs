@@ -1,9 +1,10 @@
 use geo::algorithm::euclidean_length::EuclideanLength;
 use geo::euclidean_distance::EuclideanDistance;
-use geo::{Coordinate, Line};
-use gladius_shared::settings::Settings;
-use gladius_shared::types::{Command, StateChange};
+use geo::{Coord, Line};
 use itertools::Itertools;
+
+use super::settings::settings::Settings;
+use super::{Command, StateChange};
 
 pub fn unary_optimizer(cmds: &mut Vec<Command>) {
     cmds.retain(|cmd| match cmd {
@@ -26,7 +27,7 @@ pub fn unary_optimizer(cmds: &mut Vec<Command>) {
 }
 
 pub fn binary_optimizer(cmds: &mut Vec<Command>, settings: &Settings) {
-    let mut current_pos = Coordinate::zero();
+    let mut current_pos = Coord::zero();
 
     *cmds = cmds
         .drain(..)
@@ -164,13 +165,13 @@ pub fn arc_optomizer(cmds: &mut Vec<Command> ){
                     }
                 })
                 //lines -> bisector
-                .tuple_windows::<((usize,(&Coordinate<f64>,&Coordinate<f64>)),(usize,(&Coordinate<f64>,&Coordinate<f64>)))>()
+                .tuple_windows::<((usize,(&Coord<f64>,&Coord<f64>)),(usize,(&Coord<f64>,&Coord<f64>)))>()
                 .map(|((pos,l1),(_,l2))| {
                    //println!("({},{}) ({},{}) ", l1.0.x,l1.0.y,l1.1.x,l1.1.y );
                     (pos,line_bisector(l1.0,l1.1,l2.1))
                 })
                 //bisector -> center, radius
-                .tuple_windows::<((usize,(Coordinate<f64>,Coordinate<f64>)),(usize,(Coordinate<f64>,Coordinate<f64>)))>()
+                .tuple_windows::<((usize,(Coord<f64>,Coord<f64>)),(usize,(Coord<f64>,Coord<f64>)))>()
                 .filter_map(|((pos,(p1,n1)),(_,(p2,n2)))| {
 
                     //println!("({:?},{:?}) ",p1,n1 );
@@ -237,18 +238,14 @@ pub fn arc_optomizer(cmds: &mut Vec<Command> ){
             cmds[i] = Command::NoAction;
         }
 
-        cmds[range.start] = Command::Arc {start,end,clockwise: true,center: Coordinate{x: center.0, y: center.1}};
+        cmds[range.start] = Command::Arc {start,end,clockwise: true,center: Coord{x: center.0, y: center.1}};
 
     }
 
 }
 */
 
-fn line_bisector(
-    p0: &Coordinate<f64>,
-    p1: &Coordinate<f64>,
-    p2: &Coordinate<f64>,
-) -> (Coordinate<f64>, Coordinate<f64>) {
+fn line_bisector(p0: &Coord<f64>, p1: &Coord<f64>, p2: &Coord<f64>) -> (Coord<f64>, Coord<f64>) {
     let ray_start = *p1;
 
     let l1_len = p0.euclidean_distance(p1);
@@ -263,11 +260,11 @@ fn line_bisector(
 }
 
 fn ray_ray_intersection(
-    s0: &Coordinate<f64>,
-    d0: &Coordinate<f64>,
-    s1: &Coordinate<f64>,
-    d1: &Coordinate<f64>,
-) -> Option<Coordinate<f64>> {
+    s0: &Coord<f64>,
+    d0: &Coord<f64>,
+    s1: &Coord<f64>,
+    d1: &Coord<f64>,
+) -> Option<Coord<f64>> {
     let dx = s1.x - s0.x;
     let dy = s1.y - s0.y;
 
@@ -288,7 +285,7 @@ fn ray_ray_intersection(
         let px = (b2 - b1) / (m1 - m2); // collision x
         let py = m1 * px + b1; // collision y
 
-        Some(Coordinate { x: px, y: py })
+        Some(Coord { x: px, y: py })
     } else {
         None
     }
@@ -301,92 +298,93 @@ mod tests {
     #[test]
     fn basic_line_bisector() {
         let (center, dir) = line_bisector(
-            &Coordinate { x: 0.0, y: 0.0 },
-            &Coordinate { x: 1.0, y: 1.0 },
-            &Coordinate { x: 2.0, y: 0.0 },
+            &Coord { x: 0.0, y: 0.0 },
+            &Coord { x: 1.0, y: 1.0 },
+            &Coord { x: 2.0, y: 0.0 },
         );
 
-        assert_eq!(center, Coordinate { x: 1.0, y: 1.0 });
+        assert_eq!(center, Coord { x: 1.0, y: 1.0 });
         assert_eq!(dir.x, 0.0);
         assert!(dir.y < 0.0);
 
         let (center, dir) = line_bisector(
-            &Coordinate { x: 2.0, y: 0.0 },
-            &Coordinate { x: 1.0, y: 1.0 },
-            &Coordinate { x: 0.0, y: 0.0 },
+            &Coord { x: 2.0, y: 0.0 },
+            &Coord { x: 1.0, y: 1.0 },
+            &Coord { x: 0.0, y: 0.0 },
         );
 
-        assert_eq!(center, Coordinate { x: 1.0, y: 1.0 });
+        assert_eq!(center, Coord { x: 1.0, y: 1.0 });
         assert_eq!(dir.x, 0.0);
         assert!(dir.y < 0.0);
 
         let (center, dir) = line_bisector(
-            &Coordinate { x: 0.0, y: 0.0 },
-            &Coordinate { x: 1.0, y: 1.0 },
-            &Coordinate { x: -2.0, y: 4.0 },
+            &Coord { x: 0.0, y: 0.0 },
+            &Coord { x: 1.0, y: 1.0 },
+            &Coord { x: -2.0, y: 4.0 },
         );
 
-        assert_eq!(center, Coordinate { x: 1.0, y: 1.0 });
+        assert_eq!(center, Coord { x: 1.0, y: 1.0 });
         assert_eq!(dir.y, 0.0);
         assert!(dir.x < 0.0);
 
         let (center, dir) = line_bisector(
-            &Coordinate { x: 0.0, y: 0.0 },
-            &Coordinate { x: 1.0, y: 0.0 },
-            &Coordinate { x: 1.0, y: 1.0 },
+            &Coord { x: 0.0, y: 0.0 },
+            &Coord { x: 1.0, y: 0.0 },
+            &Coord { x: 1.0, y: 1.0 },
         );
 
-        assert_eq!(center, Coordinate { x: 1.0, y: 0.0 });
+        assert_eq!(center, Coord { x: 1.0, y: 0.0 });
         assert_eq!(dir.y, -dir.x);
     }
 
     #[test]
     fn basic_ray_ray() {
         let center = ray_ray_intersection(
-            &Coordinate { x: 0.0, y: 0.0 },
-            &Coordinate { x: 1.0, y: 1.0 },
-            &Coordinate { x: 2.0, y: 0.0 },
-            &Coordinate { x: -1.0, y: 1.0 },
+            &Coord { x: 0.0, y: 0.0 },
+            &Coord { x: 1.0, y: 1.0 },
+            &Coord { x: 2.0, y: 0.0 },
+            &Coord { x: -1.0, y: 1.0 },
         );
-        assert_eq!(center, Some(Coordinate { x: 1.0, y: 1.0 }));
+        assert_eq!(center, Some(Coord { x: 1.0, y: 1.0 }));
 
         let center = ray_ray_intersection(
-            &Coordinate { x: 0.0, y: 3.0 },
-            &Coordinate { x: 5.0, y: 1.0 },
-            &Coordinate { x: 2.0, y: 0.0 },
-            &Coordinate { x: 3.0, y: 4.0 },
+            &Coord { x: 0.0, y: 3.0 },
+            &Coord { x: 5.0, y: 1.0 },
+            &Coord { x: 2.0, y: 0.0 },
+            &Coord { x: 3.0, y: 4.0 },
         );
-        assert_eq!(center, Some(Coordinate { x: 5.0, y: 4.0 }));
+        assert_eq!(center, Some(Coord { x: 5.0, y: 4.0 }));
 
         let center = ray_ray_intersection(
-            &Coordinate { x: 1.0, y: 3.0 },
-            &Coordinate { x: 0.10, y: -0.20 },
-            &Coordinate { x: 0.0, y: -2.0 },
-            &Coordinate { x: 2.0, y: 3.0 },
+            &Coord { x: 1.0, y: 3.0 },
+            &Coord { x: 0.10, y: -0.20 },
+            &Coord { x: 0.0, y: -2.0 },
+            &Coord { x: 2.0, y: 3.0 },
         );
-        assert_eq!(center, Some(Coordinate { x: 2.0, y: 1.0 }));
+        assert_eq!(center, Some(Coord { x: 2.0, y: 1.0 }));
 
         let center = ray_ray_intersection(
-            &Coordinate {
+            &Coord {
                 x: 1112.4,
                 y: 35345.0,
             },
-            &Coordinate {
+            &Coord {
                 x: -0.11124,
                 y: -3.53450,
             },
-            &Coordinate {
+            &Coord {
                 x: 546456.1,
                 y: 544456.1,
             },
-            &Coordinate {
+            &Coord {
                 x: -0.5464561,
                 y: -0.5444561,
             },
         );
-        //assert_eq!(center, Some(Coordinate{x: 0.0,y:0.0}));
+        //assert_eq!(center, Some(Coord{x: 0.0,y:0.0}));
     }
 
+    /*
     #[test]
     fn arc_optomizer_test() {
         let mut commands = (0..600)
@@ -395,15 +393,16 @@ mod tests {
                 let r = a as f64 / 100.0;
                 let x = r.cos();
                 let y = r.sin();
-                Coordinate { x, y }
+                Coord { x, y }
             })
-            .tuple_windows::<(Coordinate<f64>, Coordinate<f64>)>()
+            .tuple_windows::<(Coord<f64>, Coord<f64>)>()
             .map(|(start, end)| Command::MoveAndExtrude { start, end })
             .collect::<Vec<Command>>();
 
-        arc_optomizer(&mut commands);
+        // arc_optomizer(&mut commands);
         unary_optimizer(&mut commands);
 
         assert_eq!(commands, vec![])
     }
+    */
 }

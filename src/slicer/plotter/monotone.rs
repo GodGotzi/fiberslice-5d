@@ -1,5 +1,4 @@
-use geo::simplifyvw::SimplifyVWPreserve;
-use geo::{Coordinate, Polygon};
+use geo::{Coord, Polygon, SimplifyVwPreserve};
 use geo_svg::*;
 use itertools::Itertools;
 use std::cmp::Ordering;
@@ -7,15 +6,15 @@ use std::collections::BinaryHeap;
 
 #[derive(Debug)]
 pub struct MonotoneSection {
-    pub left_chain: Vec<Coordinate<f64>>,
-    pub right_chain: Vec<Coordinate<f64>>,
+    pub left_chain: Vec<Coord<f64>>,
+    pub right_chain: Vec<Coord<f64>>,
 }
 
 #[derive(Debug, PartialEq)]
 struct MonotonePoint {
-    pos: Coordinate<f64>,
-    next: Coordinate<f64>,
-    prev: Coordinate<f64>,
+    pos: Coord<f64>,
+    next: Coord<f64>,
+    prev: Coord<f64>,
     point_type: PointType,
 }
 
@@ -63,14 +62,14 @@ enum Orientation {
 pub fn get_monotone_sections(poly: &Polygon<f64>) -> Vec<MonotoneSection> {
     //Convert polygon to Monotone points
     //Simplify to remove self intersections
-    let mut mono_points = std::iter::once(poly.simplifyvw_preserve(&0.0001).exterior())
-        .chain(poly.simplifyvw_preserve(&0.0001).interiors().iter())
+    let mut mono_points = std::iter::once(poly.simplify_vw_preserve(&0.0001).exterior())
+        .chain(poly.simplify_vw_preserve(&0.0001).interiors().iter())
         .flat_map(|line_string| {
             line_string
                 .0
                 .iter()
                 .take(line_string.0.len() - 1)
-                .circular_tuple_windows::<(&Coordinate<f64>, &Coordinate<f64>, &Coordinate<f64>)>()
+                .circular_tuple_windows::<(&Coord<f64>, &Coord<f64>, &Coord<f64>)>()
                 .map(|(&next, &point, &prev)| {
                     // Identify what type of point this is
                     let point_type = if isabove(&point, &prev) && isabove(&point, &next) {
@@ -247,14 +246,14 @@ pub fn get_monotone_sections(poly: &Polygon<f64>) -> Vec<MonotoneSection> {
     completed_sections
 }
 
-fn isabove(a: &Coordinate<f64>, b: &Coordinate<f64>) -> bool {
+fn isabove(a: &Coord<f64>, b: &Coord<f64>) -> bool {
     a.y.partial_cmp(&b.y)
         .map(|cmp| cmp.then(a.x.partial_cmp(&b.x).unwrap()))
         .unwrap()
         == Ordering::Greater
 }
 
-fn orientation(p: &Coordinate<f64>, q: &Coordinate<f64>, r: &Coordinate<f64>) -> Orientation {
+fn orientation(p: &Coord<f64>, q: &Coord<f64>, r: &Coord<f64>) -> Orientation {
     let left_val = (q.x - p.x) * (r.y - p.y);
     let right_val = (q.y - p.y) * (r.x - p.x);
 
@@ -268,8 +267,8 @@ fn orientation(p: &Coordinate<f64>, q: &Coordinate<f64>, r: &Coordinate<f64>) ->
 }
 
 #[inline]
-fn point_lerp(a: &Coordinate<f64>, b: &Coordinate<f64>, y: f64) -> Coordinate<f64> {
-    Coordinate {
+fn point_lerp(a: &Coord<f64>, b: &Coord<f64>, y: f64) -> Coord<f64> {
+    Coord {
         x: lerp(a.x, b.x, (y - a.y) / (b.y - a.y)),
         y,
     }

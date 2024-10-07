@@ -1,4 +1,11 @@
-use super::tower::TriangleTower;
+use geo::Coord;
+use itertools::Itertools;
+
+use super::{
+    settings::settings::Settings,
+    tower::{TriangleTower, TriangleTowerIterator},
+    Object, Slice,
+};
 
 pub fn slice(towers: &[TriangleTower], settings: &Settings) -> Result<Vec<Object>, SlicerErrors> {
     towers
@@ -46,8 +53,8 @@ pub fn slice(towers: &[TriangleTower], settings: &Settings) -> Result<Vec<Object
                                     .map(|verts| {
                                         verts
                                             .iter()
-                                            .map(|v| Coordinate { x: v.x, y: v.y })
-                                            .collect::<Vec<Coordinate<f64>>>()
+                                            .map(|v| Coord { x: v.x, y: v.y })
+                                            .collect::<Vec<Coord<f64>>>()
                                     })
                                     .collect(),
                                 bot,
