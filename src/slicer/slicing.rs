@@ -2,6 +2,7 @@ use geo::Coord;
 use itertools::Itertools;
 
 use super::{
+    error::SlicerErrors,
     settings::settings::Settings,
     tower::{TriangleTower, TriangleTowerIterator},
     Object, Slice,

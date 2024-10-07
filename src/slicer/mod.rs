@@ -4,6 +4,7 @@ pub mod settings;
 mod calculation;
 mod command_pass;
 mod coverter;
+mod error;
 mod optimizer;
 mod plotter;
 mod slice_pass;
@@ -12,10 +13,12 @@ mod tower;
 
 use std::cmp::Ordering;
 
+use error::SlicerErrors;
 use geo::{
     Contains, Coord, LineString, MultiLineString, MultiPolygon, Polygon, SimplifyVw,
     SimplifyVwPreserve,
 };
+use glam::Vec3;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use settings::{
@@ -208,9 +211,9 @@ impl Vertex {
         Vertex { x, y, z }
     }
 }
-impl From<Vertex> for Point3<f64> {
+impl From<Vertex> for Vec3 {
     fn from(v: Vertex) -> Self {
-        Point3::new(v.x, v.y, v.z)
+        Vec3::new(v.x as f32, v.y as f32, v.z as f32)
     }
 }
 

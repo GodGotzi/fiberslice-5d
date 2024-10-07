@@ -1,3 +1,4 @@
+use super::error::SlicerErrors;
 use super::plotter::lightning_infill::lightning_infill;
 use super::plotter::polygon_operations::PolygonOperations;
 use super::plotter::support::Supporter;
@@ -273,7 +274,7 @@ impl SlicePass for FillAreaPass {
         _settings: &Settings,
         send_messages: bool,
     ) -> Result<(), SlicerErrors> {
-        display_state_update("Generating Moves: Fill Areas", send_messages);
+        // display_state_update("Generating Moves: Fill Areas", send_messages);
 
         //Fill all remaining areas
         slices

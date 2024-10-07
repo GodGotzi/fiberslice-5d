@@ -1,7 +1,6 @@
-use geo::*;
-
+use geo::{MultiPolygon, Polygon};
 //todo remove dependency on geo clipper and by extension bindgen
-use geo_clipper::*;
+use geo_clipper::{Clipper, EndType, JoinType};
 
 pub trait PolygonOperations {
     fn offset_from(&self, delta: f64) -> MultiPolygon<f64>;

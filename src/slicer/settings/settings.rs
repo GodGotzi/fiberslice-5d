@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::slicer::PartialInfillTypes;
+use crate::slicer::{error::SlicerErrors, PartialInfillTypes};
 
 ///A complete settings file for the entire slicer.
 #[derive(Serialize, Deserialize, Debug)]
@@ -458,39 +458,13 @@ impl PartialSettings {
     ///Convert a partial settings file into a complete settings file
     /// returns an error if a settings is not present in this or any sub file
     pub fn get_settings(mut self) -> Result<Settings, SlicerErrors> {
-        self.combine_with_other_files()?;
+        // self.combine_with_other_files()?;
 
         try_convert_partial_to_settings(self).map_err(|err| {
             SlicerErrors::SettingsFileMissingSettings {
                 missing_setting: err,
             }
         })
-    }
-
-    fn combine_with_other_files(&mut self) -> Result<(), SlicerErrors> {
-        let files: Vec<String> = self
-            .other_files
-            .as_mut()
-            .map(|of| of.drain(..).collect())
-            .unwrap_or_default();
-
-        for file in &files {
-            let mut ps: PartialSettings =
-                deser_hjson::from_str(&std::fs::read_to_string(file).map_err(|_| {
-                    SlicerErrors::SettingsRecursiveLoadError {
-                        filepath: file.to_string(),
-                    }
-                })?)
-                .map_err(|_| SlicerErrors::SettingsFileMisformat {
-                    filepath: file.to_string(),
-                })?;
-
-            ps.combine_with_other_files()?;
-
-            *self = self.combine(ps);
-        }
-
-        Ok(())
     }
 
     fn combine(&self, other: PartialSettings) -> PartialSettings {

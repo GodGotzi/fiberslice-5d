@@ -4,6 +4,9 @@ use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::rc::Rc;
 
+use super::error::SlicerErrors;
+use super::{IndexedTriangle, Vertex};
+
 #[inline]
 fn line_z_intersection(z: f64, v_start: Vertex, v_end: Vertex) -> Vertex {
     let z_normal = (z - v_start.z) / (v_end.z - v_start.z);
