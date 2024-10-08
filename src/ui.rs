@@ -13,7 +13,6 @@ pub mod screen;
 pub mod tools;
 pub mod widgets;
 
-pub mod font;
 mod icon;
 pub mod visual;
 
@@ -217,7 +216,7 @@ impl<'a> Adapter<'a, RootEvent, UiState, (UiUpdateOutput, (f32, f32, f32, f32)),
         });
 
         egui_extras::install_image_loaders(&platform.context());
-        crate::ui::font::setup_symbols(&platform.context());
+        // crate::ui::font::setup_symbols(&platform.context());
 
         let state = UiState::default();
         let screen = Screen::new();

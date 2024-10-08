@@ -53,10 +53,4 @@ ordered-float = "4.3.0"
 rand = "0.8.5"
 atomic_float = "1.1.0"
 
-geo = { version = "0.28.0", features = ["use-serde"] }
-geo-clipper = "0.8.0"
-geo-svg = "0.6.3"
-
-itertools = "0.13.0"
-deser-hjson = "2.2.4"
-nalgebra = "0.33.0"
+slicer = { path = "slicer" }

@@ -5,7 +5,7 @@ use glam::{vec3, Vec3};
 use crate::{
     api::math::Average,
     geometry::BoundingBox,
-    slicer::path::{PathType, PrintType},
+    slicer::{PathType, PrintType},
 };
 
 use super::{instruction::InstructionType, movement, state::PrintState, GCode};

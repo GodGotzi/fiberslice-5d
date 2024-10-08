@@ -10,7 +10,7 @@ use crate::viewer::toolpath::vertex::{ToolpathContext, ToolpathVertex};
 use crate::viewer::toolpath::Toolpath;
 use crate::viewer::Server;
 use crate::QUEUE;
-use crate::{prelude::WgpuContext, slicer::path::PrintType, GlobalState, RootEvent};
+use crate::{prelude::WgpuContext, slicer::PrintType, GlobalState, RootEvent};
 
 use crate::viewer::toolpath::{self, tree::ToolpathTree, DisplaySettings, MeshSettings};
 

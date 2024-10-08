@@ -2,7 +2,7 @@ use egui::{Color32, FontId, RichText};
 use strum::EnumCount;
 
 use crate::{
-    slicer::path::{PathType, PrintType},
+    slicer::{PathType, PrintType},
     ui::UiState,
     GlobalState, RootEvent,
 };

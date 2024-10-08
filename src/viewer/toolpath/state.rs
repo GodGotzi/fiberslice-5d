@@ -1,4 +1,4 @@
-use crate::slicer::path::{PathType, PrintType};
+use crate::slicer::{PathType, PrintType};
 
 #[derive(Debug, Clone)]
 #[allow(clippy::upper_case_acronyms)]

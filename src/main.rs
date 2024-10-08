@@ -24,6 +24,7 @@ mod model;
 mod picking;
 mod prelude;
 mod render;
+mod settings;
 mod slicer;
 mod tools;
 mod ui;
