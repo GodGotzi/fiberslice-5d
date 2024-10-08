@@ -43,6 +43,7 @@ impl<S: Setting> LoadedSetting<S> {
         Self {
             raw: SharedMut::from_inner(raw_settings),
             tree: SharedMut::from_inner(tree),
+            _phantom: std::marker::PhantomData,
         }
     }
 

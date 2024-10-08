@@ -1,5 +1,7 @@
 mod settings;
 
+pub use settings::*;
+
 mod calculation;
 mod command_pass;
 mod coverter;
@@ -23,7 +25,6 @@ use geo::{
 use itertools::Itertools;
 use nalgebra::Point3;
 use serde::{Deserialize, Serialize};
-use settings::{LayerSettings, Settings};
 
 ///A single slice of an object containing it's current plotting status.
 pub struct Slice {
