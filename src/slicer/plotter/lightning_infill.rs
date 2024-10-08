@@ -1,12 +1,12 @@
 use geo::coordinate_position::{CoordPos, CoordinatePosition};
 use geo::euclidean_distance::EuclideanDistance;
 use geo::line_intersection::{line_intersection, LineIntersection};
-use geo::{prelude::*, Closest, Coord, Line, MultiPolygon};
+use geo::{prelude::*, Closest, Coord, GeoFloat, Line, MultiPolygon, Point};
 
 use itertools::Itertools;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
-use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::slicer::settings::settings::LayerSettings;
 use crate::slicer::{Move, MoveChain, MoveType, Slice};
@@ -16,9 +16,15 @@ use super::polygon_operations::PolygonOperations;
 pub fn lightning_infill(slices: &mut Vec<Slice>) {
     let mut lt = LightningForest { trees: vec![] };
 
-    lightning_layer(slices.last_mut().unwrap(), None, &mut lt);
+    lightning_layer(
+        slices
+            .last_mut()
+            .expect("At this point, we have tested if slices exist"),
+        None,
+        &mut lt,
+    );
 
-    (1..slices.len()).into_iter().rev().for_each(|q| {
+    (1..slices.len()).rev().for_each(|q| {
         //todo Fix this, it feels hacky
         if let [ref mut layer, ref mut above, ..] = &mut slices[q - 1..=q] {
             lightning_layer(layer, Some(above), &mut lt);
@@ -37,10 +43,19 @@ pub fn lightning_layer(
     slice_above: Option<&mut Slice>,
     lightning_forest: &mut LightningForest,
 ) {
-    let spacing = slice.layer_settings.layer_width / slice.layer_settings.infill_percentage;
-    let overlap = ((-slice.layer_settings.layer_width / 2.0)
+    let spacing =
+        slice.layer_settings.extrusion_width.infill / slice.layer_settings.infill_percentage;
+    let overlap = ((-slice
+        .layer_settings
+        .extrusion_width
+        .interior_inner_perimeter
+        / 2.0)
         * (1.0 - slice.layer_settings.infill_perimeter_overlap_percentage))
-        + (slice.layer_settings.layer_width / 2.0);
+        + (slice
+            .layer_settings
+            .extrusion_width
+            .interior_inner_perimeter
+            / 2.0);
     let inset_amount = slice.layer_settings.layer_height + overlap;
 
     let unsupported_area = if let Some(area_above) = slice_above.map(|sa| &sa.remaining_area) {
@@ -76,12 +91,11 @@ pub fn lightning_layer(
         .cartesian_product((min_y / v_spacing) as usize..=(max_y / v_spacing) as usize + 1)
         .map(|(x, y)| {
             if y % 2 == 0 {
-                (x as f64 * h_spacing, y as f64 * v_spacing)
+                Coord::from((x as f64 * h_spacing, y as f64 * v_spacing))
             } else {
-                ((x as f64 - 0.5) * h_spacing, y as f64 * v_spacing)
+                Coord::from(((x as f64 - 0.5) * h_spacing, y as f64 * v_spacing))
             }
         })
-        .map(|(x, y)| Coord { x, y })
         .filter(|coord| unsupported_area.contains(coord))
         .map(|coord| LightningNode {
             children: vec![],
@@ -90,11 +104,11 @@ pub fn lightning_layer(
         .chain(fragments)
         .filter_map(|node| {
             if let Closest::SinglePoint(closest_point) =
-                infill_area.closest_point(&node.location.into())
+                closest_point_exterior_point(&infill_area, &node.location.into())
             {
-                let closest_coordinate: Coord<f64> = closest_point.into();
-                let distance: f64 = node.location.euclidean_distance(&closest_coordinate);
-                Some((node, distance, closest_coordinate))
+                let closest_coord: Coord<f64> = closest_point.into();
+                let distance: f64 = node.location.euclidean_distance(&closest_coord);
+                Some((node, distance, closest_coord))
             } else {
                 None
             }
@@ -105,7 +119,10 @@ pub fn lightning_layer(
         //shuffle so same distance points are random
         points.shuffle(&mut thread_rng());
 
-        points.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        points.sort_by(|a, b| {
+            a.1.partial_cmp(&b.1)
+                .expect("Points Should not contain NAN")
+        });
 
         for (node, _distance, closet) in points {
             lightning_forest.add_node_to_tree(node, &closet, inset_amount)
@@ -114,7 +131,7 @@ pub fn lightning_layer(
 
     lightning_forest.shorten_and_straighten(&slice.layer_settings);
 
-    let width = slice.layer_settings.layer_width;
+    let width = slice.layer_settings.extrusion_width.infill;
     slice.chains.extend(
         lightning_forest
             .trees
@@ -138,18 +155,21 @@ impl LightningNode {
     fn add_point_to_tree(&mut self, node: LightningNode) {
         let self_dist = self.location.euclidean_distance(&node.location);
 
-        if let Some((index, closest)) = self
+        if let Some((child, closest)) = self
             .children
-            .iter()
-            .enumerate()
-            .map(|(index, child)| (index, child.get_closest_child(&node.location)))
-            .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+            .iter_mut()
+            .map(|child| {
+                let closest_child = child.get_closest_child(&node.location);
+
+                (child, closest_child)
+            })
+            .min_by(|a, b| {
+                a.1.partial_cmp(&b.1)
+                    .expect("Points Should not contain NAN")
+            })
         {
             if closest < self_dist {
-                self.children
-                    .get_mut(index)
-                    .unwrap()
-                    .add_point_to_tree(node);
+                child.add_point_to_tree(node);
                 return;
             }
         }
@@ -163,7 +183,7 @@ impl LightningNode {
         settings: &LayerSettings,
     ) -> StraightenResponse {
         let l = self.location;
-        let max_move = settings.layer_width / 2.0;
+        let max_move = settings.extrusion_width.infill / 2.0;
         let mut shorten_amount = max_move;
 
         //reverse to make removals safe
@@ -243,7 +263,7 @@ impl LightningNode {
 
     fn get_closest_child(&self, point: &Coord<f64>) -> f64 {
         let min_dist = self.location.euclidean_distance(point)
-            - if self.children.len() > 0 && self.children.len() < 4 {
+            - if !self.children.is_empty() && self.children.len() < 4 {
                 (2.0/* - self.children.len() as f64*/) * 0.45 / 2.0
             } else {
                 0.0
@@ -252,7 +272,7 @@ impl LightningNode {
             .children
             .iter()
             .map(|child| child.get_closest_child(point))
-            .min_by(|a, b| a.partial_cmp(b).unwrap());
+            .min_by(|a, b| a.partial_cmp(b).expect("Distance should not contain NAN"));
 
         if let Some(min_child_dist) = min_child {
             min_dist.min(min_child_dist)
@@ -268,7 +288,7 @@ impl LightningNode {
                 let mut chains = child.get_move_chains(width);
 
                 if !chains.is_empty() {
-                    let first_chain = chains.get_mut(0).unwrap();
+                    let first_chain = chains.first_mut().expect("Chains is not empty");
                     first_chain.moves.push(Move {
                         end: self.location,
                         width,
@@ -282,6 +302,7 @@ impl LightningNode {
                             move_type: MoveType::Infill,
                         }],
                         start_point: child.location,
+                        is_loop: false,
                     })
                 }
                 chains.into_iter()
@@ -305,7 +326,7 @@ impl LightningNode {
                         },
                         polygon,
                     )
-                    .unwrap();
+                    .expect("Polygon contains point so must contain at least");
 
                     let new_child = LightningNode {
                         children: vec![],
@@ -334,7 +355,7 @@ impl LightningNode {
                         },
                         polygon,
                     )
-                    .unwrap();
+                    .expect("Polygon contains point so must contain at least");
 
                     let mut new_node = LightningNode {
                         children: vec![child],
@@ -377,16 +398,20 @@ impl LightningForest {
 
             return;
         }
-        if let Some((index, closest)) = self
+
+        if let Some((tree, closest)) = self
             .trees
-            .par_iter()
-            .enumerate()
-            .map(|(index, child)| (index, child.get_closest_child(&node.location)))
-            .filter(|(_index, dist)| *dist < poly_dist)
-            .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+            .par_iter_mut()
+            .map(|tree| {
+                let closest_child = tree.get_closest_child(&node.location);
+
+                (tree, closest_child)
+            })
+            .filter(|(_, dist)| *dist < poly_dist)
+            .min_by(|a, b| a.1.partial_cmp(&b.1).expect("Dist Should not contain NAN"))
         {
             if closest < poly_dist {
-                self.trees.get_mut(index).unwrap().add_point_to_tree(node);
+                tree.add_point_to_tree(node);
                 return;
             }
         }
@@ -404,15 +429,15 @@ impl LightningForest {
         self.trees.drain(..).for_each(|mut tree| {
             match polygon.coordinate_position(&tree.location) {
                 CoordPos::OnBoundary => {
-                    new_trees.extend(tree.trim_for_polygon_inside(polygon).into_iter());
+                    new_trees.extend(tree.trim_for_polygon_inside(polygon));
                     new_trees.push(tree)
                 }
                 CoordPos::Outside => {
                     //new_trees.extend(tree.children.into_iter().map(|child| child.trim_for_polygon_outside_to_inside(l,polygon).into_iter()).flatten())
-                    new_trees.extend(tree.trim_for_polygon_outside(polygon).into_iter());
+                    new_trees.extend(tree.trim_for_polygon_outside(polygon));
                 }
                 CoordPos::Inside => {
-                    new_trees.extend(tree.trim_for_polygon_inside(polygon).into_iter());
+                    new_trees.extend(tree.trim_for_polygon_inside(polygon));
                     fragments.push(tree);
                 }
             }
@@ -424,24 +449,21 @@ impl LightningForest {
     }
 
     fn shorten_and_straighten(&mut self, settings: &LayerSettings) {
-        for index in (0..self.trees.len()).rev() {
-            let tree_l = self.trees.get(index).unwrap().location;
-
-            let reponse = self
-                .trees
-                .get_mut(index)
-                .unwrap()
-                .shorten_and_straighten(tree_l, settings);
-            match reponse {
-                StraightenResponse::Remove { .. } => {
-                    self.trees.remove(index);
-                }
+        self.trees = self
+            .trees
+            .drain(..)
+            .map(|mut tree| {
+                let res = tree.shorten_and_straighten(tree.location, settings);
+                (tree, res)
+            })
+            .filter_map(|(tree, response)| match response {
+                StraightenResponse::Remove { .. } => None,
                 StraightenResponse::Replace(..) => {
                     unreachable!()
                 }
-                StraightenResponse::DoNothing => {}
-            }
-        }
+                StraightenResponse::DoNothing => Some(tree),
+            })
+            .collect();
     }
 }
 
@@ -461,7 +483,39 @@ fn get_closest_intersection_point_on_polygon(
                 LineIntersection::Collinear { intersection } => intersection.end,
             })
         })
-        .map(|coord| (coord, coord.euclidean_distance(&line.start) as f64))
-        .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+        .map(|coord| (coord, coord.euclidean_distance(&line.start)))
+        .min_by(|a, b| {
+            a.1.partial_cmp(&b.1)
+                .expect("Points Should not contain NAN")
+        })
         .map(|(c, _d)| c)
+}
+
+fn closest_point_exterior_point(poly: &MultiPolygon, p: &Point<f64>) -> Closest<f64> {
+    closest_of(
+        poly.iter()
+            .flat_map(|p| p.interiors().iter().chain(std::iter::once(p.exterior()))),
+        *p,
+    )
+}
+
+//Code sources from Geo lib
+fn closest_of<C, F, I>(iter: I, p: Point<F>) -> Closest<F>
+where
+    F: GeoFloat,
+    I: IntoIterator<Item = C>,
+    C: ClosestPoint<F>,
+{
+    let mut best = Closest::Indeterminate;
+
+    for element in iter {
+        let got = element.closest_point(&p);
+        best = got.best_of_two(&best, p);
+        if matches!(best, Closest::Intersection(_)) {
+            // short circuit - nothing can be closer than an intersection
+            return best;
+        }
+    }
+
+    best
 }

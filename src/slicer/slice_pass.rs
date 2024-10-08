@@ -18,20 +18,21 @@ pub struct BrimPass {}
 impl ObjectPass for BrimPass {
     fn pass(objects: &mut Vec<Object>, settings: &Settings, send_messages: bool) {
         if let Some(width) = &settings.brim_width {
+            // display_state_update("Generating Moves: Brim", send_messages);
             //Add to first object
 
             let first_layer_multipolygon: MultiPolygon<f64> = MultiPolygon(
                 objects
                     .iter()
                     .flat_map(|poly| {
-                        let first_slice = poly.layers.get(0).expect("Object needs a Slice");
+                        let first_slice = poly.layers.first().expect("Object needs a Slice");
 
                         first_slice
                             .main_polygon
                             .0
                             .clone()
                             .into_iter()
-                            .chain(first_slice.main_polygon.clone().into_iter())
+                            .chain(first_slice.main_polygon.clone())
                     })
                     .collect(),
             );
@@ -52,6 +53,7 @@ pub struct SupportTowerPass {}
 impl ObjectPass for SupportTowerPass {
     fn pass(objects: &mut Vec<Object>, settings: &Settings, send_messages: bool) {
         if let Some(support) = &settings.support {
+            // display_state_update("Generating Support Towers", send_messages);
             //Add to first object
 
             objects.par_iter_mut().for_each(|obj| {
@@ -74,6 +76,7 @@ impl ObjectPass for SkirtPass {
     fn pass(objects: &mut Vec<Object>, settings: &Settings, send_messages: bool) {
         //Handle Perimeters
         if let Some(skirt) = &settings.skirt {
+            // display_state_update("Generating Moves: Skirt", send_messages);
             let convex_hull = objects
                 .iter()
                 .flat_map(|object| {
@@ -93,8 +96,7 @@ impl ObjectPass for SkirtPass {
                 .layers
                 .iter_mut()
                 .take(skirt.layers)
-                .enumerate()
-                .for_each(|(_layer_num, slice)| slice.generate_skirt(&convex_hull, skirt))
+                .for_each(|slice| slice.generate_skirt(&convex_hull, skirt, settings))
         }
     }
 }
@@ -115,6 +117,7 @@ impl SlicePass for ShrinkPass {
         _settings: &Settings,
         send_messages: bool,
     ) -> Result<(), SlicerErrors> {
+        // display_state_update("Generating Moves: Shrink Layers", send_messages);
         slices.par_iter_mut().for_each(|slice| {
             slice.shrink_layer();
         });
@@ -130,6 +133,7 @@ impl SlicePass for PerimeterPass {
         settings: &Settings,
         send_messages: bool,
     ) -> Result<(), SlicerErrors> {
+        // display_state_update("Generating Moves: Perimeters", send_messages);
         slices.par_iter_mut().for_each(|slice| {
             slice.slice_perimeters_into_chains(settings.number_of_perimeters);
         });
@@ -145,7 +149,8 @@ impl SlicePass for BridgingPass {
         _settings: &Settings,
         send_messages: bool,
     ) -> Result<(), SlicerErrors> {
-        (1..slices.len()).into_iter().for_each(|q| {
+        // display_state_update("Generating Moves: Bridging", send_messages);
+        (1..slices.len()).for_each(|q| {
             let below = slices[q - 1].main_polygon.clone();
 
             slices[q].fill_solid_bridge_area(&below);
@@ -161,7 +166,8 @@ impl SlicePass for TopLayerPass {
         _settings: &Settings,
         send_messages: bool,
     ) -> Result<(), SlicerErrors> {
-        (0..slices.len() - 1).into_iter().for_each(|q| {
+        // display_state_update("Generating Moves: Top Layer", send_messages);
+        (0..slices.len() - 1).for_each(|q| {
             let above = slices[q + 1].main_polygon.clone();
 
             slices[q].fill_solid_top_layer(&above, q);
@@ -183,54 +189,54 @@ impl SlicePass for TopAndBottomLayersPass {
 
         //Make sure at least 1 layer will not be solid
         if slices.len() > bottom_layers + top_layers {
-            (bottom_layers..slices.len() - top_layers)
-                .into_iter()
-                .for_each(|q| {
-                    let below = if bottom_layers != 0 {
-                        Some(
-                            slices[(q - bottom_layers + 1)..q]
-                                .iter()
-                                .map(|m| m.main_polygon.clone())
-                                .fold(
-                                    slices
-                                        .get(q - bottom_layers)
-                                        .expect("Bounds Checked above")
-                                        .main_polygon
-                                        .clone(),
-                                    |a, b| a.intersection_with(&b),
-                                ),
-                        )
-                    } else {
-                        None
-                    };
-                    let above = if top_layers != 0 {
-                        Some(
-                            slices[q + 1..q + top_layers + 1]
-                                .iter()
-                                .map(|m| m.main_polygon.clone())
-                                .fold(
-                                    slices
-                                        .get(q + 1)
-                                        .expect("Bounds Checked above")
-                                        .main_polygon
-                                        .clone(),
-                                    |a, b| a.intersection_with(&b),
-                                ),
-                        )
-                    } else {
-                        None
-                    };
-                    if let Some(intersection) = match (above, below) {
-                        (None, None) => None,
-                        (None, Some(poly)) | (Some(poly), None) => Some(poly),
-                        (Some(polya), Some(polyb)) => Some(polya.intersection_with(&polyb)),
-                    } {
-                        slices
-                            .get_mut(q)
-                            .expect("Bounds Checked above")
-                            .fill_solid_subtracted_area(&intersection, q);
-                    }
-                });
+            // display_state_update("Generating Moves: Above and below support", send_messages);
+
+            (bottom_layers..slices.len() - top_layers).for_each(|q| {
+                let below = if bottom_layers != 0 {
+                    Some(
+                        slices[(q - bottom_layers + 1)..q]
+                            .iter()
+                            .map(|m| m.main_polygon.clone())
+                            .fold(
+                                slices
+                                    .get(q - bottom_layers)
+                                    .expect("Bounds Checked above")
+                                    .main_polygon
+                                    .clone(),
+                                |a, b| a.intersection_with(&b),
+                            ),
+                    )
+                } else {
+                    None
+                };
+                let above = if top_layers != 0 {
+                    Some(
+                        slices[q + 1..q + top_layers + 1]
+                            .iter()
+                            .map(|m| m.main_polygon.clone())
+                            .fold(
+                                slices
+                                    .get(q + 1)
+                                    .expect("Bounds Checked above")
+                                    .main_polygon
+                                    .clone(),
+                                |a, b| a.intersection_with(&b),
+                            ),
+                    )
+                } else {
+                    None
+                };
+                if let Some(intersection) = match (above, below) {
+                    (None, None) => None,
+                    (None, Some(poly)) | (Some(poly), None) => Some(poly),
+                    (Some(polya), Some(polyb)) => Some(polya.intersection_with(&polyb)),
+                } {
+                    slices
+                        .get_mut(q)
+                        .expect("Bounds Checked above")
+                        .fill_solid_subtracted_area(&intersection, q);
+                }
+            });
         }
 
         let slice_count = slices.len();
@@ -295,6 +301,8 @@ impl SlicePass for LightningFillPass {
         send_messages: bool,
     ) -> Result<(), SlicerErrors> {
         if settings.partial_infill_type == PartialInfillTypes::Lightning {
+            // display_state_update("Generating Moves: Lightning Infill", send_messages);
+
             lightning_infill(slices);
         }
         Ok(())
@@ -309,6 +317,8 @@ impl SlicePass for OrderPass {
         _settings: &Settings,
         send_messages: bool,
     ) -> Result<(), SlicerErrors> {
+        // display_state_update("Generating Moves: Order Chains", send_messages);
+
         //Fill all remaining areas
         slices.par_iter_mut().for_each(|slice| {
             slice.order_chains();

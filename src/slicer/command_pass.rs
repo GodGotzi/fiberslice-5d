@@ -1,14 +1,9 @@
 use std::collections::HashMap;
 
-use geo::Coord;
-use itertools::Itertools;
 use ordered_float::OrderedFloat;
 
-use super::{
-    optimizer::{binary_optimizer, state_optomizer, unary_optimizer},
-    settings::settings::Settings,
-    Command,
-};
+use crate::slicer::optimizer::*;
+use crate::slicer::*;
 
 pub trait CommandPass {
     fn pass(cmds: &mut Vec<Command>, settings: &Settings);
@@ -19,8 +14,9 @@ pub struct OptimizePass {}
 impl CommandPass for OptimizePass {
     fn pass(cmds: &mut Vec<Command>, settings: &Settings) {
         let mut size = cmds.len();
-        //arc_optomizer(cmds);
+
         while {
+            //arc_optomizer(cmds);
             state_optomizer(cmds);
             unary_optimizer(cmds);
             binary_optimizer(cmds, settings);
@@ -85,7 +81,7 @@ impl CommandPass for SlowDownLayerPass {
                                     if let Some(speed) = new_state.movement_speed {
                                         current_speed = speed
                                     }
-                                    if new_state.retract.is_some() {
+                                    if new_state.retract != RetractionType::NoRetract {
                                         non_move_time +=
                                             settings.retract_length / settings.retract_speed;
                                         non_move_time +=
@@ -95,10 +91,32 @@ impl CommandPass for SlowDownLayerPass {
                                 Command::Delay { msec } => {
                                     non_move_time += *msec as f64 / 1000.0;
                                 }
-                                Command::Arc { .. } => {
-                                    unimplemented!()
+                                Command::Arc {
+                                    start, end, center, ..
+                                } => {
+                                    let x_diff = end.x - start.x;
+                                    let y_diff = end.y - start.y;
+                                    let cord_length =
+                                        ((x_diff * x_diff) + (y_diff * y_diff)).sqrt();
+                                    let x_diff_r = end.x - center.x;
+                                    let y_diff_r = end.y - center.y;
+                                    let radius =
+                                        ((x_diff_r * x_diff_r) + (y_diff_r * y_diff_r)).sqrt();
+
+                                    //Divide the chord length by double the radius.
+                                    let t = cord_length / (2.0 * radius);
+                                    //println!("{}",t);
+                                    //Find the inverse sine of the result (in radians).
+                                    //Double the result of the inverse sine to get the central angle in radians.
+                                    let central = t.asin() * 2.0;
+                                    //Once you have the central angle in radians, multiply it by the radius to get the arc length.
+                                    let extrusion_length = central * radius;
+
+                                    current_pos = *end;
+                                    *map.entry(OrderedFloat(current_speed)).or_insert(0.0) +=
+                                        extrusion_length;
                                 }
-                                Command::LayerChange { z } => {
+                                Command::LayerChange { z, .. } => {
                                     layer_height = *z;
                                 }
                                 Command::NoAction | Command::ChangeObject { .. } => {}
@@ -112,13 +130,24 @@ impl CommandPass for SlowDownLayerPass {
                         if map.is_empty() {
                             None
                         } else {
-                            Some((map, non_move_time, start_index.unwrap(), end_index))
+                            Some((
+                                map,
+                                non_move_time,
+                                start_index
+                                    .expect("For map to have values, start index must be set"),
+                                end_index,
+                            ))
                         }
                     } else {
-                        Some((map, non_move_time, start_index.unwrap(), end_index))
+                        Some((
+                            map,
+                            non_move_time,
+                            start_index
+                                .expect("For return_none to be false, start index must be set"),
+                            end_index,
+                        ))
                     }
                 })
-                .into_iter()
                 .filter_map(|(map, time, start, end)| {
                     let mut total_time = time
                         + map
@@ -133,7 +162,9 @@ impl CommandPass for SlowDownLayerPass {
 
                         let max_speed: f64;
                         loop {
-                            let (speed, len) = sorted.pop().unwrap();
+                            let (speed, len) = sorted
+                                .pop()
+                                .expect("Because map isn't empty, sorted can't be empty");
                             let (top_speed, _) =
                                 sorted.last().unwrap_or(&(OrderedFloat(0.000001), 0.0));
 
