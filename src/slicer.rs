@@ -2,21 +2,21 @@ use glam::Vec4;
 use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
 use wgpu::Color;
 
-use crate::settings::tree::QuickSettings;
+use crate::settings::tree::LoadedSetting;
 
 #[derive(Debug)]
 pub struct Slicer {
-    pub fiber_settings: QuickSettings,
-    pub topology_settings: QuickSettings,
-    pub view_settings: QuickSettings,
+    pub fiber_settings: LoadedSetting,
+    pub topology_settings: LoadedSetting,
+    pub view_settings: LoadedSetting,
 }
 
 impl Default for Slicer {
     fn default() -> Self {
         Self {
-            fiber_settings: QuickSettings::new("settings/main.yaml"),
-            topology_settings: QuickSettings::new("settings/main.yaml"),
-            view_settings: QuickSettings::new("settings/main.yaml"),
+            fiber_settings: LoadedSetting::new("settings/main.yaml"),
+            topology_settings: LoadedSetting::new("settings/main.yaml"),
+            view_settings: LoadedSetting::new("settings/main.yaml"),
         }
     }
 }

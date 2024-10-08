@@ -1,23 +1,35 @@
-use std::{cell::RefCell, collections::HashMap, usize};
+use std::{cell::RefCell, collections::HashMap};
 
 use egui::{CollapsingHeader, Color32, DragValue, Response, TextEdit, Ui};
 use serde::{Deserialize, Serialize};
 
-use crate::prelude::{SharedMut, WrappedSharedMut};
+use crate::prelude::SharedMut;
 
 type RawSettings = HashMap<String, NodeValue>;
 
 #[derive(Clone, Debug)]
-pub struct QuickSettings {
-    file_path: String,
+pub struct LoadedSetting<S> {
     raw: SharedMut<RawSettings>,
-    tree: WrappedSharedMut<SettingTree>,
+    tree: SharedMut<SettingTree>,
+    _phantom: std::marker::PhantomData<S>,
 }
 
-impl QuickSettings {
-    pub fn new(file_path: &str) -> Self {
-        let map: HashMap<String, TreeNode> =
-            serde_yaml::from_str(std::fs::read_to_string(file_path).unwrap().as_str()).unwrap();
+pub trait Setting: Drop {
+    fn from_raw(raw: RawSettings) -> Self;
+    fn into_raw(&self) -> HashMap<String, RawSetting>;
+    fn path(&self) -> &str;
+}
+
+impl<S: Setting> LoadedSetting<S> {
+    pub fn new(setting: S) -> Self {
+        let tree: SettingTree =
+            match serde_yaml::from_str(match std::fs::read_to_string(setting.path()) {
+                Ok(content) => content.as_str(),
+                Err(_) => setting.into_raw().into(),
+            }) {
+                Ok(map) => map,
+                Err(_) => setting.into_raw().into(),
+            };
 
         let tree = SettingTree { root_children: map };
 
@@ -29,15 +41,14 @@ impl QuickSettings {
             .collect();
 
         Self {
-            file_path: file_path.to_string(),
             raw: SharedMut::from_inner(raw_settings),
-            tree: WrappedSharedMut::from_inner(tree),
+            tree: SharedMut::from_inner(tree),
         }
     }
 
     pub fn show(&self, ui: &mut Ui) {
         //check if the settingtree has changed
-        if self.tree.write().inner.show(ui) {
+        if self.tree.write().show(ui) {
             //if it has changed, update the raw settings
             let filter = |node: &TreeNode| match node {
                 TreeNode::Branch { changed, .. } => *changed,
@@ -46,7 +57,6 @@ impl QuickSettings {
 
             self.tree
                 .read()
-                .inner
                 .collect_values_into(&self.raw, &filter, &|raw, path, node| {
                     if let TreeNode::Value { value, .. } = node {
                         raw.write().insert(path.to_string(), value.clone());
@@ -56,12 +66,12 @@ impl QuickSettings {
     }
 
     fn save(&self) {
-        let content = serde_yaml::to_string(&self.tree.read().inner.root_children).unwrap();
+        let content = serde_yaml::to_string(&self.tree.read().root_children).unwrap();
         std::fs::write(self.file_path.as_str(), content).unwrap();
     }
 }
 
-impl Drop for QuickSettings {
+impl<S: Setting> Drop for LoadedSetting<S> {
     fn drop(&mut self) {
         self.save();
     }
