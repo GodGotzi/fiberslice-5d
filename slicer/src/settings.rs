@@ -1,5 +1,6 @@
-#![deny(missing_docs)]
+use std::{collections::HashMap, ptr::addr_of_mut};
 
+use once_cell::unsync::Lazy;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -331,6 +332,74 @@ impl Default for Settings {
             maximum_feedrate_z: 12.0,
             maximum_feedrate_e: 120.0,
             retraction_wipe: None,
+        }
+    }
+}
+
+pub struct Setting {
+    pub name: String,
+    pub value: Value,
+    pub description: String,
+    pub unit: Option<String>,
+}
+
+pub enum Value {
+    String(*mut String),
+    F32(*mut f32),
+    F64(*mut f64),
+    Bool(*mut bool),
+}
+
+pub enum ValueRef<'a> {
+    String(&'a mut String),
+    F32(&'a mut f32),
+    F64(&'a mut f64),
+    Bool(&'a mut bool),
+}
+
+impl Value {
+    pub fn as_ref<'a>(&'a mut self) -> ValueRef<'a> {
+        match self {
+            Value::String(s) => ValueRef::String(unsafe { s.as_mut().unwrap() }),
+            Value::F32(f) => ValueRef::F32(unsafe { f.as_mut().unwrap() }),
+            Value::F64(f) => ValueRef::F64(unsafe { f.as_mut().unwrap() }),
+            Value::Bool(b) => ValueRef::Bool(unsafe { b.as_mut().unwrap() }),
+        }
+    }
+}
+
+impl Settings {
+    pub fn map_mut(&mut self) -> &mut HashMap<String, Setting> {
+        // Use Lazy to cache the map
+        static mut CACHED_MAP: Lazy<HashMap<String, Setting>> = Lazy::new(HashMap::new);
+
+        unsafe {
+            // Safety: We need to ensure that CACHED_MAP is only mutated once.
+            if CACHED_MAP.is_empty() {
+                // Add each setting field to the map, as in the previous example
+                CACHED_MAP.insert(
+                    "layer_height".to_string(),
+                    Setting {
+                        name: "layer_height".to_string(),
+                        value: Value::F64(&mut self.layer_height),
+                        description: "The height of the layers".to_string(),
+                        unit: Some("mm".to_string()),
+                    },
+                );
+
+                CACHED_MAP.insert(
+                    "movement_parameter.interior_inner_perimeter".to_string(),
+                    Setting {
+                        name: "movement_parameter.interior_inner_perimeter".to_string(),
+                        value: Value::F64(&mut self.extrusion_width.interior_inner_perimeter),
+                        description: "Value for interior (perimeters that are inside the model"
+                            .to_string(),
+                        unit: Some("mm".to_string()),
+                    },
+                );
+            }
+
+            addr_of_mut!(CACHED_MAP).as_mut().unwrap()
         }
     }
 }
