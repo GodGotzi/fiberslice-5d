@@ -8,14 +8,20 @@
 use egui::*;
 use egui_extras::Size;
 use egui_grid::GridBuilder;
+use settings::UiSetting;
 
 use crate::config;
-use crate::settings::UiSetting;
 use crate::ui::boundary::Boundary;
 use crate::ui::*;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum SettingsPanel {
+pub enum SettingTab {
+    Slicing,
+    GCode,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum SettingSubTab {
     General,
     PrinterAndLimits,
     Instructions,
@@ -24,7 +30,7 @@ pub enum SettingsPanel {
 struct TabbedSettings;
 
 impl TabbedSettings {
-    pub fn init() -> Self {
+    pub fn new() -> Self {
         Self {}
     }
 
@@ -63,8 +69,8 @@ impl TabbedSettings {
                     // Cells are represented as they were allocated
                     grid.cell(|ui| {
                         ui.selectable_value(
-                            &mut side_view.state.open_panel,
-                            SettingsPanel::General,
+                            &mut side_view.state.open_sub_tab,
+                            SettingSubTab::General,
                             "General",
                         );
                     });
@@ -75,8 +81,8 @@ impl TabbedSettings {
                     });
                     grid.cell(|ui| {
                         ui.selectable_value(
-                            &mut side_view.state.open_panel,
-                            SettingsPanel::PrinterAndLimits,
+                            &mut side_view.state.open_sub_tab,
+                            SettingSubTab::PrinterAndLimits,
                             "Printer and Limits",
                         );
                     });
@@ -87,28 +93,28 @@ impl TabbedSettings {
                     });
                     grid.cell(|ui| {
                         ui.selectable_value(
-                            &mut side_view.state.open_panel,
-                            SettingsPanel::Instructions,
-                            "Instructions",
+                            &mut side_view.state.open_sub_tab,
+                            SettingSubTab::Instructions,
+                            "Fiber",
                         );
                     });
                     grid.cell(|ui| {
                         ui.vertical(|ui| {
-                            if side_view.state.open_panel != SettingsPanel::General {
+                            if side_view.state.open_sub_tab != SettingSubTab::General {
                                 ui.separator();
                             }
                         });
                     });
                     grid.cell(|ui| {
                         ui.vertical(|ui| {
-                            if side_view.state.open_panel != SettingsPanel::PrinterAndLimits {
+                            if side_view.state.open_sub_tab != SettingSubTab::PrinterAndLimits {
                                 ui.separator();
                             }
                         });
                     });
                     grid.cell(|ui| {
                         ui.vertical(|ui| {
-                            if side_view.state.open_panel != SettingsPanel::Instructions {
+                            if side_view.state.open_sub_tab != SettingSubTab::Instructions {
                                 ui.separator();
                             }
                         });
@@ -118,8 +124,8 @@ impl TabbedSettings {
 
         //ui.add_space(20.0);
 
-        match side_view.state.open_panel {
-            SettingsPanel::General => {
+        match side_view.state.open_sub_tab {
+            SettingSubTab::General => {
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
@@ -133,7 +139,7 @@ impl TabbedSettings {
                     });
                 });
             }
-            SettingsPanel::PrinterAndLimits => {
+            SettingSubTab::PrinterAndLimits => {
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
@@ -148,7 +154,7 @@ impl TabbedSettings {
                     });
                 });
             }
-            SettingsPanel::Instructions => {
+            SettingSubTab::Instructions => {
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
@@ -157,7 +163,7 @@ impl TabbedSettings {
                             // println!("Tree Time: {:?}", now.elapsed());
                             ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
                                 shared_state.1.slicer.write_with_fn(|slicer| {
-                                    slicer.settings.show_instructions(ui);
+                                    slicer.settings.show_fiber(ui);
                                 });
                             });
                         });
@@ -175,7 +181,8 @@ pub struct SettingsbarState {
     enabled: bool,
     boundary: Boundary,
 
-    open_panel: SettingsPanel,
+    open_tab: SettingTab,
+    open_sub_tab: SettingSubTab,
 }
 
 impl SettingsbarState {
@@ -184,7 +191,8 @@ impl SettingsbarState {
             enabled: true,
             boundary: Boundary::zero(),
 
-            open_panel: SettingsPanel::General,
+            open_tab: SettingTab::Slicing,
+            open_sub_tab: SettingSubTab::General,
         }
     }
 }
@@ -216,11 +224,11 @@ impl<'a> Settingsbar<'a> {
 
 impl<'a> Component for Settingsbar<'a> {
     fn show(&mut self, ctx: &egui::Context, shared_state: &(UiState, GlobalState<RootEvent>)) {
-        let mut tabbed_view = TabbedSettings::init();
+        let mut tabbed_view = TabbedSettings::new();
 
         if self.state.enabled {
             self.state.boundary = Boundary::from(
-                egui::SidePanel::right("settingsbar")
+                egui::SidePanel::left("settingsbar")
                     .resizable(true)
                     .default_width(config::gui::default::SETTINGSBAR_W)
                     .show(ctx, |ui| {
@@ -252,7 +260,64 @@ impl<'a> Component for Settingsbar<'a> {
                             ui.separator();
 
                             ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
-                                tabbed_view.show(ui, shared_state, self);
+                                ui.horizontal(|ui| {
+                                    let layout = egui::Layout {
+                                        main_dir: egui::Direction::TopDown,
+                                        main_wrap: false,
+                                        main_align: egui::Align::Center,
+                                        main_justify: false,
+                                        cross_align: egui::Align::Center,
+                                        cross_justify: true,
+                                    };
+
+                                    GridBuilder::new()
+                                        // Allocate a new row
+                                        .new_row_align(Size::initial(27.5), egui::Align::Center)
+                                        // Give this row a couple cells
+                                        .layout_standard(layout)
+                                        .clip(true)
+                                        .cell(Size::initial(5.0))
+                                        .cell(Size::remainder())
+                                        .cell(Size::initial(-13.0))
+                                        .cell(Size::remainder())
+                                        .cell(Size::initial(5.0))
+                                        .show(ui, |mut grid| {
+                                            grid.empty();
+                                            // Cells are represented as they were allocated
+                                            grid.cell(|ui| {
+                                                ui.selectable_value(
+                                                    &mut self.state.open_tab,
+                                                    SettingTab::Slicing,
+                                                    "Slicing",
+                                                );
+                                            });
+                                            grid.empty();
+                                            grid.cell(|ui| {
+                                                ui.selectable_value(
+                                                    &mut self.state.open_tab,
+                                                    SettingTab::GCode,
+                                                    "GCode",
+                                                );
+                                            });
+                                            grid.empty();
+                                        });
+                                });
+
+                                ui.add_space(5.0);
+
+                                match self.state.open_tab {
+                                    SettingTab::Slicing => {
+                                        tabbed_view.show(ui, shared_state, self);
+                                    }
+                                    SettingTab::GCode => {
+                                        shared_state
+                                            .1
+                                            .slicer
+                                            .write()
+                                            .settings
+                                            .show_instructions(ui);
+                                    }
+                                }
                             });
                         });
                     })

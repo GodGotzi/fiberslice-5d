@@ -62,13 +62,7 @@ impl<'a> Component for Topbar<'a> {
         if self.state.enabled {
             self.state.boundary = TopBottomPanel::top("topbar")
                 .resizable(false)
-                .show(ctx, |ui| {
-                    const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.label(RichText::new(format!("Version: {}", VERSION)));
-                    });
-                })
+                .show(ctx, |_ui| {})
                 .response
                 .into();
         }

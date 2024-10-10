@@ -11,6 +11,7 @@ pub mod components;
 pub mod custom_toasts;
 pub mod modal;
 pub mod screen;
+pub mod settings;
 pub mod tools;
 pub mod widgets;
 
@@ -25,6 +26,7 @@ use egui_winit_platform::{Platform, PlatformDescriptor};
 use screen::Screen;
 
 use egui::{FontDefinitions, InnerResponse, Pos2, Rect, Ui, Visuals};
+use visual::customize_look_and_feel;
 use widgets::reader::ReadSection;
 use winit::event::WindowEvent;
 
@@ -62,7 +64,7 @@ impl Default for UiState {
     fn default() -> Self {
         Self {
             pointer_in_use: Shared::new(AtomicBool::new(false)),
-            theme: WrappedSharedMut::from_inner(Theme::Light),
+            theme: WrappedSharedMut::from_inner(Theme::Dark),
             mode: WrappedSharedMut::from_inner(Mode::Prepare),
 
             layer_max: WrappedSharedMut::from_inner(u32::MAX),
@@ -155,6 +157,8 @@ impl<'a> FrameHandle<'a, RootEvent, (UiUpdateOutput, (f32, f32, f32, f32)), ()> 
 
             style.visuals.popup_shadow = egui::epaint::Shadow::NONE;
             style.visuals.window_shadow = egui::epaint::Shadow::NONE;
+
+            customize_look_and_feel(&mut style.visuals);
         });
 
         self.screen.show(

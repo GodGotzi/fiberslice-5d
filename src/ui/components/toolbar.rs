@@ -61,7 +61,7 @@ impl<'a> Toolbar<'a> {
 impl<'a> Component for Toolbar<'a> {
     fn show(&mut self, ctx: &Context, _shared_state: &(UiState, GlobalState<RootEvent>)) {
         if self.state.enabled {
-            self.state.boundary = SidePanel::left("toolbar")
+            self.state.boundary = SidePanel::right("toolbar")
                 .resizable(false)
                 .default_width(config::gui::TOOLBAR_W)
                 .show(ctx, |ui| {

@@ -17,7 +17,7 @@ pub struct Screen {
     tools: tools::Tools,
     addons_state: addons::AddonsState,
 
-    quick_settings_state: settingbar::SettingsbarState,
+    settings_state: settingbar::SettingsbarState,
     menubar_state: MenubarState,
     taskbar_state: taskbar::TaskbarState,
     modebar_state: ModebarState,
@@ -44,7 +44,7 @@ impl Screen {
                     crate::ui::custom_toasts::slicing_progress,
                 ),
             addons_state: addons::AddonsState::new(),
-            quick_settings_state: settingbar::SettingsbarState::new(),
+            settings_state: settingbar::SettingsbarState::new(),
             menubar_state: MenubarState::new(),
             taskbar_state: taskbar::TaskbarState::new(),
             modebar_state: ModebarState::new(),
@@ -63,7 +63,7 @@ impl Screen {
         menubar::Menubar::with_state(&mut self.menubar_state)
             .with_component_states(&mut [
                 &mut self.addons_state,
-                &mut self.quick_settings_state,
+                &mut self.settings_state,
                 &mut self.taskbar_state,
                 &mut self.modebar_state,
                 &mut self.toolbar_state,
@@ -84,7 +84,7 @@ impl Screen {
 
         taskbar::Taskbar::with_state(&mut self.taskbar_state).show(ctx, shared_state);
 
-        settingbar::Settingsbar::with_state(&mut self.quick_settings_state).show(ctx, shared_state);
+        settingbar::Settingsbar::with_state(&mut self.settings_state).show(ctx, shared_state);
 
         modebar::Modebar::with_state(&mut self.modebar_state).show(ctx, shared_state);
 
@@ -124,12 +124,12 @@ impl Screen {
             - self.menubar_state.get_boundary().get_height();
 
         (
-            self.toolbar_state.get_boundary().get_width(),
+            self.settings_state.get_boundary().get_width(),
             self.taskbar_state.get_boundary().get_height()
                 + self.modebar_state.get_boundary().get_height(),
             wgpu_context.surface_config.width as f32
                 - self.toolbar_state.get_boundary().get_width()
-                - self.quick_settings_state.get_boundary().get_width(),
+                - self.settings_state.get_boundary().get_width(),
             height,
         )
     }

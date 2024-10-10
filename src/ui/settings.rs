@@ -3,14 +3,12 @@ use std::fmt::Debug;
 use egui::{DragValue, InnerResponse, Response, TextEdit, Ui};
 use egui_code_editor::{ColorTheme, Syntax};
 use slicer::{
-    FanSettings, FilamentSettings, MovementParameter, RetractionWipeSettings, SkirtSettings,
-    SupportSettings,
+    FanSettings, FiberSettings, FilamentSettings, MovementParameter, RetractionWipeSettings,
+    SkirtSettings, SupportSettings,
 };
 use strum::IntoEnumIterator;
 
 use crate::{ui::WidgetComponent, viewer::GCodeSyntax};
-
-// pub mod tree;
 
 pub trait UiSetting {
     fn show_general(&mut self, ui: &mut egui::Ui);
@@ -22,6 +20,8 @@ pub trait UiSetting {
     fn show_instructions(&mut self, ui: &mut egui::Ui);
 
     fn show_limits(&mut self, ui: &mut egui::Ui);
+
+    fn show_fiber(&mut self, ui: &mut egui::Ui);
 }
 
 impl UiSetting for slicer::Settings {
@@ -398,6 +398,10 @@ impl UiSetting for slicer::Settings {
             ui,
         );
     }
+
+    fn show_fiber(&mut self, ui: &mut egui::Ui) {
+        self.fiber.show(ui);
+    }
 }
 
 impl WidgetComponent for MovementParameter {
@@ -515,6 +519,22 @@ impl WidgetComponent for RetractionWipeSettings {
         show_f64(&mut self.speed, "Speed", Some("mm/s"), ui);
         show_f64(&mut self.acceleration, "Acceleration", Some("mm/s²"), ui);
         show_f64(&mut self.distance, "Distance", Some("mm"), ui);
+    }
+}
+
+impl WidgetComponent for FiberSettings {
+    fn show(&mut self, ui: &mut egui::Ui) {
+        show_f64(&mut self.diameter, "Diameter", Some("mm"), ui);
+        show_f64(&mut self.cut_before, "Cut Before", Some("mm"), ui);
+        show_f64(&mut self.min_length, "Min Length", Some("mm"), ui);
+        show_f64(&mut self.speed_factor, "Speed Factor", None, ui);
+        show_f64(
+            &mut self.acceleration_factor,
+            "Acceleration Factor",
+            None,
+            ui,
+        );
+        show_f64(&mut self.jerk_factor, "Jerk Factor", None, ui);
     }
 }
 

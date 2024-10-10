@@ -1,3 +1,5 @@
+use egui::RichText;
+
 use crate::ui::boundary::Boundary;
 use crate::ui::{Component, ComponentState, Theme, UiState};
 use crate::{config, GlobalState, RootEvent};
@@ -55,8 +57,12 @@ impl<'a> Component for Taskbar<'a> {
                             ui.add_space(10.0);
                             ui.label(format!("{:.3} ms", global_state.ctx.frame_time * 1000.0));
                         });
+
+                        const VERSION: &str = env!("CARGO_PKG_VERSION");
+
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             theme_button(ui, ui_state);
+                            ui.label(RichText::new(format!("Version: {}", VERSION)));
                         });
                     });
                 })
