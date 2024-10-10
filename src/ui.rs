@@ -9,6 +9,7 @@ pub mod api;
 pub mod boundary;
 pub mod components;
 pub mod custom_toasts;
+pub mod modal;
 pub mod screen;
 pub mod tools;
 pub mod widgets;
@@ -341,6 +342,10 @@ pub trait Component {
 
 pub trait InnerComponent {
     fn show(&mut self, ui: &mut egui::Ui, shared_state: &(UiState, GlobalState<RootEvent>));
+}
+
+pub trait WidgetComponent {
+    fn show(&mut self, ui: &mut egui::Ui);
 }
 
 pub trait AllocateInnerUiRect {

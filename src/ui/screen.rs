@@ -3,7 +3,7 @@ use components::{
     addons,
     menubar::{self, MenubarState},
     modebar::{self, ModebarState},
-    quick_settingsbar, taskbar,
+    settingbar, taskbar,
     toolbar::{self, ToolBarState},
     topbar::{self, TopBarState},
 };
@@ -17,7 +17,7 @@ pub struct Screen {
     tools: tools::Tools,
     addons_state: addons::AddonsState,
 
-    quick_settings_state: quick_settingsbar::SettingsbarState,
+    quick_settings_state: settingbar::SettingsbarState,
     menubar_state: MenubarState,
     taskbar_state: taskbar::TaskbarState,
     modebar_state: ModebarState,
@@ -44,7 +44,7 @@ impl Screen {
                     crate::ui::custom_toasts::slicing_progress,
                 ),
             addons_state: addons::AddonsState::new(),
-            quick_settings_state: quick_settingsbar::SettingsbarState::new(),
+            quick_settings_state: settingbar::SettingsbarState::new(),
             menubar_state: MenubarState::new(),
             taskbar_state: taskbar::TaskbarState::new(),
             modebar_state: ModebarState::new(),
@@ -84,8 +84,7 @@ impl Screen {
 
         taskbar::Taskbar::with_state(&mut self.taskbar_state).show(ctx, shared_state);
 
-        quick_settingsbar::Settingsbar::with_state(&mut self.quick_settings_state)
-            .show(ctx, shared_state);
+        settingbar::Settingsbar::with_state(&mut self.quick_settings_state).show(ctx, shared_state);
 
         modebar::Modebar::with_state(&mut self.modebar_state).show(ctx, shared_state);
 

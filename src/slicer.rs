@@ -1,24 +1,11 @@
 use glam::Vec4;
+use slicer::Settings;
 use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
 use wgpu::Color;
 
-use crate::settings::tree::LoadedSetting;
-
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Slicer {
-    pub fiber_settings: LoadedSetting,
-    pub topology_settings: LoadedSetting,
-    pub view_settings: LoadedSetting,
-}
-
-impl Default for Slicer {
-    fn default() -> Self {
-        Self {
-            fiber_settings: LoadedSetting::new("settings/main.yaml"),
-            topology_settings: LoadedSetting::new("settings/main.yaml"),
-            view_settings: LoadedSetting::new("settings/main.yaml"),
-        }
-    }
+    pub settings: Settings,
 }
 
 #[derive(Debug, Clone, EnumString, EnumCount, IntoStaticStr, EnumIter, PartialEq, Eq, Hash)]

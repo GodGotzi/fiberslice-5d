@@ -1,6 +1,7 @@
 mod settings;
 
 pub use settings::*;
+use strum_macros::{EnumIter, EnumString};
 
 mod calculation;
 mod command_pass;
@@ -151,7 +152,7 @@ impl Slice {
 }
 
 ///Types of solid infill
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, EnumIter, EnumString, Serialize, Deserialize)]
 pub enum SolidInfillTypes {
     ///Back and forth lines to fill polygons, Rotating 120 degree each layer
     Rectilinear,
@@ -161,7 +162,7 @@ pub enum SolidInfillTypes {
 }
 
 ///Types of partial infill
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, EnumIter, Serialize, Deserialize)]
 pub enum PartialInfillTypes {
     ///Back and forth spaced lines to fill polygons
     Linear,

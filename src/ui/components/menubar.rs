@@ -7,6 +7,7 @@ use nfde::SingleFileDialogBuilder;
 
 use crate::config;
 use crate::ui::boundary::Boundary;
+use crate::ui::dialog::SlicerSettingInstructionDialog;
 use crate::ui::Component;
 use crate::ui::ComponentState;
 use crate::ui::UiState;
@@ -69,7 +70,7 @@ impl<'a> Component for Menubar<'a> {
                     egui::menu::bar(ui, |ui| {
                         file_button(ui, shared_state);
                         self.window_button(ui, shared_state);
-                        //settings_button(ui, data);
+                        self.setting_button(ui, shared_state);
                         help_button(ui, shared_state);
                     });
                 })
@@ -98,6 +99,19 @@ impl<'a> Menubar<'a> {
 
                 ui.checkbox(component_state.get_enabled(), name);
             }
+        });
+    }
+
+    fn setting_button(&mut self, ui: &mut Ui, shared_state: &(UiState, GlobalState<RootEvent>)) {
+        ui.menu_button("Settings", |ui| {
+            ui.set_min_width(220.0);
+            ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
+
+            // let dialog = SlicerSettingInstructionDialog::new(ui.ctx(), shared_state);
+
+            build_sub_menu(ui, "GCode Instructions", |_ui| {
+                // dialog.show();
+            });
         });
     }
 }

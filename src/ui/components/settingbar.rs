@@ -10,14 +10,15 @@ use egui_extras::Size;
 use egui_grid::GridBuilder;
 
 use crate::config;
+use crate::settings::UiSetting;
 use crate::ui::boundary::Boundary;
 use crate::ui::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SettingsPanel {
-    Fiber,
-    TopologyOptimization,
-    View,
+    General,
+    PrinterAndLimits,
+    Instructions,
 }
 
 struct TabbedSettings;
@@ -30,7 +31,7 @@ impl TabbedSettings {
     pub fn show(
         &mut self,
         ui: &mut egui::Ui,
-        (_ui_state, global_state): &(UiState, GlobalState<RootEvent>),
+        shared_state: &(UiState, GlobalState<RootEvent>),
         side_view: &mut Settingsbar,
     ) {
         ui.horizontal(|ui| {
@@ -63,8 +64,8 @@ impl TabbedSettings {
                     grid.cell(|ui| {
                         ui.selectable_value(
                             &mut side_view.state.open_panel,
-                            SettingsPanel::Fiber,
-                            "Fiber",
+                            SettingsPanel::General,
+                            "General",
                         );
                     });
                     grid.cell(|ui| {
@@ -75,8 +76,8 @@ impl TabbedSettings {
                     grid.cell(|ui| {
                         ui.selectable_value(
                             &mut side_view.state.open_panel,
-                            SettingsPanel::TopologyOptimization,
-                            "Topology",
+                            SettingsPanel::PrinterAndLimits,
+                            "Printer and Limits",
                         );
                     });
                     grid.cell(|ui| {
@@ -87,27 +88,27 @@ impl TabbedSettings {
                     grid.cell(|ui| {
                         ui.selectable_value(
                             &mut side_view.state.open_panel,
-                            SettingsPanel::View,
-                            "View",
+                            SettingsPanel::Instructions,
+                            "Instructions",
                         );
                     });
                     grid.cell(|ui| {
                         ui.vertical(|ui| {
-                            if side_view.state.open_panel != SettingsPanel::Fiber {
+                            if side_view.state.open_panel != SettingsPanel::General {
                                 ui.separator();
                             }
                         });
                     });
                     grid.cell(|ui| {
                         ui.vertical(|ui| {
-                            if side_view.state.open_panel != SettingsPanel::TopologyOptimization {
+                            if side_view.state.open_panel != SettingsPanel::PrinterAndLimits {
                                 ui.separator();
                             }
                         });
                     });
                     grid.cell(|ui| {
                         ui.vertical(|ui| {
-                            if side_view.state.open_panel != SettingsPanel::View {
+                            if side_view.state.open_panel != SettingsPanel::Instructions {
                                 ui.separator();
                             }
                         });
@@ -118,39 +119,46 @@ impl TabbedSettings {
         //ui.add_space(20.0);
 
         match side_view.state.open_panel {
-            SettingsPanel::Fiber => {
+            SettingsPanel::General => {
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
                             // TODO data.borrow_shared_state().settings.main.show(ui);
-                            global_state.slicer.write_with_fn(|slicer| {
-                                slicer.fiber_settings.show(ui);
+                            ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
+                                shared_state.1.slicer.write_with_fn(|slicer| {
+                                    slicer.settings.show_general(ui);
+                                });
                             });
                         });
                     });
                 });
             }
-            SettingsPanel::TopologyOptimization => {
+            SettingsPanel::PrinterAndLimits => {
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
                             // TODO data.borrow_shared_state().settings.main.show(ui);
-                            global_state.slicer.write_with_fn(|slicer| {
-                                slicer.topology_settings.show(ui);
+                            ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
+                                shared_state.1.slicer.write_with_fn(|slicer| {
+                                    slicer.settings.show_printer(ui);
+                                    slicer.settings.show_limits(ui);
+                                });
                             });
                         });
                     });
                 });
             }
-            SettingsPanel::View => {
+            SettingsPanel::Instructions => {
                 egui::CentralPanel::default().show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down(egui::Align::Max), |ui| {
                         egui::ScrollArea::both().show(ui, |ui| {
                             // let now = Instant::now();
                             // TODO data.borrow_shared_state().settings.main.show(ui);
                             // println!("Tree Time: {:?}", now.elapsed());
-                            global_state.slicer.write_with_fn(|slicer| {
-                                slicer.view_settings.show(ui);
+                            ui.with_layout(Layout::top_down(egui::Align::Min), |ui| {
+                                shared_state.1.slicer.write_with_fn(|slicer| {
+                                    slicer.settings.show_instructions(ui);
+                                });
                             });
                         });
                     });
@@ -176,7 +184,7 @@ impl SettingsbarState {
             enabled: true,
             boundary: Boundary::zero(),
 
-            open_panel: SettingsPanel::Fiber,
+            open_panel: SettingsPanel::General,
         }
     }
 }
