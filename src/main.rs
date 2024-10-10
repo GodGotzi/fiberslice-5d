@@ -20,7 +20,6 @@ mod api;
 mod config;
 mod error;
 mod geometry;
-mod model;
 mod picking;
 mod prelude;
 mod render;

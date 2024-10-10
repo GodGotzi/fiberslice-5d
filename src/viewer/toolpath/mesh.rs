@@ -6,8 +6,8 @@ use crate::{
         mesh::{construct_triangle_vertices, Mesh},
         BoundingBox, ProfileExtrusion, QuadFace,
     },
-    model::{RotateMut, ScaleMut, TranslateMut},
     picking::{hitbox::Hitbox, Ray},
+    render::model::{RotateMut, ScaleMut, TranslateMut},
     render::Vertex,
 };
 

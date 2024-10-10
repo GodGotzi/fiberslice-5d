@@ -16,6 +16,8 @@ mod light;
 mod texture;
 mod vertex;
 
+pub mod model;
+
 pub use light::*;
 pub use texture::*;
 pub use vertex::*;

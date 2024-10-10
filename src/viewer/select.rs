@@ -2,17 +2,9 @@ use std::sync::Arc;
 
 use glam::Mat4;
 
-use crate::model::Transform;
+use crate::render::model::Transform;
 
 use super::server::model::CADModel;
-
-#[derive(Debug)]
-pub enum TransformResponse {
-    None,
-    Translate,
-    Rotate,
-    Scale,
-}
 
 #[derive(Default)]
 pub struct Selector {

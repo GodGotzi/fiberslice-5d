@@ -9,7 +9,6 @@ pub mod api;
 pub mod boundary;
 pub mod components;
 pub mod custom_toasts;
-pub mod modal;
 pub mod screen;
 pub mod settings;
 pub mod tools;

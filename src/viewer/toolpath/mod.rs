@@ -4,7 +4,7 @@ use egui::ahash::{HashMap, HashMapExt};
 use glam::Vec3;
 use tree::ToolpathTree;
 
-use crate::{model::TranslateMut, slicer::PathType};
+use crate::{render::model::TranslateMut, slicer::PathType};
 
 use self::{
     instruction::{InstructionModul, InstructionType},

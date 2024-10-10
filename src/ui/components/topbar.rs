@@ -1,5 +1,5 @@
-use egui::{Color32, Context, Frame, Visuals};
-use egui::{RichText, TopBottomPanel};
+use egui::Context;
+use egui::TopBottomPanel;
 
 use crate::ui::boundary::Boundary;
 use crate::ui::tools::ToolState;

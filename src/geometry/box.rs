@@ -1,8 +1,8 @@
 use glam::{vec4, Vec3};
 
 use crate::{
-    model::{RotateMut, ScaleMut, TranslateMut},
     picking::hitbox::Hitbox,
+    render::model::{RotateMut, ScaleMut, TranslateMut},
     render::Vertex,
     viewer::Visual,
 };

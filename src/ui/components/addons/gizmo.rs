@@ -5,7 +5,7 @@ use glam::{Mat4, Quat};
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{EnumCount, EnumIter};
 
-use crate::{config, ui::icon::get_gizmo_tool_icon, viewer::select::TransformResponse};
+use crate::{config, ui::icon::get_gizmo_tool_icon};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, EnumCount)]
 pub enum GizmoTool {

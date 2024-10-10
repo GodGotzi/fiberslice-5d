@@ -57,7 +57,7 @@ impl FrameHandle<'_, RootEvent, CameraResult, Viewport> for CameraAdapter {
     fn handle_frame(
         &'_ mut self,
         _wgpu_context: &crate::prelude::WgpuContext,
-        global_state: GlobalState<RootEvent>,
+        _global_state: GlobalState<RootEvent>,
         viewport: Viewport,
     ) -> Result<CameraResult, crate::prelude::Error> {
         if viewport != self.viewport.unwrap_or_default() {

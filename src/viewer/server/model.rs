@@ -20,14 +20,14 @@ use crate::{
         mesh::{vec3s_into_vertices, IntoArrayColor},
         BoundingBox,
     },
-    model::{
-        Model, Rotate, RotateMut, Scale, ScaleMut, Transform, TransformMut, Translate, TranslateMut,
-    },
     picking::{
         self,
         hitbox::{Hitbox, HitboxNode, HitboxRoot},
     },
     prelude::{LockModel, WgpuContext},
+    render::model::{
+        Model, Rotate, RotateMut, Scale, ScaleMut, Transform, TransformMut, Translate, TranslateMut,
+    },
     render::{Renderable, Vertex},
     ui::{api::trim_text, custom_toasts::MODEL_LOAD_PROGRESS},
     viewer::tracker::Process,

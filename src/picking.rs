@@ -51,7 +51,7 @@ impl FrameHandle<'_, RootEvent, (), &CameraResult> for PickingAdapter {
         &mut self,
         event: &WindowEvent,
         _id: winit::window::WindowId,
-        wgpu_context: &WgpuContext,
+        _wgpu_context: &WgpuContext,
         global_state: GlobalState<RootEvent>,
     ) {
         let pointer_in_use = global_state

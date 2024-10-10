@@ -3,12 +3,12 @@ use wgpu::BufferAddress;
 
 use crate::{
     geometry::BoundingBox,
-    model::{Model, Rotate, RotateMut, Scale, ScaleMut, Translate, TranslateMut},
     picking::{
         hitbox::{Hitbox, HitboxNode},
         interact::InteractiveModel,
     },
     prelude::LockModel,
+    render::model::{Model, Rotate, RotateMut, Scale, ScaleMut, Translate, TranslateMut},
     render::Renderable,
 };
 

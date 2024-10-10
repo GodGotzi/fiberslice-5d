@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use crate::{model::Model, render::Renderable};
+use crate::{render::model::Model, render::Renderable};
 
 #[derive(Default, Debug)]
 pub struct SharedMut<T: std::fmt::Debug> {

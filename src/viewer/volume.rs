@@ -2,7 +2,7 @@ use glam::{vec3, vec4, Vec2, Vec3, Vec4};
 
 use crate::{
     geometry::{mesh::construct_triangle_vertices, BoundingBox},
-    model::Model,
+    render::model::Model,
     render::{Renderable, Vertex},
 };
 

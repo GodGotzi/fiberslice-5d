@@ -7,8 +7,8 @@ pub mod mesh;
 pub use r#box::BoundingBox;
 
 use crate::{
-    model::{RotateMut, ScaleMut, TranslateMut},
     picking::hitbox::Hitbox,
+    render::model::{RotateMut, ScaleMut, TranslateMut},
     render::Vertex,
     viewer::toolpath::mesh::ProfileCross,
 };
