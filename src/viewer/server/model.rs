@@ -45,13 +45,21 @@ pub enum Error {
 }
 
 #[derive(Debug)]
-pub struct CADModelHandle {
+pub struct LoadResult {
     model: CADModel,
+    geometry: (Vec<Vec3>, Vec<slicer::IndexedTriangle>),
+
     process: Arc<Process>,
     origin_path: String,
 }
 
-type CADModelResult = Result<CADModelHandle, CADModelError>;
+#[derive(Debug)]
+pub struct CADModelHandle {
+    model: Arc<CADModel>,
+    geometry: (Vec<Vec3>, Vec<slicer::IndexedTriangle>),
+}
+
+type CADModelResult = Result<LoadResult, CADModelError>;
 
 // TODO also use vertex indices
 #[derive(Debug)]
@@ -62,7 +70,7 @@ pub struct CADModelServer {
     )>,
 
     root_hitbox: HitboxRoot<CADModel>,
-    models: HashMap<String, Arc<CADModel>>,
+    models: HashMap<String, CADModelHandle>,
 }
 
 impl CADModelServer {
@@ -98,6 +106,14 @@ impl CADModelServer {
                     return;
                 }
             };
+
+            let native_faces = stl_model
+                .faces
+                .iter()
+                .map(|face| slicer::IndexedTriangle {
+                    verts: face.vertices,
+                })
+                .collect();
 
             let global_state = GLOBAL_STATE.read();
             let global_state = global_state.as_ref().unwrap();
@@ -211,9 +227,21 @@ Clustering models"
             let center = bounding_box.read().center();
             root.translate(-vec3(center.x, center.y, center.z));
 
-            tx.send(Ok(CADModelHandle {
+            tx.send(Ok(LoadResult {
                 process: process_tracking,
                 model: root,
+                geometry: (
+                    stl_model
+                        .vertices
+                        .into_iter()
+                        .map(|vertex| Vec3 {
+                            x: vertex[0],
+                            y: vertex[1],
+                            z: vertex[2],
+                        })
+                        .collect(),
+                    native_faces,
+                ),
                 origin_path: path,
             }))
             .unwrap();
@@ -222,7 +250,7 @@ Clustering models"
         self.queue.push((rx, handle));
     }
     // i love you
-    pub fn insert(&mut self, model_handle: CADModelHandle) -> Result<Arc<CADModel>, Error> {
+    pub fn insert(&mut self, model_handle: LoadResult) -> Result<Arc<CADModel>, Error> {
         let path: PathBuf = model_handle.origin_path.into();
         let file_name = if let Some(path) = path.file_name() {
             path.to_string()
@@ -248,7 +276,12 @@ Clustering models"
 
         let handle = Arc::new(model_handle.model);
 
-        self.models.insert(name.clone(), handle.clone());
+        let ctx = CADModelHandle {
+            model: handle.clone(),
+            geometry: model_handle.geometry,
+        };
+
+        self.models.insert(name.clone(), ctx);
 
         Ok(handle)
     }
@@ -330,10 +363,27 @@ Clustering models"
         &self.root_hitbox
     }
 
+    pub fn iter_entries(
+        &self,
+    ) -> impl Iterator<Item = (&String, (Vec<Vec3>, Vec<slicer::IndexedTriangle>))> {
+        self.models.iter().map(|(key, model)| {
+            let transform = model.model.get_transform();
+            let mut geometry = model.geometry.clone();
+
+            /*
+                        geometry.0.iter_mut().for_each(|vertex| {
+                *vertex = ((transform) * vertex.extend(1.0)).truncate();
+            });
+            */
+
+            (key, geometry)
+        })
+    }
+
     pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
         self.models
             .values()
-            .for_each(|model| model.render(render_pass));
+            .for_each(|model| model.model.render(render_pass));
     }
 }
 

@@ -2,7 +2,7 @@ use egui::Response;
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Boundary {
-    pub location: egui::Pos2,
+    location: egui::Pos2,
     size: egui::Vec2,
 }
 

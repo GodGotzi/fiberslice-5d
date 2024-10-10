@@ -1,7 +1,12 @@
 mod settings;
 
+use command_pass::{CommandPass, OptimizePass, SlowDownLayerPass};
+use plotter::convert_objects_into_moves;
+use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 pub use settings::*;
+use slice_pass::*;
 use strum_macros::{EnumIter, EnumString};
+use tower::create_towers;
 
 mod calculation;
 mod command_pass;
@@ -14,7 +19,6 @@ mod slicing;
 mod tower;
 mod utils;
 mod warning;
-
 use std::cmp::Ordering;
 
 use error::SlicerErrors;
@@ -26,6 +30,86 @@ use geo::{
 use itertools::Itertools;
 use nalgebra::Point3;
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug)]
+pub struct SliceResult {
+    pub moves: Vec<Command>,
+    pub calculated_values: CalculatedValues,
+}
+
+pub fn slice(
+    models: &[(Vec<Vertex>, Vec<IndexedTriangle>)],
+    settings: &Settings,
+) -> Result<SliceResult, SlicerErrors> {
+    let towers = create_towers(models)?;
+
+    let objects = slicing::slice(&towers, settings)?;
+
+    let mut moves = generate_moves(objects, settings)?;
+
+    OptimizePass::pass(&mut moves, settings);
+
+    SlowDownLayerPass::pass(&mut moves, settings);
+
+    let calculated_values = calculation::calculate_values(&moves, settings);
+
+    Ok(SliceResult {
+        moves,
+        calculated_values,
+    })
+}
+
+fn generate_moves(
+    mut objects: Vec<Object>,
+    settings: &Settings,
+) -> Result<Vec<Command>, SlicerErrors> {
+    //Creates Support Towers
+    SupportTowerPass::pass(&mut objects, settings);
+
+    //Adds a skirt
+    SkirtPass::pass(&mut objects, settings);
+
+    //Adds a brim
+    BrimPass::pass(&mut objects, settings);
+
+    let v: Result<Vec<()>, SlicerErrors> = objects
+        .par_iter_mut()
+        .map(|object| {
+            let slices = &mut object.layers;
+
+            //Shrink layer
+            ShrinkPass::pass(slices, settings)?;
+
+            //Handle Perimeters
+            PerimeterPass::pass(slices, settings)?;
+
+            //Handle Bridging
+            BridgingPass::pass(slices, settings)?;
+
+            //Handle Top Layer
+            TopLayerPass::pass(slices, settings)?;
+
+            //Handle Top And Bottom Layers
+            TopAndBottomLayersPass::pass(slices, settings)?;
+
+            //Handle Support
+            SupportPass::pass(slices, settings)?;
+
+            //Lightning Infill
+            LightningFillPass::pass(slices, settings)?;
+
+            //Fill Remaining areas
+            FillAreaPass::pass(slices, settings)?;
+
+            //Order the move chains
+            OrderPass::pass(slices, settings)
+        })
+        .collect();
+
+    v?;
+
+    Ok(convert_objects_into_moves(objects, settings))
+}
 
 ///A single slice of an object containing it's current plotting status.
 pub struct Slice {

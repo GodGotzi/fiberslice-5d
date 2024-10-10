@@ -57,7 +57,7 @@ macro_rules! option_setting_less_than_zero {
 }
 
 ///A complete settings file for the entire slicer.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Settings {
     ///The height of the layers
     pub layer_height: f64,

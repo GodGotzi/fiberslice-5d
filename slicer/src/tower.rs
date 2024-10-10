@@ -15,11 +15,6 @@ use super::{IndexedTriangle, Vertex};
 
     progress up tower
 
-
-
-
-
-
 */
 
 /// Calculate the vertex the Line from v_start to v_end where

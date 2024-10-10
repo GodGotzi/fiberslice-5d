@@ -225,7 +225,7 @@ impl UiSetting for slicer::Settings {
             });
     }
 
-    fn show_layer_specific(&mut self, ui: &mut egui::Ui) {
+    fn show_layer_specific(&mut self, _ui: &mut egui::Ui) {
         todo!()
     }
 

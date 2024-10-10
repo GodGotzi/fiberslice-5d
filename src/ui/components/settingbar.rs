@@ -251,7 +251,9 @@ impl<'a> Component for Settingsbar<'a> {
                                     .min_size(Vec2::new(ui.available_width() * 0.8, 50.0));
 
                                 if ui.add(slice_button).clicked() {
-                                    println!("{:?}", 10.0); // TODO data.borrow_shared_state().settings.main);
+                                    shared_state.1.slicer.write_with_fn(|slicer| {
+                                        slicer.slice(&shared_state.1).expect("Failed to slice");
+                                    });
                                 };
                             });
 

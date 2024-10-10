@@ -21,4 +21,8 @@ impl EnvironmentServer {
     pub fn render_lines<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
         self.volume.render_lines(render_pass);
     }
+
+    pub fn volume(&self) -> &Volume {
+        &self.volume
+    }
 }

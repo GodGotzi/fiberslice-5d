@@ -1,11 +1,66 @@
-use glam::Vec4;
+use glam::{vec3, Vec3, Vec4};
 use slicer::Settings;
 use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
 use wgpu::Color;
 
+use crate::{GlobalState, RootEvent};
+
 #[derive(Debug, Default)]
 pub struct Slicer {
     pub settings: Settings,
+}
+
+impl Slicer {
+    pub fn slice(&self, global_state: &GlobalState<RootEvent>) -> Result<(), String> {
+        let model_server_read = global_state.viewer.model_server.read();
+
+        let mut models: Vec<(Vec<Vec3>, Vec<slicer::IndexedTriangle>)> = model_server_read
+            .iter_entries()
+            .map(|entry| entry.1)
+            .collect();
+
+        for (vertices, _) in models.iter_mut() {
+            let (min, max) = vertices.iter().fold(
+                (Vec3::splat(f32::INFINITY), Vec3::splat(f32::NEG_INFINITY)),
+                |(min, max), v| (min.min(*v), max.max(*v)),
+            );
+
+            let transform = glam::Mat4::from_translation(vec3(
+                -(min.x + max.x) / 2.0,
+                -(min.y + max.y) / 2.0,
+                -min.z,
+            ));
+
+            for v in vertices.iter_mut() {
+                *v = transform.transform_point3(*v);
+            }
+        }
+
+        let models: Vec<(Vec<slicer::Vertex>, Vec<slicer::IndexedTriangle>)> = models
+            .into_iter()
+            .map(|(vertices, faces)| {
+                (
+                    vertices
+                        .into_iter()
+                        .map(|v| slicer::Vertex {
+                            x: v.x as f64,
+                            y: v.y as f64,
+                            z: v.z as f64,
+                        })
+                        .collect::<Vec<slicer::Vertex>>(),
+                    faces,
+                )
+            })
+            .collect();
+
+        let settings = self.settings.clone();
+
+        let result = slicer::slice(&models, &settings).expect("Failed to slice model");
+
+        println!("Sliced model {:?}", result);
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, EnumString, EnumCount, IntoStaticStr, EnumIter, PartialEq, Eq, Hash)]
