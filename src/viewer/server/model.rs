@@ -1,11 +1,12 @@
 use core::{f32, panic};
 use std::{
     collections::{HashMap, LinkedList, VecDeque},
+    f32::consts::PI,
     path::Path,
     sync::Arc,
 };
 
-use glam::{vec3, Vec3};
+use glam::{vec3, Quat, Vec3};
 use ordered_float::OrderedFloat;
 
 use parking_lot::RwLock;
@@ -149,10 +150,10 @@ Clustering models"
                 .fold(Vec::new(), |mut vec, face| {
                     vec.push(vertices[face.vertices[0]]);
                     face.vertices[0] = vec.len() - 1;
-                    vec.push(vertices[face.vertices[1]]);
-                    face.vertices[1] = vec.len() - 1;
                     vec.push(vertices[face.vertices[2]]);
                     face.vertices[2] = vec.len() - 1;
+                    vec.push(vertices[face.vertices[1]]);
+                    face.vertices[1] = vec.len() - 1;
                     vec
                 });
 
@@ -224,8 +225,8 @@ Clustering models"
                 _ => panic!("Not root"),
             };
 
-            let center = bounding_box.read().center();
-            root.translate(-vec3(center.x, center.y, center.z));
+            // let it look like z and y are swapped
+            root.rotate(Quat::from_euler(glam::EulerRot::XYZ, -PI / 2.0, 0.0, 0.0));
 
             tx.send(Ok(LoadResult {
                 process: process_tracking,
