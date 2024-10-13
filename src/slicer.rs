@@ -26,13 +26,13 @@ impl Slicer {
             );
 
             let transform = glam::Mat4::from_translation(vec3(
-                -(min.x + max.x) / 2.0,
-                -(min.y + max.y) / 2.0,
+                (210.0 - (max.x + min.x)) / 2.,
+                (210.0 - (max.y + min.y)) / 2.,
                 -min.z,
             ));
 
             for v in vertices.iter_mut() {
-                *v = transform.transform_point3(*v);
+                *v = (transform * v.extend(1.0)).truncate();
             }
         }
 

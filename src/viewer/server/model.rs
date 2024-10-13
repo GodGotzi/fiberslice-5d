@@ -108,6 +108,16 @@ impl CADModelServer {
                 }
             };
 
+            let native_vertices = stl_model
+                .vertices
+                .iter()
+                .map(|vertex| Vec3 {
+                    x: vertex[0],
+                    y: vertex[1],
+                    z: vertex[2],
+                })
+                .collect();
+
             let native_faces = stl_model
                 .faces
                 .iter()
@@ -231,18 +241,7 @@ Clustering models"
             tx.send(Ok(LoadResult {
                 process: process_tracking,
                 model: root,
-                geometry: (
-                    stl_model
-                        .vertices
-                        .into_iter()
-                        .map(|vertex| Vec3 {
-                            x: vertex[0],
-                            y: vertex[1],
-                            z: vertex[2],
-                        })
-                        .collect(),
-                    native_faces,
-                ),
+                geometry: (native_vertices, native_faces),
                 origin_path: path,
             }))
             .unwrap();
@@ -368,14 +367,7 @@ Clustering models"
         &self,
     ) -> impl Iterator<Item = (&String, (Vec<Vec3>, Vec<slicer::IndexedTriangle>))> {
         self.models.iter().map(|(key, model)| {
-            let transform = model.model.get_transform();
-            let mut geometry = model.geometry.clone();
-
-            /*
-                        geometry.0.iter_mut().for_each(|vertex| {
-                *vertex = ((transform) * vertex.extend(1.0)).truncate();
-            });
-            */
+            let geometry = model.geometry.clone();
 
             (key, geometry)
         })
