@@ -163,7 +163,7 @@ pub fn arc_optomizer(cmds: &mut Vec<Command>) {
 
     //println!("{}",cmds.len());
 
-    for (wt, group) in &cmds.iter().enumerate().group_by(|cmd| {
+    for (wt, group) in &cmds.iter().enumerate().chunk_by(|cmd| {
         //println!("{}",cmd.0);
         if let Command::MoveAndExtrude {
             thickness, width, ..
@@ -194,8 +194,8 @@ pub fn arc_optomizer(cmds: &mut Vec<Command>) {
                 })
                 //lines -> bisector
                 .tuple_windows::<(
-                    (usize, (&Coord<f64>, &Coord<f64>)),
-                    (usize, (&Coord<f64>, &Coord<f64>)),
+                    (usize, (&Coord<f32>, &Coord<f32>)),
+                    (usize, (&Coord<f32>, &Coord<f32>)),
                 )>()
                 .map(|((pos, l1), (_, l2))| {
                     //println!("({},{}) ({},{}) ", l1.0.x,l1.0.y,l1.1.x,l1.1.y );
@@ -203,8 +203,8 @@ pub fn arc_optomizer(cmds: &mut Vec<Command>) {
                 })
                 //bisector -> center, radius
                 .tuple_windows::<(
-                    (usize, (Coord<f64>, Coord<f64>)),
-                    (usize, (Coord<f64>, Coord<f64>)),
+                    (usize, (Coord<f32>, Coord<f32>)),
+                    (usize, (Coord<f32>, Coord<f32>)),
                 )>()
                 .filter_map(|((pos, (p1, n1)), (_, (p2, n2)))| {
                     //println!("({:?},{:?}) ",p1,n1 );
@@ -285,7 +285,7 @@ pub fn arc_optomizer(cmds: &mut Vec<Command>) {
     }
 }
 
-fn line_bisector(p0: &Coord<f64>, p1: &Coord<f64>, p2: &Coord<f64>) -> (Coord<f64>, Coord<f64>) {
+fn line_bisector(p0: &Coord<f32>, p1: &Coord<f32>, p2: &Coord<f32>) -> (Coord<f32>, Coord<f32>) {
     let ray_start = *p1;
 
     let l1_len = p0.euclidean_distance(p1);
@@ -300,11 +300,11 @@ fn line_bisector(p0: &Coord<f64>, p1: &Coord<f64>, p2: &Coord<f64>) -> (Coord<f6
 }
 
 fn ray_ray_intersection(
-    s0: &Coord<f64>,
-    d0: &Coord<f64>,
-    s1: &Coord<f64>,
-    d1: &Coord<f64>,
-) -> Option<Coord<f64>> {
+    s0: &Coord<f32>,
+    d0: &Coord<f32>,
+    s1: &Coord<f32>,
+    d1: &Coord<f32>,
+) -> Option<Coord<f32>> {
     let dx = s1.x - s0.x;
     let dy = s1.y - s0.y;
 
@@ -428,12 +428,12 @@ mod tests {
     fn arc_optomizer_test() {
         let mut commands = (0..200)
             .map(|a| {
-                let r = a as f64 / 100.0;
+                let r = a as f32 / 100.0;
                 let x = r.cos();
                 let y = r.sin();
                 Coord { x, y }
             })
-            .tuple_windows::<(Coord<f64>, Coord<f64>)>()
+            .tuple_windows::<(Coord<f32>, Coord<f32>)>()
             .map(|(start, end)| Command::MoveAndExtrude {
                 start,
                 end,
@@ -470,12 +470,12 @@ mod tests {
         commands.extend(
             (0..200)
                 .map(|a| {
-                    let r = a as f64 / 100.0;
+                    let r = a as f32 / 100.0;
                     let x = r.cos();
                     let y = r.sin();
                     Coord { x, y }
                 })
-                .tuple_windows::<(Coord<f64>, Coord<f64>)>()
+                .tuple_windows::<(Coord<f32>, Coord<f32>)>()
                 .map(|(start, end)| Command::MoveAndExtrude {
                     start,
                     end,

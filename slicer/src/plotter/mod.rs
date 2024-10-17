@@ -24,18 +24,18 @@ pub trait Plotter {
     fn slice_perimeters_into_chains(&mut self, number_of_perimeters: usize);
     fn shrink_layer(&mut self);
     fn fill_remaining_area(&mut self, solid: bool, layer_count: usize);
-    fn fill_solid_subtracted_area(&mut self, other: &MultiPolygon<f64>, layer_count: usize);
-    fn fill_solid_bridge_area(&mut self, layer_below: &MultiPolygon<f64>);
-    fn fill_solid_top_layer(&mut self, layer_above: &MultiPolygon<f64>, layer_count: usize);
+    fn fill_solid_subtracted_area(&mut self, other: &MultiPolygon<f32>, layer_count: usize);
+    fn fill_solid_bridge_area(&mut self, layer_below: &MultiPolygon<f32>);
+    fn fill_solid_top_layer(&mut self, layer_above: &MultiPolygon<f32>, layer_count: usize);
     fn generate_skirt(
         &mut self,
-        convex_polygon: &Polygon<f64>,
+        convex_polygon: &Polygon<f32>,
         skirt_settings: &SkirtSettings,
         settings: &Settings,
     );
-    fn generate_brim(&mut self, entire_first_layer: MultiPolygon<f64>, brim_width: f64);
+    fn generate_brim(&mut self, entire_first_layer: MultiPolygon<f32>, brim_width: f32);
     fn order_chains(&mut self);
-    fn slice_into_commands(&mut self, commands: &mut Vec<Command>, layer_thickness: f64);
+    fn slice_into_commands(&mut self, commands: &mut Vec<Command>, layer_thickness: f32);
 }
 
 impl Plotter for Slice {
@@ -66,7 +66,7 @@ impl Plotter for Slice {
             self.layer_settings
                 .extrusion_width
                 .exterior_surface_perimeter
-                + ((number_of_perimeters - 1) as f64
+                + ((number_of_perimeters - 1) as f32
                     * self.layer_settings.extrusion_width.exterior_inner_perimeter)
         };
 
@@ -120,7 +120,7 @@ impl Plotter for Slice {
         self.remaining_area = MultiPolygon(vec![])
     }
 
-    fn fill_solid_subtracted_area(&mut self, other: &MultiPolygon<f64>, layer_count: usize) {
+    fn fill_solid_subtracted_area(&mut self, other: &MultiPolygon<f32>, layer_count: usize) {
         //For each area not in this slice that is in the other polygon, fill solid
 
         let solid_area = self
@@ -129,7 +129,7 @@ impl Plotter for Slice {
             .offset_from(self.layer_settings.extrusion_width.solid_infill * 4.0)
             .intersection_with(&self.remaining_area);
 
-        let angle = 45.0 + (120_f64) * layer_count as f64;
+        let angle = 45.0 + (120_f32) * layer_count as f32;
 
         let layer_settings = &self.layer_settings;
         self.chains
@@ -140,7 +140,7 @@ impl Plotter for Slice {
         self.remaining_area = self.remaining_area.difference_with(&solid_area)
     }
 
-    fn fill_solid_bridge_area(&mut self, layer_below: &MultiPolygon<f64>) {
+    fn fill_solid_bridge_area(&mut self, layer_below: &MultiPolygon<f32>) {
         //For each area not in this slice that is in the other polygon, fill solid
 
         let solid_area = self
@@ -152,7 +152,7 @@ impl Plotter for Slice {
         let layer_settings = &self.layer_settings;
         self.chains
             .extend(&mut solid_area.0.iter().flat_map(|poly| {
-                let unsupported_area: MultiPolygon<f64> = poly.difference_with(layer_below);
+                let unsupported_area: MultiPolygon<f32> = poly.difference_with(layer_below);
                 let mut angle = get_optimal_bridge_angle(poly, &unsupported_area);
 
                 if angle < 0.0 {
@@ -165,7 +165,7 @@ impl Plotter for Slice {
         self.remaining_area = self.remaining_area.difference_with(&solid_area)
     }
 
-    fn fill_solid_top_layer(&mut self, layer_above: &MultiPolygon<f64>, layer_count: usize) {
+    fn fill_solid_top_layer(&mut self, layer_above: &MultiPolygon<f32>, layer_count: usize) {
         //For each area not in this slice that is in the other polygon, fill solid
 
         let solid_area = self
@@ -175,7 +175,7 @@ impl Plotter for Slice {
             .intersection_with(&self.remaining_area);
 
         for poly in &solid_area {
-            let angle = 45.0 + (120_f64) * layer_count as f64;
+            let angle = 45.0 + (120_f32) * layer_count as f32;
 
             let new_moves =
                 linear_fill_polygon(poly, &self.layer_settings, MoveType::TopSolidInfill, angle);
@@ -190,7 +190,7 @@ impl Plotter for Slice {
 
     fn generate_skirt(
         &mut self,
-        convex_polygon: &Polygon<f64>,
+        convex_polygon: &Polygon<f32>,
         skirt_settings: &SkirtSettings,
         settings: &Settings,
     ) {
@@ -238,7 +238,7 @@ impl Plotter for Slice {
         });
     }
 
-    fn generate_brim(&mut self, entire_first_layer: MultiPolygon<f64>, brim_width: f64) {
+    fn generate_brim(&mut self, entire_first_layer: MultiPolygon<f32>, brim_width: f32) {
         let layer_settings = &self.layer_settings;
         self.fixed_chains.extend(
             (0..((brim_width
@@ -249,7 +249,7 @@ impl Plotter for Slice {
                 .floor() as usize))
                 .rev()
                 .map(|i| {
-                    (i as f64 * layer_settings.extrusion_width.exterior_surface_perimeter)
+                    (i as f32 * layer_settings.extrusion_width.exterior_surface_perimeter)
                         + (layer_settings.extrusion_width.exterior_surface_perimeter / 2.0)
                 })
                 .map(|distance| entire_first_layer.offset_from(distance))
@@ -311,7 +311,7 @@ impl Plotter for Slice {
         self.chains = ordered_chains;
     }
 
-    fn slice_into_commands(&mut self, commands: &mut Vec<Command>, layer_thickness: f64) {
+    fn slice_into_commands(&mut self, commands: &mut Vec<Command>, layer_thickness: f32) {
         if !self.fixed_chains.is_empty() {
             commands.push(Command::SetState {
                 new_state: StateChange {
@@ -328,7 +328,7 @@ impl Plotter for Slice {
                 let retraction_length = self.layer_settings.retraction_length;
                 let retract_command =
                     if let Some(retraction_wipe) = self.layer_settings.retraction_wipe.as_ref() {
-                        let ordered: Vec<Coord<f64>> = if chain.is_loop {
+                        let ordered: Vec<Coord<f32>> = if chain.is_loop {
                             //fixme this is bad
                             chain
                                 .moves
@@ -349,7 +349,7 @@ impl Plotter for Slice {
                             .iter()
                             .tuple_windows::<(_, _)>()
                             .map(|(cur_point, next_point)| {
-                                let len: f64 = cur_point.euclidean_distance(next_point);
+                                let len: f32 = cur_point.euclidean_distance(next_point);
 
                                 (len, cur_point, next_point)
                             })
@@ -438,7 +438,7 @@ impl Plotter for Slice {
     }
 }
 
-fn get_optimal_bridge_angle(fill_area: &Polygon<f64>, unsupported_area: &MultiPolygon<f64>) -> f64 {
+fn get_optimal_bridge_angle(fill_area: &Polygon<f32>, unsupported_area: &MultiPolygon<f32>) -> f32 {
     let unsuported_lines: Vec<_> = unsupported_area
         .iter()
         .flat_map(|poly| std::iter::once(poly.exterior()).chain(poly.interiors().iter()))
@@ -446,7 +446,7 @@ fn get_optimal_bridge_angle(fill_area: &Polygon<f64>, unsupported_area: &MultiPo
             line_string
                 .0
                 .iter()
-                .circular_tuple_windows::<(&Coord<f64>, &Coord<f64>)>()
+                .circular_tuple_windows::<(&Coord<f32>, &Coord<f32>)>()
         })
         .filter(|(&s, &f)| {
             //test the midpoint if it supported
@@ -487,7 +487,7 @@ fn get_optimal_bridge_angle(fill_area: &Polygon<f64>, unsupported_area: &MultiPo
             } else {
                 None
             }
-            .map(|projection_sum: f64| (per_vec, projection_sum))
+            .map(|projection_sum: f32| (per_vec, projection_sum))
         })
         .min_by(|(_, l_sum), (_, r_sum)| {
             l_sum
@@ -500,7 +500,7 @@ fn get_optimal_bridge_angle(fill_area: &Polygon<f64>, unsupported_area: &MultiPo
 
 pub fn convert_objects_into_moves(objects: Vec<Object>, settings: &Settings) -> Vec<Command> {
     // info!("Convert into Commnds");
-    let mut layer_moves: Vec<(f64, Vec<Command>)> = objects
+    let mut layer_moves: Vec<(f32, Vec<Command>)> = objects
         .into_iter()
         .enumerate()
         .map(|(object_num, object)| {
@@ -537,7 +537,7 @@ pub fn convert_objects_into_moves(objects: Vec<Object>, settings: &Settings) -> 
                     last_layer = slice.top_height;
                     (slice.top_height, moves)
                 })
-                .collect::<Vec<(f64, Vec<Command>)>>()
+                .collect::<Vec<(f32, Vec<Command>)>>()
         })
         .flat_map(|a| a.into_iter())
         .collect();

@@ -4,9 +4,9 @@ use std::hash::{Hash, Hasher};
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator,
 };
+use shared::object::{ObjectMesh, ObjectVertex};
 
 use super::error::SlicerErrors;
-use super::{IndexedTriangle, Vertex};
 
 /*
 
@@ -29,27 +29,27 @@ use super::{IndexedTriangle, Vertex};
 /// * `v_start` - Starting point of the line
 /// * `v_end` - Ending point of the line
 #[inline]
-fn line_z_intersection(z: f64, v_start: Vertex, v_end: Vertex) -> Vertex {
+fn line_z_intersection(z: f32, v_start: ObjectVertex, v_end: ObjectVertex) -> ObjectVertex {
     let z_normal = (z - v_start.z) / (v_end.z - v_start.z);
     let y = lerp(v_start.y, v_end.y, z_normal);
     let x = lerp(v_start.x, v_end.x, z_normal);
-    Vertex { x, y, z }
+    ObjectVertex::new(x, y, z)
 }
 
 #[inline]
-fn lerp(a: f64, b: f64, f: f64) -> f64 {
+fn lerp(a: f32, b: f32, f: f32) -> f32 {
     a + f * (b - a)
 }
 
 pub struct TriangleTower {
-    vertices: Vec<Vertex>,
+    vertices: Vec<ObjectVertex>,
     tower_vertices: Vec<TowerVertex>,
 }
 
 impl TriangleTower {
     pub fn from_triangles_and_vertices(
-        triangles: &[IndexedTriangle],
-        vertices: Vec<Vertex>,
+        triangles: &[shared::IndexedTriangle],
+        vertices: Vec<ObjectVertex>,
     ) -> Result<Self, SlicerErrors> {
         let mut future_tower_vert: Vec<Vec<TriangleEvent>> =
             (0..vertices.len()).map(|_| vec![]).collect();
@@ -58,21 +58,21 @@ impl TriangleTower {
 
         for (triangle_index, index_tri) in triangles.iter().enumerate() {
             //index 0 is always lowest
-            future_tower_vert[index_tri.verts[0]].push(TriangleEvent::MiddleVertex {
-                trailing_edge: index_tri.verts[1],
-                leading_edge: index_tri.verts[2],
+            future_tower_vert[index_tri[0]].push(TriangleEvent::MiddleVertex {
+                trailing_edge: index_tri[1],
+                leading_edge: index_tri[2],
                 triangle: triangle_index,
             });
 
             // depending what is the next vertex is its either leading or trailing
-            if vertices[index_tri.verts[1]] < vertices[index_tri.verts[2]] {
-                future_tower_vert[index_tri.verts[1]].push(TriangleEvent::TrailingEdge {
-                    trailing_edge: index_tri.verts[2],
+            if vertices[index_tri[1]] < vertices[index_tri[2]] {
+                future_tower_vert[index_tri[1]].push(TriangleEvent::TrailingEdge {
+                    trailing_edge: index_tri[2],
                     triangle: triangle_index,
                 })
             } else {
-                future_tower_vert[index_tri.verts[2]].push(TriangleEvent::LeadingEdge {
-                    leading_edge: index_tri.verts[1],
+                future_tower_vert[index_tri[2]].push(TriangleEvent::LeadingEdge {
+                    leading_edge: index_tri[1],
                     triangle: triangle_index,
                 })
             }
@@ -109,9 +109,9 @@ impl TriangleTower {
         })
     }
 
-    pub fn get_height_of_vertex(&self, index: usize) -> f64 {
+    pub fn get_height_of_vertex(&self, index: usize) -> f32 {
         if index >= self.tower_vertices.len() {
-            f64::INFINITY
+            f32::INFINITY
         } else {
             self.vertices[self.tower_vertices[index].start_index].z
         }
@@ -393,7 +393,7 @@ fn join_fragments(fragments: &mut Vec<TowerRing>) {
 pub struct TriangleTowerIterator<'s> {
     tower: &'s TriangleTower,
     tower_vert_index: usize,
-    z_height: f64,
+    z_height: f32,
     active_rings: Vec<TowerRing>,
 }
 
@@ -408,7 +408,7 @@ impl<'s> TriangleTowerIterator<'s> {
         }
     }
 
-    pub fn advance_to_height(&mut self, z: f64) -> Result<(), SlicerErrors> {
+    pub fn advance_to_height(&mut self, z: f32) -> Result<(), SlicerErrors> {
         //println!("Advance to height {} {} {}", self.tower.get_height_of_vertex(self.tower_vert_index), z, self.tower.tower_vertices[self.tower_vert_index].start_index);
 
         while self.tower.get_height_of_vertex(self.tower_vert_index) < z
@@ -460,11 +460,11 @@ impl<'s> TriangleTowerIterator<'s> {
         Ok(())
     }
 
-    pub fn get_points(&self) -> Vec<Vec<Vertex>> {
+    pub fn get_points(&self) -> Vec<Vec<ObjectVertex>> {
         self.active_rings
             .iter()
             .map(|ring| {
-                let mut points: Vec<Vertex> = ring
+                let mut points: Vec<ObjectVertex> = ring
                     .elements
                     .iter()
                     .filter_map(|e| {
@@ -494,13 +494,11 @@ impl<'s> TriangleTowerIterator<'s> {
     }
 }
 
-pub fn create_towers(
-    models: &[(Vec<Vertex>, Vec<IndexedTriangle>)],
-) -> Result<Vec<TriangleTower>, SlicerErrors> {
+pub fn create_towers(models: &[ObjectMesh]) -> Result<Vec<TriangleTower>, SlicerErrors> {
     models
         .iter()
-        .map(|(vertices, triangles)| {
-            TriangleTower::from_triangles_and_vertices(triangles, vertices.clone())
+        .map(|mesh| {
+            TriangleTower::from_triangles_and_vertices(mesh.triangles(), mesh.vertices().to_vec())
         })
         .collect()
 }

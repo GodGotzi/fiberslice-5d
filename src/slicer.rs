@@ -1,4 +1,5 @@
 use glam::{vec3, Vec3, Vec4};
+use shared::object::ObjectMesh;
 use slicer::Settings;
 use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
 use wgpu::Color;
@@ -14,46 +15,12 @@ impl Slicer {
     pub fn slice(&self, global_state: &GlobalState<RootEvent>) -> Result<(), String> {
         let model_server_read = global_state.viewer.model_server.read();
 
-        let mut models: Vec<(Vec<Vec3>, Vec<slicer::IndexedTriangle>)> = model_server_read
+        let models: Vec<ObjectMesh> = model_server_read
             .iter_entries()
             .map(|entry| entry.1)
             .collect();
 
         let settings = self.settings.clone();
-
-        for (vertices, _) in models.iter_mut() {
-            let (min, max) = vertices.iter().fold(
-                (Vec3::splat(f32::INFINITY), Vec3::splat(f32::NEG_INFINITY)),
-                |(min, max), v| (min.min(*v), max.max(*v)),
-            );
-
-            let transform = glam::Mat4::from_translation(vec3(
-                (settings.print_x as f32 - (max.x - min.x).abs()) / 2.,
-                (settings.print_y as f32 - (max.y - min.y).abs()) / 2.,
-                -min.z,
-            ));
-
-            for v in vertices.iter_mut() {
-                *v = transform.transform_point3(*v);
-            }
-        }
-
-        let models: Vec<(Vec<slicer::Vertex>, Vec<slicer::IndexedTriangle>)> = models
-            .into_iter()
-            .map(|(vertices, faces)| {
-                (
-                    vertices
-                        .into_iter()
-                        .map(|v| slicer::Vertex {
-                            x: v.x as f64,
-                            y: v.y as f64,
-                            z: v.z as f64,
-                        })
-                        .collect::<Vec<slicer::Vertex>>(),
-                    faces,
-                )
-            })
-            .collect();
 
         let result = slicer::slice(&models, &settings).expect("Failed to slice model");
 

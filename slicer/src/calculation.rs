@@ -46,7 +46,7 @@ pub fn calculate_values(moves: &[Command], settings: &Settings) -> CalculatedVal
                 }
             }
             Command::Delay { msec } => {
-                values.total_time += *msec as f64 / 1000.0;
+                values.total_time += *msec as f32 / 1000.0;
             }
             Command::Arc {
                 start,
@@ -82,7 +82,7 @@ pub fn calculate_values(moves: &[Command], settings: &Settings) -> CalculatedVal
 
     values.plastic_weight = (values.plastic_volume / 1000.0) * settings.filament.density;
     values.plastic_length = values.plastic_volume
-        / (std::f64::consts::PI
+        / (std::f32::consts::PI
             * (settings.nozzle_diameter / 2.0)
             * (settings.nozzle_diameter / 2.0));
 

@@ -24,6 +24,7 @@ impl Loader for STLLoader {
             .map_err(|_| LoadError::FileNotFound)?;
 
         let mut reader = BufReader::new(file);
+
         Ok(nom_stl::parse_stl(&mut reader)
             .map_err(|_| LoadError::BrokenFile)?
             .into())

@@ -7,7 +7,7 @@ use super::{polygon_operations::PolygonOperations, support_linear_fill_polygon};
 pub trait Supporter {
     fn add_support_polygons(&mut self, slice_above: &Slice, support_settings: &SupportSettings);
     fn fill_support_polygons(&mut self, support_settings: &SupportSettings);
-    fn get_support_polygon(&self) -> MultiPolygon<f64>;
+    fn get_support_polygon(&self) -> MultiPolygon<f32>;
 }
 
 impl Supporter for Slice {
@@ -70,7 +70,7 @@ impl Supporter for Slice {
         }
     }
 
-    fn get_support_polygon(&self) -> MultiPolygon<f64> {
+    fn get_support_polygon(&self) -> MultiPolygon<f32> {
         match (self.support_tower.clone(), self.support_interface.clone()) {
             (None, None) => MultiPolygon(vec![]),
             (Some(tower), None) => tower,

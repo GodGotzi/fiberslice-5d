@@ -84,7 +84,7 @@ pub enum SlicerErrors {
         setting: String,
 
         ///The current value
-        value: f64,
+        value: f32,
     },
 
     ///Error because settings less than or equal to zero
@@ -93,7 +93,7 @@ pub enum SlicerErrors {
         setting: String,
 
         ///The current value
-        value: f64,
+        value: f32,
     },
 
     ///The file format is not supported

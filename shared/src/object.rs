@@ -3,15 +3,21 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use nalgebra::Vector3;
+use glam::{vec3, Mat4, Vec3};
 
 use crate::IndexedTriangle;
 
-#[derive(Debug, PartialEq)]
-pub struct ObjectVertex(Vector3<f64>);
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ObjectVertex(Vec3);
+
+impl ObjectVertex {
+    pub fn new(x: f32, y: f32, z: f32) -> Self {
+        Self(vec3(x, y, z))
+    }
+}
 
 impl Deref for ObjectVertex {
-    type Target = Vector3<f64>;
+    type Target = Vec3;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -36,7 +42,15 @@ impl PartialOrd for ObjectVertex {
     }
 }
 
-#[derive(Debug)]
+impl std::ops::Mul<ObjectVertex> for Mat4 {
+    type Output = ObjectVertex;
+
+    fn mul(self, vertex: ObjectVertex) -> ObjectVertex {
+        ObjectVertex(self.transform_point3(vertex.0))
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct ObjectMesh {
     vertices: Vec<ObjectVertex>,
     triangles: Vec<IndexedTriangle>,
@@ -52,6 +66,23 @@ impl ObjectMesh {
     }
 }
 
+impl std::ops::Mul<ObjectMesh> for Mat4 {
+    type Output = ObjectMesh;
+
+    fn mul(self, mesh: ObjectMesh) -> ObjectMesh {
+        let vertices = mesh
+            .vertices
+            .into_iter()
+            .map(|vertex| self * vertex)
+            .collect();
+
+        ObjectMesh {
+            vertices,
+            triangles: mesh.triangles,
+        }
+    }
+}
+
 impl From<nom_stl::Mesh> for ObjectMesh {
     fn from(mesh: nom_stl::Mesh) -> Self {
         let indexed: nom_stl::IndexMesh = mesh.into();
@@ -59,13 +90,7 @@ impl From<nom_stl::Mesh> for ObjectMesh {
         let vertices = indexed
             .vertices()
             .into_iter()
-            .map(|vertex| {
-                ObjectVertex(Vector3::new(
-                    vertex[0] as f64,
-                    vertex[1] as f64,
-                    vertex[2] as f64,
-                ))
-            })
+            .map(|vertex| ObjectVertex(vec3(vertex[0], vertex[1], vertex[2])))
             .collect();
 
         let triangles = indexed

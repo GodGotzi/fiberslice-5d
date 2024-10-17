@@ -1,11 +1,12 @@
 use geo::Coord;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use shared::object::ObjectVertex;
 
 use super::{
     error::SlicerErrors,
     settings::Settings,
     tower::{TriangleTower, TriangleTowerIterator},
-    Object, Slice, Vertex,
+    Object, Slice,
 };
 
 pub fn slice(towers: &[TriangleTower], settings: &Settings) -> Result<Vec<Object>, SlicerErrors> {
@@ -18,7 +19,7 @@ pub fn slice(towers: &[TriangleTower], settings: &Settings) -> Result<Vec<Object
 
             let mut first_layer = true;
 
-            let res_points: Result<Vec<(f64, f64, Vec<Vec<Vertex>>)>, SlicerErrors> =
+            let res_points: Result<Vec<(f32, f32, Vec<Vec<ObjectVertex>>)>, SlicerErrors> =
                 std::iter::repeat(())
                     .enumerate()
                     .map(|(layer_count, _)| {
@@ -61,7 +62,7 @@ pub fn slice(towers: &[TriangleTower], settings: &Settings) -> Result<Vec<Object
                                 verts
                                     .iter()
                                     .map(|v| Coord { x: v.x, y: v.y })
-                                    .collect::<Vec<Coord<f64>>>()
+                                    .collect::<Vec<Coord<f32>>>()
                             })
                             .collect(),
                         *bot,

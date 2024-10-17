@@ -38,12 +38,12 @@ impl CommandPass for SlowDownLayerPass {
         let mut current_pos = Coord { x: 0.0, y: 0.0 };
 
         {
-            let reduction: Vec<(f64, usize, usize)> = cmds
+            let reduction: Vec<(f32, usize, usize)> = cmds
                 .iter()
                 .enumerate()
                 .batching(|it| {
                     //map from speed to length at that speed
-                    let mut map: HashMap<OrderedFloat<f64>, f64> = HashMap::new();
+                    let mut map: HashMap<OrderedFloat<f32>, f32> = HashMap::new();
                     let mut non_move_time = 0.0;
 
                     let start_z_height = layer_height;
@@ -89,7 +89,7 @@ impl CommandPass for SlowDownLayerPass {
                                     }
                                 }
                                 Command::Delay { msec } => {
-                                    non_move_time += *msec as f64 / 1000.0;
+                                    non_move_time += *msec as f32 / 1000.0;
                                 }
                                 Command::Arc {
                                     start, end, center, ..
@@ -153,14 +153,14 @@ impl CommandPass for SlowDownLayerPass {
                         + map
                             .iter()
                             .map(|(speed, len)| len / speed.into_inner())
-                            .sum::<f64>();
+                            .sum::<f32>();
 
                     let min_time = settings.fan.slow_down_threshold;
                     if total_time < min_time && !map.is_empty() {
-                        let mut sorted = map.into_iter().collect::<Vec<(OrderedFloat<f64>, f64)>>();
+                        let mut sorted = map.into_iter().collect::<Vec<(OrderedFloat<f32>, f32)>>();
                         sorted.sort_by(|a, b| a.0.cmp(&b.0));
 
-                        let max_speed: f64;
+                        let max_speed: f32;
                         loop {
                             let (speed, len) = sorted
                                 .pop()

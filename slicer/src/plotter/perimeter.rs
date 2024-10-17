@@ -9,7 +9,7 @@ use crate::{Move, MoveChain, MoveType};
 use super::polygon_operations::PolygonOperations;
 
 pub fn inset_polygon_recursive(
-    poly: &MultiPolygon<f64>,
+    poly: &MultiPolygon<f32>,
     settings: &LayerSettings,
     outer_perimeter: bool,
     layer_left: usize,

@@ -19,7 +19,6 @@ mod slicing;
 mod tower;
 mod utils;
 mod warning;
-use std::cmp::Ordering;
 
 use error::SlicerErrors;
 use geo::{
@@ -28,7 +27,6 @@ use geo::{
 };
 
 use itertools::Itertools;
-use nalgebra::Point3;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
@@ -38,7 +36,7 @@ pub struct SliceResult {
 }
 
 pub fn slice(
-    models: &[(Vec<Vertex>, Vec<IndexedTriangle>)],
+    models: &[shared::object::ObjectMesh],
     settings: &Settings,
 ) -> Result<SliceResult, SlicerErrors> {
     let towers = create_towers(models)?;
@@ -114,16 +112,16 @@ fn generate_moves(
 ///A single slice of an object containing it's current plotting status.
 pub struct Slice {
     ///The slice's entire polygon. Should not be modified after creation by the slicing process.
-    pub main_polygon: MultiPolygon<f64>,
+    pub main_polygon: MultiPolygon<f32>,
 
     ///The slice's remaining area that needs to be processes. Passes will slowly subtract from this until finally infill will fill the space.
-    pub remaining_area: MultiPolygon<f64>,
+    pub remaining_area: MultiPolygon<f32>,
 
     /// The area that will be filled by support interface material.
-    pub support_interface: Option<MultiPolygon<f64>>,
+    pub support_interface: Option<MultiPolygon<f32>>,
 
     ///The area that will be filled by support towers
-    pub support_tower: Option<MultiPolygon<f64>>,
+    pub support_tower: Option<MultiPolygon<f32>>,
 
     ///Theses moves ares applied in order and the start of the commands for the slice.
     pub fixed_chains: Vec<MoveChain>,
@@ -132,10 +130,10 @@ pub struct Slice {
     pub chains: Vec<MoveChain>,
 
     ///The lower height of this slice.
-    pub bottom_height: f64,
+    pub bottom_height: f32,
 
     ///The upper height of tis slice.
-    pub top_height: f64,
+    pub top_height: f32,
 
     ///A copy of this layers settings
     pub layer_settings: LayerSettings,
@@ -144,13 +142,13 @@ impl Slice {
     ///Creates a slice from a spefic iterator of points
     pub fn from_single_point_loop<I>(
         line: I,
-        bottom_height: f64,
-        top_height: f64,
+        bottom_height: f32,
+        top_height: f32,
         layer_count: usize,
         settings: &Settings,
     ) -> Self
     where
-        I: Iterator<Item = (f64, f64)>,
+        I: Iterator<Item = (f32, f32)>,
     {
         let polygon = Polygon::new(LineString::from_iter(line), vec![]);
 
@@ -172,16 +170,16 @@ impl Slice {
 
     ///creates a slice from  a multi line string
     pub fn from_multiple_point_loop(
-        lines: MultiLineString<f64>,
-        bottom_height: f64,
-        top_height: f64,
+        lines: MultiLineString<f32>,
+        bottom_height: f32,
+        top_height: f32,
         layer_count: usize,
         settings: &Settings,
     ) -> Result<Self, SlicerErrors> {
-        let mut lines_and_area: Vec<(LineString<f64>, f64)> = lines
+        let mut lines_and_area: Vec<(LineString<f32>, f32)> = lines
             .into_iter()
             .map(|line| {
-                let area: f64 = line
+                let area: f32 = line
                     .clone()
                     .into_points()
                     .iter()
@@ -211,7 +209,7 @@ impl Slice {
             }
         }
 
-        let multi_polygon: MultiPolygon<f64> = MultiPolygon(polygons);
+        let multi_polygon: MultiPolygon<f32> = MultiPolygon(polygons);
 
         let layer_settings =
             settings.get_layer_settings(layer_count, (bottom_height + top_height) / 2.0);
@@ -230,7 +228,7 @@ impl Slice {
     }
 
     ///return the reference height of the slice
-    pub fn get_height(&self) -> f64 {
+    pub fn get_height(&self) -> f32 {
         (self.bottom_height + self.top_height) / 2.0
     }
 }
@@ -242,7 +240,7 @@ pub enum SolidInfillTypes {
     Rectilinear,
 
     ///Back and forth lines to fill polygons, rotating custom degrees each layer
-    RectilinearCustom(f64),
+    RectilinearCustom(f32),
 }
 
 ///Types of partial infill
@@ -264,68 +262,6 @@ pub enum PartialInfillTypes {
     Lightning,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Vertex {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
-}
-
-impl From<Vertex> for Point3<f64> {
-    fn from(v: Vertex) -> Self {
-        Point3::new(v.x, v.y, v.z)
-    }
-}
-
-impl PartialOrd for Vertex {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        if self.z != other.z {
-            self.z.partial_cmp(&other.z)
-        } else if self.y != other.y {
-            self.y.partial_cmp(&other.y)
-        } else {
-            self.x.partial_cmp(&other.x)
-        }
-    }
-}
-
-impl std::ops::Mul<Vertex> for &Transform {
-    type Output = Vertex;
-
-    fn mul(self, rhs: Vertex) -> Self::Output {
-        Vertex {
-            x: self.0[0][0] * rhs.x + self.0[0][1] * rhs.y + self.0[0][2] * rhs.z + self.0[0][3],
-            y: self.0[1][0] * rhs.x + self.0[1][1] * rhs.y + self.0[1][2] * rhs.z + self.0[1][3],
-            z: self.0[2][0] * rhs.x + self.0[2][1] * rhs.y + self.0[2][2] * rhs.z + self.0[2][3],
-        }
-    }
-}
-
-impl Transform {
-    ///create a new transform for translation
-    pub fn new_translation_transform(x: f64, y: f64, z: f64) -> Self {
-        Transform([
-            [1., 0., 0., x],
-            [0., 1., 0., y],
-            [0., 0., 1., z],
-            [0., 0., 0., 1.],
-        ])
-    }
-}
-
-/*
-impl std::ops::Mul<Transform> for Transform{
-    type Output = Transform;
-
-    fn mul(self, rhs: Transform) -> Self::Output {
-        let arrays = [[0.0 ; 4];4];
-        for 0..4
-
-        Transform(arrays)
-    }
-}
-*/
-
 ///A object is the collection of slices for a particular model.
 pub struct Object {
     /// The slices for this model sorted from lowest to highest.
@@ -342,7 +278,7 @@ pub enum InputObject {
     Auto(String),
 
     ///Automatically Center and raise the model for printing but offset it by x and y
-    AutoTranslate(String, f64, f64),
+    AutoTranslate(String, f32, f32),
 }
 
 impl InputObject {
@@ -358,7 +294,7 @@ impl InputObject {
 
 ///4x4 Matrix used to transform models
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Transform(pub [[f64; 4]; 4]);
+pub struct Transform(pub [[f32; 4]; 4]);
 
 /// A triangle that contains indices to it's 3 points. Used with a Vector of Vertices.
 #[derive(Default, Clone, Copy, Debug, PartialEq)]
@@ -378,9 +314,9 @@ pub struct IndexedLine {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Move {
     ///The end Coordinate of the Move. The start of the move is the previous moves end point.
-    pub end: Coord<f64>,
+    pub end: Coord<f32>,
     ///The width of plastic to extrude for this move
-    pub width: f64,
+    pub width: f32,
     ///The type of move
     pub move_type: MoveType,
 }
@@ -388,7 +324,7 @@ pub struct Move {
 /// A chain of moves that should happen in order
 pub struct MoveChain {
     ///start point for the chain of moves. Needed as Moves don't contain there own start point.
-    pub start_point: Coord<f64>,
+    pub start_point: Coord<f32>,
 
     ///List of all moves in order that they must be moved
     pub moves: Vec<Move>,
@@ -437,27 +373,27 @@ pub enum Command {
     ///Move to a specific location without extrusion
     MoveTo {
         ///The end point of the move
-        end: Coord<f64>,
+        end: Coord<f32>,
     },
     ///Move to a location while extruding plastic
     MoveAndExtrude {
         ///Start point of the move
-        start: Coord<f64>,
+        start: Coord<f32>,
 
         ///End point of the move
-        end: Coord<f64>,
+        end: Coord<f32>,
 
         ///The height thickness of the move
-        thickness: f64,
+        thickness: f32,
 
         /// The extrusion width
-        width: f64,
+        width: f32,
     },
 
     ///Change the layer height
     LayerChange {
         ///The height the print head should move to
-        z: f64,
+        z: f32,
 
         ///The layer index of this move
         index: usize,
@@ -478,22 +414,22 @@ pub enum Command {
     ///An arc move of the extruder
     Arc {
         ///start point of the arc
-        start: Coord<f64>,
+        start: Coord<f32>,
 
         ///end point of the arc
-        end: Coord<f64>,
+        end: Coord<f32>,
 
         ///The center point that the arc keeps equidistant from
-        center: Coord<f64>,
+        center: Coord<f32>,
 
         ///Whether the arc is clockwise or anticlockwise
         clockwise: bool,
 
         ///Thickness of the arc, the height
-        thickness: f64,
+        thickness: f32,
 
         ///The width of the extrusion
-        width: f64,
+        width: f32,
     },
 
     ///Change the object that is being printed
@@ -519,7 +455,7 @@ pub enum RetractionType {
 
     ///MoveWhileRetracting
     ///Vector of (retraction amount, points to travel to)
-    MoveRetract(Vec<(f64, Coord<f64>)>),
+    MoveRetract(Vec<(f32, Coord<f32>)>),
 }
 
 impl RetractionType {
@@ -546,19 +482,19 @@ impl Default for RetractionType {
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
 pub struct StateChange {
     ///The temperature of the current extruder
-    pub extruder_temp: Option<f64>,
+    pub extruder_temp: Option<f32>,
 
     ///The temperature of the printing bed
-    pub bed_temp: Option<f64>,
+    pub bed_temp: Option<f32>,
 
     ///The speed of the fan
-    pub fan_speed: Option<f64>,
+    pub fan_speed: Option<f32>,
 
     ///The spped movement commands are performed at
-    pub movement_speed: Option<f64>,
+    pub movement_speed: Option<f32>,
 
     ///The acceleration that movement commands are performed at
-    pub acceleration: Option<f64>,
+    pub acceleration: Option<f32>,
 
     ///Whether the filament is retracted
     pub retract: RetractionType,
@@ -643,7 +579,7 @@ impl StateChange {
 
 impl MoveChain {
     ///Convert a move chain into a list of commands
-    pub fn create_commands(self, settings: &LayerSettings, thickness: f64) -> Vec<Command> {
+    pub fn create_commands(self, settings: &LayerSettings, thickness: f32) -> Vec<Command> {
         let mut cmds = vec![];
         let mut current_type = None;
         let mut current_loc = self.start_point;
@@ -797,7 +733,7 @@ impl MoveChain {
     }
 
     ///Rotate all moves in the movechain by a specific angle in radians.
-    pub fn rotate(&mut self, angle: f64) {
+    pub fn rotate(&mut self, angle: f32) {
         let cos_a = angle.cos();
         let sin_a = angle.sin();
 
@@ -819,24 +755,24 @@ impl MoveChain {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CalculatedValues {
     ///Total plastic used by the print in mm^3
-    pub plastic_volume: f64,
+    pub plastic_volume: f32,
 
     ///Total plastic used by the print in grams
-    pub plastic_weight: f64,
+    pub plastic_weight: f32,
 
     ///Total plastic used by the print in mm of filament
-    pub plastic_length: f64,
+    pub plastic_length: f32,
 
     ///Total time to print in seconds
-    pub total_time: f64,
+    pub total_time: f32,
 }
 
 impl CalculatedValues {
     ///Returns total time converted to hours, minutes, seconds, and remaining fractional seconds
-    pub fn get_hours_minutes_seconds_fract_time(&self) -> (usize, usize, usize, f64) {
+    pub fn get_hours_minutes_seconds_fract_time(&self) -> (usize, usize, usize, f32) {
         let total_time = self.total_time.floor() as usize;
 
-        let fract = self.total_time - total_time as f64;
+        let fract = self.total_time - total_time as f32;
         (
             total_time / 3600,
             (total_time % 3600) / 60,

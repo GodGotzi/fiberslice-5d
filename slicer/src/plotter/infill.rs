@@ -16,10 +16,10 @@ pub trait PartialInfillFill {
 }
 
 pub fn linear_fill_polygon(
-    poly: &Polygon<f64>,
+    poly: &Polygon<f32>,
     settings: &LayerSettings,
     fill_type: MoveType,
-    angle: f64,
+    angle: f32,
 ) -> Vec<MoveChain> {
     let rotate_poly = poly.rotate_around_point(angle, Point(Coord::zero()));
 
@@ -51,12 +51,12 @@ pub fn linear_fill_polygon(
 }
 
 pub fn partial_linear_fill_polygon(
-    poly: &Polygon<f64>,
+    poly: &Polygon<f32>,
     settings: &LayerSettings,
     fill_type: MoveType,
-    spacing: f64,
-    angle: f64,
-    offset: f64,
+    spacing: f32,
+    angle: f32,
+    offset: f32,
 ) -> Vec<MoveChain> {
     let rotate_poly = poly.rotate_around_point(angle, Point(Coord::zero()));
 
@@ -78,12 +78,12 @@ pub fn partial_linear_fill_polygon(
 }
 
 pub fn support_linear_fill_polygon(
-    poly: &Polygon<f64>,
+    poly: &Polygon<f32>,
     settings: &LayerSettings,
     fill_type: MoveType,
-    spacing: f64,
-    angle: f64,
-    offset: f64,
+    spacing: f32,
+    angle: f32,
+    offset: f32,
 ) -> Vec<MoveChain> {
     let rotate_poly = poly.rotate_around_point(angle, Point(Coord::zero()));
 
@@ -101,22 +101,22 @@ pub fn support_linear_fill_polygon(
 }
 
 pub fn solid_infill_polygon(
-    poly: &Polygon<f64>,
+    poly: &Polygon<f32>,
     settings: &LayerSettings,
     fill_type: MoveType,
     layer_count: usize,
-    _layer_height: f64,
+    _layer_height: f32,
 ) -> Vec<MoveChain> {
     match settings.solid_infill_type {
         SolidInfillTypes::Rectilinear => {
             //120 degrees between layers
-            let angle = 45.0 + (120_f64) * layer_count as f64;
+            let angle = 45.0 + (120_f32) * layer_count as f32;
 
             linear_fill_polygon(poly, settings, fill_type, angle)
         }
 
         SolidInfillTypes::RectilinearCustom(degrees_per_angle) => {
-            let angle = 45.0 + (degrees_per_angle) * layer_count as f64;
+            let angle = 45.0 + (degrees_per_angle) * layer_count as f32;
 
             linear_fill_polygon(poly, settings, fill_type, angle)
         }
@@ -124,13 +124,13 @@ pub fn solid_infill_polygon(
 }
 
 pub fn partial_infill_polygon(
-    poly: &Polygon<f64>,
+    poly: &Polygon<f32>,
     settings: &LayerSettings,
-    fill_ratio: f64,
+    fill_ratio: f32,
     _layer_count: usize,
-    layer_height: f64,
+    layer_height: f32,
 ) -> Vec<MoveChain> {
-    if fill_ratio < f64::EPSILON {
+    if fill_ratio < f32::EPSILON {
         return vec![];
     }
     match settings.partial_infill_type {
@@ -195,7 +195,7 @@ pub fn partial_infill_polygon(
                 MoveType::Infill,
                 3.0 * settings.extrusion_width.infill / fill_ratio,
                 45.0,
-                layer_height / std::f64::consts::SQRT_2,
+                layer_height / std::f32::consts::SQRT_2,
             );
             fill.append(&mut partial_linear_fill_polygon(
                 poly,
@@ -203,7 +203,7 @@ pub fn partial_infill_polygon(
                 MoveType::Infill,
                 3.0 * settings.extrusion_width.infill / fill_ratio,
                 45.0 + 120.0,
-                layer_height / std::f64::consts::SQRT_2,
+                layer_height / std::f32::consts::SQRT_2,
             ));
             fill.append(&mut partial_linear_fill_polygon(
                 poly,
@@ -211,7 +211,7 @@ pub fn partial_infill_polygon(
                 MoveType::Infill,
                 3.0 * settings.extrusion_width.infill / fill_ratio,
                 45.0 + 240.0,
-                layer_height / std::f64::consts::SQRT_2,
+                layer_height / std::f32::consts::SQRT_2,
             ));
             fill
         }
@@ -222,11 +222,11 @@ pub fn partial_infill_polygon(
 }
 
 pub fn spaced_fill_polygon(
-    poly: &Polygon<f64>,
+    poly: &Polygon<f32>,
     settings: &LayerSettings,
     fill_type: MoveType,
-    spacing: f64,
-    offset: f64,
+    spacing: f32,
+    offset: f32,
 ) -> Vec<MoveChain> {
     get_monotone_sections(poly)
         .iter()

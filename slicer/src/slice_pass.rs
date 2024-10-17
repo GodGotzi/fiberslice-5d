@@ -22,7 +22,7 @@ impl ObjectPass for BrimPass {
             // display_state_update("Generating Moves: Brim", send_messages);
             //Add to first object
 
-            let first_layer_multipolygon: MultiPolygon<f64> = MultiPolygon(
+            let first_layer_multipolygon: MultiPolygon<f32> = MultiPolygon(
                 objects
                     .iter()
                     .flat_map(|poly| {

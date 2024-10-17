@@ -8,15 +8,15 @@ use crate::utils::{orientation, Orientation};
 
 #[derive(Debug)]
 pub struct MonotoneSection {
-    pub left_chain: Vec<Coord<f64>>,
-    pub right_chain: Vec<Coord<f64>>,
+    pub left_chain: Vec<Coord<f32>>,
+    pub right_chain: Vec<Coord<f32>>,
 }
 
 #[derive(Debug, PartialEq)]
 struct MonotonePoint {
-    pos: Coord<f64>,
-    next: Coord<f64>,
-    prev: Coord<f64>,
+    pos: Coord<f32>,
+    next: Coord<f32>,
+    prev: Coord<f32>,
     point_type: PointType,
 }
 
@@ -62,7 +62,7 @@ enum PointType {
 /// # Arguments
 ///
 /// * `poly` - the polygon to divide
-pub fn get_monotone_sections(poly: &Polygon<f64>) -> Vec<MonotoneSection> {
+pub fn get_monotone_sections(poly: &Polygon<f32>) -> Vec<MonotoneSection> {
     //Convert polygon to Monotone points
     //Simplify to remove self intersections
     let mut mono_points = std::iter::once(poly.simplify_vw_preserve(&0.0001).exterior())
@@ -72,7 +72,7 @@ pub fn get_monotone_sections(poly: &Polygon<f64>) -> Vec<MonotoneSection> {
                 .0
                 .iter()
                 .take(line_string.0.len() - 1)
-                .circular_tuple_windows::<(&Coord<f64>, &Coord<f64>, &Coord<f64>)>()
+                .circular_tuple_windows::<(&Coord<f32>, &Coord<f32>, &Coord<f32>)>()
                 .map(|(&next, &point, &prev)| {
                     // Identify what type of point this is
                     let point_type = if isabove(&point, &prev) && isabove(&point, &next) {
@@ -277,7 +277,7 @@ pub fn get_monotone_sections(poly: &Polygon<f64>) -> Vec<MonotoneSection> {
     completed_sections
 }
 
-fn isabove(a: &Coord<f64>, b: &Coord<f64>) -> bool {
+fn isabove(a: &Coord<f32>, b: &Coord<f32>) -> bool {
     a.y.partial_cmp(&b.y)
         .map(|cmp| cmp.then(a.x.partial_cmp(&b.x).expect("Coords should not be NAN")))
         .expect("Coords should not be NAN")
@@ -285,7 +285,7 @@ fn isabove(a: &Coord<f64>, b: &Coord<f64>) -> bool {
 }
 
 #[inline]
-fn point_lerp(a: &Coord<f64>, b: &Coord<f64>, y: f64) -> Coord<f64> {
+fn point_lerp(a: &Coord<f32>, b: &Coord<f32>, y: f32) -> Coord<f32> {
     Coord {
         x: lerp(a.x, b.x, (y - a.y) / (b.y - a.y)),
         y,
@@ -293,6 +293,6 @@ fn point_lerp(a: &Coord<f64>, b: &Coord<f64>, y: f64) -> Coord<f64> {
 }
 
 #[inline]
-fn lerp(a: f64, b: f64, f: f64) -> f64 {
+fn lerp(a: f32, b: f32, f: f32) -> f32 {
     a + f * (b - a)
 }

@@ -66,14 +66,14 @@ pub fn convert(
                 let y_diff = end.y - start.y;
                 let length = ((x_diff * x_diff) + (y_diff * y_diff)).sqrt();
 
-                //let extrusion_width = width + (thickness * (1.0 - std::f64::consts::FRAC_PI_4));
+                //let extrusion_width = width + (thickness * (1.0 - std::f32::consts::FRAC_PI_4));
 
                 let extrusion_volume = (((width - thickness) * thickness)
-                    + (std::f64::consts::PI * (thickness / 2.0) * (thickness / 2.0)))
+                    + (std::f32::consts::PI * (thickness / 2.0) * (thickness / 2.0)))
                     * length;
                 /*let extrusion_volume = width*thickness*length;*/
 
-                let filament_area = (std::f64::consts::PI
+                let filament_area = (std::f32::consts::PI
                     * settings.filament.diameter
                     * settings.filament.diameter)
                     / 4.0;
@@ -229,7 +229,7 @@ pub fn convert(
 
                 //println!("{}",extrusion_length);
                 let extrude = (4.0 * thickness * width * extrusion_length)
-                    / (std::f64::consts::PI
+                    / (std::f32::consts::PI
                         * settings.filament.diameter
                         * settings.filament.diameter);
                 writeln!(
@@ -284,7 +284,7 @@ pub fn convert(
 
 fn convert_instructions(
     mut instructions: String,
-    current_z_height: f64,
+    current_z_height: f32,
     layer_count: usize,
     previous_object: Option<usize>,
     current_object: Option<usize>,

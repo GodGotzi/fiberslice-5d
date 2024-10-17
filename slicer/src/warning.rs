@@ -6,64 +6,64 @@ pub enum SlicerWarnings {
     ///Layer size too low for the nozzle size
     LayerSizeTooLow {
         ///The nozzles Diameter
-        nozzle_diameter: f64,
+        nozzle_diameter: f32,
         ///The layer height
-        layer_height: f64,
+        layer_height: f32,
     },
 
     ///Layer size too low for the nozzle size
     LayerSizeTooHigh {
         ///The nozzles Diameter
-        nozzle_diameter: f64,
+        nozzle_diameter: f32,
         ///The layer height
-        layer_height: f64,
+        layer_height: f32,
     },
 
     ///The acceleration is too low
     AccelerationTooLow {
         ///The acceleration
-        acceleration: f64,
+        acceleration: f32,
         ///The speed
-        speed: f64,
+        speed: f32,
 
         ///The bed size
-        bed_size: f64,
+        bed_size: f32,
     },
 
     ///Temps to high
     NozzleTemperatureTooHigh {
         ///Temp
-        temp: f64,
+        temp: f32,
     },
     ///Temps too low
     NozzleTemperatureTooLow {
         ///Temp
-        temp: f64,
+        temp: f32,
     },
 
     ///The Skirt and Brim over lap
     SkirtAndBrimOverlap {
         ///The skirts distance
-        skirt_distance: f64,
+        skirt_distance: f32,
 
         ///The brims width
-        brim_width: f64,
+        brim_width: f32,
     },
 
     ///Extrusion width too high for the nozzle size
     ExtrusionWidthTooHigh {
         ///The nozzles Diameter
-        nozzle_diameter: f64,
+        nozzle_diameter: f32,
         ///The extrusion width
-        extrusion_width: f64,
+        extrusion_width: f32,
     },
 
     ///Extrusion width too low for the nozzle size
     ExtrusionWidthTooLow {
         ///The nozzles Diameter
-        nozzle_diameter: f64,
+        nozzle_diameter: f32,
         ///The extrusion width
-        extrusion_width: f64,
+        extrusion_width: f32,
     },
 }
 

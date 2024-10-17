@@ -6,10 +6,10 @@ use crate::{
 
 macro_rules! setting_less_than_or_equal_to_zero {
     ($settings:ident,$setting:ident) => {{
-        if $settings.$setting as f64 <= 0.0 {
+        if $settings.$setting as f32 <= 0.0 {
             return SettingsValidationResult::Error(SlicerErrors::SettingLessThanOrEqualToZero {
                 setting: stringify!($setting).to_string(),
-                value: $settings.$setting as f64,
+                value: $settings.$setting as f32,
             });
         }
     }};
@@ -18,11 +18,11 @@ macro_rules! setting_less_than_or_equal_to_zero {
 macro_rules! option_setting_less_than_or_equal_to_zero {
     ($settings:ident,$setting:ident) => {{
         if let Some(temp) = $settings.$setting {
-            if (temp as f64) <= 0.0 {
+            if (temp as f32) <= 0.0 {
                 return SettingsValidationResult::Error(
                     SlicerErrors::SettingLessThanOrEqualToZero {
                         setting: stringify!($setting).to_string(),
-                        value: temp as f64,
+                        value: temp as f32,
                     },
                 );
             }
@@ -32,10 +32,10 @@ macro_rules! option_setting_less_than_or_equal_to_zero {
 
 macro_rules! setting_less_than_zero {
     ($settings:ident,$setting:ident) => {{
-        if ($settings.$setting as f64) < 0.0 {
+        if ($settings.$setting as f32) < 0.0 {
             return SettingsValidationResult::Error(SlicerErrors::SettingLessThanZero {
                 setting: stringify!($setting).to_string(),
-                value: $settings.$setting as f64,
+                value: $settings.$setting as f32,
             });
         }
     }};
@@ -44,11 +44,11 @@ macro_rules! setting_less_than_zero {
 macro_rules! option_setting_less_than_zero {
     ($settings:ident,$setting:ident) => {{
         if let Some(temp) = $settings.$setting {
-            if (temp as f64) < 0.0 {
+            if (temp as f32) < 0.0 {
                 return SettingsValidationResult::Error(
                     SlicerErrors::SettingLessThanOrEqualToZero {
                         setting: stringify!($setting).to_string(),
-                        value: temp as f64,
+                        value: temp as f32,
                     },
                 );
             }
@@ -60,7 +60,7 @@ macro_rules! option_setting_less_than_zero {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Settings {
     ///The height of the layers
-    pub layer_height: f64,
+    pub layer_height: f32,
 
     ///The extrusion width of the layers
     pub extrusion_width: MovementParameter,
@@ -80,16 +80,16 @@ pub struct Settings {
     pub support: Option<SupportSettings>,
 
     ///Diameter of the nozzle in mm
-    pub nozzle_diameter: f64,
+    pub nozzle_diameter: f32,
 
     ///length to retract in mm
-    pub retract_length: f64,
+    pub retract_length: f32,
 
     ///Distance to lift the z axis during a retract
-    pub retract_lift_z: f64,
+    pub retract_lift_z: f32,
 
     ///The velocity of retracts
-    pub retract_speed: f64,
+    pub retract_speed: f32,
 
     ///Retraction Wipe
     pub retraction_wipe: Option<RetractionWipeSettings>,
@@ -101,7 +101,7 @@ pub struct Settings {
     pub acceleration: MovementParameter,
 
     ///The percentage of infill to use for partial infill
-    pub infill_percentage: f64,
+    pub infill_percentage: f32,
 
     ///Controls the order of perimeters
     pub inner_perimeters_first: bool,
@@ -116,25 +116,25 @@ pub struct Settings {
     pub bottom_layers: usize,
 
     ///Size of the printer in x dimension in mm
-    pub print_x: f64,
+    pub print_x: f32,
 
     ///Size of the printer in y dimension in mm
-    pub print_y: f64,
+    pub print_y: f32,
 
     ///Size of the printer in z dimension in mm
-    pub print_z: f64,
+    pub print_z: f32,
 
     ///Width of the brim, if None no brim will be generated
-    pub brim_width: Option<f64>,
+    pub brim_width: Option<f32>,
 
     ///Inset the layer by the provided amount, if None on inset will be performed
-    pub layer_shrink_amount: Option<f64>,
+    pub layer_shrink_amount: Option<f32>,
 
     ///The minimum travel distance required to perform a retraction
-    pub minimum_retract_distance: f64,
+    pub minimum_retract_distance: f32,
 
     ///Overlap between infill and interior perimeters
-    pub infill_perimeter_overlap_percentage: f64,
+    pub infill_perimeter_overlap_percentage: f32,
 
     ///Solid Infill type
     pub solid_infill_type: SolidInfillTypes,
@@ -158,42 +158,42 @@ pub struct Settings {
     pub object_change_instructions: String,
 
     ///Maximum Acceleration in x dimension
-    pub max_acceleration_x: f64,
+    pub max_acceleration_x: f32,
     ///Maximum Acceleration in y dimension
-    pub max_acceleration_y: f64,
+    pub max_acceleration_y: f32,
     ///Maximum Acceleration in z dimension
-    pub max_acceleration_z: f64,
+    pub max_acceleration_z: f32,
     ///Maximum Acceleration in e dimension
-    pub max_acceleration_e: f64,
+    pub max_acceleration_e: f32,
 
     ///Maximum Acceleration while extruding
-    pub max_acceleration_extruding: f64,
+    pub max_acceleration_extruding: f32,
     ///Maximum Acceleration while traveling
-    pub max_acceleration_travel: f64,
+    pub max_acceleration_travel: f32,
     ///Maximum Acceleration while retracting
-    pub max_acceleration_retracting: f64,
+    pub max_acceleration_retracting: f32,
 
     ///Maximum Jerk in x dimension
-    pub max_jerk_x: f64,
+    pub max_jerk_x: f32,
     ///Maximum Jerk in y dimension
-    pub max_jerk_y: f64,
+    pub max_jerk_y: f32,
     ///Maximum Jerk in z dimension
-    pub max_jerk_z: f64,
+    pub max_jerk_z: f32,
     ///Maximum Jerk in e dimension
-    pub max_jerk_e: f64,
+    pub max_jerk_e: f32,
 
     ///Minimum feedrate for extrusion moves
-    pub minimum_feedrate_print: f64,
+    pub minimum_feedrate_print: f32,
     ///Minimum feedrate for travel moves
-    pub minimum_feedrate_travel: f64,
+    pub minimum_feedrate_travel: f32,
     ///Maximum feedrate for x dimension
-    pub maximum_feedrate_x: f64,
+    pub maximum_feedrate_x: f32,
     ///Maximum feedrate for y dimension
-    pub maximum_feedrate_y: f64,
+    pub maximum_feedrate_y: f32,
     ///Maximum feedrate for z dimension
-    pub maximum_feedrate_z: f64,
+    pub maximum_feedrate_z: f32,
     ///Maximum feedrate for e dimension
-    pub maximum_feedrate_e: f64,
+    pub maximum_feedrate_e: f32,
 
     ///Settings for specific layers
     pub layer_settings: Vec<(LayerRange, PartialLayerSettings)>,
@@ -338,7 +338,7 @@ impl Default for Settings {
 
 impl Settings {
     ///Get the layer settings for a specific layer index and height
-    pub fn get_layer_settings(&self, layer: usize, height: f64) -> LayerSettings {
+    pub fn get_layer_settings(&self, layer: usize, height: f32) -> LayerSettings {
         let changes = self
             .layer_settings
             .iter()
@@ -539,10 +539,10 @@ pub enum SettingsValidationResult {
 ///Settings specific to a Layer
 pub struct LayerSettings {
     ///The height of the layers
-    pub layer_height: f64,
+    pub layer_height: f32,
 
     ///Inset the layer by the provided amount, if None on inset will be performed
-    pub layer_shrink_amount: Option<f64>,
+    pub layer_shrink_amount: Option<f32>,
 
     ///The speeds used for movement
     pub speed: MovementParameter,
@@ -560,64 +560,64 @@ pub struct LayerSettings {
     pub partial_infill_type: PartialInfillTypes,
 
     ///The percentage of infill to use for partial infill
-    pub infill_percentage: f64,
+    pub infill_percentage: f32,
 
     ///Overlap between infill and interior perimeters
-    pub infill_perimeter_overlap_percentage: f64,
+    pub infill_perimeter_overlap_percentage: f32,
 
     ///Controls the order of perimeters
     pub inner_perimeters_first: bool,
 
     ///Temperature of the bed
-    pub bed_temp: f64,
+    pub bed_temp: f32,
 
     ///Temperature of the extuder
-    pub extruder_temp: f64,
+    pub extruder_temp: f32,
 
     ///Retraction Wipe
     pub retraction_wipe: Option<RetractionWipeSettings>,
 
     ///Retraction Distance
-    pub retraction_length: f64,
+    pub retraction_length: f32,
 }
 
 ///A set of values for different movement types
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MovementParameter {
     ///Value for interior (perimeters that are inside the model
-    pub interior_inner_perimeter: f64,
+    pub interior_inner_perimeter: f32,
 
     /// Value for interior perimeters surface perimeter
-    pub interior_surface_perimeter: f64,
+    pub interior_surface_perimeter: f32,
 
     ///Value for exterior perimeters that are inside the model
-    pub exterior_inner_perimeter: f64,
+    pub exterior_inner_perimeter: f32,
 
     ///Value for exterior surface perimeter
-    pub exterior_surface_perimeter: f64,
+    pub exterior_surface_perimeter: f32,
 
     ///Value for solid top infill moves
-    pub solid_top_infill: f64,
+    pub solid_top_infill: f32,
 
     ///Value for solid infill moves
-    pub solid_infill: f64,
+    pub solid_infill: f32,
 
     ///Value for pertial infill moves
-    pub infill: f64,
+    pub infill: f32,
 
     ///Value for travel moves
-    pub travel: f64,
+    pub travel: f32,
 
     ///Value for bridging
-    pub bridge: f64,
+    pub bridge: f32,
 
     ///Value for support structures
-    pub support: f64,
+    pub support: f32,
 }
 
 impl MovementParameter {
     ///Returns the associated value to the move type provided
-    pub fn get_value_for_movement_type(&self, move_type: &MoveType) -> f64 {
+    pub fn get_value_for_movement_type(&self, move_type: &MoveType) -> f32 {
         match move_type {
             MoveType::TopSolidInfill => self.solid_top_infill,
             MoveType::SolidInfill => self.solid_infill,
@@ -636,35 +636,35 @@ impl MovementParameter {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FilamentSettings {
     ///Diameter of this filament in mm
-    pub diameter: f64,
+    pub diameter: f32,
 
     ///Density of this filament in grams per cm^3
-    pub density: f64,
+    pub density: f32,
 
     ///Cost of this filament in $ per kg
-    pub cost: f64,
+    pub cost: f32,
 
     ///Extruder temp for this filament
-    pub extruder_temp: f64,
+    pub extruder_temp: f32,
 
     ///Bed temp for this filament
-    pub bed_temp: f64,
+    pub bed_temp: f32,
 }
 
 ///Settigns for the fans
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FanSettings {
     ///The default fan speed
-    pub fan_speed: f64,
+    pub fan_speed: f32,
 
     ///Disable the fan for layers below this value
     pub disable_fan_for_layers: usize,
 
     ///Threshold to start slowing down based on layer print time in seconds
-    pub slow_down_threshold: f64,
+    pub slow_down_threshold: f32,
 
     ///Minimum speed to slow down to
-    pub min_print_speed: f64,
+    pub min_print_speed: f32,
 }
 
 impl Default for FilamentSettings {
@@ -692,12 +692,12 @@ impl Default for FanSettings {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FiberSettings {
-    pub diameter: f64,
-    pub cut_before: f64,
-    pub min_length: f64,
-    pub speed_factor: f64,
-    pub acceleration_factor: f64,
-    pub jerk_factor: f64,
+    pub diameter: f32,
+    pub cut_before: f32,
+    pub min_length: f32,
+    pub speed_factor: f32,
+    pub acceleration_factor: f32,
+    pub jerk_factor: f32,
 }
 
 impl Default for FiberSettings {
@@ -717,10 +717,10 @@ impl Default for FiberSettings {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SupportSettings {
     ///Angle to start production supports in degrees
-    pub max_overhang_angle: f64,
+    pub max_overhang_angle: f32,
 
     ///Spacing between the ribs of support
-    pub support_spacing: f64,
+    pub support_spacing: f32,
 }
 
 ///The Settings for Skirt generation
@@ -730,27 +730,27 @@ pub struct SkirtSettings {
     pub layers: usize,
 
     ///Distance from the models to place the skirt
-    pub distance: f64,
+    pub distance: f32,
 }
 
 ///The Settings for Skirt generation
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RetractionWipeSettings {
     ///The speed the retract wipe move
-    pub speed: f64,
+    pub speed: f32,
 
     ///The acceleration the retract wipe move
-    pub acceleration: f64,
+    pub acceleration: f32,
 
     ///Wipe Distance in mm
-    pub distance: f64,
+    pub distance: f32,
 }
 
 ///A partial complete settings file
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PartialSettings {
     ///The height of the layers
-    pub layer_height: Option<f64>,
+    pub layer_height: Option<f32>,
 
     ///The extrusion width of the layers
     pub extrusion_width: Option<MovementParameter>,
@@ -758,7 +758,7 @@ pub struct PartialSettings {
     pub fiber: Option<FiberSettings>,
 
     ///Inset the layer by the provided amount, if None on inset will be performed
-    pub layer_shrink_amount: Option<f64>,
+    pub layer_shrink_amount: Option<f32>,
     ///The filament Settings
     pub filament: Option<FilamentSettings>,
     ///The fan settings
@@ -768,19 +768,19 @@ pub struct PartialSettings {
     ///The support settings, if None no support will be generated
     pub support: Option<SupportSettings>,
     ///Diameter of the nozzle in mm
-    pub nozzle_diameter: Option<f64>,
+    pub nozzle_diameter: Option<f32>,
 
     ///length to retract in mm
-    pub retract_length: Option<f64>,
+    pub retract_length: Option<f32>,
 
     ///Retraction Wipe
     pub retraction_wipe: Option<RetractionWipeSettings>,
 
     ///Distance to lift the z axis during a retract
-    pub retract_lift_z: Option<f64>,
+    pub retract_lift_z: Option<f32>,
 
     ///The velocity of retracts
-    pub retract_speed: Option<f64>,
+    pub retract_speed: Option<f32>,
 
     ///The speeds used for movement
     pub speed: Option<MovementParameter>,
@@ -789,7 +789,7 @@ pub struct PartialSettings {
     pub acceleration: Option<MovementParameter>,
 
     ///The percentage of infill to use for partial infill
-    pub infill_percentage: Option<f64>,
+    pub infill_percentage: Option<f32>,
 
     ///Controls the order of perimeters
     pub inner_perimeters_first: Option<bool>,
@@ -804,22 +804,22 @@ pub struct PartialSettings {
     pub bottom_layers: Option<usize>,
 
     ///Size of the printer in x dimension in mm
-    pub print_x: Option<f64>,
+    pub print_x: Option<f32>,
 
     ///Size of the printer in y dimension in mm
-    pub print_y: Option<f64>,
+    pub print_y: Option<f32>,
 
     ///Size of the printer in z dimension in mm
-    pub print_z: Option<f64>,
+    pub print_z: Option<f32>,
 
     ///Width of the brim, if None no brim will be generated
-    pub brim_width: Option<f64>,
+    pub brim_width: Option<f32>,
 
     ///The minimum travel distance required to perform a retraction
-    pub minimum_retract_distance: Option<f64>,
+    pub minimum_retract_distance: Option<f32>,
 
     ///Overlap between infill and interior perimeters
-    pub infill_perimeter_overlap_percentage: Option<f64>,
+    pub infill_perimeter_overlap_percentage: Option<f32>,
 
     ///Solid Infill type
     pub solid_infill_type: Option<SolidInfillTypes>,
@@ -846,42 +846,42 @@ pub struct PartialSettings {
     pub other_files: Option<Vec<String>>,
 
     ///Maximum Acceleration in x dimension
-    pub max_acceleration_x: Option<f64>,
+    pub max_acceleration_x: Option<f32>,
     ///Maximum Acceleration in y dimension
-    pub max_acceleration_y: Option<f64>,
+    pub max_acceleration_y: Option<f32>,
     ///Maximum Acceleration in z dimension
-    pub max_acceleration_z: Option<f64>,
+    pub max_acceleration_z: Option<f32>,
     ///Maximum Acceleration in e dimension
-    pub max_acceleration_e: Option<f64>,
+    pub max_acceleration_e: Option<f32>,
 
     ///Maximum Acceleration while extruding
-    pub max_acceleration_extruding: Option<f64>,
+    pub max_acceleration_extruding: Option<f32>,
     ///Maximum Acceleration while traveling
-    pub max_acceleration_travel: Option<f64>,
+    pub max_acceleration_travel: Option<f32>,
     ///Maximum Acceleration while retracting
-    pub max_acceleration_retracting: Option<f64>,
+    pub max_acceleration_retracting: Option<f32>,
 
     ///Maximum Jerk in x dimension
-    pub max_jerk_x: Option<f64>,
+    pub max_jerk_x: Option<f32>,
     ///Maximum Jerk in y dimension
-    pub max_jerk_y: Option<f64>,
+    pub max_jerk_y: Option<f32>,
     ///Maximum Jerk in z dimension
-    pub max_jerk_z: Option<f64>,
+    pub max_jerk_z: Option<f32>,
     ///Maximum Jerk in e dimension
-    pub max_jerk_e: Option<f64>,
+    pub max_jerk_e: Option<f32>,
 
     ///Minimum feedrate for extrusion moves
-    pub minimum_feedrate_print: Option<f64>,
+    pub minimum_feedrate_print: Option<f32>,
     ///Minimum feedrate for travel moves
-    pub minimum_feedrate_travel: Option<f64>,
+    pub minimum_feedrate_travel: Option<f32>,
     ///Maximum feedrate for x dimension
-    pub maximum_feedrate_x: Option<f64>,
+    pub maximum_feedrate_x: Option<f32>,
     ///Maximum feedrate for y dimension
-    pub maximum_feedrate_y: Option<f64>,
+    pub maximum_feedrate_y: Option<f32>,
     ///Maximum feedrate for z dimension
-    pub maximum_feedrate_z: Option<f64>,
+    pub maximum_feedrate_z: Option<f32>,
     ///Maximum feedrate for e dimension
-    pub maximum_feedrate_e: Option<f64>,
+    pub maximum_feedrate_e: Option<f32>,
 
     ///Settings for specific layers
     pub layer_settings: Option<Vec<(LayerRange, PartialLayerSettings)>>,
@@ -1046,10 +1046,10 @@ pub enum LayerRange {
     ///A Range of layers based on the height of the bottom on the slice
     HeightRange {
         ///The start height
-        start: f64,
+        start: f32,
 
         ///The end height
-        end: f64,
+        end: f32,
     },
 }
 
@@ -1057,10 +1057,10 @@ pub enum LayerRange {
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct PartialLayerSettings {
     ///The height of the layers
-    pub layer_height: Option<f64>,
+    pub layer_height: Option<f32>,
 
     ///Inset the layer by the provided amount, if None on inset will be performed
-    pub layer_shrink_amount: Option<f64>,
+    pub layer_shrink_amount: Option<f32>,
 
     ///The speeds used for movement
     pub speed: Option<MovementParameter>,
@@ -1078,25 +1078,25 @@ pub struct PartialLayerSettings {
     pub partial_infill_type: Option<PartialInfillTypes>,
 
     ///The percentage of infill to use for partial infill
-    pub infill_percentage: Option<f64>,
+    pub infill_percentage: Option<f32>,
 
     ///Overlap between infill and interior perimeters
-    pub infill_perimeter_overlap_percentage: Option<f64>,
+    pub infill_perimeter_overlap_percentage: Option<f32>,
 
     ///Controls the order of perimeters
     pub inner_perimeters_first: Option<bool>,
 
     ///The Bed Temperature
-    pub bed_temp: Option<f64>,
+    pub bed_temp: Option<f32>,
 
     ///The Extruder Temperature
-    pub extruder_temp: Option<f64>,
+    pub extruder_temp: Option<f32>,
 
     ///Retraction Wipe
     pub retraction_wipe: Option<RetractionWipeSettings>,
 
     ///Retraction Distance
-    pub retraction_length: Option<f64>,
+    pub retraction_length: Option<f32>,
 }
 
 impl PartialLayerSettings {
@@ -1214,7 +1214,7 @@ fn try_convert_partial_to_settings(part: PartialSettings) -> Result<Settings, St
 
 fn check_extrusions(
     extrusion_width: &MovementParameter,
-    nozzle_diameter: f64,
+    nozzle_diameter: f32,
 ) -> SettingsValidationResult {
     //infill
     if extrusion_width.infill < nozzle_diameter * 0.6 {
@@ -1339,7 +1339,7 @@ fn check_extrusions(
 fn check_accelerations(
     acceleration: &MovementParameter,
     speed: &MovementParameter,
-    min_bed_dimension: f64,
+    min_bed_dimension: f32,
 ) -> SettingsValidationResult {
     //infill
     if (speed.infill * speed.infill) / (2.0 * acceleration.infill) > min_bed_dimension {
