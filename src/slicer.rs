@@ -1,4 +1,4 @@
-use glam::{vec3, Vec3, Vec4};
+use glam::{vec3, Mat4, Vec4};
 use shared::object::ObjectMesh;
 use slicer::Settings;
 use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
@@ -15,12 +15,25 @@ impl Slicer {
     pub fn slice(&self, global_state: &GlobalState<RootEvent>) -> Result<(), String> {
         let model_server_read = global_state.viewer.model_server.read();
 
-        let models: Vec<ObjectMesh> = model_server_read
+        let mut models: Vec<ObjectMesh> = model_server_read
             .iter_entries()
             .map(|entry| entry.1)
             .collect();
-
         let settings = self.settings.clone();
+
+        models.iter_mut().for_each(|model| {
+            let (min, max) = model.min_max();
+
+            let transform = Mat4::from_translation(vec3(
+                (settings.print_x - (max.x + min.x)) / 2.,
+                (settings.print_y - (max.y + min.y)) / 2.,
+                -min.z,
+            ));
+
+            model.transform(transform);
+
+            model.sort_indices();
+        });
 
         let result = slicer::slice(&models, &settings).expect("Failed to slice model");
 

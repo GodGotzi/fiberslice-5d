@@ -1,7 +1,7 @@
 use geo::coordinate_position::{CoordPos, CoordinatePosition};
 use geo::euclidean_distance::EuclideanDistance;
 use geo::line_intersection::{line_intersection, LineIntersection};
-use geo::{prelude::*, Closest, Coord, GeoFloat, Line, MultiPolygon, Point, Polygon};
+use geo::{prelude::*, Closest, Coord, GeoFloat, Line, MultiPolygon, Point};
 
 use itertools::Itertools;
 use rand::seq::SliceRandom;
@@ -491,7 +491,7 @@ fn get_closest_intersection_point_on_polygon(
         .map(|(c, _d)| c)
 }
 
-fn closest_point_exterior_point(poly: &MultiPolygon, p: &Point<f32>) -> Closest<f32> {
+fn closest_point_exterior_point(poly: &MultiPolygon<f32>, p: &Point<f32>) -> Closest<f32> {
     closest_of(
         poly.iter()
             .flat_map(|p| p.interiors().iter().chain(std::iter::once(p.exterior()))),

@@ -131,9 +131,6 @@ struct TowerRing {
 impl TowerRing {
     #[inline]
     fn is_complete_ring(&self) -> bool {
-        println!("{:?} {:?}", self.elements.first(), self.elements.last());
-
-        println!("{:?}", self.elements.len());
         self.elements.first() == self.elements.last() && self.elements.len() > 3
     }
 

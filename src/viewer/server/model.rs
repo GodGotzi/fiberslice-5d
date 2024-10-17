@@ -6,7 +6,7 @@ use std::{
     sync::Arc,
 };
 
-use glam::{vec3, Quat, Vec3};
+use glam::{Quat, Vec3, Vec3Swizzles};
 use ordered_float::OrderedFloat;
 
 use parking_lot::RwLock;
@@ -115,11 +115,7 @@ impl CADModelServer {
                 .write()
                 .add(MODEL_LOAD_PROGRESS, trim_text::<20, 4>(&path));
 
-            let vertices: Vec<Vec3> = mesh
-                .vertices()
-                .iter()
-                .map(|v| vec3(v.x as f32, v.y as f32, v.z as f32))
-                .collect();
+            let vertices: Vec<Vec3> = mesh.vertices().iter().map(|v| v.xyz()).collect();
 
             let mut triangles: Vec<(shared::IndexedTriangle, Vec3)> = mesh
                 .triangles()

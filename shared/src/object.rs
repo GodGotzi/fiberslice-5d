@@ -64,6 +64,38 @@ impl ObjectMesh {
     pub fn triangles(&self) -> &[IndexedTriangle] {
         &self.triangles
     }
+
+    pub fn min_max(&self) -> (Vec3, Vec3) {
+        let mut min = Vec3::splat(f32::INFINITY);
+        let mut max = Vec3::splat(f32::NEG_INFINITY);
+
+        for vertex in &self.vertices {
+            min = min.min(vertex.0);
+            max = max.max(vertex.0);
+        }
+
+        (min, max)
+    }
+
+    pub fn transform(&mut self, transform: Mat4) {
+        *self = transform * self.clone();
+    }
+
+    pub fn sort_indices(&mut self) {
+        self.triangles.iter_mut().for_each(|triangle| {
+            let v0 = self.vertices[triangle[0]];
+            let v1 = self.vertices[triangle[1]];
+            let v2 = self.vertices[triangle[2]];
+
+            if v0 < v1 && v0 < v2 {
+                *triangle = IndexedTriangle([triangle[0], triangle[1], triangle[2]])
+            } else if v1 < v0 && v1 < v2 {
+                *triangle = IndexedTriangle([triangle[1], triangle[2], triangle[0]])
+            } else {
+                *triangle = IndexedTriangle([triangle[2], triangle[0], triangle[1]])
+            }
+        });
+    }
 }
 
 impl std::ops::Mul<ObjectMesh> for Mat4 {
@@ -87,13 +119,13 @@ impl From<nom_stl::Mesh> for ObjectMesh {
     fn from(mesh: nom_stl::Mesh) -> Self {
         let indexed: nom_stl::IndexMesh = mesh.into();
 
-        let vertices = indexed
+        let vertices: Vec<ObjectVertex> = indexed
             .vertices()
             .into_iter()
             .map(|vertex| ObjectVertex(vec3(vertex[0], vertex[1], vertex[2])))
             .collect();
 
-        let triangles = indexed
+        let triangles: Vec<IndexedTriangle> = indexed
             .triangles()
             .into_iter()
             .map(|triangle| {
