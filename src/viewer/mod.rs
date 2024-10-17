@@ -8,6 +8,7 @@ use crate::{prelude::WgpuContext, render::Vertex};
 mod camera;
 pub use camera::*;
 
+pub mod loader;
 pub mod select;
 pub mod server;
 pub mod toolpath;

@@ -10,6 +10,7 @@ use glam::{vec3, Quat, Vec3};
 use ordered_float::OrderedFloat;
 
 use parking_lot::RwLock;
+use shared::{loader::Loader, object::ObjectMesh};
 use stl_io::IndexedTriangle;
 use tokio::{sync::oneshot::error::TryRecvError, task::JoinHandle};
 
@@ -26,12 +27,18 @@ use crate::{
         hitbox::{Hitbox, HitboxNode, HitboxRoot},
     },
     prelude::{LockModel, WgpuContext},
-    render::model::{
-        Model, Rotate, RotateMut, Scale, ScaleMut, Transform, TransformMut, Translate, TranslateMut,
+    render::{
+        model::{
+            Model, Rotate, RotateMut, Scale, ScaleMut, Transform, TransformMut, Translate,
+            TranslateMut,
+        },
+        Renderable, Vertex,
     },
-    render::{Renderable, Vertex},
     ui::{api::trim_text, custom_toasts::MODEL_LOAD_PROGRESS},
-    viewer::tracker::Process,
+    viewer::{
+        loader::{self, LoadError, Loader},
+        tracker::Process,
+    },
     GlobalState, RootEvent, GLOBAL_STATE,
 };
 
@@ -39,8 +46,8 @@ use crate::{
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("Load Error {0}")]
-    LoadError(String),
+    #[error("{0}")]
+    LoadError(LoadError),
     #[error("NoGeometryObject")]
     NoGeometryObject,
 }
@@ -48,7 +55,7 @@ pub enum Error {
 #[derive(Debug)]
 pub struct LoadResult {
     model: CADModel,
-    geometry: (Vec<Vec3>, Vec<slicer::IndexedTriangle>),
+    mesh: ObjectMesh,
 
     process: Arc<Process>,
     origin_path: String,
@@ -57,7 +64,7 @@ pub struct LoadResult {
 #[derive(Debug)]
 pub struct CADModelHandle {
     model: Arc<CADModel>,
-    geometry: (Vec<Vec3>, Vec<slicer::IndexedTriangle>),
+    mesh: ObjectMesh,
 }
 
 type CADModelResult = Result<LoadResult, CADModelError>;
@@ -91,40 +98,15 @@ impl CADModelServer {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         let handle = tokio::spawn(async move {
-            let file = match std::fs::File::open(&path) {
-                Ok(file) => file,
-                Err(_e) => {
-                    tx.send(Err(CADModelError::FileNotFound(path))).unwrap();
+            let mesh = match (shared::loader::STLLoader {}).load(&path) {
+                Ok(model) => model,
+                Err(e) => {
+                    tx.send(Err(CADModelError::LoadError(LoadError::from(e))))
+                        .unwrap();
+
                     return;
                 }
             };
-
-            let mut reader = std::io::BufReader::new(file);
-            let mut stl_model = match stl_io::read_stl(&mut reader) {
-                Ok(stl_model) => stl_model,
-                Err(_e) => {
-                    tx.send(Err(CADModelError::LoadError(path))).unwrap();
-                    return;
-                }
-            };
-
-            let native_vertices = stl_model
-                .vertices
-                .iter()
-                .map(|vertex| Vec3 {
-                    x: vertex[0],
-                    y: vertex[1],
-                    z: vertex[2],
-                })
-                .collect();
-
-            let native_faces = stl_model
-                .faces
-                .iter()
-                .map(|face| slicer::IndexedTriangle {
-                    verts: face.vertices,
-                })
-                .collect();
 
             let global_state = GLOBAL_STATE.read();
             let global_state = global_state.as_ref().unwrap();
@@ -134,15 +116,7 @@ impl CADModelServer {
                 .write()
                 .add(MODEL_LOAD_PROGRESS, trim_text::<20, 4>(&path));
 
-            let vertices: Vec<Vec3> = stl_model
-                .vertices
-                .iter()
-                .map(|vertex| {
-                    Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
-                        *vertex,
-                    ))
-                })
-                .collect();
+            let vertices = mesh.vertices().iter().map(|v| ModelVertex(v.0)).collect();
 
             process_tracking.set_task(
                 "
@@ -150,22 +124,19 @@ Clustering models"
                     .to_string(),
             );
             process_tracking.set_progress(0.0);
-            let models = clusterize_models(&stl_model.faces);
+            let models = clusterize_models(&faces);
 
             process_tracking.set_task("Creating vertices".to_string());
             process_tracking.set_progress(0.2);
-            let vertices = stl_model
-                .faces
-                .iter_mut()
-                .fold(Vec::new(), |mut vec, face| {
-                    vec.push(vertices[face.vertices[0]]);
-                    face.vertices[0] = vec.len() - 1;
-                    vec.push(vertices[face.vertices[2]]);
-                    face.vertices[2] = vec.len() - 1;
-                    vec.push(vertices[face.vertices[1]]);
-                    face.vertices[1] = vec.len() - 1;
-                    vec
-                });
+            let vertices = faces.iter_mut().fold(Vec::new(), |mut vec, face| {
+                vec.push(vertices[face.verts[0]]);
+                face.verts[0] = vec.len() - 1;
+                vec.push(vertices[face.verts[2]]);
+                face.verts[2] = vec.len() - 1;
+                vec.push(vertices[face.verts[1]]);
+                face.verts[1] = vec.len() - 1;
+                vec
+            });
 
             process_tracking.set_task("Clustering faces".to_string());
             process_tracking.set_progress(0.4);
@@ -278,7 +249,7 @@ Clustering models"
 
         let ctx = CADModelHandle {
             model: handle.clone(),
-            geometry: model_handle.geometry,
+            mesh: model_handle.geometry,
         };
 
         self.models.insert(name.clone(), ctx);
@@ -365,9 +336,9 @@ Clustering models"
 
     pub fn iter_entries(
         &self,
-    ) -> impl Iterator<Item = (&String, (Vec<Vec3>, Vec<slicer::IndexedTriangle>))> {
+    ) -> impl Iterator<Item = (&String, (Vec<ModelVertex>, Vec<slicer::IndexedTriangle>))> {
         self.models.iter().map(|(key, model)| {
-            let geometry = model.geometry.clone();
+            let geometry = model.mesh.clone();
 
             (key, geometry)
         })
@@ -623,13 +594,13 @@ impl PartialEq for PlaneEntry {
 
 impl Eq for PlaneEntry {}
 
-fn clusterize_models(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
+fn clusterize_models(faces: &[slicer::IndexedTriangle]) -> Vec<Vec<usize>> {
     let mut neighbor_map: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
 
     for (index, triangle) in faces.iter().enumerate() {
-        let t1 = triangle.vertices[0];
-        let t2 = triangle.vertices[1];
-        let t3 = triangle.vertices[2];
+        let t1 = triangle.verts[0];
+        let t2 = triangle.verts[1];
+        let t3 = triangle.verts[2];
 
         let mut handle = |t1, t2| {
             if let Some(neighbors) = neighbor_map.get_mut(&(t1, t2)) {
@@ -680,9 +651,9 @@ fn clusterize_models(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
             }
         };
 
-        handle_edge(triangle.vertices[0], triangle.vertices[1]);
-        handle_edge(triangle.vertices[1], triangle.vertices[2]);
-        handle_edge(triangle.vertices[2], triangle.vertices[0]);
+        handle_edge(triangle.verts[0], triangle.verts[1]);
+        handle_edge(triangle.verts[1], triangle.verts[2]);
+        handle_edge(triangle.verts[2], triangle.verts[0]);
 
         if queue.is_empty() {
             if let Some(index) = (0..faces.len()).find(|index| !visited[*index]) {
@@ -696,23 +667,23 @@ fn clusterize_models(faces: &[IndexedTriangle]) -> Vec<Vec<usize>> {
     model_faces.into_iter().collect()
 }
 
-fn clusterize_faces(faces: &[IndexedTriangle], vertices: &[Vec3]) -> Vec<PlaneEntry> {
+fn clusterize_faces(
+    faces: &[(slicer::IndexedTriangle, Vec3)],
+    vertices: &[ModelVertex],
+) -> Vec<PlaneEntry> {
     let mut plane_map: HashMap<[OrderedFloat<f32>; 6], Vec<usize>> = HashMap::new();
 
-    for (index, triangle) in faces.iter().enumerate() {
-        let normal = Vec3::from(<stl_io::Vector<f32> as std::convert::Into<[f32; 3]>>::into(
-            triangle.normal,
-        ))
-        .normalize();
+    for (index, (triangle, normal)) in faces.iter().enumerate() {
+        let normal = normal.normalize();
 
-        let point = vertices[triangle.vertices[0]];
+        let point = vertices[triangle.verts[0]];
 
         let ray = picking::Ray {
             origin: Vec3::new(0.0, 0.0, 0.0),
             direction: normal,
         };
 
-        let intersection = ray.intersection_plane(normal, point);
+        let intersection = ray.intersection_plane(normal, point.0);
 
         fn round(value: f32) -> f32 {
             let factor = 10f32.powi(4); // 10^4 = 10000

@@ -1,7 +1,9 @@
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
 
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
+use rayon::iter::{
+    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator,
+};
 
 use super::error::SlicerErrors;
 use super::{IndexedTriangle, Vertex};
@@ -129,6 +131,9 @@ struct TowerRing {
 impl TowerRing {
     #[inline]
     fn is_complete_ring(&self) -> bool {
+        println!("{:?} {:?}", self.elements.first(), self.elements.last());
+
+        println!("{:?}", self.elements.len());
         self.elements.first() == self.elements.last() && self.elements.len() > 3
     }
 
@@ -278,7 +283,7 @@ pub enum TriangleEvent {
 fn join_triangle_event(events: Vec<TriangleEvent>, starting_point: usize) -> Vec<TowerRing> {
     //debug!("Tri events = {:?}",events);
     let mut element_list: Vec<TowerRing> = events
-        .iter()
+        .par_iter()
         .map(|event| match event {
             TriangleEvent::LeadingEdge {
                 leading_edge,

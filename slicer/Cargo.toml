@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 rayon = "1.10.0"
-ordered-float = "4.3.0"
+ordered-float = "4.4.0"
 rand = "0.8.5"
 
 geo = { version = "0.28.0", features = ["use-serde"] }
@@ -14,7 +14,7 @@ geo-svg = "0.6.3"
 
 itertools = "0.13.0"
 deser-hjson = "2.2.4"
-nalgebra = "0.33.0"
+nalgebra = "0.33.1"
 serde = "1.0.210"
 
 strum = "0.26"

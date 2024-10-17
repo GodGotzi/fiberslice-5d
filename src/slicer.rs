@@ -19,6 +19,8 @@ impl Slicer {
             .map(|entry| entry.1)
             .collect();
 
+        let settings = self.settings.clone();
+
         for (vertices, _) in models.iter_mut() {
             let (min, max) = vertices.iter().fold(
                 (Vec3::splat(f32::INFINITY), Vec3::splat(f32::NEG_INFINITY)),
@@ -26,13 +28,13 @@ impl Slicer {
             );
 
             let transform = glam::Mat4::from_translation(vec3(
-                (210.0 - (max.x + min.x)) / 2.,
-                (210.0 - (max.y + min.y)) / 2.,
+                (settings.print_x as f32 - (max.x - min.x).abs()) / 2.,
+                (settings.print_y as f32 - (max.y - min.y).abs()) / 2.,
                 -min.z,
             ));
 
             for v in vertices.iter_mut() {
-                *v = (transform * v.extend(1.0)).truncate();
+                *v = transform.transform_point3(*v);
             }
         }
 
@@ -52,8 +54,6 @@ impl Slicer {
                 )
             })
             .collect();
-
-        let settings = self.settings.clone();
 
         let result = slicer::slice(&models, &settings).expect("Failed to slice model");
 

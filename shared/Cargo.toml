@@ -1,0 +1,9 @@
+[package]
+name = "shared"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+nalgebra = "0.33.1"
+nom_stl = "0.2.2"
+thiserror = "1.0.64"

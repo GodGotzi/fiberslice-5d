@@ -10,7 +10,7 @@ use super::{
 
 pub fn slice(towers: &[TriangleTower], settings: &Settings) -> Result<Vec<Object>, SlicerErrors> {
     towers
-        .par_iter()
+        .iter()
         .map(|tower| {
             let mut tower_iter = TriangleTowerIterator::new(tower);
 
