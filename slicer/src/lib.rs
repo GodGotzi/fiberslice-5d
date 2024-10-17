@@ -137,6 +137,8 @@ pub struct Slice {
 
     ///A copy of this layers settings
     pub layer_settings: LayerSettings,
+
+    pub layer: usize,
 }
 impl Slice {
     ///Creates a slice from a spefic iterator of points
@@ -144,7 +146,7 @@ impl Slice {
         line: I,
         bottom_height: f32,
         top_height: f32,
-        layer_count: usize,
+        layer: usize,
         settings: &Settings,
     ) -> Self
     where
@@ -152,8 +154,7 @@ impl Slice {
     {
         let polygon = Polygon::new(LineString::from_iter(line), vec![]);
 
-        let layer_settings =
-            settings.get_layer_settings(layer_count, (bottom_height + top_height) / 2.0);
+        let layer_settings = settings.get_layer_settings(layer, (bottom_height + top_height) / 2.0);
 
         Slice {
             main_polygon: MultiPolygon(vec![polygon.simplify_vw_preserve(&0.01)]),
@@ -165,6 +166,7 @@ impl Slice {
             bottom_height,
             top_height,
             layer_settings,
+            layer,
         }
     }
 
@@ -173,7 +175,7 @@ impl Slice {
         lines: MultiLineString<f32>,
         bottom_height: f32,
         top_height: f32,
-        layer_count: usize,
+        layer: usize,
         settings: &Settings,
     ) -> Result<Self, SlicerErrors> {
         let mut lines_and_area: Vec<(LineString<f32>, f32)> = lines
@@ -211,8 +213,7 @@ impl Slice {
 
         let multi_polygon: MultiPolygon<f32> = MultiPolygon(polygons);
 
-        let layer_settings =
-            settings.get_layer_settings(layer_count, (bottom_height + top_height) / 2.0);
+        let layer_settings = settings.get_layer_settings(layer, (bottom_height + top_height) / 2.0);
 
         Ok(Slice {
             main_polygon: multi_polygon.clone(),
@@ -224,6 +225,7 @@ impl Slice {
             bottom_height,
             top_height,
             layer_settings,
+            layer,
         })
     }
 
