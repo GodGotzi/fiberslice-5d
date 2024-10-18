@@ -61,6 +61,13 @@ pub fn convert(
                 end,
                 width,
                 thickness,
+            }
+            | Command::MoveAndExtrudeFiber {
+                start,
+                end,
+                thickness,
+                width,
+                ..
             } => {
                 let x_diff = end.x - start.x;
                 let y_diff = end.y - start.y;

@@ -6,6 +6,7 @@ pub fn calculate_values(moves: &[Command], settings: &Settings) -> CalculatedVal
         plastic_weight: 0.0,
         total_time: 0.0,
         plastic_length: 0.0,
+        fiber_length: 0.0,
     };
 
     let mut current_speed = 0.0;
@@ -35,6 +36,21 @@ pub fn calculate_values(moves: &[Command], settings: &Settings) -> CalculatedVal
                 values.total_time += d / current_speed;
 
                 values.plastic_volume += width * thickness * d;
+            }
+            Command::MoveAndExtrudeFiber {
+                start,
+                end,
+                thickness,
+                width,
+            } => {
+                let x_diff = end.x - start.x;
+                let y_diff = end.y - start.y;
+                let d = ((x_diff * x_diff) + (y_diff * y_diff)).sqrt();
+                current_pos = *end;
+                values.total_time += d / current_speed;
+
+                values.plastic_volume += width * thickness * d;
+                values.fiber_length += d;
             }
             Command::SetState { new_state } => {
                 if let Some(speed) = new_state.movement_speed {

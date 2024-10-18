@@ -9,7 +9,8 @@ use crate::{Command, RetractionType, StateChange};
 pub fn unary_optimizer(cmds: &mut Vec<Command>) {
     cmds.retain(|cmd| match cmd {
         Command::MoveTo { .. } => true,
-        Command::MoveAndExtrude { start, end, .. } => start != end,
+        Command::MoveAndExtrude { start, end, .. }
+        | Command::MoveAndExtrudeFiber { start, end, .. } => start != end,
         Command::LayerChange { .. } => true,
         Command::ChangeObject { .. } => true,
         Command::SetState { new_state } => {

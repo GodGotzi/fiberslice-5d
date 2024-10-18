@@ -393,7 +393,19 @@ pub enum Command {
         /// The extrusion width
         width: f32,
     },
+    MoveAndExtrudeFiber {
+        ///Start point of the move
+        start: Coord<f32>,
 
+        ///End point of the move
+        end: Coord<f32>,
+
+        ///The height thickness of the move
+        thickness: f32,
+
+        /// The extrusion width
+        width: f32,
+    },
     ///Change the layer height
     LayerChange {
         ///The height the print head should move to
@@ -766,6 +778,8 @@ pub struct CalculatedValues {
 
     ///Total plastic used by the print in mm of filament
     pub plastic_length: f32,
+
+    pub fiber_length: f32,
 
     ///Total time to print in seconds
     pub total_time: f32,

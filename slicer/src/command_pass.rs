@@ -70,6 +70,13 @@ impl CommandPass for SlowDownLayerPass {
                                     end,
                                     width: _width,
                                     thickness: _thickness,
+                                }
+                                | Command::MoveAndExtrudeFiber {
+                                    start,
+                                    end,
+                                    width: _width,
+                                    thickness: _thickness,
+                                    ..
                                 } => {
                                     let x_diff = end.x - start.x;
                                     let y_diff = end.y - start.y;
