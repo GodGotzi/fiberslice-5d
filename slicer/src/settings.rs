@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::SlicerErrors, warning::SlicerWarnings, MoveType, PartialInfillTypes, SolidInfillTypes,
+    error::SlicerErrors, warning::SlicerWarnings, MovePrintType, MoveType, PartialInfillTypes,
+    SolidInfillTypes,
 };
 
 macro_rules! setting_less_than_or_equal_to_zero {
@@ -217,6 +218,7 @@ impl Default for Settings {
                 bridge: 0.4,
                 support: 0.4,
                 exterior_surface_perimeter: 0.4,
+                fiber_factor: 0.5,
             },
             filament: FilamentSettings::default(),
             fan: FanSettings::default(),
@@ -240,6 +242,7 @@ impl Default for Settings {
                 bridge: 30.0,
                 support: 50.0,
                 exterior_surface_perimeter: 40.0,
+                fiber_factor: 0.5,
             },
             acceleration: MovementParameter {
                 interior_inner_perimeter: 900.0,
@@ -252,6 +255,7 @@ impl Default for Settings {
                 bridge: 1000.0,
                 support: 1000.0,
                 exterior_surface_perimeter: 800.0,
+                fiber_factor: 0.5,
             },
 
             infill_percentage: 0.2,
@@ -316,6 +320,7 @@ impl Default for Settings {
                         bridge: 20.0,
                         support: 20.0,
                         exterior_surface_perimeter: 20.0,
+                        fiber_factor: 0.5,
                     }),
                     layer_height: Some(0.3),
                     bed_temp: Some(60.0),
@@ -613,25 +618,39 @@ pub struct MovementParameter {
 
     ///Value for support structures
     pub support: f32,
+
+    pub fiber_factor: f32,
 }
 
 impl MovementParameter {
     ///Returns the associated value to the move type provided
     pub fn get_value_for_movement_type(&self, move_type: &MoveType) -> f32 {
         match move_type {
-            MoveType::TopSolidInfill => self.solid_top_infill,
-            MoveType::SolidInfill => self.solid_infill,
-            MoveType::Infill => self.infill,
-            MoveType::ExteriorSurfacePerimeter => self.exterior_surface_perimeter,
-            MoveType::InteriorSurfacePerimeter => self.interior_surface_perimeter,
-            MoveType::ExteriorInnerPerimeter => self.exterior_inner_perimeter,
-            MoveType::InteriorInnerPerimeter => self.interior_inner_perimeter,
-            MoveType::Bridging => self.bridge,
-            MoveType::Support => self.support,
-            MoveType::Travel => self.travel,
+            MoveType::WithFiber(move_print_type) => {
+                self.get_value_for_movement_print_type(move_print_type) * self.fiber_factor
+            }
+            MoveType::WithoutFiber(move_print_type) => {
+                self.get_value_for_movement_print_type(move_print_type)
+            }
+            MoveType::Travel => todo!(),
+        }
+    }
+
+    fn get_value_for_movement_print_type(&self, move_type: &MovePrintType) -> f32 {
+        match move_type {
+            MovePrintType::TopSolidInfill => self.solid_top_infill,
+            MovePrintType::SolidInfill => self.solid_infill,
+            MovePrintType::Infill => self.infill,
+            MovePrintType::ExteriorSurfacePerimeter => self.exterior_surface_perimeter,
+            MovePrintType::InteriorSurfacePerimeter => self.interior_surface_perimeter,
+            MovePrintType::ExteriorInnerPerimeter => self.exterior_inner_perimeter,
+            MovePrintType::InteriorInnerPerimeter => self.interior_inner_perimeter,
+            MovePrintType::Bridging => self.bridge,
+            MovePrintType::Support => self.support,
         }
     }
 }
+
 ///Settings for a filament
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FilamentSettings {

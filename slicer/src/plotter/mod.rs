@@ -5,7 +5,7 @@ mod perimeter;
 pub mod polygon_operations;
 pub(crate) mod support;
 
-use crate::{Move, MoveChain};
+use crate::{Move, MoveChain, MovePrintType};
 
 use crate::settings::SkirtSettings;
 use crate::utils::point_lerp;
@@ -94,7 +94,7 @@ impl Plotter for Slice {
                 let new_moves = solid_infill_polygon(
                     poly,
                     &self.layer_settings,
-                    MoveType::SolidInfill,
+                    MoveType::WithoutFiber(MovePrintType::SolidInfill),
                     layer_count,
                     self.get_height(),
                 );
@@ -134,7 +134,13 @@ impl Plotter for Slice {
         let layer_settings = &self.layer_settings;
         self.chains
             .extend(&mut solid_area.0.iter().flat_map(|poly| {
-                linear_fill_polygon(poly, layer_settings, MoveType::SolidInfill, angle).into_iter()
+                linear_fill_polygon(
+                    poly,
+                    layer_settings,
+                    MoveType::WithoutFiber(MovePrintType::SolidInfill),
+                    angle,
+                )
+                .into_iter()
             }));
 
         self.remaining_area = self.remaining_area.difference_with(&solid_area)
@@ -159,7 +165,13 @@ impl Plotter for Slice {
                     angle += 180.0;
                 }
 
-                linear_fill_polygon(poly, layer_settings, MoveType::Bridging, angle).into_iter()
+                linear_fill_polygon(
+                    poly,
+                    layer_settings,
+                    MoveType::WithoutFiber(MovePrintType::Bridging),
+                    angle,
+                )
+                .into_iter()
             }));
 
         self.remaining_area = self.remaining_area.difference_with(&solid_area)
@@ -177,8 +189,12 @@ impl Plotter for Slice {
         for poly in &solid_area {
             let angle = 45.0 + (120_f32) * layer_count as f32;
 
-            let new_moves =
-                linear_fill_polygon(poly, &self.layer_settings, MoveType::TopSolidInfill, angle);
+            let new_moves = linear_fill_polygon(
+                poly,
+                &self.layer_settings,
+                MoveType::WithoutFiber(MovePrintType::TopSolidInfill),
+                angle,
+            );
 
             for chain in new_moves {
                 self.chains.push(chain);
@@ -211,7 +227,7 @@ impl Plotter for Slice {
 
                 Move {
                     end: bounded_endpoint,
-                    move_type: MoveType::ExteriorSurfacePerimeter,
+                    move_type: MoveType::WithoutFiber(MovePrintType::ExteriorSurfacePerimeter),
                     width: self
                         .layer_settings
                         .extrusion_width
@@ -262,7 +278,9 @@ impl Plotter for Slice {
                             .circular_tuple_windows::<(_, _)>()
                             .map(|(&_start, &end)| Move {
                                 end,
-                                move_type: MoveType::ExteriorSurfacePerimeter,
+                                move_type: MoveType::WithoutFiber(
+                                    MovePrintType::ExteriorSurfacePerimeter,
+                                ),
                                 width: layer_settings.extrusion_width.exterior_surface_perimeter,
                             })
                             .collect();

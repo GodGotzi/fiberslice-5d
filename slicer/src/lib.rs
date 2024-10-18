@@ -337,9 +337,8 @@ pub struct MoveChain {
     pub is_loop: bool,
 }
 
-///Types of Moves
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
-pub enum MoveType {
+pub enum MovePrintType {
     ///The top later of infill
     TopSolidInfill,
 
@@ -366,7 +365,13 @@ pub enum MoveType {
 
     ///Support towers and interface
     Support,
+}
 
+///Types of Moves
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+pub enum MoveType {
+    WithFiber(MovePrintType),
+    WithoutFiber(MovePrintType),
     ///Standard travel moves without extrusion
     Travel,
 }
@@ -603,117 +608,11 @@ impl MoveChain {
         for m in self.moves {
             if Some(m.move_type) != current_type {
                 match m.move_type {
-                    MoveType::TopSolidInfill => {
-                        cmds.push(Command::SetState {
-                            new_state: StateChange {
-                                bed_temp: None,
-                                extruder_temp: None,
-                                fan_speed: None,
-                                movement_speed: Some(settings.speed.solid_top_infill),
-                                acceleration: Some(settings.acceleration.solid_top_infill),
-                                retract: RetractionType::Unretract,
-                            },
-                        });
+                    MoveType::WithFiber(move_print_type) => {
+                        update_state(&move_print_type, settings, &mut cmds)
                     }
-                    MoveType::SolidInfill => {
-                        cmds.push(Command::SetState {
-                            new_state: StateChange {
-                                bed_temp: None,
-                                extruder_temp: None,
-                                fan_speed: None,
-                                movement_speed: Some(settings.speed.solid_infill),
-                                acceleration: Some(settings.acceleration.solid_infill),
-                                retract: RetractionType::Unretract,
-                            },
-                        });
-                    }
-                    MoveType::Infill => {
-                        cmds.push(Command::SetState {
-                            new_state: StateChange {
-                                bed_temp: None,
-                                extruder_temp: None,
-                                fan_speed: None,
-                                movement_speed: Some(settings.speed.infill),
-                                acceleration: Some(settings.acceleration.infill),
-                                retract: RetractionType::Unretract,
-                            },
-                        });
-                    }
-                    MoveType::Bridging => {
-                        cmds.push(Command::SetState {
-                            new_state: StateChange {
-                                bed_temp: None,
-                                extruder_temp: None,
-                                fan_speed: None,
-                                movement_speed: Some(settings.speed.bridge),
-                                acceleration: Some(settings.acceleration.bridge),
-                                retract: RetractionType::Unretract,
-                            },
-                        });
-                    }
-                    MoveType::ExteriorSurfacePerimeter => {
-                        cmds.push(Command::SetState {
-                            new_state: StateChange {
-                                bed_temp: None,
-                                extruder_temp: None,
-                                fan_speed: None,
-                                movement_speed: Some(settings.speed.exterior_surface_perimeter),
-                                acceleration: Some(
-                                    settings.acceleration.exterior_surface_perimeter,
-                                ),
-                                retract: RetractionType::Unretract,
-                            },
-                        });
-                    }
-                    MoveType::ExteriorInnerPerimeter => {
-                        cmds.push(Command::SetState {
-                            new_state: StateChange {
-                                bed_temp: None,
-                                extruder_temp: None,
-                                fan_speed: None,
-                                movement_speed: Some(settings.speed.exterior_inner_perimeter),
-                                acceleration: Some(settings.acceleration.exterior_inner_perimeter),
-                                retract: RetractionType::Unretract,
-                            },
-                        });
-                    }
-                    MoveType::InteriorSurfacePerimeter => {
-                        cmds.push(Command::SetState {
-                            new_state: StateChange {
-                                bed_temp: None,
-                                extruder_temp: None,
-                                fan_speed: None,
-                                movement_speed: Some(settings.speed.interior_surface_perimeter),
-                                acceleration: Some(
-                                    settings.acceleration.interior_surface_perimeter,
-                                ),
-                                retract: RetractionType::Unretract,
-                            },
-                        });
-                    }
-                    MoveType::InteriorInnerPerimeter => {
-                        cmds.push(Command::SetState {
-                            new_state: StateChange {
-                                bed_temp: None,
-                                extruder_temp: None,
-                                fan_speed: None,
-                                movement_speed: Some(settings.speed.interior_inner_perimeter),
-                                acceleration: Some(settings.acceleration.interior_inner_perimeter),
-                                retract: RetractionType::Unretract,
-                            },
-                        });
-                    }
-                    MoveType::Support => {
-                        cmds.push(Command::SetState {
-                            new_state: StateChange {
-                                bed_temp: None,
-                                extruder_temp: None,
-                                fan_speed: None,
-                                movement_speed: Some(settings.speed.support),
-                                acceleration: Some(settings.acceleration.support),
-                                retract: RetractionType::Unretract,
-                            },
-                        });
+                    MoveType::WithoutFiber(move_print_type) => {
+                        update_state(&move_print_type, settings, &mut cmds)
                     }
                     MoveType::Travel => {
                         cmds.push(Command::SetState {
@@ -728,20 +627,25 @@ impl MoveChain {
                         });
                     }
                 }
+
                 current_type = Some(m.move_type);
             }
 
-            if m.move_type == MoveType::Travel {
-                cmds.push(Command::MoveTo { end: m.end });
-                current_loc = m.end;
-            } else {
-                cmds.push(Command::MoveAndExtrude {
-                    start: current_loc,
-                    end: m.end,
-                    thickness,
-                    width: m.width,
-                });
-                current_loc = m.end;
+            match m.move_type {
+                MoveType::WithFiber(_) => {
+                    cmds.push(Command::MoveTo { end: m.end });
+                    current_loc = m.end;
+                }
+                MoveType::WithoutFiber(_) => {
+                    cmds.push(Command::MoveAndExtrude {
+                        start: current_loc,
+                        end: m.end,
+                        thickness,
+                        width: m.width,
+                    });
+                    current_loc = m.end;
+                }
+                _ => {}
             }
         }
 
@@ -764,6 +668,119 @@ impl MoveChain {
 
         self.start_point.x = nx;
         self.start_point.y = ny;
+    }
+}
+
+fn update_state(move_type: &MovePrintType, settings: &LayerSettings, cmds: &mut Vec<Command>) {
+    match move_type {
+        MovePrintType::TopSolidInfill => {
+            cmds.push(Command::SetState {
+                new_state: StateChange {
+                    bed_temp: None,
+                    extruder_temp: None,
+                    fan_speed: None,
+                    movement_speed: Some(settings.speed.solid_top_infill),
+                    acceleration: Some(settings.acceleration.solid_top_infill),
+                    retract: RetractionType::Unretract,
+                },
+            });
+        }
+        MovePrintType::SolidInfill => {
+            cmds.push(Command::SetState {
+                new_state: StateChange {
+                    bed_temp: None,
+                    extruder_temp: None,
+                    fan_speed: None,
+                    movement_speed: Some(settings.speed.solid_infill),
+                    acceleration: Some(settings.acceleration.solid_infill),
+                    retract: RetractionType::Unretract,
+                },
+            });
+        }
+        MovePrintType::Infill => {
+            cmds.push(Command::SetState {
+                new_state: StateChange {
+                    bed_temp: None,
+                    extruder_temp: None,
+                    fan_speed: None,
+                    movement_speed: Some(settings.speed.infill),
+                    acceleration: Some(settings.acceleration.infill),
+                    retract: RetractionType::Unretract,
+                },
+            });
+        }
+        MovePrintType::Bridging => {
+            cmds.push(Command::SetState {
+                new_state: StateChange {
+                    bed_temp: None,
+                    extruder_temp: None,
+                    fan_speed: None,
+                    movement_speed: Some(settings.speed.bridge),
+                    acceleration: Some(settings.acceleration.bridge),
+                    retract: RetractionType::Unretract,
+                },
+            });
+        }
+        MovePrintType::ExteriorSurfacePerimeter => {
+            cmds.push(Command::SetState {
+                new_state: StateChange {
+                    bed_temp: None,
+                    extruder_temp: None,
+                    fan_speed: None,
+                    movement_speed: Some(settings.speed.exterior_surface_perimeter),
+                    acceleration: Some(settings.acceleration.exterior_surface_perimeter),
+                    retract: RetractionType::Unretract,
+                },
+            });
+        }
+        MovePrintType::ExteriorInnerPerimeter => {
+            cmds.push(Command::SetState {
+                new_state: StateChange {
+                    bed_temp: None,
+                    extruder_temp: None,
+                    fan_speed: None,
+                    movement_speed: Some(settings.speed.exterior_inner_perimeter),
+                    acceleration: Some(settings.acceleration.exterior_inner_perimeter),
+                    retract: RetractionType::Unretract,
+                },
+            });
+        }
+        MovePrintType::InteriorSurfacePerimeter => {
+            cmds.push(Command::SetState {
+                new_state: StateChange {
+                    bed_temp: None,
+                    extruder_temp: None,
+                    fan_speed: None,
+                    movement_speed: Some(settings.speed.interior_surface_perimeter),
+                    acceleration: Some(settings.acceleration.interior_surface_perimeter),
+                    retract: RetractionType::Unretract,
+                },
+            });
+        }
+        MovePrintType::InteriorInnerPerimeter => {
+            cmds.push(Command::SetState {
+                new_state: StateChange {
+                    bed_temp: None,
+                    extruder_temp: None,
+                    fan_speed: None,
+                    movement_speed: Some(settings.speed.interior_inner_perimeter),
+                    acceleration: Some(settings.acceleration.interior_inner_perimeter),
+                    retract: RetractionType::Unretract,
+                },
+            });
+        }
+        MovePrintType::Support => {
+            cmds.push(Command::SetState {
+                new_state: StateChange {
+                    bed_temp: None,
+                    extruder_temp: None,
+                    fan_speed: None,
+                    movement_speed: Some(settings.speed.support),
+                    acceleration: Some(settings.acceleration.support),
+                    retract: RetractionType::Unretract,
+                },
+            });
+        }
     }
 }
 
