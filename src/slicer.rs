@@ -1,3 +1,5 @@
+use std::io::{BufWriter, Write};
+
 use glam::{vec3, Mat4, Vec4};
 use shared::object::ObjectMesh;
 use slicer::Settings;
@@ -37,7 +39,13 @@ impl Slicer {
 
         let result = slicer::slice(&models, &settings).expect("Failed to slice model");
 
-        println!("Sliced model {:?}", result);
+        let mut file = std::fs::File::create("sliced_model.gcode").expect("Failed to create file");
+
+        let mut writer = BufWriter::new(&mut file);
+        slicer::convert(&result.moves, &settings, &mut writer).expect("Failed to write to file");
+        writer.flush().expect("Failed to flush file");
+
+        // println!("Sliced model {:?}", result);
 
         Ok(())
     }

@@ -10,7 +10,7 @@ use tower::create_towers;
 
 mod calculation;
 mod command_pass;
-mod coverter;
+mod converter;
 mod error;
 mod optimizer;
 mod plotter;
@@ -19,6 +19,8 @@ mod slicing;
 mod tower;
 mod utils;
 mod warning;
+
+pub use converter::convert;
 
 use error::SlicerErrors;
 use geo::{
