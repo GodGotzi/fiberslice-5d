@@ -272,48 +272,6 @@ pub struct Object {
     pub layers: Vec<Slice>,
 }
 
-///The different types of input that the slicer can take.
-#[derive(Serialize, Deserialize, Debug)]
-pub enum InputObject {
-    /// The Raw format that is the file to load and the transform to apply to it.
-    Raw(String, Transform),
-
-    ///Automatically Center and raise the model for printing
-    Auto(String),
-
-    ///Automatically Center and raise the model for printing but offset it by x and y
-    AutoTranslate(String, f32, f32),
-}
-
-impl InputObject {
-    /// Helper function to get the model path from the input
-    pub fn get_model_path(&self) -> &str {
-        match self {
-            InputObject::Raw(str, _) => str,
-            InputObject::Auto(str) => str,
-            InputObject::AutoTranslate(str, _, _) => str,
-        }
-    }
-}
-
-///4x4 Matrix used to transform models
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Transform(pub [[f32; 4]; 4]);
-
-/// A triangle that contains indices to it's 3 points. Used with a Vector of Vertices.
-#[derive(Default, Clone, Copy, Debug, PartialEq)]
-pub struct IndexedTriangle {
-    ///Array of the 3 Vertices
-    pub verts: [usize; 3],
-}
-
-/// A line that contains indices to it's 2 points. Used with a Vector of Vertices.
-#[derive(Default, Clone, Copy, Debug, PartialEq)]
-pub struct IndexedLine {
-    ///Array of the 2 Vertices
-    pub verts: [usize; 2],
-}
-
 ///A move of the plotter
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Move {
@@ -349,22 +307,38 @@ pub enum MovePrintType {
     Infill,
 
     ///The exterior surface Layer of perimeters
-    ExteriorSurfacePerimeter,
+    WallOuter,
 
     ///The interior surface Layer of perimeters
-    InteriorSurfacePerimeter,
+    WallInner,
 
     ///The exterior inner Layer of perimeters
-    ExteriorInnerPerimeter,
+    InteriorWallOuter,
 
     ///The interior inner Layer of perimeters
-    InteriorInnerPerimeter,
+    InteriorWallInner,
 
     ///A bridge over open air
     Bridging,
 
     ///Support towers and interface
     Support,
+}
+
+impl std::fmt::Display for MovePrintType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MovePrintType::TopSolidInfill => write!(f, "Top Solid Infill"),
+            MovePrintType::SolidInfill => write!(f, "Solid Infill"),
+            MovePrintType::Infill => write!(f, "Infill"),
+            MovePrintType::WallOuter => write!(f, "Wall Outer"),
+            MovePrintType::WallInner => write!(f, "Interior Surface Perimeter"),
+            MovePrintType::InteriorWallOuter => write!(f, "Wall Inner"),
+            MovePrintType::InteriorWallInner => write!(f, "Interior Inner Perimeter"),
+            MovePrintType::Bridging => write!(f, "Bridging"),
+            MovePrintType::Support => write!(f, "Support"),
+        }
+    }
 }
 
 ///Types of Moves
@@ -457,6 +431,10 @@ pub enum Command {
     ChangeObject {
         ///The index of the new object being changed to
         object: usize,
+    },
+    ChangeType {
+        ///The new print type to change to
+        print_type: MovePrintType,
     },
     ///Used in optimization , should be optimized out
     NoAction,
@@ -602,6 +580,8 @@ impl MoveChain {
     ///Convert a move chain into a list of commands
     pub fn create_commands(self, settings: &LayerSettings, thickness: f32) -> Vec<Command> {
         let mut cmds = vec![];
+        let mut current_print_type = None;
+
         let mut current_type = None;
         let mut current_loc = self.start_point;
 
@@ -632,11 +612,21 @@ impl MoveChain {
             }
 
             match m.move_type {
-                MoveType::WithFiber(_) => {
+                MoveType::WithFiber(print_type) => {
+                    if Some(print_type) != current_print_type {
+                        cmds.push(Command::ChangeType { print_type });
+                        current_print_type = Some(print_type);
+                    }
+
                     cmds.push(Command::MoveTo { end: m.end });
                     current_loc = m.end;
                 }
-                MoveType::WithoutFiber(_) => {
+                MoveType::WithoutFiber(print_type) => {
+                    if Some(print_type) != current_print_type {
+                        cmds.push(Command::ChangeType { print_type });
+                        current_print_type = Some(print_type);
+                    }
+
                     cmds.push(Command::MoveAndExtrude {
                         start: current_loc,
                         end: m.end,
@@ -645,7 +635,10 @@ impl MoveChain {
                     });
                     current_loc = m.end;
                 }
-                _ => {}
+                MoveType::Travel => {
+                    cmds.push(Command::MoveTo { end: m.end });
+                    current_loc = m.end;
+                }
             }
         }
 
@@ -721,7 +714,7 @@ fn update_state(move_type: &MovePrintType, settings: &LayerSettings, cmds: &mut 
                 },
             });
         }
-        MovePrintType::ExteriorSurfacePerimeter => {
+        MovePrintType::WallOuter => {
             cmds.push(Command::SetState {
                 new_state: StateChange {
                     bed_temp: None,
@@ -733,7 +726,7 @@ fn update_state(move_type: &MovePrintType, settings: &LayerSettings, cmds: &mut 
                 },
             });
         }
-        MovePrintType::ExteriorInnerPerimeter => {
+        MovePrintType::InteriorWallOuter => {
             cmds.push(Command::SetState {
                 new_state: StateChange {
                     bed_temp: None,
@@ -745,7 +738,7 @@ fn update_state(move_type: &MovePrintType, settings: &LayerSettings, cmds: &mut 
                 },
             });
         }
-        MovePrintType::InteriorSurfacePerimeter => {
+        MovePrintType::WallInner => {
             cmds.push(Command::SetState {
                 new_state: StateChange {
                     bed_temp: None,
@@ -757,7 +750,7 @@ fn update_state(move_type: &MovePrintType, settings: &LayerSettings, cmds: &mut 
                 },
             });
         }
-        MovePrintType::InteriorInnerPerimeter => {
+        MovePrintType::InteriorWallInner => {
             cmds.push(Command::SetState {
                 new_state: StateChange {
                     bed_temp: None,

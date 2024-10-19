@@ -130,7 +130,7 @@ impl Adapter<'_, RootEvent, (), CameraResult, Viewport, CameraEvent> for CameraA
             wgpu_context.window.inner_size().width as f32
                 / wgpu_context.window.inner_size().height as f32,
         );
-        camera.bounds.min_distance = Some(1.1);
+        camera.bounds.min_distance = Some(0.1);
         camera.bounds.min_pitch = -std::f32::consts::FRAC_PI_2 + 0.1;
         camera.bounds.max_pitch = std::f32::consts::FRAC_PI_2 - 0.1;
         camera.handle_orientation(Orientation::Default);

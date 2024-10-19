@@ -273,6 +273,9 @@ impl ApplicationHandler<RootEvent> for Application {
         let (_, _, render_adapter) = render::RenderAdapter::create(&wgpu_context);
 
         let (_, camera_event_writer, camera_adapter) = viewer::CameraAdapter::create(&wgpu_context);
+        camera_event_writer.send(CameraEvent::CameraOrientationChanged(
+            viewer::Orientation::Default,
+        ));
 
         let (picking_state, picking_event_writer, picking_adapter) =
             picking::PickingAdapter::create(&wgpu_context);

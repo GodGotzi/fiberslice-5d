@@ -270,6 +270,9 @@ pub fn convert(
             Command::NoAction => {
                 panic!("Converter reached a No Action Command, Optimization Failure")
             }
+            Command::ChangeType { print_type } => {
+                writeln!(write_buf, ";TYPE:{}", print_type)?;
+            }
         }
     }
 

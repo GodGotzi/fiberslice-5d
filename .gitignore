@@ -3,3 +3,4 @@
 /type_eq/type_eq_derive/target
 /gcode
 /fdesc-pattern
+*.gcode

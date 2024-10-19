@@ -39,11 +39,11 @@ impl Slicer {
 
         let result = slicer::slice(&models, &settings).expect("Failed to slice model");
 
-        let mut file = std::fs::File::create("sliced_model.gcode").expect("Failed to create file");
-
-        let mut writer = BufWriter::new(&mut file);
-        slicer::convert(&result.moves, &settings, &mut writer).expect("Failed to write to file");
-        writer.flush().expect("Failed to flush file");
+        global_state
+            .viewer
+            .toolpath_server
+            .write()
+            .load_from_slice_result(result);
 
         // println!("Sliced model {:?}", result);
 
@@ -55,6 +55,7 @@ impl Slicer {
 pub enum PrintType {
     InternalInfill,
     SolidInfill,
+    Infill,
     Skin,
     BridgeInfill,
     TopSolidInfill,
@@ -252,6 +253,12 @@ impl From<PrintType> for Color {
                 r: 0.0,
                 g: 1.0,
                 b: 0.0,
+                a: 1.0,
+            },
+            PrintType::Infill => Color {
+                r: 0.0,
+                g: 0.0,
+                b: 1.0,
                 a: 1.0,
             },
             // Srgba::new(0, 255, 0, 255),

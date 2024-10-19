@@ -92,7 +92,10 @@ pub fn calculate_values(moves: &[Command], settings: &Settings) -> CalculatedVal
 
                 values.plastic_volume += width * thickness * extrusion_length;
             }
-            Command::NoAction | Command::LayerChange { .. } | Command::ChangeObject { .. } => {}
+            Command::NoAction
+            | Command::LayerChange { .. }
+            | Command::ChangeObject { .. }
+            | Command::ChangeType { .. } => {}
         }
     }
 

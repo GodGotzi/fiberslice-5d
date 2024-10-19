@@ -13,6 +13,7 @@ pub fn unary_optimizer(cmds: &mut Vec<Command>) {
         | Command::MoveAndExtrudeFiber { start, end, .. } => start != end,
         Command::LayerChange { .. } => true,
         Command::ChangeObject { .. } => true,
+        Command::ChangeType { .. } => true,
         Command::SetState { new_state } => {
             !(new_state.acceleration.is_none()
                 && new_state.movement_speed.is_none()

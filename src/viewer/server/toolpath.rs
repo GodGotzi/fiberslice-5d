@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use slicer::{Command, SliceResult};
 use tokio::sync::oneshot::Receiver;
 use tokio::task::JoinHandle;
 use wgpu::util::DeviceExt;
@@ -178,7 +179,7 @@ impl Server for ToolpathServer {
 }
 
 impl ToolpathServer {
-    pub fn load<P>(&mut self, path: P)
+    pub fn load_from_file<P>(&mut self, path: P)
     where
         P: AsRef<Path>,
     {
@@ -203,6 +204,18 @@ impl ToolpathServer {
             );
 
             tx.send(part).unwrap();
+        });
+
+        self.queue = Some((rx, handle));
+    }
+
+    pub fn load_from_slice_result(&mut self, slice_result: SliceResult) {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+
+        let handle = tokio::spawn(async move {
+            panic!("Not implemented");
+
+            // tx.send(part).unwrap();
         });
 
         self.queue = Some((rx, handle));

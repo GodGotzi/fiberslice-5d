@@ -227,7 +227,7 @@ impl Plotter for Slice {
 
                 Move {
                     end: bounded_endpoint,
-                    move_type: MoveType::WithoutFiber(MovePrintType::ExteriorSurfacePerimeter),
+                    move_type: MoveType::WithoutFiber(MovePrintType::WallOuter),
                     width: self
                         .layer_settings
                         .extrusion_width
@@ -278,9 +278,7 @@ impl Plotter for Slice {
                             .circular_tuple_windows::<(_, _)>()
                             .map(|(&_start, &end)| Move {
                                 end,
-                                move_type: MoveType::WithoutFiber(
-                                    MovePrintType::ExteriorSurfacePerimeter,
-                                ),
+                                move_type: MoveType::WithoutFiber(MovePrintType::WallOuter),
                                 width: layer_settings.extrusion_width.exterior_surface_perimeter,
                             })
                             .collect();

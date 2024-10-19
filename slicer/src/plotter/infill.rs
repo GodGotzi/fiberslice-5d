@@ -255,7 +255,7 @@ pub fn spaced_fill_polygon(
                     left_index += 1;
                 }
 
-                if left_index == section.left_chain.len() {
+                if left_index == section.left_chain.len() || left_index == 0 {
                     break;
                 }
 
@@ -268,7 +268,7 @@ pub fn spaced_fill_polygon(
                     right_index += 1;
                 }
 
-                if right_index == section.right_chain.len() {
+                if right_index == section.right_chain.len() || right_index == 0 {
                     break;
                 }
 

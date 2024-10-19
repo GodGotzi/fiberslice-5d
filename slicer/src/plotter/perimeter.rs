@@ -26,17 +26,16 @@ pub fn inset_polygon_recursive(
     for raw_polygon in inset_poly.0.iter() {
         let polygon = raw_polygon.simplify(&0.01);
         let mut outer_chains = vec![];
-        let mut inner_chains = vec![];
-        let moves = polygon
+        let moves: Vec<Move> = polygon
             .exterior()
             .0
             .iter()
             .circular_tuple_windows::<(_, _)>()
             .map(|(&_start, &end)| {
                 let move_type = if outer_perimeter {
-                    MoveType::WithoutFiber(MovePrintType::ExteriorSurfacePerimeter)
+                    MoveType::WithoutFiber(MovePrintType::WallOuter)
                 } else {
-                    MoveType::WithoutFiber(MovePrintType::ExteriorInnerPerimeter)
+                    MoveType::WithoutFiber(MovePrintType::InteriorWallOuter)
                 };
                 Move {
                     end,
@@ -56,12 +55,13 @@ pub fn inset_polygon_recursive(
 
         for interior in polygon.interiors() {
             let mut moves = vec![];
+            let move_type = if outer_perimeter {
+                MoveType::WithoutFiber(MovePrintType::WallInner)
+            } else {
+                MoveType::WithoutFiber(MovePrintType::InteriorWallInner)
+            };
+
             for (&_start, &end) in interior.0.iter().circular_tuple_windows::<(_, _)>() {
-                let move_type = if outer_perimeter {
-                    MoveType::WithoutFiber(MovePrintType::InteriorSurfacePerimeter)
-                } else {
-                    MoveType::WithoutFiber(MovePrintType::InteriorInnerPerimeter)
-                };
                 moves.push(Move {
                     end,
                     move_type,
@@ -70,6 +70,7 @@ pub fn inset_polygon_recursive(
                         .get_value_for_movement_type(&move_type),
                 });
             }
+
             outer_chains.push(MoveChain {
                 start_point: interior.0[0],
                 moves,
@@ -77,6 +78,7 @@ pub fn inset_polygon_recursive(
             });
         }
 
+        let mut inner_chains = vec![];
         if layer_left != 0 {
             let rec_inset_poly = polygon.offset_from(
                 if outer_perimeter {
@@ -102,8 +104,8 @@ pub fn inset_polygon_recursive(
             move_chains.append(&mut inner_chains);
             move_chains.append(&mut outer_chains);
         } else {
-            move_chains.append(&mut outer_chains);
             move_chains.append(&mut inner_chains);
+            move_chains.append(&mut outer_chains);
         }
     }
 
