@@ -1,7 +1,7 @@
 use std::io::{BufWriter, Write};
 
 use glam::{vec3, Mat4, Vec4};
-use shared::object::ObjectMesh;
+use shared::{object::ObjectMesh, SliceInput};
 use slicer::Settings;
 use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
 use wgpu::Color;
@@ -37,13 +37,20 @@ impl Slicer {
             model.sort_indices();
         });
 
-        let result = slicer::slice(&models, &settings).expect("Failed to slice model");
+        let result = slicer::slice(
+            SliceInput {
+                objects: models,
+                fiber_intersection_objects: vec![],
+            },
+            &settings,
+        )
+        .expect("Failed to slice model");
 
         global_state
             .viewer
             .toolpath_server
             .write()
-            .load_from_slice_result(result);
+            .load_from_slice_result(result, &settings);
 
         // println!("Sliced model {:?}", result);
 

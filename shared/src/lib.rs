@@ -33,3 +33,8 @@ impl std::ops::IndexMut<usize> for IndexedLine {
         &mut self.0[index]
     }
 }
+
+pub struct SliceInput {
+    pub objects: Vec<object::ObjectMesh>,
+    pub fiber_intersection_objects: Vec<object::ObjectMesh>,
+}

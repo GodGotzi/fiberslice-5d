@@ -1,3 +1,4 @@
+use std::io::{BufWriter, Write};
 use std::path::Path;
 
 use slicer::{Command, SliceResult};
@@ -209,16 +210,17 @@ impl ToolpathServer {
         self.queue = Some((rx, handle));
     }
 
-    pub fn load_from_slice_result(&mut self, slice_result: SliceResult) {
-        let (tx, rx) = tokio::sync::oneshot::channel();
+    pub fn load_from_slice_result(
+        &mut self,
+        slice_result: SliceResult,
+        settings: &slicer::Settings,
+    ) {
+        let mut file = std::fs::File::create("sliced_model.gcode").expect("Failed to create file");
 
-        let handle = tokio::spawn(async move {
-            panic!("Not implemented");
-
-            // tx.send(part).unwrap();
-        });
-
-        self.queue = Some((rx, handle));
+        let mut writer = BufWriter::new(&mut file);
+        slicer::convert(&slice_result.moves, settings, &mut writer)
+            .expect("Failed to write to file");
+        writer.flush().expect("Failed to flush file");
     }
 
     pub fn update(&mut self, global_state: GlobalState<RootEvent>) -> Result<(), Error> {

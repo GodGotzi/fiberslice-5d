@@ -1,9 +1,10 @@
 mod settings;
 
 use command_pass::{CommandPass, OptimizePass, SlowDownLayerPass};
-use plotter::convert_objects_into_moves;
+use plotter::{convert_objects_into_moves, polygon_operations::PolygonOperations};
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 pub use settings::*;
+use shared::SliceInput;
 use slice_pass::*;
 use strum_macros::{EnumIter, EnumString};
 use tower::create_towers;
@@ -37,15 +38,14 @@ pub struct SliceResult {
     pub calculated_values: CalculatedValues,
 }
 
-pub fn slice(
-    models: &[shared::object::ObjectMesh],
-    settings: &Settings,
-) -> Result<SliceResult, SlicerErrors> {
-    let towers = create_towers(models)?;
+pub fn slice(input: SliceInput, settings: &Settings) -> Result<SliceResult, SlicerErrors> {
+    let towers = create_towers(&input.objects)?;
+    let towers_fiber = create_towers(&input.fiber_intersection_objects)?;
 
     let objects = slicing::slice(&towers, settings)?;
+    let objects_fiber = slicing::slice(&towers_fiber, settings)?;
 
-    let mut moves = generate_moves(objects, settings)?;
+    let mut moves = generate_moves(objects, objects_fiber, settings)?;
 
     OptimizePass::pass(&mut moves, settings);
 
@@ -59,8 +59,21 @@ pub fn slice(
     })
 }
 
+fn merge_fiber_intersection(slices: &mut Vec<Slice>, fiber_objects: &[Object]) {
+    for fiber_object in fiber_objects {
+        fiber_object
+            .layers
+            .iter()
+            .zip(slices.iter_mut())
+            .for_each(|(fiber, slice)| {
+                slice.remaining_area = slice.remaining_area.difference_with(&fiber.main_polygon)
+            });
+    }
+}
+
 fn generate_moves(
     mut objects: Vec<Object>,
+    fiber_objects: Vec<Object>,
     settings: &Settings,
 ) -> Result<Vec<Command>, SlicerErrors> {
     //Creates Support Towers
@@ -82,6 +95,8 @@ fn generate_moves(
 
             //Handle Perimeters
             PerimeterPass::pass(slices, settings)?;
+
+            merge_fiber_intersection(slices, &fiber_objects);
 
             //Handle Bridging
             BridgingPass::pass(slices, settings)?;
