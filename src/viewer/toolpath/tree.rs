@@ -1,3 +1,4 @@
+use glam::Vec3;
 use parking_lot::RwLock;
 use wgpu::BufferAddress;
 
@@ -8,30 +9,39 @@ use crate::{
         interact::InteractiveModel,
     },
     prelude::LockModel,
-    render::model::{Model, Rotate, RotateMut, Scale, ScaleMut, Translate, TranslateMut},
-    render::Renderable,
+    render::{model::Model, Renderable},
 };
 
-use super::{mesh::PathHitbox, vertex::ToolpathVertex};
+use super::{mesh::MoveHitbox, vertex::ToolpathVertex};
 
 #[derive(Debug)]
 pub enum ToolpathTree {
     Root {
         model: LockModel<ToolpathVertex>,
+        travel_model: LockModel<ToolpathVertex>,
+        fiber_model: LockModel<ToolpathVertex>,
         bounding_box: RwLock<BoundingBox>,
         children: Vec<Self>,
         size: BufferAddress,
+        travel_size: BufferAddress,
+        fiber_size: BufferAddress,
     },
-    Node {
+    Travel {
         offset: BufferAddress,
         size: BufferAddress,
-        bounding_box: RwLock<BoundingBox>,
-        children: Vec<Self>,
+        start: RwLock<Vec3>,
+        end: RwLock<Vec3>,
     },
-    Path {
+    Fiber {
         offset: BufferAddress,
         size: BufferAddress,
-        path_box: RwLock<Box<PathHitbox>>,
+        start: RwLock<Vec3>,
+        end: RwLock<Vec3>,
+    },
+    Move {
+        offset: BufferAddress,
+        size: BufferAddress,
+        r#box: RwLock<Box<MoveHitbox>>,
     },
 }
 
@@ -39,108 +49,73 @@ impl ToolpathTree {
     pub fn create_root() -> Self {
         Self::Root {
             model: LockModel::new(Model::create()),
+            travel_model: LockModel::new(Model::create()),
+            fiber_model: LockModel::new(Model::create()),
+
             children: Vec::new(),
             bounding_box: RwLock::new(BoundingBox::default()),
             size: 0,
+            travel_size: 0,
+            fiber_size: 0,
         }
     }
 
-    pub fn create_root_with_children(
-        bounding_box: BoundingBox,
-        children: Vec<Self>,
-        size: BufferAddress,
-    ) -> Self {
-        Self::Root {
-            model: LockModel::new(Model::create()),
-            children,
-            bounding_box: RwLock::new(bounding_box),
-            size,
+    pub fn create_travel(offset: BufferAddress, start: Vec3, end: Vec3) -> Self {
+        Self::Travel {
+            offset,
+            size: 2,
+            start: RwLock::new(start),
+            end: RwLock::new(end),
         }
     }
 
-    pub fn create_node(offset: BufferAddress, size: BufferAddress) -> Self {
-        Self::Node {
+    pub fn create_fiber(offset: BufferAddress, start: Vec3, end: Vec3) -> Self {
+        Self::Fiber {
+            offset,
+            size: 2,
+            start: RwLock::new(start),
+            end: RwLock::new(end),
+        }
+    }
+
+    pub fn create_move(path_box: MoveHitbox, offset: BufferAddress, size: BufferAddress) -> Self {
+        Self::Move {
             offset,
             size,
-            children: Vec::new(),
-            bounding_box: RwLock::new(BoundingBox::default()),
+            r#box: RwLock::new(Box::new(path_box)),
         }
     }
 
-    pub fn create_node_with_children(
-        children: Vec<Self>,
-        offset: BufferAddress,
-        size: BufferAddress,
-    ) -> Self {
-        Self::Node {
-            offset,
-            size,
-            children,
-            bounding_box: RwLock::new(BoundingBox::default()),
-        }
-    }
-
-    pub fn create_path(path_box: PathHitbox, offset: BufferAddress, size: BufferAddress) -> Self {
-        Self::Path {
-            offset,
-            size,
-            path_box: RwLock::new(Box::new(path_box)),
-        }
-    }
-
-    pub fn push_node(&mut self, node: Self) {
+    pub fn push(&mut self, node: Self) {
         match self {
             Self::Root {
                 children,
                 bounding_box,
-                size,
+                size: model_size,
+                travel_size,
+                fiber_size,
                 ..
             } => {
-                *size += node.size();
-                bounding_box.get_mut().expand_point(node.get_min());
-                bounding_box.get_mut().expand_point(node.get_max());
-                children.push(node);
-            }
-            Self::Node {
-                children,
-                bounding_box,
-                size,
-                ..
-            } => {
-                *size += node.size();
-                bounding_box.get_mut().expand_point(node.get_min());
-                bounding_box.get_mut().expand_point(node.get_max());
-                children.push(node);
-            }
-            Self::Path { .. } => panic!("Cannot push node to path"),
-        }
-    }
+                match &node {
+                    Self::Travel { size, .. } => {
+                        *travel_size += size;
+                    }
+                    Self::Fiber { size, .. } => {
+                        *fiber_size += size;
+                    }
+                    Self::Move { size, .. } => {
+                        *model_size += size;
+                    }
+                    Self::Root { .. } => panic!("Cannot push root to root"),
+                }
 
-    pub fn push_path(&mut self, path: Self) {
-        match self {
-            Self::Root {
-                children,
-                bounding_box,
-                size,
-                ..
-            } => {
-                *size += path.size();
-                bounding_box.get_mut().expand_point(path.get_min());
-                bounding_box.get_mut().expand_point(path.get_max());
-                children.push(path);
+                bounding_box.get_mut().expand_point(node.get_min());
+                bounding_box.get_mut().expand_point(node.get_max());
+                children.push(node);
             }
-            Self::Node {
-                children,
-                bounding_box,
-                size,
-                ..
-            } => {
-                *size += path.size();
-                bounding_box.get_mut().expand_point(path.get_min());
-                bounding_box.get_mut().expand_point(path.get_max());
-                children.push(path);
-            }
-            Self::Path { .. } => panic!("Cannot push path to path"),
+            Self::Travel { .. } => panic!("Cannot push node to travel"),
+            Self::Fiber { .. } => panic!("Cannot push node to fiber"),
+            Self::Move { .. } => panic!("Cannot push node to move"),
         }
     }
 
@@ -153,30 +128,41 @@ impl ToolpathTree {
                     current_offset += child.size();
                 }
             }
-            Self::Node { children, .. } => {
-                let mut current_offset = offset;
-                for child in children {
-                    child.update_offset(current_offset);
-                    current_offset += child.size();
-                }
-            }
-            Self::Path { offset: o, .. } => *o = offset,
+            Self::Move { offset: o, .. } => *o = offset,
+            Self::Travel { offset: o, .. } => *o = offset,
+            Self::Fiber { offset: o, .. } => *o = offset,
         }
     }
 
     pub fn size(&self) -> BufferAddress {
         match self {
             Self::Root { size, .. } => *size,
-            Self::Node { size, .. } => *size,
-            Self::Path { size, .. } => *size,
+            Self::Travel { size, .. } => *size,
+            Self::Fiber { size, .. } => *size,
+            Self::Move { size, .. } => *size,
         }
     }
 
-    pub fn awaken(&mut self, data: &[ToolpathVertex]) {
+    pub fn awaken(
+        &mut self,
+        data: &[ToolpathVertex],
+        travel: &[ToolpathVertex],
+        fiber: &[ToolpathVertex],
+    ) {
         match self {
-            Self::Root { model, .. } => model.write().awaken(data),
-            Self::Node { .. } => panic!("Cannot awaken node"),
-            Self::Path { .. } => panic!("Cannot awaken path"),
+            Self::Root {
+                model,
+                travel_model,
+                fiber_model,
+                ..
+            } => {
+                model.write().awaken(data);
+                travel_model.write().awaken(travel);
+                fiber_model.write().awaken(fiber);
+            }
+            Self::Travel { .. } => panic!("Cannot awaken travel"),
+            Self::Fiber { .. } => panic!("Cannot awaken fiber"),
+            Self::Move { .. } => panic!("Cannot awaken path"),
         }
     }
 }
@@ -185,8 +171,9 @@ impl Renderable for ToolpathTree {
     fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
         match self {
             Self::Root { model, .. } => model.render(render_pass),
-            Self::Node { .. } => panic!("Cannot render node"),
-            Self::Path { .. } => panic!("Cannot render path"),
+            Self::Travel { .. } => panic!("Cannot render travel"),
+            Self::Fiber { .. } => panic!("Cannot render fiber"),
+            Self::Move { .. } => panic!("Cannot render path"),
         }
     }
 }
@@ -195,32 +182,42 @@ impl HitboxNode<Self> for ToolpathTree {
     fn check_hit(&self, ray: &crate::picking::Ray) -> Option<f32> {
         match self {
             Self::Root { bounding_box, .. } => bounding_box.read().check_hit(ray),
-            Self::Node { bounding_box, .. } => bounding_box.read().check_hit(ray),
-            Self::Path { path_box, .. } => path_box.read().check_hit(ray),
+            Self::Move {
+                r#box: path_box, ..
+            } => path_box.read().check_hit(ray),
+            Self::Travel { .. } => None,
+            Self::Fiber { .. } => None,
         }
     }
 
     fn inner_nodes(&self) -> &[Self] {
         match self {
             Self::Root { children, .. } => children,
-            Self::Node { children, .. } => children,
-            Self::Path { .. } => &[],
+            Self::Travel { .. } => &[],
+            Self::Fiber { .. } => &[],
+            Self::Move { .. } => &[],
         }
     }
 
     fn get_min(&self) -> glam::Vec3 {
         match self {
             Self::Root { bounding_box, .. } => bounding_box.read().get_min(),
-            Self::Node { bounding_box, .. } => bounding_box.read().get_min(),
-            Self::Path { path_box, .. } => path_box.read().get_min(),
+            Self::Move {
+                r#box: path_box, ..
+            } => path_box.read().get_min(),
+            Self::Travel { start, end, .. } => start.read().min(*end.read()),
+            Self::Fiber { start, end, .. } => start.read().min(*end.read()),
         }
     }
 
     fn get_max(&self) -> glam::Vec3 {
         match self {
             Self::Root { bounding_box, .. } => bounding_box.read().get_max(),
-            Self::Node { bounding_box, .. } => bounding_box.read().get_max(),
-            Self::Path { path_box, .. } => path_box.read().get_max(),
+            Self::Move {
+                r#box: path_box, ..
+            } => path_box.read().get_max(),
+            Self::Travel { start, end, .. } => start.read().max(*end.read()),
+            Self::Fiber { start, end, .. } => start.read().max(*end.read()),
         }
     }
 }
@@ -236,209 +233,5 @@ impl InteractiveModel for ToolpathTree {
 
     fn scroll(&self, _event: crate::picking::interact::ScrollEvent) {
         println!("ToolpathTree: Scrolled");
-    }
-}
-
-impl Translate for ToolpathTree {
-    fn translate(&self, translation: glam::Vec3) {
-        match self {
-            ToolpathTree::Root {
-                model,
-                children,
-                bounding_box,
-                ..
-            } => {
-                model.write().translate(translation);
-                bounding_box.write().translate(translation);
-
-                for child in children {
-                    child.translate(translation);
-                }
-            }
-            ToolpathTree::Node {
-                children,
-                bounding_box,
-                ..
-            } => {
-                bounding_box.write().translate(translation);
-
-                for child in children {
-                    child.translate(translation);
-                }
-            }
-            ToolpathTree::Path { path_box, .. } => {
-                path_box.write().translate(translation);
-            }
-        }
-    }
-}
-
-impl Rotate for ToolpathTree {
-    fn rotate(&self, rotation: glam::Quat) {
-        match self {
-            ToolpathTree::Root {
-                model,
-                children,
-                bounding_box,
-                ..
-            } => {
-                model.write().rotate(rotation);
-                bounding_box.write().rotate(rotation);
-
-                for child in children {
-                    child.rotate(rotation);
-                }
-            }
-            ToolpathTree::Node {
-                children,
-                bounding_box,
-                ..
-            } => {
-                bounding_box.write().rotate(rotation);
-
-                for child in children {
-                    child.rotate(rotation);
-                }
-            }
-            ToolpathTree::Path { path_box, .. } => {
-                path_box.write().rotate(rotation);
-            }
-        }
-    }
-}
-
-impl Scale for ToolpathTree {
-    fn scale(&self, scale: glam::Vec3) {
-        match self {
-            ToolpathTree::Root {
-                model,
-                children,
-                bounding_box,
-                ..
-            } => {
-                model.write().scale(scale);
-                bounding_box.write().scale(scale);
-
-                for child in children {
-                    child.scale(scale);
-                }
-            }
-            ToolpathTree::Node {
-                children,
-                bounding_box,
-                ..
-            } => {
-                bounding_box.write().scale(scale);
-
-                for child in children {
-                    child.scale(scale);
-                }
-            }
-            ToolpathTree::Path { path_box, .. } => {
-                path_box.write().scale(scale);
-            }
-        }
-    }
-}
-
-impl TranslateMut for ToolpathTree {
-    fn translate(&mut self, translation: glam::Vec3) {
-        match self {
-            ToolpathTree::Root {
-                model,
-                children,
-                bounding_box,
-                ..
-            } => {
-                model.get_mut().translate(translation);
-                bounding_box.get_mut().translate(translation);
-
-                for child in children {
-                    child.translate(translation);
-                }
-            }
-            ToolpathTree::Node {
-                children,
-                bounding_box,
-                ..
-            } => {
-                bounding_box.get_mut().translate(translation);
-
-                for child in children {
-                    child.translate(translation);
-                }
-            }
-            ToolpathTree::Path { path_box, .. } => {
-                path_box.get_mut().translate(translation);
-            }
-        }
-    }
-}
-
-impl RotateMut for ToolpathTree {
-    fn rotate(&mut self, rotation: glam::Quat) {
-        match self {
-            ToolpathTree::Root {
-                model,
-                children,
-                bounding_box,
-                ..
-            } => {
-                model.get_mut().rotate(rotation);
-                bounding_box.get_mut().rotate(rotation);
-
-                for child in children {
-                    child.rotate(rotation);
-                }
-            }
-            ToolpathTree::Node {
-                children,
-                bounding_box,
-                ..
-            } => {
-                bounding_box.get_mut().rotate(rotation);
-
-                for child in children {
-                    child.rotate(rotation);
-                }
-            }
-            ToolpathTree::Path { path_box, .. } => {
-                path_box.get_mut().rotate(rotation);
-            }
-        }
-    }
-}
-
-impl ScaleMut for ToolpathTree {
-    fn scale(&mut self, scale: glam::Vec3) {
-        match self {
-            ToolpathTree::Root {
-                model,
-                children,
-                bounding_box,
-                ..
-            } => {
-                model.get_mut().scale(scale);
-                bounding_box.get_mut().scale(scale);
-
-                for child in children {
-                    child.scale(scale);
-                }
-            }
-            ToolpathTree::Node {
-                children,
-                bounding_box,
-                ..
-            } => {
-                bounding_box.get_mut().scale(scale);
-
-                for child in children {
-                    child.scale(scale);
-                }
-            }
-            ToolpathTree::Path { path_box, .. } => {
-                path_box.get_mut().scale(scale);
-            }
-        }
     }
 }

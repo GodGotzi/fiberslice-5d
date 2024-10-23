@@ -41,6 +41,7 @@ fn lerp(a: f32, b: f32, f: f32) -> f32 {
     a + f * (b - a)
 }
 
+#[derive(Debug)]
 pub struct TriangleTower {
     vertices: Vec<ObjectVertex>,
     tower_vertices: Vec<TowerVertex>,

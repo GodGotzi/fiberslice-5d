@@ -9,7 +9,11 @@ use super::{
     Object, Slice,
 };
 
-pub fn slice(towers: &[TriangleTower], settings: &Settings) -> Result<Vec<Object>, SlicerErrors> {
+pub fn slice(
+    towers: &[TriangleTower],
+    max_height: f32,
+    settings: &Settings,
+) -> Result<Vec<Object>, SlicerErrors> {
     towers
         .iter()
         .map(|tower| {
@@ -40,8 +44,8 @@ pub fn slice(towers: &[TriangleTower], settings: &Settings) -> Result<Vec<Object
                         Ok((bottom_height, top_height, tower_iter.get_points()))
                     })
                     .take_while(|r| {
-                        if let Ok((_, _, layer_loops)) = r {
-                            !layer_loops.is_empty()
+                        if let Ok((bottom, top, layer_loops)) = r {
+                            !layer_loops.is_empty() || ((bottom + top) / 2.0 <= max_height)
                         } else {
                             true
                         }

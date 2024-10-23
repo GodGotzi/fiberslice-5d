@@ -6,7 +6,7 @@ use std::{
     sync::Arc,
 };
 
-use glam::{Quat, Vec3, Vec3Swizzles};
+use glam::{vec3, Mat4, Quat, Vec3, Vec3Swizzles};
 use ordered_float::OrderedFloat;
 
 use parking_lot::RwLock;
@@ -15,12 +15,14 @@ use shared::{
     object::ObjectMesh,
 };
 
+use slicer::Settings;
 use tokio::{sync::oneshot::error::TryRecvError, task::JoinHandle};
 
 use uni_path::PathBuf;
 use wgpu::{BufferAddress, Color};
 
 use crate::{
+    api::FlipYZ,
     geometry::{
         mesh::{vec3s_into_vertices, IntoArrayColor},
         BoundingBox,
@@ -107,6 +109,8 @@ impl CADModelServer {
                 }
             };
 
+            let (min, max) = mesh.min_max();
+
             let global_state = GLOBAL_STATE.read();
             let global_state = global_state.as_ref().unwrap();
 
@@ -115,7 +119,7 @@ impl CADModelServer {
                 .write()
                 .add(MODEL_LOAD_PROGRESS, trim_text::<20, 4>(&path));
 
-            let vertices: Vec<Vec3> = mesh.vertices().iter().map(|v| v.xyz()).collect();
+            let vertices: Vec<Vec3> = mesh.vertices().iter().map(|v| v.xzy()).collect();
 
             let mut triangles: Vec<(shared::IndexedTriangle, Vec3)> = mesh
                 .triangles()
@@ -145,10 +149,10 @@ Clustering models"
                 .fold(Vec::new(), |mut vec, (triangle, _)| {
                     vec.push(vertices[triangle[0]]);
                     triangle[0] = vec.len() - 1;
-                    vec.push(vertices[triangle[2]]);
-                    triangle[2] = vec.len() - 1;
                     vec.push(vertices[triangle[1]]);
                     triangle[1] = vec.len() - 1;
+                    vec.push(vertices[triangle[2]]);
+                    triangle[2] = vec.len() - 1;
                     vec
                 });
 
@@ -206,24 +210,19 @@ Clustering models"
             process_tracking.set_task("Creating models".to_string());
             process_tracking.set_progress(0.9);
             let mut root = polygon_faces.clone().into_iter().fold(
-                CADModel::create_root(),
+                CADModel::create_root(min.xzy(), max.xzy()),
                 |mut root, face| {
                     root.push_face(face);
 
                     root
                 },
             );
+
             root.awaken(&triangle_vertices);
 
-            process_tracking.set_task("Rotating model to largest face".to_string());
-            process_tracking.set_progress(0.95);
-            let bounding_box = match &root {
-                CADModel::Root { bounding_box, .. } => bounding_box,
-                _ => panic!("Not root"),
-            };
+            root.transform(Mat4::from_translation(vec3(0.0, -min.xzy().y, 0.0)));
 
-            // let it look like z and y are swapped
-            root.rotate(Quat::from_euler(glam::EulerRot::XYZ, -PI / 2.0, 0.0, 0.0));
+            process_tracking.set_progress(0.95);
 
             tx.send(Ok(LoadResult {
                 process: process_tracking,
@@ -350,12 +349,33 @@ Clustering models"
         &self.root_hitbox
     }
 
-    pub fn iter_entries(&self) -> impl Iterator<Item = (&String, ObjectMesh)> {
-        self.models.iter().map(|(key, model)| {
-            let geometry = model.mesh.clone();
+    pub fn models<'a>(&'a self, settings: &'a Settings) -> Vec<ObjectMesh> {
+        self.models
+            .values()
+            .map(|model| {
+                let transform = model.model.get_transform();
 
-            (key, geometry)
-        })
+                let (mut scaling, rotation, mut translation) =
+                    transform.to_scale_rotation_translation();
+                let (x, y, z) = rotation.to_euler(glam::EulerRot::XYZ);
+
+                let rotation = Quat::from_euler(glam::EulerRot::XYZ, -x, -z, -y);
+                std::mem::swap(&mut scaling.y, &mut scaling.z);
+                std::mem::swap(&mut translation.y, &mut translation.z);
+
+                translation.x += settings.print_x / 2.0;
+                translation.y += settings.print_y / 2.0;
+
+                let transform =
+                    Mat4::from_scale_rotation_translation(scaling, rotation, translation);
+
+                let mut geometry = model.mesh.clone();
+                geometry.transform(transform);
+                geometry.sort_indices();
+
+                geometry
+            })
+            .collect()
     }
 
     pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
@@ -379,10 +399,10 @@ pub enum CADModel {
 }
 
 impl CADModel {
-    pub fn create_root() -> Self {
+    pub fn create_root(min: Vec3, max: Vec3) -> Self {
         Self::Root {
             model: LockModel::new(Model::create()),
-            bounding_box: RwLock::new(BoundingBox::default()),
+            bounding_box: RwLock::new(BoundingBox::new(min, max)),
             children: Vec::new(),
             size: 0,
         }

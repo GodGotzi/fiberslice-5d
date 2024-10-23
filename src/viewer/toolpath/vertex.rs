@@ -1,5 +1,3 @@
-use std::u32;
-
 use bytemuck::Zeroable;
 
 use crate::render::Vertex;

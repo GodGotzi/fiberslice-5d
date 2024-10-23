@@ -135,24 +135,6 @@ fn file_button(ui: &mut Ui, (_ui_state, global_state): &(UiState, GlobalState<Ro
             }
         });
 
-        build_sub_menu(ui, "Import GCode", |_ui| {
-            let nfd = Nfd::new().unwrap();
-            let result = nfd.open_file().add_filter("Gcode", "gcode").unwrap().show();
-
-            match result {
-                DialogResult::Ok(path) => {
-                    global_state
-                        .viewer
-                        .toolpath_server
-                        .write()
-                        .load_from_file(path);
-                }
-                _ => {
-                    println!("No file selected")
-                }
-            }
-        });
-
         build_sub_menu(ui, "Import Intersection Object", |_ui| {});
 
         build_sub_menu(ui, "Save As", |_ui| {});

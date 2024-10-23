@@ -21,26 +21,14 @@ pub struct QuadFace {
     pub max: Vec3,
 }
 
-impl TranslateMut for QuadFace {
-    fn translate(&mut self, translation: Vec3) {
-        self.min += translation;
-        self.max += translation;
-        self.point += translation;
-    }
-}
+impl QuadFace {
+    pub fn with_transform(mut self, transform: glam::Mat4) -> Self {
+        self.point = transform.transform_point3(self.point);
+        self.normal = transform.transform_vector3(self.normal);
+        self.min = transform.transform_point3(self.min);
+        self.max = transform.transform_point3(self.max);
 
-impl RotateMut for QuadFace {
-    fn rotate(&mut self, rotation: glam::Quat) {
-        self.normal = rotation * self.normal;
-        self.point = rotation * self.point;
-    }
-}
-
-impl ScaleMut for QuadFace {
-    fn scale(&mut self, scale: Vec3) {
-        self.min *= scale;
-        self.max *= scale;
-        self.point *= scale;
+        self
     }
 }
 
@@ -87,7 +75,7 @@ impl Hitbox for QuadFace {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct ProfileExtrusion {
     profile_start: ProfileCross,
     profile_end: ProfileCross,
@@ -101,32 +89,18 @@ impl ProfileExtrusion {
         }
     }
 
-    pub fn scaled(self, scale: f32) -> Self {
-        Self {
-            profile_start: self.profile_start.scaled(scale),
-            profile_end: self.profile_end.scaled(scale),
-        }
-    }
-}
+    pub fn with_transform(mut self, transform: glam::Mat4) -> Self {
+        self.profile_start.a = transform.transform_point3(self.profile_start.a);
+        self.profile_start.b = transform.transform_point3(self.profile_start.b);
+        self.profile_start.c = transform.transform_point3(self.profile_start.c);
+        self.profile_start.d = transform.transform_point3(self.profile_start.d);
 
-impl TranslateMut for ProfileExtrusion {
-    fn translate(&mut self, translation: Vec3) {
-        self.profile_start.translate(translation);
-        self.profile_end.translate(translation);
-    }
-}
+        self.profile_end.a = transform.transform_point3(self.profile_end.a);
+        self.profile_end.b = transform.transform_point3(self.profile_end.b);
+        self.profile_end.c = transform.transform_point3(self.profile_end.c);
+        self.profile_end.d = transform.transform_point3(self.profile_end.d);
 
-impl RotateMut for ProfileExtrusion {
-    fn rotate(&mut self, rotation: glam::Quat) {
-        self.profile_start.rotate(rotation);
-        self.profile_end.rotate(rotation);
-    }
-}
-
-impl ScaleMut for ProfileExtrusion {
-    fn scale(&mut self, scale: Vec3) {
-        self.profile_start.scale(scale);
-        self.profile_end.scale(scale);
+        self
     }
 }
 

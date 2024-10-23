@@ -1,186 +1,302 @@
-use std::{fmt::Debug, str::Lines, sync::Arc};
+use std::{fmt::Debug, sync::Arc};
 
 use egui::ahash::{HashMap, HashMapExt};
-use glam::Vec3;
-use tree::ToolpathTree;
-
-use crate::{render::model::TranslateMut, slicer::PathType};
-
-use self::{
-    instruction::{InstructionModul, InstructionType},
-    movement::Movements,
-    path::{Line, RawPath},
+use glam::{Vec3, Vec4};
+use mesh::{
+    MoveConnectionMesh, MoveHitbox, MoveMesh, ProfileCross, ProfileCrossMesh, MOVE_MESH_VERTICES,
 };
+use slicer::{Command, MovePrintType, StateChange};
+use tree::ToolpathTree;
+use vertex::ToolpathVertex;
+use wgpu::BufferAddress;
 
-use super::volume::REFERENCE_POINT_BED;
+use crate::geometry::mesh::Mesh;
 
-pub mod instruction;
 pub mod mesh;
 pub mod movement;
-pub mod parser;
-pub mod path;
-pub mod state;
 pub mod tree;
 pub mod vertex;
 
-pub type GCodeRaw = Vec<String>;
-pub type GCode = Vec<InstructionModul>;
-
-pub struct DisplaySettings {
-    pub horizontal: f32,
-    pub vertical: f32,
+/// Returns the bit representation of the path type.
+/// The first bit is the setup flag, the second bit is the travel flag. The rest of the bits are the print type.
+/// The print type is represented by the enum variant index.
+/// # Example
+/// ```
+/// use slicer::print_type::{PathType, PrintType};
+///
+/// let path_type = PathType::Work {
+///
+///    print_type: PrintType::InternalInfill,
+///   travel: false,
+/// };
+///
+/// assert_eq!(path_type.bit_representation(), 1);
+///
+pub fn bit_representation(print_type: &MovePrintType) -> u32 {
+    0x01 << ((*print_type as u32) + 0x02)
 }
 
-pub struct MeshSettings {}
+pub const fn bit_representation_travel() -> u32 {
+    0x02
+}
+
+pub const fn bit_representation_setup() -> u32 {
+    0x01
+}
 
 #[derive(Debug)]
 pub struct Toolpath {
     pub model: Arc<ToolpathTree>,
-    pub count_map: HashMap<PathType, usize>,
+    pub count_map: HashMap<MovePrintType, usize>,
     pub max_layer: usize,
-    pub raw: GCodeRaw,
-    pub origin_path: String,
-    pub wire_model: WireModel,
-    pub center_mass: Vec3,
+    pub moves: Vec<Command>,
+    pub settings: slicer::Settings,
 }
 
 unsafe impl Sync for Toolpath {}
 unsafe impl Send for Toolpath {}
 
 impl Toolpath {
-    pub fn from_gcode(
-        path: &str,
-        (raw, gcode): (Lines, GCode),
-        _mesh_settings: &MeshSettings,
-        display_settings: &DisplaySettings,
-    ) -> Self {
-        let raw_path = RawPath::from(&gcode);
+    pub fn from_commands(
+        commands: &[slicer::Command],
+        settings: &slicer::Settings,
+    ) -> Result<Self, ()> {
+        let mut current_state = StateChange::default();
+        let mut current_type = None;
+        let mut current_layer = 0;
+        let mut current_height_z = 0.0;
 
-        let mut lines = Vec::new();
-
-        // let mut layers: HashMap<usize, LayerModel> = HashMap::new();
+        let mut last_position = Vec3::ZERO;
 
         let mut count_map = HashMap::new();
-        let mut layer = 0;
 
-        let mut root_vertices = Vec::new();
         let mut root = ToolpathTree::create_root();
 
-        for modul in raw_path.moduls {
-            lines.extend(modul.lines.clone());
+        let mut last_extrusion_profile = None;
 
-            let (model, vertices, count) = modul.to_model(display_settings);
+        let mut move_vertices = Vec::new();
+        // let mut travel_vertices = Vec::new();
+        // let mut fiber_vertices = Vec::new();
 
-            count_map
-                .entry(modul.state.path_type)
-                .and_modify(|c| *c += count)
-                .or_insert(count);
+        for command in commands {
+            let print_type_bit = match current_type {
+                Some(ty) => bit_representation(&ty),
+                None => bit_representation_setup(),
+            };
 
-            layer = modul.state.layer.unwrap_or(layer);
+            let color = current_type
+                .unwrap_or(MovePrintType::Infill)
+                .into_color_vec4();
 
-            root_vertices.extend(vertices);
-            root.push_node(model);
+            match command {
+                slicer::Command::MoveTo { end } => {
+                    let start = last_position;
+                    let end = Vec3::new(
+                        end.x - settings.print_x / 2.0,
+                        current_height_z,
+                        end.y - settings.print_y / 2.0,
+                    );
+
+                    // travel_vertices.push(start);
+                    // travel_vertices.push(end);
+
+                    last_position = end;
+                }
+                slicer::Command::MoveAndExtrude {
+                    start,
+                    end,
+                    thickness,
+                    width,
+                } => {
+                    let start = Vec3::new(
+                        start.x - settings.print_x / 2.0,
+                        current_height_z - thickness / 2.0,
+                        start.y - settings.print_y / 2.0,
+                    );
+                    let end = Vec3::new(
+                        end.x - settings.print_x / 2.0,
+                        current_height_z - thickness / 2.0,
+                        end.y - settings.print_y / 2.0,
+                    );
+
+                    let start_profile =
+                        ProfileCross::from_direction(end - start, *thickness, *width)
+                            .with_offset(start);
+
+                    let end_profile = ProfileCross::from_direction(end - start, *thickness, *width)
+                        .with_offset(end);
+
+                    let mesh =
+                        MoveMesh::from_profiles(start_profile, end_profile).with_color(color);
+
+                    extend_connection_vertices(
+                        last_extrusion_profile,
+                        start_profile,
+                        print_type_bit,
+                        current_layer,
+                        color,
+                        &mut move_vertices,
+                    );
+
+                    last_extrusion_profile = Some(end_profile);
+
+                    let offset = move_vertices.len() as BufferAddress;
+                    let toolpath_vertices = mesh.to_triangle_vertices().into_iter().map(|v| {
+                        ToolpathVertex::from_vertex(v, print_type_bit, current_layer as u32)
+                    });
+
+                    move_vertices.extend(toolpath_vertices);
+
+                    let tree_move = ToolpathTree::create_move(
+                        MoveHitbox::from(mesh),
+                        offset,
+                        MOVE_MESH_VERTICES as BufferAddress,
+                    );
+
+                    root.push(tree_move);
+
+                    count_map
+                        .entry(current_type.unwrap_or(MovePrintType::Infill))
+                        .and_modify(|e| *e += 1)
+                        .or_insert(1);
+
+                    last_position = end;
+                }
+                slicer::Command::MoveAndExtrudeFiber {
+                    start,
+                    end,
+                    thickness,
+                    width,
+                } => {
+                    let start = Vec3::new(
+                        start.x - settings.print_x / 2.0,
+                        current_height_z - thickness / 2.0,
+                        start.y - settings.print_y / 2.0,
+                    );
+                    let end = Vec3::new(
+                        end.x - settings.print_x / 2.0,
+                        current_height_z - thickness / 2.0,
+                        end.y - settings.print_y / 2.0,
+                    );
+
+                    let start_profile =
+                        ProfileCross::from_direction(end - start, *thickness, *width)
+                            .with_offset(start);
+
+                    let end_profile = ProfileCross::from_direction(end - start, *thickness, *width)
+                        .with_offset(end);
+
+                    let mesh = MoveMesh::from_profiles(
+                        ProfileCross::from_direction(end - start, *thickness, *width)
+                            .with_offset(start),
+                        ProfileCross::from_direction(end - start, *thickness, *width)
+                            .with_offset(end),
+                    )
+                    .with_color(color);
+
+                    if let Some(ty) = current_type {
+                        count_map.entry(ty).and_modify(|e| *e += 1).or_insert(1);
+                    }
+
+                    extend_connection_vertices(
+                        last_extrusion_profile,
+                        start_profile,
+                        print_type_bit,
+                        current_layer,
+                        color,
+                        &mut move_vertices,
+                    );
+
+                    last_extrusion_profile = Some(end_profile);
+
+                    let offset = move_vertices.len() as BufferAddress;
+                    let single_move_vertices = mesh.to_triangle_vertices().into_iter().map(|v| {
+                        ToolpathVertex::from_vertex(v, print_type_bit, current_layer as u32)
+                    });
+
+                    move_vertices.extend(single_move_vertices);
+
+                    let tree_move = ToolpathTree::create_move(
+                        MoveHitbox::from(mesh),
+                        offset,
+                        MOVE_MESH_VERTICES as BufferAddress,
+                    );
+
+                    root.push(tree_move);
+
+                    last_position = end;
+                }
+                slicer::Command::LayerChange { z, index } => {
+                    current_layer = *index;
+                    current_height_z = *z;
+                }
+                slicer::Command::SetState { new_state } => {
+                    current_state = new_state.clone();
+                }
+                slicer::Command::ChangeType { print_type } => current_type = Some(*print_type),
+                _ => {}
+            }
+
+            if !command.needs_filament() {
+                if let Some(last_extrusion_profile) = last_extrusion_profile {
+                    let mesh =
+                        ProfileCrossMesh::from_profile(last_extrusion_profile).with_color(color);
+
+                    let vertices = mesh.to_triangle_vertices().into_iter().map(|v| {
+                        ToolpathVertex::from_vertex(v, print_type_bit, current_layer as u32)
+                    });
+
+                    move_vertices.extend(vertices);
+                }
+
+                last_extrusion_profile = None;
+            }
         }
 
-        root.awaken(&root_vertices);
-        // println!("{:?}", root_vertices.len());
-        // println!("{:?}", root);
-        drop(root_vertices);
+        root.awaken(&move_vertices, &[], &[]);
 
         root.update_offset(0);
-        root.translate(REFERENCE_POINT_BED);
 
-        let wire_model = WireModel::new(lines);
-
-        Self {
+        Ok(Self {
             model: Arc::new(root),
             count_map,
-            max_layer: layer,
-            origin_path: path.to_string(),
-            raw: raw.map(|s| s.to_string()).collect(),
-            wire_model,
-            center_mass: raw_path.center_mass,
-        }
+            max_layer: current_layer,
+            moves: commands.to_vec(),
+            settings: settings.clone(),
+        })
+    }
+
+    pub fn from_file(path: &str, settings: &slicer::Settings) -> Result<Self, ()> {
+        todo!()
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct WireModel {
-    lines: Vec<Line>,
-}
+fn extend_connection_vertices(
+    last_extrusion_profile: Option<ProfileCross>,
+    start_profile: ProfileCross,
+    print_type_bit: u32,
+    current_layer: usize,
+    color: Vec4,
+    move_vertices: &mut Vec<ToolpathVertex>,
+) {
+    if let Some(last_extrusion_profile) = last_extrusion_profile {
+        let connection = MoveConnectionMesh::from_profiles(last_extrusion_profile, start_profile)
+            .with_color(color);
 
-impl WireModel {
-    pub fn new(lines: Vec<Line>) -> Self {
-        Self { lines }
-    }
+        let connection_vertices = connection
+            .to_triangle_vertices()
+            .into_iter()
+            .map(|v| ToolpathVertex::from_vertex(v, print_type_bit, current_layer as u32));
 
-    pub fn len(&self) -> usize {
-        self.lines.len()
-    }
+        move_vertices.extend(connection_vertices);
+    } else {
+        let mesh = ProfileCrossMesh::from_profile(start_profile).with_color(color);
 
-    pub fn iter(&self) -> std::slice::Iter<Line> {
-        self.lines.iter()
-    }
-}
+        let vertices = mesh
+            .to_triangle_vertices_flipped()
+            .into_iter()
+            .map(|v| ToolpathVertex::from_vertex(v, print_type_bit, current_layer as u32));
 
-pub struct SourceBuilder {
-    first: bool,
-    source: String,
-}
-
-impl SourceBuilder {
-    pub fn new() -> Self {
-        Self {
-            first: true,
-            source: String::new(),
-        }
-    }
-
-    pub fn push_movements(&mut self, movements: &Movements) {
-        if let Some(x) = movements.X.as_ref() {
-            self.push_movement("X", *x);
-        }
-
-        if let Some(y) = movements.Y.as_ref() {
-            self.push_movement("Y", *y);
-        }
-
-        if let Some(z) = movements.Z.as_ref() {
-            self.push_movement("Z", *z);
-        }
-
-        if let Some(e) = movements.E.as_ref() {
-            self.push_movement("E", *e);
-        }
-
-        if let Some(f) = movements.F.as_ref() {
-            self.push_movement("F", *f);
-        }
-    }
-
-    pub fn push_movement(&mut self, movement_str: &str, value: f32) {
-        if !self.first {
-            self.source.push(' ');
-        } else {
-            self.first = false;
-        }
-
-        let code = format!("{}{}", movement_str, value);
-
-        self.source.push_str(code.as_str());
-    }
-
-    pub fn push_instruction(&mut self, instruction: InstructionType) {
-        if !self.first {
-            self.source.push(' ');
-        } else {
-            self.first = false;
-        }
-
-        self.source.push_str(instruction.to_string().as_str());
-    }
-
-    pub fn finish(self) -> String {
-        self.source
+        move_vertices.extend(vertices);
     }
 }

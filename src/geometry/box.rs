@@ -2,8 +2,7 @@ use glam::{vec4, Vec3};
 
 use crate::{
     picking::hitbox::Hitbox,
-    render::model::{RotateMut, ScaleMut, TranslateMut},
-    render::Vertex,
+    render::{model::TransformMut, Vertex},
     viewer::Visual,
 };
 
@@ -16,6 +15,9 @@ use super::{
 pub struct BoundingBox {
     pub max: Vec3,
     pub min: Vec3,
+
+    init_max: Vec3,
+    init_min: Vec3,
 }
 
 impl Default for BoundingBox {
@@ -23,13 +25,21 @@ impl Default for BoundingBox {
         Self {
             max: Vec3::new(f32::MIN, f32::MIN, f32::MIN),
             min: Vec3::new(f32::MAX, f32::MAX, f32::MAX),
+
+            init_max: Vec3::new(f32::MIN, f32::MIN, f32::MIN),
+            init_min: Vec3::new(f32::MAX, f32::MAX, f32::MAX),
         }
     }
 }
 
 impl BoundingBox {
     pub fn new(min: Vec3, max: Vec3) -> Self {
-        Self { max, min }
+        Self {
+            max,
+            min,
+            init_max: max,
+            init_min: min,
+        }
     }
 
     pub fn center(&self) -> Vec3 {
@@ -43,19 +53,15 @@ impl BoundingBox {
     pub fn expand(&mut self, other: &Self) {
         self.min = self.min.min(other.min);
         self.max = self.max.max(other.max);
+        self.init_min = self.init_min.max(other.min);
+        self.init_max = self.init_max.max(other.max);
     }
 
     pub fn expand_point(&mut self, point: Vec3) {
         self.min = self.min.min(point);
         self.max = self.max.max(point);
-    }
-
-    pub fn expand_min(&mut self, min: Vec3) {
-        self.min = self.min.min(min);
-    }
-
-    pub fn expand_max(&mut self, max: Vec3) {
-        self.max = self.max.max(max);
+        self.init_min = self.init_min.min(point);
+        self.init_max = self.init_max.max(point);
     }
 
     pub fn contains(&self, point: Vec3) -> bool {
@@ -109,28 +115,13 @@ impl BoundingBox {
     }
 }
 
-impl TranslateMut for BoundingBox {
-    fn translate(&mut self, translation: Vec3) {
-        self.min += translation;
-        self.max += translation;
-    }
-}
+impl TransformMut for BoundingBox {
+    fn transform(&mut self, transform: glam::Mat4) {
+        self.min = transform.transform_point3(self.init_min);
+        self.max = transform.transform_point3(self.init_max);
 
-impl RotateMut for BoundingBox {
-    fn rotate(&mut self, rotation: glam::Quat) {
-        let center = self.center();
-
-        self.min = rotation * (self.min - center) + center;
-        self.max = rotation * (self.max - center) + center;
-    }
-}
-
-impl ScaleMut for BoundingBox {
-    fn scale(&mut self, scale: Vec3) {
-        let center = self.center();
-
-        self.min = center + (self.min - center) * scale;
-        self.max = center + (self.max - center) * scale;
+        self.min = self.min.min(self.max);
+        self.max = self.max.max(self.min);
     }
 }
 

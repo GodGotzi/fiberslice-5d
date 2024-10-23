@@ -114,6 +114,7 @@ impl SlicePass for ShrinkPass {
         slices.par_iter_mut().for_each(|slice| {
             slice.shrink_layer();
         });
+
         Ok(())
     }
 }

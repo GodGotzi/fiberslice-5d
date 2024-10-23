@@ -1,7 +1,8 @@
-use std::io::{BufWriter, Write};
-use std::path::Path;
+use std::fs::File;
+use std::io::BufWriter;
 
-use slicer::{Command, SliceResult};
+use nfde::{DialogResult, Nfd, SingleFileDialogBuilder};
+use slicer::{convert, MovePrintType, Settings, SliceResult};
 use tokio::sync::oneshot::Receiver;
 use tokio::task::JoinHandle;
 use wgpu::util::DeviceExt;
@@ -12,9 +13,9 @@ use crate::viewer::toolpath::vertex::{ToolpathContext, ToolpathVertex};
 use crate::viewer::toolpath::Toolpath;
 use crate::viewer::Server;
 use crate::QUEUE;
-use crate::{prelude::WgpuContext, slicer::PrintType, GlobalState, RootEvent};
+use crate::{prelude::WgpuContext, GlobalState, RootEvent};
 
-use crate::viewer::toolpath::{self, tree::ToolpathTree, DisplaySettings, MeshSettings};
+use crate::viewer::toolpath::tree::ToolpathTree;
 
 // const MAIN_LOADED_TOOLPATH: &str = "main"; // HACK: This is a solution to ease the dev when only one toolpath is loaded which is the only supported(for now)
 
@@ -180,47 +181,48 @@ impl Server for ToolpathServer {
 }
 
 impl ToolpathServer {
-    pub fn load_from_file<P>(&mut self, path: P)
-    where
-        P: AsRef<Path>,
-    {
-        let content = std::fs::read_to_string(&path).unwrap();
-        let path = path.as_ref().to_str().unwrap_or("").to_string();
+    pub fn load_from_slice_result(&mut self, slice_result: SliceResult, settings: Settings) {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         let handle = tokio::spawn(async move {
-            let mesh_settings = MeshSettings {};
-            let display_settings = DisplaySettings {
-                horizontal: 0.45,
-                vertical: 0.325,
-            };
+            let toolpath = Toolpath::from_commands(&slice_result.moves, &settings)
+                .expect("Failed to load toolpath");
 
-            let gcode: toolpath::GCode = toolpath::parser::parse_content(&content).unwrap();
-
-            let part = toolpath::Toolpath::from_gcode(
-                &path,
-                (content.lines(), gcode),
-                &mesh_settings,
-                &display_settings,
-            );
-
-            tx.send(part).unwrap();
+            tx.send(toolpath).unwrap();
         });
 
         self.queue = Some((rx, handle));
     }
 
-    pub fn load_from_slice_result(
-        &mut self,
-        slice_result: SliceResult,
-        settings: &slicer::Settings,
-    ) {
-        let mut file = std::fs::File::create("sliced_model.gcode").expect("Failed to create file");
+    pub fn export(&self) {
+        if let Some(toolpath) = self.toolpath.as_ref() {
+            let nfd = Nfd::new().unwrap();
+            let result = nfd
+                .save_file()
+                .default_name(&"model.gcode".to_string())
+                .unwrap()
+                .show();
 
-        let mut writer = BufWriter::new(&mut file);
-        slicer::convert(&slice_result.moves, settings, &mut writer)
-            .expect("Failed to write to file");
-        writer.flush().expect("Failed to flush file");
+            if let DialogResult::Ok(path) = result {
+                let file = match File::create_new(path) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        println!("Failed to create file: {:?}", e);
+                        return;
+                    }
+                };
+
+                let mut writer = BufWriter::new(file);
+                match convert(&toolpath.moves, &toolpath.settings, &mut writer) {
+                    Ok(_) => {
+                        println!("Gcode saved");
+                    }
+                    Err(e) => {
+                        println!("Failed to save gcode: {:?}", e);
+                    }
+                }
+            }
+        }
     }
 
     pub fn update(&mut self, global_state: GlobalState<RootEvent>) -> Result<(), Error> {
@@ -252,7 +254,7 @@ impl ToolpathServer {
         );
     }
 
-    pub fn set_visibility_type(&mut self, ty: PrintType, visible: bool) {
+    pub fn set_visibility_type(&mut self, ty: MovePrintType, visible: bool) {
         let index = ty as usize;
 
         if visible {

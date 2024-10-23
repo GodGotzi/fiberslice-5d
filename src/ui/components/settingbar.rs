@@ -239,7 +239,21 @@ impl<'a> Component for Settingsbar<'a> {
                                 let export_button = Button::new("Export GCode")
                                     .min_size(Vec2::new(ui.available_width() * 0.5, 20.0));
 
-                                ui.add_enabled(false, export_button);
+                                if ui
+                                    .add_enabled(
+                                        shared_state
+                                            .1
+                                            .viewer
+                                            .toolpath_server
+                                            .read()
+                                            .get_toolpath()
+                                            .is_some(),
+                                        export_button,
+                                    )
+                                    .clicked()
+                                {
+                                    shared_state.1.viewer.toolpath_server.read().export();
+                                }
 
                                 let rich_text = RichText::new("Slice")
                                     .color(Color32::BLACK)

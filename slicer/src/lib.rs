@@ -1,12 +1,13 @@
 mod settings;
 
 use command_pass::{CommandPass, OptimizePass, SlowDownLayerPass};
-use plotter::{convert_objects_into_moves, polygon_operations::PolygonOperations};
+use glam::{Vec3, Vec4};
+use plotter::convert_objects_into_moves;
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 pub use settings::*;
 use shared::SliceInput;
 use slice_pass::*;
-use strum_macros::{EnumIter, EnumString};
+use strum_macros::{EnumCount, EnumIter, EnumString};
 use tower::create_towers;
 
 mod calculation;
@@ -39,11 +40,20 @@ pub struct SliceResult {
 }
 
 pub fn slice(input: SliceInput, settings: &Settings) -> Result<SliceResult, SlicerErrors> {
+    let max = input
+        .objects
+        .iter()
+        .fold(Vec3::NEG_INFINITY, |max, obj| max.max(obj.min_max().1));
+
     let towers = create_towers(&input.objects)?;
     let towers_fiber = create_towers(&input.fiber_intersection_objects)?;
 
-    let objects = slicing::slice(&towers, settings)?;
-    let objects_fiber = slicing::slice(&towers_fiber, settings)?;
+    println!("Towers: {:?}", towers);
+
+    let objects = slicing::slice(&towers, max.z, settings)?;
+    let objects_fiber = slicing::slice(&towers_fiber, max.z, settings)?;
+
+    println!("Objects: {:?}", objects);
 
     let mut moves = generate_moves(objects, objects_fiber, settings)?;
 
@@ -57,18 +67,6 @@ pub fn slice(input: SliceInput, settings: &Settings) -> Result<SliceResult, Slic
         moves,
         calculated_values,
     })
-}
-
-fn merge_fiber_intersection(slices: &mut Vec<Slice>, fiber_objects: &[Object]) {
-    for fiber_object in fiber_objects {
-        fiber_object
-            .layers
-            .iter()
-            .zip(slices.iter_mut())
-            .for_each(|(fiber, slice)| {
-                slice.remaining_area = slice.remaining_area.difference_with(&fiber.main_polygon)
-            });
-    }
 }
 
 fn generate_moves(
@@ -95,8 +93,6 @@ fn generate_moves(
 
             //Handle Perimeters
             PerimeterPass::pass(slices, settings)?;
-
-            merge_fiber_intersection(slices, &fiber_objects);
 
             //Handle Bridging
             BridgingPass::pass(slices, settings)?;
@@ -126,6 +122,7 @@ fn generate_moves(
     Ok(convert_objects_into_moves(objects, settings))
 }
 
+#[derive(Debug)]
 ///A single slice of an object containing it's current plotting status.
 pub struct Slice {
     ///The slice's entire polygon. Should not be modified after creation by the slicing process.
@@ -281,6 +278,7 @@ pub enum PartialInfillTypes {
     Lightning,
 }
 
+#[derive(Debug)]
 ///A object is the collection of slices for a particular model.
 pub struct Object {
     /// The slices for this model sorted from lowest to highest.
@@ -298,6 +296,7 @@ pub struct Move {
     pub move_type: MoveType,
 }
 
+#[derive(Debug)]
 /// A chain of moves that should happen in order
 pub struct MoveChain {
     ///start point for the chain of moves. Needed as Moves don't contain there own start point.
@@ -310,7 +309,7 @@ pub struct MoveChain {
     pub is_loop: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash, EnumCount)]
 pub enum MovePrintType {
     ///The top later of infill
     TopSolidInfill,
@@ -356,6 +355,22 @@ impl std::fmt::Display for MovePrintType {
     }
 }
 
+impl MovePrintType {
+    pub fn into_color_vec4(&self) -> Vec4 {
+        match self {
+            MovePrintType::TopSolidInfill => Vec4::new(0.0, 0.0, 1.0, 1.0),
+            MovePrintType::SolidInfill => Vec4::new(0.0, 0.0, 1.0, 1.0),
+            MovePrintType::Infill => Vec4::new(0.0, 0.0, 1.0, 1.0),
+            MovePrintType::WallOuter => Vec4::new(0.0, 1.0, 0.0, 1.0),
+            MovePrintType::WallInner => Vec4::new(0.0, 1.0, 0.0, 1.0),
+            MovePrintType::InteriorWallOuter => Vec4::new(0.0, 1.0, 0.0, 1.0),
+            MovePrintType::InteriorWallInner => Vec4::new(0.0, 1.0, 0.0, 1.0),
+            MovePrintType::Bridging => Vec4::new(1.0, 0.0, 0.0, 1.0),
+            MovePrintType::Support => Vec4::new(1.0, 0.0, 0.0, 1.0),
+        }
+    }
+}
+
 ///Types of Moves
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
 pub enum MoveType {
@@ -363,6 +378,16 @@ pub enum MoveType {
     WithoutFiber(MovePrintType),
     ///Standard travel moves without extrusion
     Travel,
+}
+
+impl MoveType {
+    pub fn from_type(print_type: MovePrintType, fiber: bool) -> Self {
+        if fiber {
+            MoveType::WithFiber(print_type)
+        } else {
+            MoveType::WithoutFiber(print_type)
+        }
+    }
 }
 
 ///The intermediate representation of the commands to send to the printer. The commands will be optimized organized and converted into the output expected ( for example GCode)
@@ -453,6 +478,16 @@ pub enum Command {
     },
     ///Used in optimization , should be optimized out
     NoAction,
+}
+
+impl Command {
+    pub fn needs_filament(&self) -> bool {
+        match self {
+            Command::MoveAndExtrude { .. } => true,
+            Command::MoveAndExtrudeFiber { .. } => true,
+            _ => false,
+        }
+    }
 }
 
 ///A change in the state of the printer. all fields are optional and should only be set when the state is changing.

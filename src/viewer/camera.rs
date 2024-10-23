@@ -126,7 +126,7 @@ impl Adapter<'_, RootEvent, (), CameraResult, Viewport, CameraEvent> for CameraA
             2.0,
             1.5,
             1.25,
-            Vec3::new(0.0, 0.0, 0.0),
+            Vec3::new(0.0, 100.0, 0.0),
             wgpu_context.window.inner_size().width as f32
                 / wgpu_context.window.inner_size().height as f32,
         );

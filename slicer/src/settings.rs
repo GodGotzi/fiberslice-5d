@@ -541,6 +541,7 @@ pub enum SettingsValidationResult {
     Error(SlicerErrors),
 }
 
+#[derive(Debug)]
 ///Settings specific to a Layer
 pub struct LayerSettings {
     ///The height of the layers

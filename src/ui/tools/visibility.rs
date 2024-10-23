@@ -1,11 +1,9 @@
 use egui::{Color32, FontId, RichText};
+use slicer::MovePrintType;
 use strum::EnumCount;
+use wgpu::Color;
 
-use crate::{
-    slicer::{PathType, PrintType},
-    ui::UiState,
-    GlobalState, RootEvent,
-};
+use crate::{ui::UiState, GlobalState, RootEvent};
 
 use super::{Tool, ToolState};
 
@@ -13,7 +11,7 @@ use super::{Tool, ToolState};
 pub struct VisibilityToolState {
     enabled: bool,
     anchored: bool,
-    print_types: [bool; PrintType::COUNT],
+    print_types: [bool; MovePrintType::COUNT],
     travel: bool,
     setup: bool,
 }
@@ -23,7 +21,7 @@ impl Default for VisibilityToolState {
         Self {
             enabled: Default::default(),
             anchored: Default::default(),
-            print_types: [true; PrintType::COUNT],
+            print_types: [true; MovePrintType::COUNT],
             travel: false,
             setup: false,
         }
@@ -94,21 +92,16 @@ impl Tool for VisibilityTool<'_> {
                         egui::CollapsingHeader::new("Print Types")
                             .default_open(true)
                             .show(ui, |ui| {
-                                for (print_type, count) in
-                                    count_map.iter().filter_map(|(path_type, count)| {
-                                        if let PathType::Work { print_type, travel } = path_type {
-                                            if !travel {
-                                                Some((print_type, count))
-                                            } else {
-                                                None
-                                            }
-                                        } else {
-                                            None
-                                        }
-                                    })
-                                {
-                                    let str_type: &'static str = (print_type).into();
-                                    let color: wgpu::Color = (print_type).into();
+                                for (print_type, count) in count_map.iter() {
+                                    let str_type: String = format!("{}", print_type);
+                                    let color_vec = print_type.into_color_vec4();
+
+                                    let color: wgpu::Color = Color {
+                                        r: color_vec.x as f64,
+                                        g: color_vec.y as f64,
+                                        b: color_vec.z as f64,
+                                        a: color_vec.w as f64,
+                                    };
 
                                     let egui_color = Color32::from_rgba_premultiplied(
                                         (color.r * 255.0) as u8,
@@ -119,8 +112,7 @@ impl Tool for VisibilityTool<'_> {
 
                                     ui.horizontal(|ui| {
                                         ui.checkbox(
-                                            &mut self.state.print_types
-                                                [print_type.clone() as usize],
+                                            &mut self.state.print_types[*print_type as usize],
                                             RichText::new(str_type)
                                                 .font(FontId::monospace(15.0))
                                                 .strong()
@@ -145,58 +137,25 @@ impl Tool for VisibilityTool<'_> {
                                 ui.separator();
                             });
 
-                        if let Some(count) = count_map.get(&PathType::Work {
-                            print_type: PrintType::Unknown,
-                            travel: true,
-                        }) {
-                            ui.horizontal(|ui| {
-                                ui.checkbox(
-                                    &mut self.state.travel,
-                                    RichText::new("Travel")
-                                        .font(FontId::monospace(15.0))
-                                        .strong()
-                                        .color(Color32::BLACK),
-                                );
+                        ui.horizontal(|ui| {
+                            ui.checkbox(
+                                &mut self.state.travel,
+                                RichText::new("Travel")
+                                    .font(FontId::monospace(15.0))
+                                    .strong()
+                                    .color(Color32::BLACK),
+                            );
+                        });
 
-                                ui.add_space(25.0);
-
-                                ui.with_layout(
-                                    egui::Layout::right_to_left(egui::Align::Center),
-                                    |ui| {
-                                        ui.label(
-                                            RichText::new(format!("{:7}", count))
-                                                .font(FontId::monospace(15.0))
-                                                .strong(),
-                                        );
-                                    },
-                                );
-                            });
-                        }
-
-                        if let Some(count) = count_map.get(&PathType::Setup) {
-                            ui.horizontal(|ui| {
-                                ui.checkbox(
-                                    &mut self.state.setup,
-                                    RichText::new("Setup")
-                                        .font(FontId::monospace(15.0))
-                                        .strong()
-                                        .color(Color32::BLACK),
-                                );
-
-                                ui.add_space(25.0);
-
-                                ui.with_layout(
-                                    egui::Layout::right_to_left(egui::Align::Center),
-                                    |ui| {
-                                        ui.label(
-                                            RichText::new(format!("{:7}", count))
-                                                .font(FontId::monospace(15.0))
-                                                .strong(),
-                                        );
-                                    },
-                                );
-                            });
-                        }
+                        ui.horizontal(|ui| {
+                            ui.checkbox(
+                                &mut self.state.setup,
+                                RichText::new("Setup")
+                                    .font(FontId::monospace(15.0))
+                                    .strong()
+                                    .color(Color32::BLACK),
+                            );
+                        });
                     }
 
                     if old_print_types != self.state.print_types

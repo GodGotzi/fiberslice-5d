@@ -1,7 +1,5 @@
 use glam::Vec3;
 
-use super::SourceBuilder;
-
 #[allow(non_snake_case)]
 #[derive(Debug, Clone, Default)]
 pub struct Movements {
@@ -100,39 +98,5 @@ impl Movements {
         }
 
         vec
-    }
-
-    pub fn to_gcode(&self) -> String {
-        let mut builder = SourceBuilder::new();
-
-        if let Some(x) = self.X.as_ref() {
-            builder.push_movement("X", *x);
-        }
-
-        if let Some(y) = self.Y.as_ref() {
-            builder.push_movement("Y", *y);
-        }
-
-        if let Some(z) = self.Z.as_ref() {
-            builder.push_movement("Z", *z);
-        }
-
-        if let Some(a) = self.A.as_ref() {
-            builder.push_movement("A", *a);
-        }
-
-        if let Some(c) = self.C.as_ref() {
-            builder.push_movement("C", *c);
-        }
-
-        if let Some(e) = self.E.as_ref() {
-            builder.push_movement("E", *e);
-        }
-
-        if let Some(f) = self.F.as_ref() {
-            builder.push_movement("F", *f);
-        }
-
-        builder.finish()
     }
 }

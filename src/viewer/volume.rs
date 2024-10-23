@@ -15,12 +15,11 @@ pub struct Volume {
     pub bounding_box: BoundingBox,
 }
 
-pub const REFERENCE_POINT_BED: Vec3 = vec3(-110.0, -100.0, -110.0);
+pub const REFERENCE_POINT_BED: Vec3 = vec3(-110.0, 0.0, -110.0);
 
 impl Volume {
     pub fn instance() -> Self {
-        let bounding_box =
-            BoundingBox::new(vec3(-110.0, -100.0, -110.0), vec3(110.0, 150.0, 110.0));
+        let bounding_box = BoundingBox::new(vec3(-110.0, 0.0, -110.0), vec3(110.0, 250.0, 110.0));
 
         let visual = bounding_box.to_select_visual(0.005);
 

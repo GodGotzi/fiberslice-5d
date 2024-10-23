@@ -20,8 +20,8 @@ impl Default for CameraController {
     fn default() -> Self {
         Self {
             rotate_speed: 0.01,
-            zoom_speed: -2.0,
-            move_speed: 0.1,
+            zoom_speed: -5.5,
+            move_speed: 0.5,
             is_drag_rotate: false,
             is_drag_move: false,
         }
