@@ -48,12 +48,8 @@ pub fn slice(input: SliceInput, settings: &Settings) -> Result<SliceResult, Slic
     let towers = create_towers(&input.objects)?;
     let towers_fiber = create_towers(&input.fiber_intersection_objects)?;
 
-    println!("Towers: {:?}", towers);
-
     let objects = slicing::slice(&towers, max.z, settings)?;
     let objects_fiber = slicing::slice(&towers_fiber, max.z, settings)?;
-
-    println!("Objects: {:?}", objects);
 
     let mut moves = generate_moves(objects, objects_fiber, settings)?;
 

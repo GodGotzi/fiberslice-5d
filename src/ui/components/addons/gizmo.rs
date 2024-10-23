@@ -173,8 +173,8 @@ impl GizmoTools {
                                     }
 
                                     changed |= drag_value(ui, &mut scale.x);
-                                    changed |= drag_value(ui, &mut scale.y);
                                     changed |= drag_value(ui, &mut scale.z);
+                                    changed |= drag_value(ui, &mut scale.y);
                                 });
 
                                 *transform = Mat4::from_scale_rotation_translation(
