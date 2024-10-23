@@ -153,4 +153,17 @@ impl<T: std::fmt::Debug + bytemuck::Pod + bytemuck::Zeroable> LockModel<T> {
         }
         drop(inner);
     }
+
+    pub fn render_without_color<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+        let inner = self.inner.read();
+
+        unsafe {
+            self.inner
+                .data_ptr()
+                .as_ref()
+                .unwrap()
+                .render_without_color(render_pass);
+        }
+        drop(inner);
+    }
 }

@@ -3,7 +3,10 @@ use std::collections::BTreeSet;
 use egui_code_editor::Syntax;
 use parking_lot::RwLock;
 
-use crate::{prelude::WgpuContext, render::Vertex};
+use crate::{
+    prelude::{Mode, WgpuContext},
+    render::Vertex,
+};
 
 mod camera;
 pub use camera::*;
@@ -43,6 +46,7 @@ impl GCodeSyntax for Syntax {
 pub trait Server {
     fn instance(context: &WgpuContext) -> Self;
     fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>);
+    fn mode_changed(&mut self, mode: Mode) {}
 }
 
 #[derive(Debug)]
@@ -61,6 +65,12 @@ impl Viewer {
             model_server: RwLock::new(server::CADModelServer::instance(context)),
             select: RwLock::new(select::Selector::default()),
         }
+    }
+
+    pub fn mode_changed(&self, mode: Mode) {
+        self.env_server.write().mode_changed(mode);
+        self.toolpath_server.write().mode_changed(mode);
+        self.model_server.write().mode_changed(mode);
     }
 
     pub fn selector(&self) -> &RwLock<select::Selector> {

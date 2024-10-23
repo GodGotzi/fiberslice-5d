@@ -1,41 +1,56 @@
-use glam::{vec3, Mat4, Vec4};
 use shared::{object::ObjectMesh, SliceInput};
 use slicer::Settings;
-use strum_macros::{EnumCount, EnumIter, EnumString, IntoStaticStr};
-use wgpu::Color;
+use tokio::task::JoinHandle;
 
-use crate::{GlobalState, RootEvent};
+use crate::{
+    ui::{api::trim_text, custom_toasts::SLICING_PROGRESS},
+    GlobalState, RootEvent,
+};
 
 #[derive(Debug, Default)]
 pub struct Slicer {
     pub settings: Settings,
+    handle: Option<JoinHandle<()>>,
 }
 
 impl Slicer {
-    pub fn slice(&self, global_state: &GlobalState<RootEvent>) -> Result<(), String> {
+    pub fn slice(&mut self, global_state: &GlobalState<RootEvent>) {
+        if let Some(handle) = self.handle.take() {
+            if !handle.is_finished() {
+                return;
+            }
+        }
+
         let model_server_read = global_state.viewer.model_server.read();
 
         let settings = self.settings.clone();
-
         let models: Vec<ObjectMesh> = model_server_read.models(&settings);
 
-        let result = slicer::slice(
-            SliceInput {
-                objects: models,
-                fiber_intersection_objects: vec![],
-            },
-            &settings,
-        )
-        .expect("Failed to slice model");
+        let global_state = global_state.clone();
 
-        global_state
-            .viewer
-            .toolpath_server
-            .write()
-            .load_from_slice_result(result, settings);
+        let handle = tokio::spawn(async move {
+            let process = global_state
+                .progress_tracker
+                .write()
+                .add(SLICING_PROGRESS, trim_text::<20, 4>("Slicing model"));
 
-        // println!("Sliced model {:?}", result);
+            let result = slicer::slice(
+                SliceInput {
+                    objects: models,
+                    fiber_intersection_objects: vec![],
+                },
+                &settings,
+                &process,
+            )
+            .expect("Failed to slice model");
 
-        Ok(())
+            global_state
+                .viewer
+                .toolpath_server
+                .write()
+                .load_from_slice_result(result, process);
+        });
+
+        self.handle = Some(handle);
     }
 }

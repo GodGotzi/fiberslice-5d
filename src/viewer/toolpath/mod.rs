@@ -5,6 +5,7 @@ use glam::{Vec3, Vec4};
 use mesh::{
     MoveConnectionMesh, MoveHitbox, MoveMesh, ProfileCross, ProfileCrossMesh, MOVE_MESH_VERTICES,
 };
+use shared::process::Process;
 use slicer::{Command, MovePrintType, StateChange};
 use tree::ToolpathTree;
 use vertex::ToolpathVertex;
@@ -60,6 +61,7 @@ impl Toolpath {
     pub fn from_commands(
         commands: &[slicer::Command],
         settings: &slicer::Settings,
+        _process: &Process,
     ) -> Result<Self, ()> {
         let mut current_state = StateChange::default();
         let mut current_type = None;

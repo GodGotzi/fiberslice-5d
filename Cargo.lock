@@ -3076,8 +3076,10 @@ dependencies = [
 name = "shared"
 version = "0.1.0"
 dependencies = [
+ "atomic_float",
  "glam",
  "nom_stl",
+ "parking_lot",
  "thiserror",
 ]
 

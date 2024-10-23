@@ -48,7 +48,7 @@ impl<'a> Component for Modebar<'a> {
     fn show(
         &mut self,
         ctx: &egui::Context,
-        (ui_state, _global_state): &(UiState, GlobalState<RootEvent>),
+        (ui_state, global_state): &(UiState, GlobalState<RootEvent>),
     ) {
         if self.state.enabled {
             self.state.boundary = egui::TopBottomPanel::bottom("modebar")
@@ -63,6 +63,8 @@ impl<'a> Component for Modebar<'a> {
                             cross_align: egui::Align::Center,
                             cross_justify: true,
                         };
+
+                        let last_mode = *ui_state.mode.read();
 
                         GridBuilder::new()
                             // Allocate a new row
@@ -99,6 +101,10 @@ impl<'a> Component for Modebar<'a> {
                                     });
                                 });
                             });
+
+                        if last_mode != *ui_state.mode.read() {
+                            global_state.viewer.mode_changed(*ui_state.mode.read());
+                        }
                     });
                 })
                 .response

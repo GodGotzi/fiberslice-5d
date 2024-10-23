@@ -24,6 +24,7 @@ pub use vertex::*;
 
 pub trait Renderable {
     fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>);
+    fn render_without_color<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>);
 }
 
 const MSAA_SAMPLE_COUNT: u32 = 1;
@@ -167,7 +168,6 @@ impl RenderAdapter {
         }
     }
 
-    #[allow(dead_code)]
     fn render_widgets(
         &self,
         encoder: &mut CommandEncoder,
@@ -175,7 +175,7 @@ impl RenderAdapter {
         viewport: &Viewport,
         global_state: &GlobalState<RootEvent>,
     ) {
-        let env_server_read = global_state.viewer.env_server.read();
+        let model_server_read = global_state.viewer.model_server.read();
 
         let (x, y, width, height) = *viewport;
 
@@ -213,25 +213,13 @@ impl RenderAdapter {
 
             global_state.ui_state.mode.read_with_fn(|mode| match mode {
                 Mode::Preview => {
-                    render_pass.set_pipeline(&self.no_cull_pipline);
-                    env_server_read.render(&mut render_pass);
-
-                    render_pass.set_pipeline(&self.line_pipline);
-                    env_server_read.render_lines(&mut render_pass);
+                    render_pass.set_pipeline(&self.back_cull_pipline);
+                    model_server_read.render(&mut render_pass);
                 }
-                Mode::Prepare => {
-                    render_pass.set_pipeline(&self.no_cull_pipline);
-                    env_server_read.render(&mut render_pass);
-
-                    render_pass.set_pipeline(&self.line_pipline);
-                    env_server_read.render_lines(&mut render_pass);
-                }
+                Mode::Prepare => {}
                 Mode::ForceAnalytics => {
-                    render_pass.set_pipeline(&self.no_cull_pipline);
-                    env_server_read.render(&mut render_pass);
-
-                    render_pass.set_pipeline(&self.line_pipline);
-                    env_server_read.render_lines(&mut render_pass);
+                    render_pass.set_pipeline(&self.back_cull_pipline);
+                    model_server_read.render(&mut render_pass);
                 }
             });
         }
@@ -280,7 +268,7 @@ impl<'a> FrameHandle<'a, RootEvent, (), (Option<UiUpdateOutput>, &CameraResult)>
         } = ui_output.unwrap();
 
         self.render(&mut encoder, &view, &viewport, &state);
-        // self.render_widgets(&mut encoder, &view, &viewport, &state);
+        self.render_widgets(&mut encoder, &view, &viewport, &state);
 
         self.egui_rpass
             .add_textures(&wgpu_context.device, &wgpu_context.queue, &tdelta)

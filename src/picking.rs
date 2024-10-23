@@ -75,7 +75,7 @@ impl FrameHandle<'_, RootEvent, (), &CameraResult> for PickingAdapter {
                             let ray = Ray::from_view(viewport, (x, y), view, proj, eye);
 
                             {
-                                let server = global_state.viewer.toolpath_server.read();
+                                let server = global_state.viewer.model_server.read();
 
                                 let model = server.check_hit(&ray);
 

@@ -13,7 +13,8 @@ use ui::UiEvent;
 use viewer::{tracker::ProcessTracker, CameraEvent};
 
 use prelude::{
-    Adapter, EventWriter, FrameHandle, GlobalContext, Shared, SharedMut, Viewport, WgpuContext,
+    Adapter, EventWriter, FrameHandle, GlobalContext, Mode, Shared, SharedMut, Viewport,
+    WgpuContext,
 };
 
 mod api;

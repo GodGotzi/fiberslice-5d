@@ -1,5 +1,6 @@
 pub mod loader;
 pub mod object;
+pub mod process;
 
 #[derive(Default, Clone, Copy, Debug, PartialEq)]
 pub struct IndexedTriangle([usize; 3]);

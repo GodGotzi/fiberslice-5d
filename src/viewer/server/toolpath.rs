@@ -1,8 +1,10 @@
 use std::fs::File;
 use std::io::BufWriter;
+use std::sync::Arc;
 
 use nfde::{DialogResult, Nfd, SingleFileDialogBuilder};
-use slicer::{convert, MovePrintType, Settings, SliceResult};
+use shared::process::Process;
+use slicer::{convert, MovePrintType, SliceResult};
 use tokio::sync::oneshot::Receiver;
 use tokio::task::JoinHandle;
 use wgpu::util::DeviceExt;
@@ -29,7 +31,7 @@ pub enum Error {
 
 #[derive(Debug)]
 pub struct ToolpathServer {
-    queue: Option<(Receiver<Toolpath>, JoinHandle<()>)>,
+    queue: Option<(Receiver<(Toolpath, Arc<Process>)>, JoinHandle<()>)>,
 
     pipeline: wgpu::RenderPipeline,
     toolpath: Option<Toolpath>,
@@ -181,14 +183,18 @@ impl Server for ToolpathServer {
 }
 
 impl ToolpathServer {
-    pub fn load_from_slice_result(&mut self, slice_result: SliceResult, settings: Settings) {
+    pub fn load_from_slice_result(&mut self, slice_result: SliceResult, process: Arc<Process>) {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         let handle = tokio::spawn(async move {
-            let toolpath = Toolpath::from_commands(&slice_result.moves, &settings)
-                .expect("Failed to load toolpath");
+            process.set_task("Loading toolpath".to_string());
+            process.set_progress(0.8);
 
-            tx.send(toolpath).unwrap();
+            let toolpath =
+                Toolpath::from_commands(&slice_result.moves, &slice_result.settings, &process)
+                    .expect("Failed to load toolpath");
+
+            tx.send((toolpath, process)).unwrap();
         });
 
         self.queue = Some((rx, handle));
@@ -227,7 +233,9 @@ impl ToolpathServer {
 
     pub fn update(&mut self, global_state: GlobalState<RootEvent>) -> Result<(), Error> {
         if let Some((rx, _)) = &mut self.queue {
-            if let Ok(toolpath) = rx.try_recv() {
+            if let Ok((toolpath, process)) = rx.try_recv() {
+                process.finish();
+
                 global_state
                     .ui_event_writer
                     .send(crate::ui::UiEvent::ShowSuccess("Gcode loaded".to_string()));

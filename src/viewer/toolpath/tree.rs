@@ -176,6 +176,10 @@ impl Renderable for ToolpathTree {
             Self::Move { .. } => panic!("Cannot render path"),
         }
     }
+
+    fn render_without_color<'a>(&'a self, _render_pass: &mut wgpu::RenderPass<'a>) {
+        panic!("Cannot render without color");
+    }
 }
 
 impl HitboxNode<Self> for ToolpathTree {
@@ -233,5 +237,16 @@ impl InteractiveModel for ToolpathTree {
 
     fn scroll(&self, _event: crate::picking::interact::ScrollEvent) {
         println!("ToolpathTree: Scrolled");
+    }
+
+    fn get_transform(&self) -> glam::Mat4 {
+        match self {
+            Self::Root { model, .. } => model.read().get_transform(),
+            _ => glam::Mat4::IDENTITY,
+        }
+    }
+
+    fn as_transformable(&self) -> Option<&dyn crate::render::model::Transform> {
+        None
     }
 }

@@ -5,7 +5,7 @@ use glam::{Vec3, Vec4};
 use plotter::convert_objects_into_moves;
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 pub use settings::*;
-use shared::SliceInput;
+use shared::{process::Process, SliceInput};
 use slice_pass::*;
 use strum_macros::{EnumCount, EnumIter, EnumString};
 use tower::create_towers;
@@ -37,31 +37,48 @@ use serde::{Deserialize, Serialize};
 pub struct SliceResult {
     pub moves: Vec<Command>,
     pub calculated_values: CalculatedValues,
+    pub settings: Settings,
 }
 
-pub fn slice(input: SliceInput, settings: &Settings) -> Result<SliceResult, SlicerErrors> {
+pub fn slice(
+    input: SliceInput,
+    settings: &Settings,
+    process: &Process,
+) -> Result<SliceResult, SlicerErrors> {
     let max = input
         .objects
         .iter()
         .fold(Vec3::NEG_INFINITY, |max, obj| max.max(obj.min_max().1));
 
+    process.set_task("Creating Towers".to_string());
+    process.set_progress(0.1);
+
     let towers = create_towers(&input.objects)?;
     let towers_fiber = create_towers(&input.fiber_intersection_objects)?;
 
+    process.set_task("Slicing".to_string());
+    process.set_progress(0.2);
     let objects = slicing::slice(&towers, max.z, settings)?;
     let objects_fiber = slicing::slice(&towers_fiber, max.z, settings)?;
 
-    let mut moves = generate_moves(objects, objects_fiber, settings)?;
+    let mut moves = generate_moves(objects, objects_fiber, settings, process)?;
 
+    process.set_task("Optimizing".to_string());
+    process.set_progress(0.6);
     OptimizePass::pass(&mut moves, settings);
 
+    process.set_task("Slowing Down Layers".to_string());
+    process.set_progress(0.7);
     SlowDownLayerPass::pass(&mut moves, settings);
 
+    process.set_task("Calculating Values".to_string());
+    process.set_progress(0.7);
     let calculated_values = calculation::calculate_values(&moves, settings);
 
     Ok(SliceResult {
         moves,
         calculated_values,
+        settings: settings.clone(),
     })
 }
 
@@ -69,16 +86,22 @@ fn generate_moves(
     mut objects: Vec<Object>,
     fiber_objects: Vec<Object>,
     settings: &Settings,
+    process: &Process,
 ) -> Result<Vec<Command>, SlicerErrors> {
     //Creates Support Towers
+    process.set_task("Creating Support Towers".to_string());
+    process.set_progress(0.3);
     SupportTowerPass::pass(&mut objects, settings);
 
     //Adds a skirt
+    process.set_task("Creating Skirt".to_string());
     SkirtPass::pass(&mut objects, settings);
 
     //Adds a brim
+    process.set_task("Creating Brim".to_string());
     BrimPass::pass(&mut objects, settings);
 
+    process.set_task("Generate Moves".to_string());
     let v: Result<Vec<()>, SlicerErrors> = objects
         .par_iter_mut()
         .map(|object| {
@@ -112,6 +135,8 @@ fn generate_moves(
             OrderPass::pass(slices, settings)
         })
         .collect();
+
+    process.set_progress(0.5);
 
     v?;
 
@@ -342,7 +367,7 @@ impl std::fmt::Display for MovePrintType {
             MovePrintType::SolidInfill => write!(f, "Solid Infill"),
             MovePrintType::Infill => write!(f, "Infill"),
             MovePrintType::WallOuter => write!(f, "Wall Outer"),
-            MovePrintType::WallInner => write!(f, "Interior Surface Perimeter"),
+            MovePrintType::WallInner => write!(f, "Wall Inner"),
             MovePrintType::InteriorWallOuter => write!(f, "Wall Inner"),
             MovePrintType::InteriorWallInner => write!(f, "Interior Inner Perimeter"),
             MovePrintType::Bridging => write!(f, "Bridging"),
@@ -354,15 +379,15 @@ impl std::fmt::Display for MovePrintType {
 impl MovePrintType {
     pub fn into_color_vec4(&self) -> Vec4 {
         match self {
-            MovePrintType::TopSolidInfill => Vec4::new(0.0, 0.0, 1.0, 1.0),
-            MovePrintType::SolidInfill => Vec4::new(0.0, 0.0, 1.0, 1.0),
+            MovePrintType::TopSolidInfill => Vec4::new(1.0, 0.0, 0.0, 1.0),
+            MovePrintType::SolidInfill => Vec4::new(1.0, 0.0, 0.0, 1.0),
             MovePrintType::Infill => Vec4::new(0.0, 0.0, 1.0, 1.0),
-            MovePrintType::WallOuter => Vec4::new(0.0, 1.0, 0.0, 1.0),
-            MovePrintType::WallInner => Vec4::new(0.0, 1.0, 0.0, 1.0),
-            MovePrintType::InteriorWallOuter => Vec4::new(0.0, 1.0, 0.0, 1.0),
-            MovePrintType::InteriorWallInner => Vec4::new(0.0, 1.0, 0.0, 1.0),
-            MovePrintType::Bridging => Vec4::new(1.0, 0.0, 0.0, 1.0),
-            MovePrintType::Support => Vec4::new(1.0, 0.0, 0.0, 1.0),
+            MovePrintType::WallOuter => Vec4::new(1.0, 1.0, 0.0, 1.0),
+            MovePrintType::WallInner => Vec4::new(1.0, 1.0, 0.0, 1.0),
+            MovePrintType::InteriorWallOuter => Vec4::new(1.0, 1.0, 0.0, 1.0),
+            MovePrintType::InteriorWallInner => Vec4::new(1.0, 1.0, 0.0, 1.0),
+            MovePrintType::Bridging => Vec4::new(0.0, 1.0, 1.0, 1.0),
+            MovePrintType::Support => Vec4::new(1.0, 1.0, 0.0, 1.0),
         }
     }
 }

@@ -1,7 +1,6 @@
 use core::{f32, panic};
 use std::{
     collections::{HashMap, LinkedList, VecDeque},
-    f32::consts::PI,
     path::Path,
     sync::Arc,
 };
@@ -13,16 +12,16 @@ use parking_lot::RwLock;
 use shared::{
     loader::{LoadError, Loader},
     object::ObjectMesh,
+    process::Process,
 };
 
 use slicer::Settings;
 use tokio::{sync::oneshot::error::TryRecvError, task::JoinHandle};
 
 use uni_path::PathBuf;
-use wgpu::{BufferAddress, Color};
+use wgpu::{util::DeviceExt, BufferAddress, Color};
 
 use crate::{
-    api::FlipYZ,
     geometry::{
         mesh::{vec3s_into_vertices, IntoArrayColor},
         BoundingBox,
@@ -30,18 +29,19 @@ use crate::{
     picking::{
         self,
         hitbox::{Hitbox, HitboxNode, HitboxRoot},
+        interact::InteractiveModel,
     },
     prelude::{LockModel, WgpuContext},
     render::{
         model::{
-            Model, Rotate, RotateMut, Scale, ScaleMut, Transform, TransformMut, Translate,
-            TranslateMut,
+            Model, ModelColorUniform, Rotate, RotateMut, Scale, ScaleMut, Transform, TransformMut,
+            Translate, TranslateMut,
         },
         Renderable, Vertex,
     },
     ui::{api::trim_text, custom_toasts::MODEL_LOAD_PROGRESS},
-    viewer::tracker::Process,
-    GlobalState, RootEvent, GLOBAL_STATE,
+    viewer::Server,
+    GlobalState, RootEvent, GLOBAL_STATE, QUEUE,
 };
 
 // const MAIN_LOADED_TOOLPATH: &str = "main"; // HACK: This is a solution to ease the dev when only one toolpath is loaded which is the only supported(for now)
@@ -81,17 +81,83 @@ pub struct CADModelServer {
 
     root_hitbox: HitboxRoot<CADModel>,
     models: HashMap<String, CADModelHandle>,
+
+    color: [f32; 4],
+    color_buffer: wgpu::Buffer,
+    color_bind_group: wgpu::BindGroup,
 }
 
-impl CADModelServer {
-    pub fn instance(_context: &WgpuContext) -> Self {
+impl Server for CADModelServer {
+    fn instance(context: &WgpuContext) -> Self {
+        let color = [1.0, 1.0, 1.0, 1.0];
+
+        let color_uniform = ModelColorUniform { color };
+
+        let color_buffer = context
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Color Buffer"),
+                contents: bytemuck::cast_slice(&[color_uniform]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
+
+        let color_bind_group_layout =
+            context
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    entries: &[wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    }],
+                    label: None,
+                });
+
+        let color_bind_group = context
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &color_bind_group_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: color_buffer.as_entire_binding(),
+                }],
+                label: None,
+            });
+
         Self {
             queue: Vec::new(),
             root_hitbox: HitboxRoot::root(),
             models: HashMap::new(),
+
+            color,
+            color_buffer,
+            color_bind_group,
         }
     }
 
+    fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+        render_pass.set_bind_group(3, &self.color_bind_group, &[]);
+
+        self.models
+            .values()
+            .for_each(|model| model.model.render_without_color(render_pass));
+    }
+
+    fn mode_changed(&mut self, mode: crate::prelude::Mode) {
+        match mode {
+            crate::prelude::Mode::Preview => self.set_transparency(0.3),
+            crate::prelude::Mode::Prepare => self.set_transparency(1.0),
+            crate::prelude::Mode::ForceAnalytics => self.set_transparency(0.5),
+        }
+    }
+}
+
+impl CADModelServer {
     pub fn load<P>(&mut self, path: P)
     where
         P: AsRef<Path>,
@@ -269,6 +335,8 @@ Clustering models"
 
         self.models.insert(name.clone(), ctx);
 
+        self.root_hitbox.add_node(handle.clone());
+
         Ok(handle)
     }
 
@@ -315,12 +383,16 @@ Clustering models"
                     )),
                 );
 
+                let handle = handle as Arc<dyn InteractiveModel>;
+
                 global_state.viewer.selector().write().select(&handle);
 
                 // self.root_hitbox.add_node(handle);
                 // global_state.window.request_redraw();
             }
         }
+
+        self.models.retain(|_, model| !model.model.is_destroyed());
 
         // self.models.values_mut().for_each(|model| model.update());
 
@@ -378,10 +450,22 @@ Clustering models"
             .collect()
     }
 
-    pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
-        self.models
-            .values()
-            .for_each(|model| model.model.render(render_pass));
+    fn set_transparency(&mut self, transparency: f32) {
+        let queue_read = QUEUE.read();
+        let queue = queue_read.as_ref().unwrap();
+
+        self.color[3] = transparency;
+        let color_uniform = ModelColorUniform { color: self.color };
+
+        queue.write_buffer(
+            &self.color_buffer,
+            0,
+            bytemuck::cast_slice(&[color_uniform]),
+        );
+    }
+
+    pub fn check_hit(&self, ray: &crate::picking::Ray) -> Option<&CADModel> {
+        self.root_hitbox.check_hit(ray)
     }
 }
 
@@ -428,24 +512,17 @@ impl CADModel {
         }
     }
 
-    pub fn awaken(&mut self, data: &[Vertex]) {
+    fn is_destroyed(&self) -> bool {
+        match self {
+            Self::Root { model, .. } => model.read().is_destroyed(),
+            Self::Face { .. } => false,
+        }
+    }
+
+    fn awaken(&mut self, data: &[Vertex]) {
         match self {
             Self::Root { model, .. } => model.get_mut().awaken(data),
             Self::Face { .. } => panic!("Cannot awaken face"),
-        }
-    }
-
-    pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
-        match self {
-            Self::Root { model, .. } => model.render(render_pass),
-            Self::Face { .. } => panic!("Cannot render face"),
-        }
-    }
-
-    pub fn get_transform(&self) -> glam::Mat4 {
-        match self {
-            Self::Root { model, .. } => model.read().get_transform(),
-            Self::Face { .. } => panic!("Cannot get transform"),
         }
     }
 
@@ -471,10 +548,49 @@ impl CADModel {
     }
 }
 
+impl InteractiveModel for CADModel {
+    fn clicked(&self, event: picking::interact::ClickEvent) {
+        println!("CADModel: Clicked");
+    }
+
+    fn drag(&self, event: picking::interact::DragEvent) {
+        println!("CADModel: Dragged");
+    }
+
+    fn scroll(&self, event: picking::interact::ScrollEvent) {
+        println!("CADModel: Scrolled");
+    }
+
+    fn get_transform(&self) -> glam::Mat4 {
+        match self {
+            Self::Root { model, .. } => model.read().get_transform(),
+            Self::Face { .. } => panic!("Cannot get transform"),
+        }
+    }
+
+    fn destroy(&self) {
+        match self {
+            Self::Root { model, .. } => model.write().destroy(),
+            Self::Face { .. } => panic!("Cannot destroy face"),
+        }
+    }
+
+    fn as_transformable(&self) -> Option<&dyn Transform> {
+        Some(self)
+    }
+}
+
 impl Renderable for CADModel {
     fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
         match self {
             Self::Root { model, .. } => model.render(render_pass),
+            Self::Face { .. } => panic!("Cannot render face"),
+        }
+    }
+
+    fn render_without_color<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+        match self {
+            Self::Root { model, .. } => model.render_without_color(render_pass),
             Self::Face { .. } => panic!("Cannot render face"),
         }
     }

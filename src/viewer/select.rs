@@ -2,13 +2,11 @@ use std::sync::Arc;
 
 use glam::Mat4;
 
-use crate::render::model::Transform;
-
-use super::server::model::CADModel;
+use crate::picking::interact::InteractiveModel;
 
 #[derive(Default)]
 pub struct Selector {
-    selected: Vec<Arc<CADModel>>,
+    selected: Vec<Arc<dyn InteractiveModel>>,
     grouped_transform: Option<Mat4>,
 }
 
@@ -21,13 +19,13 @@ impl std::fmt::Debug for Selector {
 }
 
 impl Selector {
-    pub fn select(&mut self, model: &Arc<CADModel>) {
+    pub fn select(&mut self, model: &Arc<dyn InteractiveModel>) {
         self.selected.push(model.clone());
 
         self.grouped_transform = None;
     }
 
-    pub fn deselect(&mut self, model: &Arc<CADModel>) {
+    pub fn deselect(&mut self, model: &Arc<dyn InteractiveModel>) {
         let size = self.selected.len();
         self.selected.retain(|m| !Arc::ptr_eq(m, model));
 
@@ -40,10 +38,12 @@ impl Selector {
         if self.selected.len() == 1 {
             let mut transform = self.selected[0].get_transform();
 
-            let response = r#fn(&mut transform);
+            if let Some(transformable_model) = self.selected[0].as_transformable() {
+                let response = r#fn(&mut transform);
 
-            if response {
-                self.selected[0].transform(transform);
+                if response {
+                    transformable_model.transform(transform);
+                }
             }
         } else {
             let mut transform = self
@@ -57,19 +57,22 @@ impl Selector {
                     let (scale, rotate, translate) =
                         model.get_transform().to_scale_rotation_translation();
 
-                    let (grouped_scale, grouped_rotate, grouped_translate) = (transform.inverse()
-                        * self
-                            .grouped_transform
-                            .unwrap_or(Mat4::from_translation(glam::Vec3::ZERO)))
-                    .to_scale_rotation_translation();
+                    if let Some(transformable_model) = model.as_transformable() {
+                        let (grouped_scale, grouped_rotate, grouped_translate) = (transform
+                            .inverse()
+                            * self
+                                .grouped_transform
+                                .unwrap_or(Mat4::from_translation(glam::Vec3::ZERO)))
+                        .to_scale_rotation_translation();
 
-                    let transform = Mat4::from_scale_rotation_translation(
-                        scale * grouped_scale,
-                        rotate * grouped_rotate,
-                        translate + grouped_translate,
-                    );
+                        let transform = Mat4::from_scale_rotation_translation(
+                            scale * grouped_scale,
+                            rotate * grouped_rotate,
+                            translate + grouped_translate,
+                        );
 
-                    model.transform(transform);
+                        transformable_model.transform(transform);
+                    }
                 }
             }
 
@@ -81,7 +84,7 @@ impl Selector {
         self.selected.clear();
     }
 
-    pub fn selected(&self) -> &[Arc<CADModel>] {
+    pub fn selected(&self) -> &[Arc<dyn InteractiveModel>] {
         &self.selected
     }
 }

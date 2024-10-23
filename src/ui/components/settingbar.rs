@@ -266,7 +266,7 @@ impl<'a> Component for Settingsbar<'a> {
 
                                 if ui.add(slice_button).clicked() {
                                     shared_state.1.slicer.write_with_fn(|slicer| {
-                                        slicer.slice(&shared_state.1).expect("Failed to slice");
+                                        slicer.slice(&shared_state.1);
                                     });
                                 };
                             });

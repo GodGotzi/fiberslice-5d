@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
 use egui_toast::Toast;
-
-use crate::viewer::tracker::Process;
+use shared::process::Process;
 
 const PROGRESS_BAR_WIDTH: f32 = 250.0;
 

@@ -32,7 +32,7 @@ use winit::event::WindowEvent;
 use crate::{
     prelude::{
         create_event_bundle, Adapter, AdapterCreation, Error, EventReader, FrameHandle, Mode,
-        Shared, Viewport, WgpuContext, WrappedSharedMut,
+        Shared, SharedMut, Viewport, WgpuContext, WrappedSharedMut,
     },
     GlobalState, RootEvent,
 };
@@ -52,22 +52,22 @@ pub enum UiEvent {
 #[derive(Debug, Clone)]
 pub struct UiState {
     pub pointer_in_use: Shared<AtomicBool>,
-    pub theme: WrappedSharedMut<Theme>,
-    pub mode: WrappedSharedMut<Mode>,
+    pub theme: SharedMut<Theme>,
+    pub mode: SharedMut<Mode>,
 
-    pub layer_max: WrappedSharedMut<u32>,
-    pub time_stamp: WrappedSharedMut<u16>,
+    pub layer_max: SharedMut<u32>,
+    pub time_stamp: SharedMut<u16>,
 }
 
 impl Default for UiState {
     fn default() -> Self {
         Self {
             pointer_in_use: Shared::new(AtomicBool::new(false)),
-            theme: WrappedSharedMut::from_inner(Theme::Dark),
-            mode: WrappedSharedMut::from_inner(Mode::Prepare),
+            theme: SharedMut::from_inner(Theme::Dark),
+            mode: SharedMut::from_inner(Mode::Prepare),
 
-            layer_max: WrappedSharedMut::from_inner(u32::MAX),
-            time_stamp: WrappedSharedMut::from_inner(u16::MAX),
+            layer_max: SharedMut::from_inner(u32::MAX),
+            time_stamp: SharedMut::from_inner(u16::MAX),
         }
     }
 }
@@ -145,7 +145,7 @@ impl<'a> FrameHandle<'a, RootEvent, (UiUpdateOutput, (f32, f32, f32, f32)), ()> 
             // catppuccin_egui::set_style_theme(style, catppuccin_egui::MOCHA);
             // style.visuals = Visuals::light();
 
-            match &self.state.theme.read().inner {
+            match &*self.state.theme.read() {
                 Theme::Light => {
                     style.visuals = Visuals::light();
                 }
