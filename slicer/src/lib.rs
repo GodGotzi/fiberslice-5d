@@ -72,7 +72,7 @@ pub fn slice(
     SlowDownLayerPass::pass(&mut moves, settings);
 
     process.set_task("Calculating Values".to_string());
-    process.set_progress(0.7);
+    process.set_progress(0.75);
     let calculated_values = calculation::calculate_values(&moves, settings);
 
     Ok(SliceResult {
