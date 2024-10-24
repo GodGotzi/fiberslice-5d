@@ -20,7 +20,11 @@ impl std::fmt::Debug for Selector {
 
 impl Selector {
     pub fn select(&mut self, model: &Arc<dyn InteractiveModel>) {
-        self.selected.push(model.clone());
+        if self.selected.is_empty() {
+            self.selected.push(model.clone());
+        } else {
+            self.selected[0] = model.clone();
+        }
 
         self.grouped_transform = None;
     }

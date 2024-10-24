@@ -36,8 +36,8 @@ impl Slicer {
 
             let result = slicer::slice(
                 SliceInput {
-                    objects: models,
-                    fiber_intersection_objects: vec![],
+                    objects: vec![models[0].clone()],
+                    masks: vec![models[1].clone()],
                 },
                 &settings,
                 &process,

@@ -2,7 +2,7 @@ mod settings;
 
 use command_pass::{CommandPass, OptimizePass, SlowDownLayerPass};
 use glam::{Vec3, Vec4};
-use plotter::convert_objects_into_moves;
+use plotter::{convert_objects_into_moves, polygon_operations::PolygonOperations};
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 pub use settings::*;
 use shared::{process::Process, SliceInput};
@@ -14,6 +14,7 @@ mod calculation;
 mod command_pass;
 mod converter;
 mod error;
+mod mask;
 mod optimizer;
 mod plotter;
 mod slice_pass;
@@ -54,14 +55,37 @@ pub fn slice(
     process.set_progress(0.1);
 
     let towers = create_towers(&input.objects)?;
-    let towers_fiber = create_towers(&input.fiber_intersection_objects)?;
+    let towers_masks = create_towers(&input.masks)?;
 
     process.set_task("Slicing".to_string());
     process.set_progress(0.2);
-    let objects = slicing::slice(&towers, max.z, settings)?;
-    let objects_fiber = slicing::slice(&towers_fiber, max.z, settings)?;
+    println!("Max: {:?}", max);
+    let mut objects = slicing::slice(&towers, max.z, settings)?;
+    let mut masks = slicing::slice(&towers_masks, max.z, settings)?;
 
-    let mut moves = generate_moves(objects, objects_fiber, settings, process)?;
+    process.set_task("Cropping Masks".to_string());
+    process.set_progress(0.5);
+    mask::crop_masks(&objects, &mut masks, max.z);
+    mask::randomize_mask_underlaps(&mut masks);
+    handle_masks(&mut masks, settings, process)?;
+
+    for object in objects.iter_mut() {
+        object
+            .layers
+            .iter_mut()
+            .enumerate()
+            .for_each(|(index, layer)| {
+                for mask in masks.iter() {
+                    if let Some(mask_layer) = mask.layers.get(index) {
+                        layer.remaining_area = layer
+                            .remaining_area
+                            .difference_with(&mask_layer.main_polygon);
+                    }
+                }
+            });
+    }
+
+    let mut moves = generate_moves(objects, settings, process)?;
 
     process.set_task("Optimizing".to_string());
     process.set_progress(0.6);
@@ -84,7 +108,6 @@ pub fn slice(
 
 fn generate_moves(
     mut objects: Vec<Object>,
-    fiber_objects: Vec<Object>,
     settings: &Settings,
     process: &Process,
 ) -> Result<Vec<Command>, SlicerErrors> {
@@ -141,6 +164,52 @@ fn generate_moves(
     v?;
 
     Ok(convert_objects_into_moves(objects, settings))
+}
+
+fn handle_masks(
+    masks: &mut Vec<Object>,
+    settings: &Settings,
+    process: &Process,
+) -> Result<(), SlicerErrors> {
+    let v: Result<Vec<()>, SlicerErrors> = masks
+        .par_iter_mut()
+        .map(|object| {
+            let slices = &mut object.layers;
+
+            //Shrink layer
+            ShrinkPass::pass(slices, settings)?;
+
+            //Handle Perimeters
+            // PerimeterPass::pass(slices, settings)?;
+
+            //Handle Bridging
+            BridgingPass::pass(slices, settings)?;
+
+            //Handle Top Layer
+            TopLayerPass::pass(slices, settings)?;
+
+            //Handle Top And Bottom Layers
+            TopAndBottomLayersPass::pass(slices, settings)?;
+
+            //Handle Support
+            SupportPass::pass(slices, settings)?;
+
+            //Lightning Infill
+            LightningFillPass::pass(slices, settings)?;
+
+            //Fill Remaining areas
+            FillAreaPass::pass(slices, settings)?;
+
+            //Order the move chains
+            OrderPass::pass(slices, settings)
+        })
+        .collect();
+
+    process.set_progress(0.5);
+
+    v?;
+
+    Ok(())
 }
 
 #[derive(Debug)]
