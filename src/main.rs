@@ -5,23 +5,22 @@
     Please refer to the terms and conditions stated therein.
 */
 
+use input::PickingEvent;
 use log::{info, LevelFilter};
 use parking_lot::RwLock;
-use picking::PickingEvent;
 use std::{sync::Arc, time::Instant};
 use ui::UiEvent;
 use viewer::{tracker::ProcessTracker, CameraEvent};
 
 use prelude::{
-    Adapter, EventWriter, FrameHandle, GlobalContext, Mode, Shared, SharedMut, Viewport,
-    WgpuContext,
+    Adapter, EventWriter, FrameHandle, GlobalContext, Shared, SharedMut, Viewport, WgpuContext,
 };
 
 mod api;
 mod config;
 mod error;
 mod geometry;
-mod picking;
+mod input;
 mod prelude;
 mod render;
 mod slicer;
@@ -63,7 +62,7 @@ pub struct GlobalState<T: 'static> {
     pub device: Arc<wgpu::Device>,
     pub queue: Arc<wgpu::Queue>,
 
-    pub picking_state: picking::PickingState,
+    pub picking_state: input::PickingState,
     pub picking_event_writer: EventWriter<PickingEvent>,
 
     pub ui_state: ui::UiState,
@@ -118,7 +117,7 @@ struct ApplicationState {
     ui_adapter: ui::UiAdapter,
     camera_adapter: viewer::CameraAdapter,
     render_adapter: render::RenderAdapter,
-    picking_adapter: picking::PickingAdapter,
+    picking_adapter: input::InputAdapter,
 
     start_time: Instant,
 }
@@ -193,6 +192,8 @@ impl ApplicationState {
         event: winit::event::WindowEvent,
         window_id: winit::window::WindowId,
     ) {
+        println!("{:?}", event);
+
         self.ui_adapter.handle_window_event(
             &event,
             window_id,
@@ -227,6 +228,8 @@ impl ApplicationState {
         event: winit::event::DeviceEvent,
         device_id: winit::event::DeviceId,
     ) {
+        println!("{:?}", event);
+
         self.ui_adapter.handle_device_event(
             &event,
             device_id,
@@ -279,7 +282,7 @@ impl ApplicationHandler<RootEvent> for Application {
         ));
 
         let (picking_state, picking_event_writer, picking_adapter) =
-            picking::PickingAdapter::create(&wgpu_context);
+            input::InputAdapter::create(&wgpu_context);
 
         let (ui_state, ui_event_writer, ui_adapter) = ui::UiAdapter::create(&wgpu_context);
 

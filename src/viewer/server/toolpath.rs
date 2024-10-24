@@ -9,7 +9,7 @@ use tokio::sync::oneshot::Receiver;
 use tokio::task::JoinHandle;
 use wgpu::util::DeviceExt;
 
-use crate::picking::hitbox::HitboxRoot;
+use crate::input::hitbox::HitboxRoot;
 use crate::render::Renderable;
 use crate::viewer::toolpath::vertex::{ToolpathContext, ToolpathVertex};
 use crate::viewer::toolpath::Toolpath;
@@ -311,7 +311,7 @@ impl ToolpathServer {
         self.toolpath.as_ref()
     }
 
-    pub fn check_hit(&self, ray: &crate::picking::Ray) -> Option<&ToolpathTree> {
-        self.hitbox.check_hit(ray)
+    pub fn check_hit(&self, ray: &crate::input::Ray, level: usize) -> Option<Arc<ToolpathTree>> {
+        self.hitbox.check_hit(ray, level, false)
     }
 }

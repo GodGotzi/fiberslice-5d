@@ -54,7 +54,6 @@ pub struct Viewer {
     pub env_server: RwLock<server::EnvironmentServer>,
     pub toolpath_server: RwLock<server::ToolpathServer>,
     pub model_server: RwLock<server::CADModelServer>,
-    select: RwLock<select::Selector>,
 }
 
 impl Viewer {
@@ -63,7 +62,6 @@ impl Viewer {
             env_server: RwLock::new(server::EnvironmentServer::instance(context)),
             toolpath_server: RwLock::new(server::ToolpathServer::instance(context)),
             model_server: RwLock::new(server::CADModelServer::instance(context)),
-            select: RwLock::new(select::Selector::default()),
         }
     }
 
@@ -71,10 +69,6 @@ impl Viewer {
         self.env_server.write().mode_changed(mode);
         self.toolpath_server.write().mode_changed(mode);
         self.model_server.write().mode_changed(mode);
-    }
-
-    pub fn selector(&self) -> &RwLock<select::Selector> {
-        &self.select
     }
 }
 

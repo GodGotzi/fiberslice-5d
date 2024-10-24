@@ -20,7 +20,7 @@ pub trait Hitbox: std::fmt::Debug + Send + Sync {
 
 pub trait HitboxNode<M: HitboxNode<M>> {
     fn check_hit(&self, ray: &Ray) -> Option<f32>;
-    fn inner_nodes(&self) -> &[M];
+    fn inner_nodes(&self) -> &[Arc<M>];
     fn get_min(&self) -> Vec3;
     fn get_max(&self) -> Vec3;
 }
@@ -42,26 +42,36 @@ impl<M: HitboxNode<M> + Renderable> HitboxRoot<M> {
         }
     }
 
-    pub fn check_hit(&self, ray: &Ray) -> Option<&M> {
+    pub fn check_hit(&self, ray: &Ray, level: usize, reverse: bool) -> Option<Arc<M>> {
         let mut queue = HitboxQueue::<M>::new(); // Creating a new HitboxQueue
 
         for hitbox in self.inner_hitboxes.iter() {
             let distance = hitbox.check_hit(ray);
             if let Some(distance) = distance {
-                queue.push(HitBoxQueueEntry { hitbox, distance });
+                queue.push(HitBoxQueueEntry {
+                    hitbox: hitbox.clone(),
+                    distance: if reverse { -distance } else { distance },
+                    level: 0,
+                });
             }
         }
 
-        while let Some(HitBoxQueueEntry { hitbox, .. }) = queue.pop() {
-            if hitbox.inner_nodes().is_empty() {
+        while let Some(HitBoxQueueEntry {
+            hitbox,
+            level: entry_level,
+            ..
+        }) = queue.pop()
+        {
+            if hitbox.inner_nodes().is_empty() || level == entry_level {
                 return Some(hitbox);
             } else {
                 for inner_hitbox in hitbox.inner_nodes() {
                     let distance = inner_hitbox.check_hit(ray);
                     if let Some(distance) = distance {
                         queue.push(HitBoxQueueEntry {
-                            hitbox: inner_hitbox,
-                            distance,
+                            hitbox: inner_hitbox.clone(),
+                            distance: if reverse { -distance } else { distance },
+                            level: entry_level + 1,
                         });
                     }
                 }

@@ -238,7 +238,7 @@ impl<T: std::fmt::Debug + bytemuck::Pod + bytemuck::Zeroable> Model<T> {
 
 impl<T> Renderable for Model<T> {
     fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
-        if self.destroyed {
+        if self.destroyed || !self.enabled {
             return;
         }
 
@@ -255,7 +255,7 @@ impl<T> Renderable for Model<T> {
     }
 
     fn render_without_color<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
-        if self.destroyed {
+        if self.destroyed || !self.enabled {
             return;
         }
 

@@ -26,7 +26,7 @@ use crate::{
         mesh::{vec3s_into_vertices, IntoArrayColor},
         BoundingBox,
     },
-    picking::{
+    input::{
         self,
         hitbox::{Hitbox, HitboxNode, HitboxRoot},
         interact::InteractiveModel,
@@ -370,25 +370,20 @@ Clustering models"
                     }
                 };
 
-                let handle = self.insert(model)?;
+                self.insert(model)?;
 
                 global_state
                     .ui_event_writer
                     .send(crate::ui::UiEvent::ShowSuccess("Object loaded".to_string()));
 
+                /*
                 global_state.camera_event_writer.send(
                     crate::viewer::camera::CameraEvent::UpdatePreferredDistance(BoundingBox::new(
                         handle.get_min(),
                         handle.get_max(),
                     )),
                 );
-
-                let handle = handle as Arc<dyn InteractiveModel>;
-
-                global_state.viewer.selector().write().select(&handle);
-
-                // self.root_hitbox.add_node(handle);
-                // global_state.window.request_redraw();
+                    */
             }
         }
 
@@ -464,8 +459,13 @@ Clustering models"
         );
     }
 
-    pub fn check_hit(&self, ray: &crate::picking::Ray) -> Option<&CADModel> {
-        self.root_hitbox.check_hit(ray)
+    pub fn check_hit(
+        &self,
+        ray: &crate::input::Ray,
+        level: usize,
+        reverse: bool,
+    ) -> Option<Arc<CADModel>> {
+        self.root_hitbox.check_hit(ray, level, reverse)
     }
 }
 
@@ -474,7 +474,7 @@ pub enum CADModel {
     Root {
         model: LockModel<Vertex>,
         bounding_box: RwLock<BoundingBox>,
-        children: Vec<Self>,
+        children: Vec<Arc<Self>>,
         size: BufferAddress,
     },
     Face {
@@ -504,9 +504,9 @@ impl CADModel {
                 bounding_box.get_mut().expand_point(face.get_min());
                 bounding_box.get_mut().expand_point(face.get_max());
 
-                children.push(Self::Face {
+                children.push(Arc::new(Self::Face {
                     face: RwLock::new(face),
-                });
+                }));
             }
             _ => panic!("Not root"),
         }
@@ -549,16 +549,26 @@ impl CADModel {
 }
 
 impl InteractiveModel for CADModel {
-    fn clicked(&self, event: picking::interact::ClickEvent) {
+    fn clicked(&self, event: input::interact::ClickEvent) {
         println!("CADModel: Clicked");
     }
 
-    fn drag(&self, event: picking::interact::DragEvent) {
+    fn drag(&self, event: input::interact::DragEvent) {
         println!("CADModel: Dragged");
     }
 
-    fn scroll(&self, event: picking::interact::ScrollEvent) {
+    fn scroll(&self, event: input::interact::ScrollEvent) {
         println!("CADModel: Scrolled");
+    }
+
+    fn get_aaabbb(&self) -> (Vec3, Vec3) {
+        match self {
+            Self::Root { bounding_box, .. } => (
+                bounding_box.read().init_min(),
+                bounding_box.read().init_max(),
+            ),
+            Self::Face { face, .. } => (face.read().min, face.read().max),
+        }
     }
 
     fn get_transform(&self) -> glam::Mat4 {
@@ -597,14 +607,14 @@ impl Renderable for CADModel {
 }
 
 impl HitboxNode<CADModel> for CADModel {
-    fn check_hit(&self, ray: &crate::picking::Ray) -> Option<f32> {
+    fn check_hit(&self, ray: &crate::input::Ray) -> Option<f32> {
         match self {
             Self::Root { bounding_box, .. } => bounding_box.read().check_hit(ray),
             Self::Face { face, .. } => face.read().check_hit(ray),
         }
     }
 
-    fn inner_nodes(&self) -> &[CADModel] {
+    fn inner_nodes(&self) -> &[Arc<CADModel>] {
         match self {
             Self::Root { children, .. } => children,
             Self::Face { .. } => &[],
@@ -626,65 +636,23 @@ impl HitboxNode<CADModel> for CADModel {
     }
 }
 
-impl Translate for CADModel {
-    fn translate(&self, translation: Vec3) {
-        match self {
-            Self::Root { model, .. } => model.write().translate(translation),
-            Self::Face { face } => face.write().translate(translation),
-        }
-    }
-}
-
-impl Rotate for CADModel {
-    fn rotate(&self, rotation: glam::Quat) {
-        match self {
-            Self::Root { model, .. } => model.write().rotate(rotation),
-            Self::Face { face } => face.write().rotate(rotation),
-        }
-    }
-}
-
-impl Scale for CADModel {
-    fn scale(&self, scale: Vec3) {
-        match self {
-            Self::Root { model, .. } => model.write().scale(scale),
-            Self::Face { face } => face.write().scale(scale),
-        }
-    }
-}
-
 impl Transform for CADModel {
     fn transform(&self, transform: glam::Mat4) {
         match self {
-            Self::Root { model, .. } => model.write().transform(transform),
+            Self::Root {
+                model,
+                bounding_box,
+                children,
+                ..
+            } => {
+                model.write().transform(transform);
+                bounding_box.write().transform(transform);
+
+                for child in children {
+                    child.transform(transform);
+                }
+            }
             Self::Face { face } => face.write().transform(transform),
-        }
-    }
-}
-
-impl TranslateMut for CADModel {
-    fn translate(&mut self, translation: Vec3) {
-        match self {
-            Self::Root { model, .. } => model.get_mut().translate(translation),
-            Self::Face { face } => face.get_mut().translate(translation),
-        }
-    }
-}
-
-impl RotateMut for CADModel {
-    fn rotate(&mut self, rotation: glam::Quat) {
-        match self {
-            Self::Root { model, .. } => model.get_mut().rotate(rotation),
-            Self::Face { face } => face.get_mut().rotate(rotation),
-        }
-    }
-}
-
-impl ScaleMut for CADModel {
-    fn scale(&mut self, scale: Vec3) {
-        match self {
-            Self::Root { model, .. } => model.get_mut().scale(scale),
-            Self::Face { face } => face.get_mut().scale(scale),
         }
     }
 }
@@ -692,7 +660,19 @@ impl ScaleMut for CADModel {
 impl TransformMut for CADModel {
     fn transform(&mut self, transform: glam::Mat4) {
         match self {
-            Self::Root { model, .. } => model.get_mut().transform(transform),
+            Self::Root {
+                model,
+                bounding_box,
+                children,
+                ..
+            } => {
+                model.get_mut().transform(transform);
+                bounding_box.get_mut().transform(transform);
+
+                for child in children {
+                    child.transform(transform);
+                }
+            }
             Self::Face { face } => face.get_mut().transform(transform),
         }
     }
@@ -828,7 +808,7 @@ fn clusterize_faces(
 
         let point = vertices[triangle[0]];
 
-        let ray = picking::Ray {
+        let ray = input::Ray {
             origin: Vec3::new(0.0, 0.0, 0.0),
             direction: normal,
         };
@@ -923,7 +903,7 @@ impl PolygonFace {
 }
 
 impl Hitbox for PolygonFace {
-    fn check_hit(&self, ray: &picking::Ray) -> Option<f32> {
+    fn check_hit(&self, ray: &input::Ray) -> Option<f32> {
         let denominator = self.plane.normal.dot(ray.direction);
 
         if denominator.abs() < f32::EPSILON {

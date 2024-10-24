@@ -5,7 +5,7 @@ use crate::{
         mesh::{construct_triangle_vertices, Mesh},
         QuadFace,
     },
-    picking::{hitbox::Hitbox, Ray},
+    input::{hitbox::Hitbox, Ray},
     render::{
         model::{RotateMut, ScaleMut, TranslateMut},
         Vertex,

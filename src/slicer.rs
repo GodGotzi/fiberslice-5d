@@ -36,8 +36,8 @@ impl Slicer {
 
             let result = slicer::slice(
                 SliceInput {
-                    objects: vec![models[0].clone()],
-                    masks: vec![models[1].clone()],
+                    objects: models,
+                    masks: vec![],
                 },
                 &settings,
                 &process,
@@ -49,6 +49,12 @@ impl Slicer {
                 .toolpath_server
                 .write()
                 .load_from_slice_result(result, process);
+
+            global_state
+                .ui_event_writer
+                .send(crate::ui::UiEvent::ShowSuccess(
+                    "Slicing finished".to_string(),
+                ));
         });
 
         self.handle = Some(handle);

@@ -7,7 +7,7 @@ pub mod mesh;
 pub use r#box::BoundingBox;
 
 use crate::{
-    picking::hitbox::Hitbox,
+    input::hitbox::Hitbox,
     render::model::{RotateMut, ScaleMut, TranslateMut},
     render::Vertex,
     viewer::toolpath::mesh::ProfileCross,
@@ -33,7 +33,7 @@ impl QuadFace {
 }
 
 impl Hitbox for QuadFace {
-    fn check_hit(&self, ray: &crate::picking::Ray) -> Option<f32> {
+    fn check_hit(&self, ray: &crate::input::Ray) -> Option<f32> {
         let intersection = ray.intersection_plane(self.normal, self.point);
 
         const EPSILON: f32 = 0.0001;

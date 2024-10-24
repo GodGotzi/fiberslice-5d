@@ -1,7 +1,9 @@
-use glam::Vec2;
+use glam::{Vec2, Vec3};
 use winit::{event::MouseButton, keyboard::KeyCode};
 
 use crate::render::model::Transform;
+
+use super::hitbox::Hitbox;
 
 #[derive(Debug, Clone)]
 pub enum Action {
@@ -31,7 +33,9 @@ pub trait InteractiveModel {
     fn drag(&self, event: DragEvent);
     fn scroll(&self, event: ScrollEvent);
 
+    fn get_aaabbb(&self) -> (Vec3, Vec3);
     fn get_transform(&self) -> glam::Mat4;
+
     fn as_transformable(&self) -> Option<&dyn Transform>;
 
     fn destroy(&self) {}

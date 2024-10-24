@@ -2,12 +2,24 @@ use std::sync::Arc;
 
 use glam::Mat4;
 
-use crate::picking::interact::InteractiveModel;
+use crate::{
+    geometry::{
+        mesh::{Mesh, WireMesh},
+        BoundingBox, SelectBox,
+    },
+    input::interact::InteractiveModel,
+    render::{
+        model::{Model, TransformMut},
+        Renderable, Vertex,
+    },
+};
 
-#[derive(Default)]
 pub struct Selector {
     selected: Vec<Arc<dyn InteractiveModel>>,
     grouped_transform: Option<Mat4>,
+
+    select_box: Model<Vertex>,
+    select_box_lines: Model<Vertex>,
 }
 
 impl std::fmt::Debug for Selector {
@@ -19,26 +31,101 @@ impl std::fmt::Debug for Selector {
 }
 
 impl Selector {
-    pub fn select(&mut self, model: &Arc<dyn InteractiveModel>) {
-        if self.selected.is_empty() {
-            self.selected.push(model.clone());
-        } else {
-            self.selected[0] = model.clone();
-        }
+    pub fn instance() -> Self {
+        Self {
+            selected: Vec::new(),
+            grouped_transform: None,
 
-        self.grouped_transform = None;
+            select_box: Model::create(),
+            select_box_lines: Model::create(),
+        }
     }
 
-    pub fn deselect(&mut self, model: &Arc<dyn InteractiveModel>) {
+    pub fn select_multiple(&mut self, model: Arc<dyn InteractiveModel>) {
+        if self.selected.iter().any(|m| Arc::ptr_eq(m, &model)) {
+            self.deselect(&model);
+
+            self.grouped_transform = None;
+            return;
+        }
+
+        self.selected.push(model.clone());
+
+        self.grouped_transform = None;
+
+        self.update();
+    }
+
+    pub fn select(&mut self, model: Arc<dyn InteractiveModel>) {
+        if self.selected.iter().any(|m| Arc::ptr_eq(m, &model)) {
+            self.deselect(&model);
+
+            self.grouped_transform = None;
+            return;
+        }
+
+        self.selected.clear();
+        self.selected.push(model.clone());
+
+        println!("Select {:?}", self.selected.len());
+
+        self.grouped_transform = None;
+
+        self.update();
+    }
+
+    fn deselect(&mut self, model: &Arc<dyn InteractiveModel>) {
         let size = self.selected.len();
         self.selected.retain(|m| !Arc::ptr_eq(m, model));
 
         if size != self.selected.len() {
             self.grouped_transform = None;
         }
+
+        println!("Deselect {:?}", self.selected.len());
+        self.update();
+    }
+
+    fn update(&mut self) {
+        let (min, max) = if self.selected.len() == 1 {
+            self.select_box.transform(self.selected[0].get_transform());
+            self.select_box_lines
+                .transform(self.selected[0].get_transform());
+
+            self.selected[0].get_aaabbb()
+        } else if !self.selected.is_empty() {
+            self.selected.iter().fold(
+                (
+                    glam::Vec3::splat(f32::INFINITY),
+                    glam::Vec3::splat(f32::NEG_INFINITY),
+                ),
+                |(min, max), model| {
+                    let (model_min, model_max) = model.get_aaabbb();
+
+                    (min.min(model_min), max.max(model_max))
+                },
+            )
+        } else {
+            self.select_box.set_enabled(false);
+            self.select_box_lines.set_enabled(false);
+            return;
+        };
+
+        let select_box = SelectBox::from(BoundingBox::new(
+            min - glam::Vec3::splat(0.1),
+            max + glam::Vec3::splat(0.1),
+        ));
+
+        self.select_box.awaken(&select_box.to_triangle_vertices());
+        self.select_box_lines.awaken(&select_box.to_wire_vertices());
+
+        self.select_box.set_enabled(true);
+        self.select_box_lines.set_enabled(true);
     }
 
     pub fn transform(&mut self, mut r#fn: impl FnMut(&mut Mat4) -> bool) {
+        println!("Transform {:?}", self.selected.len());
+
         if self.selected.len() == 1 {
             let mut transform = self.selected[0].get_transform();
 
@@ -47,6 +134,8 @@ impl Selector {
 
                 if response {
                     transformable_model.transform(transform);
+                    self.select_box.transform(transform);
+                    self.select_box_lines.transform(transform);
                 }
             }
         } else {
@@ -76,6 +165,8 @@ impl Selector {
                         );
 
                         transformable_model.transform(transform);
+                        self.select_box.transform(transform);
+                        self.select_box_lines.transform(transform);
                     }
                 }
             }
@@ -84,11 +175,31 @@ impl Selector {
         }
     }
 
-    pub fn clear(&mut self) {
-        self.selected.clear();
-    }
-
     pub fn selected(&self) -> &[Arc<dyn InteractiveModel>] {
         &self.selected
+    }
+
+    pub fn clear(&mut self) {
+        self.selected.clear();
+        self.update();
+    }
+
+    pub fn delete_selected(&mut self) {
+        self.selected.iter_mut().for_each(|model| {
+            model.destroy();
+        });
+
+        self.selected.clear();
+        self.update();
+    }
+
+    pub fn render<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+        // self.volume.render(render_pass);
+        self.select_box.render(render_pass);
+    }
+
+    pub fn render_lines<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+        // self.volume.render_lines(render_pass);
+        self.select_box_lines.render(render_pass);
     }
 }

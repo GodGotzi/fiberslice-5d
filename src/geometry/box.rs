@@ -1,7 +1,7 @@
 use glam::{vec4, Vec3};
 
 use crate::{
-    picking::hitbox::Hitbox,
+    input::hitbox::Hitbox,
     render::{model::TransformMut, Vertex},
     viewer::Visual,
 };
@@ -40,6 +40,14 @@ impl BoundingBox {
             init_max: max,
             init_min: min,
         }
+    }
+
+    pub fn init_min(&self) -> Vec3 {
+        self.init_min
+    }
+
+    pub fn init_max(&self) -> Vec3 {
+        self.init_max
     }
 
     pub fn center(&self) -> Vec3 {
@@ -126,7 +134,7 @@ impl TransformMut for BoundingBox {
 }
 
 impl Hitbox for BoundingBox {
-    fn check_hit(&self, ray: &crate::picking::Ray) -> Option<f32> {
+    fn check_hit(&self, ray: &crate::input::Ray) -> Option<f32> {
         // bounding box min max
 
         if self.contains(ray.origin) {

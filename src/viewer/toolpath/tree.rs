@@ -1,10 +1,12 @@
+use std::sync::Arc;
+
 use glam::Vec3;
 use parking_lot::RwLock;
 use wgpu::BufferAddress;
 
 use crate::{
     geometry::BoundingBox,
-    picking::{
+    input::{
         hitbox::{Hitbox, HitboxNode},
         interact::InteractiveModel,
     },
@@ -21,7 +23,7 @@ pub enum ToolpathTree {
         travel_model: LockModel<ToolpathVertex>,
         fiber_model: LockModel<ToolpathVertex>,
         bounding_box: RwLock<BoundingBox>,
-        children: Vec<Self>,
+        children: Vec<Arc<Self>>,
         size: BufferAddress,
         travel_size: BufferAddress,
         fiber_size: BufferAddress,
@@ -111,7 +113,7 @@ impl ToolpathTree {
 
                 bounding_box.get_mut().expand_point(node.get_min());
                 bounding_box.get_mut().expand_point(node.get_max());
-                children.push(node);
+                children.push(Arc::new(node));
             }
             Self::Travel { .. } => panic!("Cannot push node to travel"),
             Self::Fiber { .. } => panic!("Cannot push node to fiber"),
@@ -124,7 +126,7 @@ impl ToolpathTree {
             Self::Root { children, .. } => {
                 let mut current_offset = offset;
                 for child in children {
-                    child.update_offset(current_offset);
+                    // child.update_offset(current_offset);
                     current_offset += child.size();
                 }
             }
@@ -183,7 +185,7 @@ impl Renderable for ToolpathTree {
 }
 
 impl HitboxNode<Self> for ToolpathTree {
-    fn check_hit(&self, ray: &crate::picking::Ray) -> Option<f32> {
+    fn check_hit(&self, ray: &crate::input::Ray) -> Option<f32> {
         match self {
             Self::Root { bounding_box, .. } => bounding_box.read().check_hit(ray),
             Self::Move {
@@ -194,7 +196,7 @@ impl HitboxNode<Self> for ToolpathTree {
         }
     }
 
-    fn inner_nodes(&self) -> &[Self] {
+    fn inner_nodes(&self) -> &[Arc<Self>] {
         match self {
             Self::Root { children, .. } => children,
             Self::Travel { .. } => &[],
@@ -227,16 +229,33 @@ impl HitboxNode<Self> for ToolpathTree {
 }
 
 impl InteractiveModel for ToolpathTree {
-    fn clicked(&self, _event: crate::picking::interact::ClickEvent) {
+    fn clicked(&self, _event: crate::input::interact::ClickEvent) {
         println!("ToolpathTree: Clicked");
     }
 
-    fn drag(&self, _event: crate::picking::interact::DragEvent) {
+    fn drag(&self, _event: crate::input::interact::DragEvent) {
         println!("ToolpathTree: Dragged");
     }
 
-    fn scroll(&self, _event: crate::picking::interact::ScrollEvent) {
+    fn scroll(&self, _event: crate::input::interact::ScrollEvent) {
         println!("ToolpathTree: Scrolled");
+    }
+
+    fn get_aaabbb(&self) -> (Vec3, Vec3) {
+        match self {
+            Self::Root { bounding_box, .. } => {
+                let bb = bounding_box.read();
+                (bb.get_min(), bb.get_max())
+            }
+            Self::Move {
+                r#box: path_box, ..
+            } => {
+                let bb = path_box.read();
+                (bb.get_min(), bb.get_max())
+            }
+            Self::Travel { start, end, .. } => (*start.read(), *end.read()),
+            Self::Fiber { start, end, .. } => (*start.read(), *end.read()),
+        }
     }
 
     fn get_transform(&self) -> glam::Mat4 {

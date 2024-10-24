@@ -103,7 +103,8 @@ impl GizmoTools {
                 .resizable(false)
                 .frame(frame)
                 .show(ui.ctx(), |ui| {
-                    let mut selector = global_state.viewer.selector().write();
+                    let mut env_server = global_state.viewer.env_server.write();
+                    let selector = env_server.selector_mut();
 
                     selector.transform(|transform| {
                         let (mut scale, rotation, mut translation) =
