@@ -98,13 +98,6 @@ impl FrameHandle<'_, RootEvent, (), &CameraResult> for InputAdapter {
                                             .write()
                                             .selector_mut()
                                             .select(interact_model);
-                                    } else {
-                                        global_state
-                                            .viewer
-                                            .env_server
-                                            .write()
-                                            .selector_mut()
-                                            .clear();
                                     }
                                 }
 
